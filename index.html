@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tryfecta Management | Integrated Corporate Services</title>
+    <style>
+        /* --- General Reset & Typography --- */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; background-color: #f9f9f9; }
+        
+        /* --- Color Palette --- */
+        :root {
+            --primary-color: #003366; /* Corporate Blue */
+            --secondary-color: #0056b3; /* Lighter Blue */
+            --accent-color: #f4f4f4;
+            --text-light: #ffffff;
+        }
+
+        /* --- Header & Navigation --- */
+        header { background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.1); padding: 1rem 5%; position: sticky; top: 0; z-index: 1000; }
+        nav { display: flex; justify-content: space-between; align-items: center; }
+        .logo { font-size: 1.5rem; font-weight: bold; color: var(--primary-color); text-transform: uppercase; letter-spacing: 1px; }
+        .nav-links a { text-decoration: none; color: #333; margin-left: 20px; font-weight: 500; transition: color 0.3s; }
+        .nav-links a:hover { color: var(--secondary-color); }
+        .btn-nav { background: var(--primary-color); color: white !important; padding: 8px 20px; border-radius: 5px; }
+
+        /* --- Hero Section --- */
+        .hero {
+            background: linear-gradient(rgba(0, 51, 102, 0.9), rgba(0, 51, 102, 0.8)), url('https://source.unsplash.com/1600x900/?office,corporate'); 
+            background-size: cover; background-position: center; color: var(--text-light);
+            padding: 100px 5%; text-align: center;
+        }
+        .hero h1 { font-size: 3rem; margin-bottom: 20px; }
+        .hero p { font-size: 1.2rem; max-width: 800px; margin: 0 auto 30px auto; }
+        .btn-hero { display: inline-block; background: var(--text-light); color: var(--primary-color); padding: 12px 30px; text-decoration: none; font-weight: bold; border-radius: 5px; transition: background 0.3s; }
+        .btn-hero:hover { background: #e0e0e0; }
+
+        /* --- About Section --- */
+        .section { padding: 80px 10%; }
+        .about { background: #fff; text-align: center; }
+        .about h2 { font-size: 2.5rem; color: var(--primary-color); margin-bottom: 20px; }
+        .highlight-box { background: var(--accent-color); padding: 20px; border-left: 5px solid var(--primary-color); margin: 30px auto; max-width: 800px; text-align: left; }
+        
+        /* --- Why Choose Us (Grid) --- */
+        .features { background: var(--primary-color); color: white; }
+        .features h2 { text-align: center; margin-bottom: 40px; }
+        .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 30px; }
+        .feature-item { background: rgba(255,255,255,0.1); padding: 25px; border-radius: 8px; }
+        .feature-item h3 { margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.3); padding-bottom: 10px; }
+
+        /* --- Services Section --- */
+        .services { background: #fff; }
+        .services h2 { text-align: center; color: var(--primary-color); margin-bottom: 10px; font-size: 2.5rem; }
+        .services-sub { text-align: center; margin-bottom: 50px; color: #666; }
+        .services-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; }
+        .service-card { background: #fdfdfd; border: 1px solid #eee; padding: 30px; border-radius: 8px; transition: transform 0.3s, box-shadow 0.3s; }
+        .service-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); border-top: 4px solid var(--secondary-color); }
+        .service-card h3 { color: var(--primary-color); margin-bottom: 15px; }
+        .service-card ul { list-style-type: none; margin-top: 15px; font-size: 0.9rem; color: #555; }
+        .service-card ul li::before { content: "•"; color: var(--secondary-color); font-weight: bold; display: inline-block; width: 1em; margin-left: -1em; }
+        .service-card ul li { margin-bottom: 5px; padding-left: 1em; }
+
+        /* --- CTA Footer --- */
+        .footer-cta { background: #222; color: #fff; text-align: center; padding: 60px 5%; }
+        .footer-cta h2 { margin-bottom: 20px; }
+        .form-container { max-width: 500px; margin: 0 auto; display: flex; flex-direction: column; gap: 15px; }
+        input, textarea { padding: 12px; border-radius: 4px; border: none; font-family: inherit; }
+        button { padding: 12px; background: var(--secondary-color); color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        button:hover { background: var(--primary-color); }
+
+        /* --- Responsive --- */
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 2rem; }
+            .nav-links { display: none; } /* Simplified for mobile demo */
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <nav>
+            <div class="logo">Tryfecta Management</div>
+            <div class="nav-links">
+                <a href="#about">Why Us</a>
+                <a href="#services">Services</a>
+                <a href="#contact" class="btn-nav">Contact Us</a>
+            </div>
+        </nav>
+    </header>
+
+    <section class="hero">
+        <h1>Integrated Corporate Services</h1>
+        <p>Empowering businesses through seamless, trusted, and fully managed corporate services.</p>
+        
+        <p style="font-weight: bold; margin-top: -20px; font-size: 1rem; opacity: 0.9;">Company-Owned. Company-Managed. Fully Accountable.</p>
+        <br>
+        <a href="#contact" class="btn-hero">Get Started</a>
+    </section>
+
+    <section id="about" class="section about">
+        <h2>We Don't Just Outsource. We Own It.</h2>
+        <p>Our mission is to deliver integrated, company-owned and managed corporate services that ensure operational excellence, compliance, and seamless business continuity.</p>
+        
+        <div class="highlight-box">
+            <h3>🚫 No fragmented vendors. No subcontracting. No compromise.</h3>
+            <p>We provide fully integrated, company-owned services managed under one unified leadership structure. This creates a true extension of your business.</p>
+        </div>
+    </section>
+
+    <section class="section features">
+        <h2>Why Clients Choose Tryfecta</h2>
+        <div class="features-grid">
+            <div class="feature-item">
+                <h3>Single Point of Accountability</h3>
+                <p>One partner. One management structure. One set of standardized policies and controls under a single governance framework.</p>
+            </div>
+            <div class="feature-item">
+                <h3>Reduced Risk</h3>
+                <p>Company-owned teams mean better data confidentiality, stronger compliance, and lower operational risk.</p>
+            </div>
+            <div class="feature-item">
+                <h3>Scalability</h3>
+                <p>Our services grow with your business — from startup to multinational operations.</p>
+            </div>
+            <div class="feature-item">
+                <h3>Business Continuity</h3>
+                <p>Structured teams and documented processes ensure uninterrupted service delivery and cross-functional coverage.</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="services" class="section services">
+        <h2>Our Corporate Services</h2>
+        <p class="services-sub">We take ownership of support functions so you can focus on core business activities.</p>
+        
+        <div class="services-grid">
+            
+            <div class="service-card">
+                <h3>Human Resources (HR)</h3>
+                <p>We manage the full employee lifecycle while aligning HR practices with business objectives.</p>
+                <ul>
+                    <li>Recruitment & onboarding</li>
+                    <li>HR policies & compliance</li>
+                    <li>Performance management frameworks</li>
+                </ul>
+            </div>
+
+            <div class="service-card">
+                <h3>Payroll Services</h3>
+                <p>A mission-critical function requiring absolute accuracy and confidentiality.</p>
+                <ul>
+                    <li>End-to-end payroll processing</li>
+                    <li>Statutory deductions (PF, ESI, TDS)</li>
+                    <li>Payroll reporting for HQ</li>
+                </ul>
+            </div>
+
+            <div class="service-card">
+                <h3>Accounting & Finance</h3>
+                <p>Strong financial foundations that support informed decision-making and long-term growth.</p>
+                <ul>
+                    <li>Bookkeeping & general ledger</li>
+                    <li>Management reporting & budgeting</li>
+                    <li>Audit support & tax accounting</li>
+                </ul>
+            </div>
+
+            <div class="service-card">
+                <h3>IT & Digital Support</h3>
+                <p>Ensuring your technology environment is secure, stable, and aligned with operations.</p>
+                <ul>
+                    <li>IT infrastructure & cloud solutions</li>
+                    <li>Cyber Security management</li>
+                    <li>User support & helpdesk</li>
+                </ul>
+            </div>
+
+            <div class="service-card">
+                <h3>Commercial Services</h3>
+                <p>Supporting daily business operations through structured and compliant services.</p>
+                <ul>
+                    <li>Vendor Management</li>
+                    <li>Contract administration</li>
+                    <li>Procurement support</li>
+                </ul>
+            </div>
+
+            <div class="service-card">
+                <h3>ISO Certification Support</h3>
+                <p>Comprehensive support helping align management systems with international standards.</p>
+                <ul>
+                    <li>Implementation (ISO 9001, 14001, 27001)</li>
+                    <li>Internal audits & gap analysis</li>
+                    <li>External audit coordination</li>
+                </ul>
+            </div>
+
+            <div class="service-card">
+                <h3>Corporate Secretarial</h3>
+                <p>Managing governance and statutory compliance to keep your business legally compliant.</p>
+                <ul>
+                    <li>Statutory registers & annual returns</li>
+                    <li>Board meeting coordination</li>
+                    <li>Liaison with regulatory authorities</li>
+                </ul>
+            </div>
+
+        </div>
+    </section>
+
+    <section id="contact" class="footer-cta">
+        <h2>Let’s Build a Stronger Corporate Foundation</h2>
+        <p>Partner with a corporate services provider that is fully accountable, fully integrated, and fully invested in your success.</p>
+        <br>
+        <p>Contact us to learn how our company-owned model can support your business.</p>
+        <br>
+        
+        <div class="form-container">
+            <input type="text" placeholder="Your Name">
+            <input type="email" placeholder="Your Work Email">
+            <textarea rows="4" placeholder="How can we help you?"></textarea>
+            <button>Send Message</button>
+        </div>
+        
+        <p style="margin-top: 40px; font-size: 0.8rem; color: #888;">© 2024 Tryfecta Management. All rights reserved.</p>
+    </section>
+
+</body>
+</html>
