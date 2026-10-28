@@ -11,6 +11,7 @@ export async function init(ctx){C=ctx;THREE=C.THREE;S=C.S;PH=C.PH;S.src=SRC;
  detailGeometry();seqPanel();signals();sensorsInit();await libInit();
  C.EXT.afterStep=afterStep;C.EXT.frame=frame;C.EXT.actX=actX;
  window.GX={circuitAt,startSeq:(k,sm)=>{PH.startSeq(S,k,sm);renderSeq()},stepNext,loadCSVText,useCSV,addSensor,setSensor,placeLib,addBha,exportLayout,importLayout,lib:()=>LIB,ext:X,partSelect,showTree,setSource,feed:FEED};
+ try{const m2=await import('./ext2.js?v=32');await m2.init({...C,FEED,SIGS,SRC,sigRender,el,BTN,PANEL,renderSeq})}catch(err){console.error('ext2',err)}
  window.GX_READY=true}
 
 function smotorSteps(){const M=()=>X.lib.find(i=>LIB[i.type]?.physics?.kind=='motor'&&inFlow(i));const keep=S.pumps.map(p=>p.cmd);
@@ -106,7 +107,7 @@ function sigRender(){if(!sigEl)return;sigEl.innerHTML=`<b style="color:#8fd">Sig
  sigEl.querySelectorAll('[data-sig]').forEach(s=>s.onchange=()=>setSource(s.dataset.sig,s.value));
  sigEl.querySelector('#csvload').onclick=()=>document.getElementById('csvFile').click();
  sigEl.querySelector('#csvsample').onclick=()=>loadSample();
- sigEl.querySelector('#feedc').onclick=()=>{const u=prompt('Live feed WebSocket URL (stub; sends JSON {"spp_psi":..})');if(u)FEED.connect(u.trim())}}
+ sigEl.querySelector('#feedc').onclick=()=>{if(FEED.openConfig)FEED.openConfig();else{const u=prompt('Live feed URL');if(u)FEED.connect(u.trim())}}}
 
 // ---------------- movable sensors on the flow line ----------------
 // Circuit position 0..100%: 0-30 surface (pump > manifold > standpipe > hose), 30-65 down the string to the bit, 65-100 annulus back to surface.
@@ -131,9 +132,9 @@ function frame(){const v=new THREE.Vector3();for(const e of sensorEnts){circuitP
  renderSeq();if(treeEl&&treeEl._upd)treeEl._upd()}
 
 // ---------------- pump drill-down (nested parts tree) ----------------
-const PUMP_TREE=st=>({name:'Mud pump '+st.id+' (triplex)',kids:[
+const PUMP_TREE=st=>({name:'Mud pump '+st.id+' ('+(st.ptype||((st.modules||3)==5?'quintuplex':'triplex'))+')',kids:[
  {name:'Power end',part:'Power end',kids:[{name:'Crankshaft',part:'Crankshaft',r:()=>['Crank RPM',st.spm.toFixed(0)]},{name:'Main bearings',r:()=>['Load index',(S.spp*(st.liner_in**2)/1e4).toFixed(1)]},{name:'Crossheads ×3',r:()=>['Speed SPM',st.spm.toFixed(0)]},{name:'Gear reducer',r:()=>['Pinion RPM',(st.spm*4.2).toFixed(0)]}]},
- {name:'Fluid end',part:'Fluid end',kids:[1,2,3].map(k=>({name:'Module '+k,kids:[
+ {name:'Fluid end',part:'Fluid end',kids:Array.from({length:st.modules||3},(_,i)=>i+1).map(k=>({name:'Module '+k,kids:[
    {name:'Liner '+st.liner_in+' in',part:'Piston + liner '+k,r:()=>['Rod load klbf',(S.spp*Math.PI/4*st.liner_in**2/1000).toFixed(1)]},
    {name:'Piston',part:'Piston + liner '+k,r:()=>['Cycles',st.strokes.toFixed(0)]},
    {name:'Suction valve + seat',part:'Suction valve '+k,r:()=>['Cycles',st.strokes.toFixed(0)]},

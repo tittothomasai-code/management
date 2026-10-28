@@ -10,7 +10,8 @@ export const P={ // parameters (rough, labelled first-pass)
  mud:{mw_ppg:10},bit:{dia_in:8.5,nozzles:6,noz_32:14,cd:0.95,mu:0.3,rop_k:0.133,rop_a:1,rop_b:0.6,slide_factor:0.5},
  motor:{rev_per_gal:0.16,stall_torque:3500,dp_off:150,torque_per_psi:5,bur:6},
  line:{man_k:3e-5,surf_k_ft:4e-6,surf_len:150,ds_k_ft:1.3e-6,ann_k_ft:0.3e-6},
- td:{tau_s:2,max_rpm:180}, dw:{speed_mps:0.6,min_quill:1.2,max_quill:30.5}};
+ td:{tau_s:2,max_rpm:180,max_torque:40000}, dw:{speed_mps:0.6,min_quill:1.2,max_quill:30.5},
+ string:{w_ppf:19.5},mwd:{dp600:0},design:null}; // design = rig designer limits (null = defaults)
 export function newState(){const md=2100,pre=planPath().filter(q=>q[0]<=md).map(q=>[q[0],q[1],q[2],q[3],q[4],q[5]]),lp=pre[pre.length-1];return{t:0,
  pumps:[0,1].map(i=>({id:i+1,on:true,cmd:100,spm:0,theta:i,strokes:0,tripped:false,flow:0})),_pid:2,
  td:{cmd:60,rpm:0,theta:0,torque:0},mode:'rotate',tf:0,autoSteer:true,
@@ -25,7 +26,9 @@ export function bitDepth(S){const top=S.connected&&!S.slips?S.dw.quill:S.stickup
 export function step(S,dt){const t=S.t,F=S.faults,mw=P.mud.mw_ppg;
  // drawworks / hoisting
  const dw=S.dw;let dq=0;
- if(dw.mode=='hoist')dq=P.dw.speed_mps*dt;else if(dw.mode=='lower')dq=-P.dw.speed_mps*dt;
+ const hs=P.design?Math.min(P.dw.speed_mps,P.design.dw_hp*550*0.8/Math.max(1,S.hook*1000)*FT):P.dw.speed_mps;S.hoistSpd=hs;
+ if(P.design&&dw.mode=='hoist'&&S.hook>P.design.hook_rating){dq=0;if(!S._ilk4){ev(S,'Interlock: hookload over rig rating, hoist blocked');S._ilk4=1}}else S._ilk4=0;
+ if(dw.mode=='hoist'&&!S._ilk4)dq=hs*dt;else if(dw.mode=='lower')dq=-P.dw.speed_mps*dt;
  if(F.brake_fade&&dw.mode!='hoist')dq-=0.12*dt; // brake cannot hold: block creeps down
  if((dw.mode=='hoist'||dw.mode=='lower')&&S.rough&&!S.seq){dq=0;if(!S._ilk3){ev(S,'Interlock: block movement blocked, iron roughneck at well centre');S._ilk3=1}}else S._ilk3=0;
  if(dw.mode=='hoist'&&S.slips&&S.connected){dq=0;if(!S._ilk1){ev(S,'Interlock: cannot hoist, slips set while string connected');S._ilk1=1}}else S._ilk1=0;
@@ -45,11 +48,12 @@ export function step(S,dt){const t=S.t,F=S.faults,mw=P.mud.mw_ppg;
  if(S.seq&&S.seq.tdOverride!=null)rc=S.seq.tdOverride;
  // manual roughneck operation (break-out / make-up)
  if(S.rnOp&&S.t-S.rnOp.t0>=6){if(S.rnOp.kind=='break'){S.connected=false;ev(S,'Roughneck: connection broken out')}else{S.connected=true;if(S.newJoint){S.L+=27.4/FT;S.newJoint=0}ev(S,'Roughneck: connection made up')}S.rnOp=null}
+ rc=Math.max(-P.td.max_rpm,Math.min(P.td.max_rpm,rc));if(S.td.torque>P.td.max_torque&&rc>0){rc=0;if(!S._tq){ev(S,'Top drive torque limit: rotation stalled');S._tq=1}}else S._tq=0;
  S.td.rpm+=(rc-S.td.rpm)*dt/P.td.tau_s;S.td.theta+=S.td.rpm/60*dt*2*Math.PI;
  // pumps
  let Q=0;const pp=P.pump;
- for(const p of S.pumps){let cmd=p.on?p.cmd:0;if(p.tripped||!S.connected)cmd=0;p.spm+=(Math.min(cmd,pp.max_spm)-p.spm)*dt/pp.tau_s;if(p.spm<0.05&&cmd==0)p.spm=0;
-  p.theta+=p.spm/60*dt*2*Math.PI;p.strokes+=p.spm/60*dt;const gps=0.000243*(p.liner_in||pp.liner_in)**2*(p.stroke_in||pp.stroke_in)*42*(p.modules||3)/3;const ve=pp.vol_eff0-pp.eff_drop_per_kpsi*S.spp/1000;p.flow=p.spm*gps*ve;Q+=p.flow}
+ for(const p of S.pumps){let cmd=p.on?p.cmd:0;if(p.tripped||!S.connected)cmd=0;p.spm+=(Math.min(cmd,p.max_spm||pp.max_spm)-p.spm)*dt/pp.tau_s;if(p.spm<0.05&&cmd==0)p.spm=0;
+  p.theta+=p.spm/60*dt*2*Math.PI;p.strokes+=p.spm/60*dt;const gps=0.000243*(p.liner_in||pp.liner_in)**2*(p.stroke_in||pp.stroke_in)*42*(p.modules||3)/3;const ve=pp.vol_eff0-pp.eff_drop_per_kpsi*S.spp/1000;p.flow=p.spm*gps*ve;if(p.valve===false){if(p.spm>5&&!p.tripped){p.tripped=true;ev(S,'Pump '+p.id+' dead-headed against closed manifold valve: pop-off tripped')}p.flow=0}Q+=p.flow}
  S.Q=Q;let wf=0;if(F.washout)wf=0.3*Math.min(1,(t-F.washout)/120);const Qb=Q*(1-wf);S.Qb=Qb;S.wf=wf;const wpos=0.6*S.md;
  const B=P.bit,n=F.plugged_nozzle?B.nozzles-2:B.nozzles,tfa=n*Math.PI/4*(B.noz_32/32)**2;S.tfa=tfa;
  const dpb=Qb>1?mw*Qb*Qb/(12032*B.cd**2*tfa**2):0;
@@ -57,9 +61,9 @@ export function step(S,dt){const t=S.t,F=S.faults,mw=P.mud.mw_ppg;
  if(stall&&!S.stalled)ev(S,'Mud motor stalled (SPP jump)');if(!stall&&S.stalled)ev(S,'Motor stall cleared');S.stalled=stall;
  let mr,dpm;if(stall){mr=0;dpm=M.dp_off+M.stall_torque/M.torque_per_psi*1.3}else{mr=Qb*M.rev_per_gal*(1-0.3*bt/M.stall_torque);dpm=Qb>50?M.dp_off+bt/M.torque_per_psi:0}
  const L=P.line,e=1.8,man=L.man_k*Q*Q,surf=L.surf_k_ft*Q**e*L.surf_len,ds=L.ds_k_ft*(Q**e*wpos+Qb**e*(S.md-wpos)),ann=L.ann_k_ft*(Qb**e*(S.md-wpos)+Q**e*wpos);
- const xs=S.extraSurf?S.extraSurf(Q):0,xb=S.extraBha?S.extraBha(Qb):0; // placed equipment (library): surface line losses + BHA tool losses
+ const xs=S.extraSurf?S.extraSurf(Q):0,xb=(S.extraBha?S.extraBha(Qb):0)+P.mwd.dp600*(Qb/600)**2; // placed equipment (library): surface line losses + BHA tool losses
  const spp=man+surf+xs+ds+xb+dpm+dpb+ann;S.spp=spp;S.prof={man,surf,xs,ds,xb,dpm,dpb,ann};
- for(const p of S.pumps)if(spp>pp.popoff_psi&&!p.tripped){p.tripped=true;ev(S,'Pop-off lifted, pump tripped')}
+ for(const p of S.pumps)if(spp>(p.popoff||pp.popoff_psi)&&!p.tripped){p.tripped=true;ev(S,'Pop-off lifted, pump tripped')}
  S.motorRpm=mr;S.dpm=dpm;S.dpb=dpb;S.bitRpm=mr+S.td.rpm;S.bitTorque=bt;
  S.td.torque=S.td.rpm>2?1500+0.8*S.md+(S.mode=='rotate'?bt:0):0;
  // ROP + steering
@@ -70,7 +74,7 @@ export function step(S,dt){const t=S.t,F=S.faults,mw=P.mud.mw_ppg;
   else{S.inc=Math.max(0,S.inc-0.15*dmd/100);S.azi=(S.azi+0.1*dmd/100)%360}
   S.md+=dmd;if(S.md-S.lastS>=10)survey(S)}
  if(attached&&S.dw.quill<=P.dw.min_quill+0.01&&dw.mode=='auto'&&!S._sd){S._sd=1;ev(S,'Stand drilled down: run connection')}if(S.dw.quill>P.dw.min_quill+0.5)S._sd=0;
- const tvd=S.pos[2],bf=1-mw/65.5;S.hook=(S.connected&&!S.slips?35+19.5*bf*(tvd+0.5*(S.md-tvd))/1000+(S.extraWeight||0)*bf-S.wob:35);
+ const tvd=S.pos[2],bf=1-mw/65.5;S.hook=(S.connected&&!S.slips?35+P.string.w_ppf*bf*(tvd+0.5*(S.md-tvd))/1000+(S.extraWeight||0)*bf-S.wob:35);
  if(S.envHook)S.envHook(S,dt); // FUTURE: environment / stress layer hook (not built)
  S.t+=dt}
 export function survey(S){const l=S.surveys[S.surveys.length-1];S.pos=minCurv(l.slice(3),l[0],l[1],l[2],S.md,S.inc,S.azi);S.surveys.push([S.md,S.inc,S.azi,...S.pos]);S.lastS=S.md}

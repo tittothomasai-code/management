@@ -88,8 +88,8 @@ function makePump(st,x,z){const g=new THREE.Group();g.position.set(x,0.3,z);
  const e=entity('Mud pump '+st.id,g,{anchor:new THREE.Vector3(0,4.5,0),
   update(){const th=st.theta;crank.rotation.z=-th;pist.forEach((r,k)=>{r.position.x=r.userData.home.x+0.55*Math.cos(th-2*Math.PI*k/3)+(e.explode||0)*0});
    const ex=e.ex=(e.ex||0)+(((e.explode?1:0)-(e.ex||0))*0.1);let j=0;for(const [n,o] of Object.entries(parts)){const h=o.userData.home;const dir=new THREE.Vector3(h.x*0.5,h.y-1.2,h.z*1.3+((j++%3)-1)*0.6);o.position.set(h.x+dir.x*ex*1.2+(n.startsWith('Piston')?0.55*Math.cos(th-2*Math.PI*(+n.slice(-1)-1)/3):0),h.y+dir.y*ex*1.5,h.z+dir.z*ex*1.5)}},
-  panel:()=>({title:'Mud pump '+st.id+(st.tripped?' TRIPPED':''),rows:[['SPM',()=>st.spm.toFixed(0)],['Flow gpm',()=>st.flow.toFixed(0)],['Strokes',()=>st.strokes.toFixed(0)],['Discharge psi',()=>S.spp.toFixed(0)]],
-   html:`<button data-a="pon:${st.id}">On</button><button data-a="poff:${st.id}">Off</button><button data-a="preset:${st.id}">Reset pop-off</button><br>SPM cmd <input type=range min=0 max=140 data-k="pumps.${S.pumps.indexOf(st)}.cmd"><br>Liner in <input type=range min=4.5 max=7.5 step=0.25 data-e="liner_in"> Stroke in <input type=range min=8 max=14 step=1 data-e="stroke_in"><br><button data-x="tree">Parts tree (drill down)</button><br><small>Double-click pump: exploded view</small>`}),
+  panel:()=>({title:'Mud pump '+st.id+(st.tripped?' TRIPPED':''),rows:[['Type',()=>st.ptype||'Triplex 1600 HP'],['Manifold valve',()=>st.valve===false?'CLOSED':'open'],['SPM',()=>st.spm.toFixed(0)+' / max '+(st.max_spm||PH.P.pump.max_spm)],['Flow gpm',()=>st.flow.toFixed(0)],['Strokes',()=>st.strokes.toFixed(0)],['Discharge psi',()=>S.spp.toFixed(0)]],
+   html:`<button data-a="pon:${st.id}">On</button><button data-a="poff:${st.id}">Off</button><button data-a="preset:${st.id}">Reset pop-off</button><br>SPM cmd <input type=range min=0 max=140 data-k="pumps.${S.pumps.indexOf(st)}.cmd"><br>Liner in <input type=range min=4.5 max=7.5 step=0.25 data-e="liner_in"> Stroke in <input type=range min=8 max=14 step=1 data-e="stroke_in"><br><button data-x="tree">Parts tree (drill down)</button><button data-x="pvalve">Manifold valve</button><br><small>Double-click pump: exploded view</small>`}),
   dbl(){e.explode=!e.explode;showTags(e.explode?parts:null)}});
  st.liner_in??=PH.P.pump.liner_in;st.stroke_in??=PH.P.pump.stroke_in;e.parts=parts;e.st=st;e.key='pump'+st.id;e.type='mudpump';e.removable=e.movable=true;pumps.push(e);if(linesReady)rebuildLines();return e}
 let linesReady=false;S.pumps.forEach((st,i)=>makePump(st,-28,4+i*9));
@@ -292,7 +292,7 @@ function actX(e,x,b){if(EXT.actX(e,x,b))return;const st=e.st,all=()=>!!document.
  m.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{const e=addEquip(b.dataset.add);m.style.display='none';select(e)});
  m.querySelector('#eqreset').onclick=()=>{if(confirm('Reset equipment layout and 3D models to default?')){localStorage.removeItem(LKEY);localStorage.removeItem(MKEY);try{indexedDB.deleteDatabase('dw3')}catch{}location.reload()}}}
 
-import('./ext.js').then(x=>x.init({THREE,S,PH,scene,cam,ctl,ents,pumps,select,entity,box,cyl,beam,mat,M,lp,curves,FLOOR,MH,td,tdAll,blk,dwG,slG,rnG,rnArm,cwG,UG,W,allCurves:()=>allCurves(),getWell:()=>wellCurve,act,EXT,removeEnt,saveLayout,addEquip,EQ,eqList,pumpsArr:pumps,setUnder})).catch(e=>console.error('ext',e));
+import('./ext.js?v=32').then(x=>x.init({THREE,S,PH,scene,cam,ctl,ents,pumps,select,entity,box,cyl,beam,mat,M,lp,curves,FLOOR,MH,td,tdAll,blk,dwG,slG,rnG,rnArm,cwG,UG,W,allCurves:()=>allCurves(),getWell:()=>wellCurve,act,EXT,removeEnt,saveLayout,addEquip,EQ,eqList,pumpsArr:pumps,setUnder,ren,groundMat,pad,sun,bha,rigG,dwG,ctl,makePump,rebuildLines,sel:()=>sel})).catch(e=>console.error('ext',e));
 // ---------- loop (fixed step) ----------
 const DT=0.05;let acc=0,last=performance.now(),spd=20,uiT=0;
 function frame(now){const dtR=Math.min(0.1,(now-last)/1000);last=now;spd=+$('spd').value;
@@ -309,6 +309,6 @@ function frame(now){const dtR=Math.min(0.1,(now-last)/1000);last=now;spd=+$('spd
  requestAnimationFrame(frame)}
 requestAnimationFrame(frame);
 // test hooks
-window.G={EXT,S,PH,ents,select:n=>select(ents.find(e=>e.name==n)),view:(p,t)=>{cam.position.set(...p);ctl.target.set(...t)},setUnder,startConn,explode:i=>pumps[i].dbl(),addEquip,removeEnt:n=>removeEnt(ents.find(e=>e.name==n)),replaceModelURL:(n,u)=>replaceFromURL(ents.find(e=>e.name==n),u),resetModel:n=>resetModel(ents.find(e=>e.name==n)),pumps,EQ,run:sec=>{for(let i=0;i<sec/DT;i++){PH.seqTick(S);PH.step(S,DT)}}};
+window.G={EXT,S,PH,ents,select:n=>select(ents.find(e=>e.name==n)),view:(p,t)=>{cam.position.set(...p);ctl.target.set(...t)},setUnder,startConn,explode:i=>pumps[i].dbl(),addEquip,removeEnt:n=>removeEnt(ents.find(e=>e.name==n)),replaceModelURL:(n,u)=>replaceFromURL(ents.find(e=>e.name==n),u),resetModel:n=>resetModel(ents.find(e=>e.name==n)),pumps,EQ,run:sec=>{for(let i=0;i<sec/DT;i++){PH.seqTick(S);PH.step(S,DT);EXT.afterStep()}}};
 
 restoreLayout().catch(e=>console.warn('layout restore',e));
