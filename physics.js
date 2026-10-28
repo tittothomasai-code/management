@@ -12,13 +12,14 @@ export const P={ // parameters (rough, labelled first-pass)
  line:{man_k:3e-5,surf_k_ft:4e-6,surf_len:150,ds_k_ft:1.3e-6,ann_k_ft:0.3e-6},
  td:{tau_s:2,max_rpm:180}, dw:{speed_mps:0.6,min_quill:1.2,max_quill:30.5}};
 export function newState(){const md=2100,pre=planPath().filter(q=>q[0]<=md).map(q=>[q[0],q[1],q[2],q[3],q[4],q[5]]),lp=pre[pre.length-1];return{t:0,
- pumps:[0,1].map(i=>({on:true,cmd:100,spm:0,theta:i,strokes:0,tripped:false,flow:0})),
+ pumps:[0,1].map(i=>({id:i+1,on:true,cmd:100,spm:0,theta:i,strokes:0,tripped:false,flow:0})),_pid:2,
  td:{cmd:60,rpm:0,theta:0,torque:0},mode:'rotate',tf:0,autoSteer:true,
  dw:{mode:'auto',wobSet:25,quill:20,drum:0,fadeLoad:0},wob:0,
  slips:false,connected:true,stickup:1.0,L:md+(20)/FT,
  md,inc:lp[1],azi:45,pos:lp.slice(3),surveys:pre,lastS:md,
  Q:0,Qb:0,spp:0,motorRpm:0,bitRpm:0,dpm:0,dpb:0,tfa:0,rop:0,bitTorque:0,stalled:false,hook:0,
  faults:{},events:[],seq:null,newJoint:0,rough:0,catwalk:0}}
+export function newPump(S,o={}){const p={id:o.id??++S._pid,on:true,cmd:100,spm:0,theta:Math.random()*6,strokes:0,tripped:false,flow:0,...o};S.pumps.push(p);return p}
 export function ev(S,m){S.events.push([S.t,m]);if(S.events.length>50)S.events.shift()}
 export function bitDepth(S){const top=S.connected&&!S.slips?S.dw.quill:S.stickup;return S.L-top/FT}
 export function step(S,dt){const t=S.t,F=S.faults,mw=P.mud.mw_ppg;
@@ -71,7 +72,7 @@ function steer(S){const [pi,pa]=planAt(S.md+60);let pp=PP[0];for(const q of PP)i
  const te=S.md>PLAN.kop_md?S.pos[2]-pp[5]:0;const di=Math.max(0,pi+Math.max(-3,Math.min(3,0.05*te)))-S.inc,da=(((pa-S.azi+540)%360)-180)*Math.sin(Math.max(S.inc,1)*R),err=Math.hypot(di,da);
  if(S.mode=='rotate'&&err>1){S.mode='slide';S.tf=(Math.atan2(da,di)/R+360)%360;ev(S,'Auto-steer: slide, toolface '+S.tf.toFixed(0))}else if(S.mode=='slide'&&err<0.3){S.mode='rotate';ev(S,'Auto-steer: rotate')}else if(S.mode=='slide')S.tf=(Math.atan2(da,di)/R+360)%360}
 // Connection sequence: steps with interlocks; each step = [label, start fn, done predicate, min duration s]
-export function connectionSteps(S){const keep={spm:S.pumps.map(p=>p.cmd),rpm:S.td.cmd};return[
+export function connectionSteps(S){const keep={spm:new Map(S.pumps.map(p=>[p,p.cmd])),rpm:S.td.cmd};return[
  ['Stop drilling, hold block',s=>{s.dw.mode='hold';s.autoSteer=false},s=>true,3],
  ['Pumps off',s=>{s.pumps.forEach(p=>p.on=false)},s=>s.Q<20,3],
  ['Stop rotation',s=>{s.td.cmd=0},s=>s.td.rpm<2,2],
@@ -86,7 +87,7 @@ export function connectionSteps(S){const keep={spm:S.pumps.map(p=>p.cmd),rpm:S.t
  ['Iron roughneck in, make up',s=>{s.rough=1;s.seq.tdOverride=20},s=>true,6,s=>{s.seq.tdOverride=null;s.connected=true;s.L+=27.4/FT;s.newJoint=0}],
  ['Iron roughneck out',s=>{s.rough=0},s=>true,3],
  ['Release slips',s=>{s.slips=false},s=>true,3],
- ['Pumps on',s=>{s.pumps.forEach((p,i)=>{p.on=true;p.cmd=keep.spm[i]})},s=>s.Q>0.9*s.pumps.reduce((a,p)=>a+p.cmd*4.2,0)||true,15],
+ ['Pumps on',s=>{s.pumps.forEach(p=>{p.on=true;if(keep.spm.has(p))p.cmd=keep.spm.get(p)})},s=>s.Q>0.9*s.pumps.reduce((a,p)=>a+p.cmd*4.2,0)||true,15],
  ['Rotate, back to bottom, drill',s=>{s.td.cmd=keep.rpm;s.dw.mode='auto';s.autoSteer=true},s=>true,2]]}
 export function seqTick(S){const q=S.seq;if(!q)return;const st=q.steps[q.i];
  if(!q.started){q.started=1;q.t0=S.t;ev(S,'Connection: '+st[0]);st[1](S)}
