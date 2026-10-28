@@ -1,0 +1,27 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="icon" href="data:,"><title>Drilling World v3 (SIMULATED)</title>
+<style>
+body{margin:0;overflow:hidden;font:12px system-ui,sans-serif;background:#000}
+#hud{position:fixed;top:8px;left:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;max-width:70vw}
+#hud button,#hud select{background:#1b2430cc;color:#dde;border:1px solid #456;border-radius:4px;padding:4px 7px;cursor:pointer}
+#hud button.on{background:#7a3b14}
+#sim{position:fixed;top:8px;right:8px;background:#b8860b;color:#000;font-weight:700;padding:4px 10px;border-radius:4px}
+#clock{position:fixed;bottom:8px;left:8px;color:#cde;background:#0009;padding:4px 8px;border-radius:4px}
+#log{position:fixed;bottom:8px;right:8px;color:#cde;background:#0009;padding:4px 8px;border-radius:4px;max-width:360px;max-height:110px;overflow:hidden;font-size:11px}
+.panel{position:fixed;pointer-events:auto;background:#101820e6;color:#e8eef4;border:1px solid #5a7;border-radius:6px;padding:6px 8px;min-width:170px;transform:translate(-50%,-110%)}
+.panel h4{margin:0 0 4px;font-size:12px;color:#8fd}.panel .r{display:flex;justify-content:space-between;gap:10px}.panel b{font-variant-numeric:tabular-nums}
+.panel button{background:#234;color:#def;border:1px solid #567;border-radius:3px;padding:2px 6px;margin:2px 2px 0 0;cursor:pointer}
+.panel input{width:90px}.tag{position:fixed;color:#fff;background:#0008;padding:1px 4px;border-radius:3px;font-size:10px;transform:translate(-50%,-50%);pointer-events:none}
+</style></head><body>
+<div id="sim">SIMULATED - not real rig data</div>
+<div id="hud">
+<button id="conn">Run connection</button>
+<button id="under">Underground view</button>
+<span style="color:#cde">Faults:</span>
+<button data-f="washout">Washout</button><button data-f="motor_stall">Motor stall</button><button data-f="plugged_nozzle">Plugged nozzle</button><button data-f="brake_fade">Brake fade</button><button id="clr">Clear faults</button>
+<span style="color:#cde">Time</span><select id="spd"><option>1</option><option>5</option><option selected>20</option><option>60</option><option>200</option></select>
+<button id="pause">Pause</button>
+</div>
+<div id="clock"></div><div id="log"></div><div id="panels"></div>
+<script type="importmap">{"imports":{"three":"./vendor/three.module.js"}}</script>
+<script type="module" src="./main.js"></script>
+</body></html>
