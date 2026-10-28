@@ -18,7 +18,7 @@ export function newState(){const md=2100,pre=planPath().filter(q=>q[0]<=md).map(
  slips:false,connected:true,stickup:1.0,L:md+(20)/FT,
  md,inc:lp[1],azi:45,pos:lp.slice(3),surveys:pre,lastS:md,
  Q:0,Qb:0,spp:0,motorRpm:0,bitRpm:0,dpm:0,dpb:0,tfa:0,rop:0,bitTorque:0,stalled:false,hook:0,
- faults:{},events:[],seq:null,newJoint:0,rough:0,catwalk:0}}
+ faults:{},events:[],seq:null,newJoint:0,rough:0,catwalk:0,rnOp:null,envHook:null}}
 export function newPump(S,o={}){const p={id:o.id??++S._pid,on:true,cmd:100,spm:0,theta:Math.random()*6,strokes:0,tripped:false,flow:0,...o};S.pumps.push(p);return p}
 export function ev(S,m){S.events.push([S.t,m]);if(S.events.length>50)S.events.shift()}
 export function bitDepth(S){const top=S.connected&&!S.slips?S.dw.quill:S.stickup;return S.L-top/FT}
@@ -27,6 +27,7 @@ export function step(S,dt){const t=S.t,F=S.faults,mw=P.mud.mw_ppg;
  const dw=S.dw;let dq=0;
  if(dw.mode=='hoist')dq=P.dw.speed_mps*dt;else if(dw.mode=='lower')dq=-P.dw.speed_mps*dt;
  if(F.brake_fade&&dw.mode!='hoist')dq-=0.12*dt; // brake cannot hold: block creeps down
+ if((dw.mode=='hoist'||dw.mode=='lower')&&S.rough&&!S.seq){dq=0;if(!S._ilk3){ev(S,'Interlock: block movement blocked, iron roughneck at well centre');S._ilk3=1}}else S._ilk3=0;
  if(dw.mode=='hoist'&&S.slips&&S.connected){dq=0;if(!S._ilk1){ev(S,'Interlock: cannot hoist, slips set while string connected');S._ilk1=1}}else S._ilk1=0;
  let q=dw.quill+dq;q=Math.min(P.dw.max_quill,q);
  const attached=S.connected&&!S.slips;let onb=false;
@@ -39,12 +40,16 @@ export function step(S,dt){const t=S.t,F=S.faults,mw=P.mud.mw_ppg;
  S.wob+=(wob-S.wob)*Math.min(1,dt/1.5);
  // top drive
  let rc=S.td.cmd;if(S.mode=='slide'||!S.connected&&!S.seq)rc=0;if(S.slips&&S.connected){rc=0}
+ if(S.rough&&!(S.seq&&S.seq.tdOverride!=null)&&!S.rnOp){if(rc>0&&!S._ilk2){ev(S,'Interlock: rotation blocked, iron roughneck at well centre');S._ilk2=1}rc=0}else S._ilk2=0;
+ if(S.rnOp)rc=S.rnOp.kind=='break'?-20:20;
  if(S.seq&&S.seq.tdOverride!=null)rc=S.seq.tdOverride;
+ // manual roughneck operation (break-out / make-up)
+ if(S.rnOp&&S.t-S.rnOp.t0>=6){if(S.rnOp.kind=='break'){S.connected=false;ev(S,'Roughneck: connection broken out')}else{S.connected=true;if(S.newJoint){S.L+=27.4/FT;S.newJoint=0}ev(S,'Roughneck: connection made up')}S.rnOp=null}
  S.td.rpm+=(rc-S.td.rpm)*dt/P.td.tau_s;S.td.theta+=S.td.rpm/60*dt*2*Math.PI;
  // pumps
- let Q=0;const pp=P.pump,gps=0.000243*pp.liner_in**2*pp.stroke_in*42;
+ let Q=0;const pp=P.pump;
  for(const p of S.pumps){let cmd=p.on?p.cmd:0;if(p.tripped||!S.connected)cmd=0;p.spm+=(Math.min(cmd,pp.max_spm)-p.spm)*dt/pp.tau_s;if(p.spm<0.05&&cmd==0)p.spm=0;
-  p.theta+=p.spm/60*dt*2*Math.PI;p.strokes+=p.spm/60*dt;const ve=pp.vol_eff0-pp.eff_drop_per_kpsi*S.spp/1000;p.flow=p.spm*gps*ve;Q+=p.flow}
+  p.theta+=p.spm/60*dt*2*Math.PI;p.strokes+=p.spm/60*dt;const gps=0.000243*(p.liner_in||pp.liner_in)**2*(p.stroke_in||pp.stroke_in)*42*(p.modules||3)/3;const ve=pp.vol_eff0-pp.eff_drop_per_kpsi*S.spp/1000;p.flow=p.spm*gps*ve;Q+=p.flow}
  S.Q=Q;let wf=0;if(F.washout)wf=0.3*Math.min(1,(t-F.washout)/120);const Qb=Q*(1-wf);S.Qb=Qb;S.wf=wf;const wpos=0.6*S.md;
  const B=P.bit,n=F.plugged_nozzle?B.nozzles-2:B.nozzles,tfa=n*Math.PI/4*(B.noz_32/32)**2;S.tfa=tfa;
  const dpb=Qb>1?mw*Qb*Qb/(12032*B.cd**2*tfa**2):0;
@@ -52,7 +57,8 @@ export function step(S,dt){const t=S.t,F=S.faults,mw=P.mud.mw_ppg;
  if(stall&&!S.stalled)ev(S,'Mud motor stalled (SPP jump)');if(!stall&&S.stalled)ev(S,'Motor stall cleared');S.stalled=stall;
  let mr,dpm;if(stall){mr=0;dpm=M.dp_off+M.stall_torque/M.torque_per_psi*1.3}else{mr=Qb*M.rev_per_gal*(1-0.3*bt/M.stall_torque);dpm=Qb>50?M.dp_off+bt/M.torque_per_psi:0}
  const L=P.line,e=1.8,man=L.man_k*Q*Q,surf=L.surf_k_ft*Q**e*L.surf_len,ds=L.ds_k_ft*(Q**e*wpos+Qb**e*(S.md-wpos)),ann=L.ann_k_ft*(Qb**e*(S.md-wpos)+Q**e*wpos);
- const spp=man+surf+ds+dpm+dpb+ann;S.spp=spp;S.prof={man,surf,ds,dpm,dpb,ann};
+ const xs=S.extraSurf?S.extraSurf(Q):0,xb=S.extraBha?S.extraBha(Qb):0; // placed equipment (library): surface line losses + BHA tool losses
+ const spp=man+surf+xs+ds+xb+dpm+dpb+ann;S.spp=spp;S.prof={man,surf,xs,ds,xb,dpm,dpb,ann};
  for(const p of S.pumps)if(spp>pp.popoff_psi&&!p.tripped){p.tripped=true;ev(S,'Pop-off lifted, pump tripped')}
  S.motorRpm=mr;S.dpm=dpm;S.dpb=dpb;S.bitRpm=mr+S.td.rpm;S.bitTorque=bt;
  S.td.torque=S.td.rpm>2?1500+0.8*S.md+(S.mode=='rotate'?bt:0):0;
@@ -64,7 +70,8 @@ export function step(S,dt){const t=S.t,F=S.faults,mw=P.mud.mw_ppg;
   else{S.inc=Math.max(0,S.inc-0.15*dmd/100);S.azi=(S.azi+0.1*dmd/100)%360}
   S.md+=dmd;if(S.md-S.lastS>=10)survey(S)}
  if(attached&&S.dw.quill<=P.dw.min_quill+0.01&&dw.mode=='auto'&&!S._sd){S._sd=1;ev(S,'Stand drilled down: run connection')}if(S.dw.quill>P.dw.min_quill+0.5)S._sd=0;
- const tvd=S.pos[2],bf=1-mw/65.5;S.hook=(S.connected&&!S.slips?35+19.5*bf*(tvd+0.5*(S.md-tvd))/1000-S.wob:35);
+ const tvd=S.pos[2],bf=1-mw/65.5;S.hook=(S.connected&&!S.slips?35+19.5*bf*(tvd+0.5*(S.md-tvd))/1000+(S.extraWeight||0)*bf-S.wob:35);
+ if(S.envHook)S.envHook(S,dt); // FUTURE: environment / stress layer hook (not built)
  S.t+=dt}
 export function survey(S){const l=S.surveys[S.surveys.length-1];S.pos=minCurv(l.slice(3),l[0],l[1],l[2],S.md,S.inc,S.azi);S.surveys.push([S.md,S.inc,S.azi,...S.pos]);S.lastS=S.md}
 const PP=planPath();
@@ -77,18 +84,49 @@ export function connectionSteps(S){const keep={spm:new Map(S.pumps.map(p=>[p,p.c
  ['Pumps off',s=>{s.pumps.forEach(p=>p.on=false)},s=>s.Q<20,3],
  ['Stop rotation',s=>{s.td.cmd=0},s=>s.td.rpm<2,2],
  ['Pick up off bottom',s=>{s.dw.mode='hoist'},s=>s.dw.quill>=Math.min((s.L-s.md)*FT+1.0,30),0,s=>{s.dw.mode='hold'}],
- ['Set slips',s=>{s.stickup=s.dw.quill;s.slips=true},s=>true,4],
- ['Iron roughneck in',s=>{s.rough=1},s=>true,4],
- ['Break out',s=>{s.seq.tdOverride=-20},s=>true,6,s=>{s.seq.tdOverride=null;s.connected=false}],
+ ['Set slips',s=>{s.stickup=s.dw.quill;s.slips=true},s=>true,4,null,'slipset'],
+ ['Iron roughneck in',s=>{s.rough=1},s=>true,4,null,'roughin'],
+ ['Break out',s=>{s.seq.tdOverride=-20},s=>true,6,s=>{s.seq.tdOverride=null;s.connected=false},'break'],
  ['Iron roughneck out',s=>{s.rough=0},s=>true,3],
  ['Hoist top drive to top',s=>{s.dw.mode='hoist'},s=>s.dw.quill>=s.stickup+27.4+0.2,0,s=>{s.dw.mode='hold'}],
  ['Catwalk delivers joint',s=>{s.catwalk=1},s=>true,10],
  ['Stab joint, lower to box',s=>{s.newJoint=1;s.catwalk=0;s.dw.mode='lower'},s=>s.dw.quill<=s.stickup+27.4,0,s=>{s.dw.mode='hold';s.dw.quill=s.stickup+27.4}],
- ['Iron roughneck in, make up',s=>{s.rough=1;s.seq.tdOverride=20},s=>true,6,s=>{s.seq.tdOverride=null;s.connected=true;s.L+=27.4/FT;s.newJoint=0}],
+ ['Iron roughneck in, make up',s=>{s.rough=1;s.seq.tdOverride=20},s=>true,6,s=>{s.seq.tdOverride=null;s.connected=true;s.L+=27.4/FT;s.newJoint=0},'roughin'],
  ['Iron roughneck out',s=>{s.rough=0},s=>true,3],
- ['Release slips',s=>{s.slips=false},s=>true,3],
- ['Pumps on',s=>{s.pumps.forEach(p=>{p.on=true;if(keep.spm.has(p))p.cmd=keep.spm.get(p)})},s=>s.Q>0.9*s.pumps.reduce((a,p)=>a+p.cmd*4.2,0)||true,15],
+ ['Release slips',s=>{s.slips=false},s=>true,3,null,'sliprel'],
+ ['Pumps on',s=>{s.pumps.forEach(p=>{p.on=true;if(keep.spm.has(p))p.cmd=keep.spm.get(p)})},s=>s.Q>0.9*s.pumps.reduce((a,p)=>a+p.cmd*4.2,0)||true,15,null,'pumpson'],
  ['Rotate, back to bottom, drill',s=>{s.td.cmd=keep.rpm;s.dw.mode='auto';s.autoSteer=true},s=>true,2]]}
-export function seqTick(S){const q=S.seq;if(!q)return;const st=q.steps[q.i];
- if(!q.started){q.started=1;q.t0=S.t;ev(S,'Connection: '+st[0]);st[1](S)}
- if(S.t-q.t0>=st[3]&&st[2](S)){st[4]&&st[4](S);q.i++;q.started=0;if(q.i>=q.steps.length){ev(S,'Connection complete');S.seq=null}}}
+// Interlock rules for rig-floor actions. Return null if allowed, else the reason.
+export function guard(S,a){switch(a){
+ case 'slipset':return PH_onBottom(S)?'pick up off bottom before setting slips':S.td.rpm>2?'stop rotation before setting slips':null;
+ case 'sliprel':return !S.connected?'string not connected to top drive':S.rough?'move iron roughneck out first':null;
+ case 'roughin':return !S.slips?'set slips before roughneck goes to well centre':S.td.rpm>2?'stop rotation first':S.Q>20?'pumps off first':null;
+ case 'roughout':return S.rnOp?'roughneck is working':null;
+ case 'break':return !S.rough?'roughneck not at well centre':!S.slips?'slips not set':!S.connected?'already broken out':S.Q>20?'pumps off first':null;
+ case 'make':return !S.rough?'roughneck not at well centre':!S.slips?'slips not set':S.connected?'already made up':!(S.newJoint||S.dw.quill<=S.stickup+0.5)?'no pin in box: lower top drive or stab joint':null;
+ case 'pumpson':return !S.connected?'string not connected':null;
+ case 'drill':return S.slips?'release slips first':!S.connected?'string not connected':S.rough?'move roughneck out first':null}
+ return null}
+function PH_onBottom(S){return bitDepth(S)>=S.md-0.5&&S.wob>1}
+export function doAct(S,a){const g=guard(S,a);if(g){ev(S,'Interlock: '+g);return false}
+ if(a=='slipset'){S.stickup=S.dw.quill;S.slips=true;ev(S,'Slips set')}else if(a=='sliprel'){S.slips=false;ev(S,'Slips released')}
+ else if(a=='roughin'){S.rough=1;ev(S,'Roughneck in')}else if(a=='roughout'){S.rough=0;ev(S,'Roughneck out')}
+ else if(a=='break'||a=='make'){S.rnOp={kind:a,t0:S.t};ev(S,'Roughneck: '+(a=='break'?'breaking out':'making up'))}
+ else if(a=='pumpson'){S.pumps.forEach(p=>p.on=true)}else if(a=='drill'){S.dw.mode='auto'}
+ return true}
+// Sequence library. Step = [label, start, done, minDuration s, end, guardAction]
+export function drillStandSteps(){return[['Drill stand down (auto-drill)',s=>{s.dw.mode='auto';s.autoSteer=true},s=>!!s._sd,5,null,'drill']]}
+export function slideSteps(tf=90,ft=30){return[
+ ['Auto-steer off, orient toolface '+tf+'°',s=>{s.autoSteer=false;s.mode='rotate';s.td.cmd=0},s=>s.td.rpm<2,3],
+ ['Slide '+ft+' ft (motor only)',s=>{s.mode='slide';s.tf=tf;s._m0=s.md},s=>s.md-s._m0>=ft,0],
+ ['Rotate 15 ft',s=>{s.mode='rotate';s.td.cmd=60;s._m0=s.md},s=>s.md-s._m0>=15,0],
+ ['Auto-steer back on',s=>{s.autoSteer=true},s=>true,2]]}
+export const SEQUENCES={
+ full:{label:'Full: drill stand > connection > drill + slide',build:S=>[...drillStandSteps(),...connectionSteps(S),...slideSteps()]},
+ conn:{label:'Connection only (needs stand drilled down)',build:S=>connectionSteps(S)},
+ stand:{label:'Drill one stand',build:()=>drillStandSteps()},
+ slide:{label:'Directional slide 30 ft TF 90°',build:()=>slideSteps()}};
+export function startSeq(S,key,stepMode=false){if(S.seq)return false;const d=SEQUENCES[key];S.seq={key,label:d.label,steps:d.build(S),i:0,stepMode,wait:false};ev(S,'Sequence start: '+d.label);return true}
+export function seqTick(S){const q=S.seq;if(!q||q.wait)return;const st=q.steps[q.i];
+ if(!q.started){if(st[5]){const g=guard(S,st[5]);if(g){if(q.blocked!==g){q.blocked=g;ev(S,'Interlock holds step: '+g)}return}}q.blocked=null;q.started=1;q.t0=S.t;ev(S,'Step '+(q.i+1)+': '+st[0]);st[1](S)}
+ if(S.t-q.t0>=st[3]&&st[2](S)){st[4]&&st[4](S);q.done=(q.done||[]);q.done[q.i]=S.t-q.t0;q.i++;q.started=0;if(q.stepMode)q.wait=true;if(q.i>=q.steps.length){ev(S,'Sequence complete');S.seq=null}}}

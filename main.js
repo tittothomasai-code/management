@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import {OrbitControls} from './vendor/OrbitControls.js';
 import * as PH from './physics.js?v=equip10290907';
 const {FT,R}=PH;
+const EXT={afterStep(){},frame(){},actX(){return false},layout(){return null},restore(){}};window.EXT=EXT;
 const S=PH.newState();window.S=S;
 // ---------- renderer / scene ----------
 const ren=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});ren.setPixelRatio(Math.min(devicePixelRatio,2));ren.setSize(innerWidth,innerHeight);
@@ -61,7 +62,7 @@ const slG=new THREE.Group();slG.position.set(0,FLOOR+0.75,0);const slipParts=[];
 entity('Power slips',slG,{anchor:new THREE.Vector3(0,1.5,0),panel:()=>({title:'Power slips',rows:[['State',()=>S.slips?'SET':'released'],['Stick-up m',()=>S.stickup.toFixed(1)]],html:`<button data-a="slipset">Set</button><button data-a="sliprel">Release</button>`})});
 // ---------- iron roughneck ----------
 const rnG=new THREE.Group();rnG.position.set(3.5,FLOOR+0.2,3.5);box(0.8,0.6,0.8,mat.dark,0,0.3,0,rnG);const rnArm=new THREE.Group();rnG.add(rnArm);rnArm.position.y=0.6;box(0.3,1.6,0.3,mat.yellow,0,0.8,0,rnArm);const rnHead=box(1,1.2,1,mat.yellow,0,1.6,0,rnArm);
-entity('Iron roughneck',rnG,{anchor:new THREE.Vector3(0,3,0),panel:()=>({title:'Iron roughneck',rows:[['Position',()=>S.rough?'at well centre':'parked']]})});
+entity('Iron roughneck',rnG,{anchor:new THREE.Vector3(0,3,0),panel:()=>({title:'Iron roughneck',rows:[['Position',()=>S.rough?'at well centre':'parked'],['Operation',()=>S.rnOp?S.rnOp.kind+' '+(S.t-S.rnOp.t0).toFixed(0)+'/6 s':(S.seq&&S.seq.tdOverride?'sequence':'idle')],['Joint',()=>S.connected?'made up':'broken out']],html:`<button data-a="roughin">In</button><button data-a="roughout">Out</button><button data-a="break">Break out</button><button data-a="make">Make up</button><br><small>Interlocked: slips set, pumps off, no rotation</small>`})});
 // ---------- catwalk + pipe rack ----------
 const cwG=new THREE.Group();box(22,0.8,1.6,mat.blue,18,0.8,0,cwG);const ramp=box(14,0.3,1.4,mat.steel,0,0,0,cwG);ramp.position.set(9,4.6,0);ramp.rotation.z=-Math.atan2(7.4,13);
 for(let i=0;i<8;i++)cyl(0.12,0.12,9.1,mat.pipe,18,0.6+(i>>2)*0.25,3+(i%4)*0.3,cwG).rotation.z=Math.PI/2;
@@ -88,9 +89,9 @@ function makePump(st,x,z){const g=new THREE.Group();g.position.set(x,0.3,z);
   update(){const th=st.theta;crank.rotation.z=-th;pist.forEach((r,k)=>{r.position.x=r.userData.home.x+0.55*Math.cos(th-2*Math.PI*k/3)+(e.explode||0)*0});
    const ex=e.ex=(e.ex||0)+(((e.explode?1:0)-(e.ex||0))*0.1);let j=0;for(const [n,o] of Object.entries(parts)){const h=o.userData.home;const dir=new THREE.Vector3(h.x*0.5,h.y-1.2,h.z*1.3+((j++%3)-1)*0.6);o.position.set(h.x+dir.x*ex*1.2+(n.startsWith('Piston')?0.55*Math.cos(th-2*Math.PI*(+n.slice(-1)-1)/3):0),h.y+dir.y*ex*1.5,h.z+dir.z*ex*1.5)}},
   panel:()=>({title:'Mud pump '+st.id+(st.tripped?' TRIPPED':''),rows:[['SPM',()=>st.spm.toFixed(0)],['Flow gpm',()=>st.flow.toFixed(0)],['Strokes',()=>st.strokes.toFixed(0)],['Discharge psi',()=>S.spp.toFixed(0)]],
-   html:`<button data-a="pon:${st.id}">On</button><button data-a="poff:${st.id}">Off</button><button data-a="preset:${st.id}">Reset pop-off</button><br>SPM cmd <input type=range min=0 max=140 data-k="pumps.${S.pumps.indexOf(st)}.cmd"><br><small>Double-click pump: exploded view</small>`}),
+   html:`<button data-a="pon:${st.id}">On</button><button data-a="poff:${st.id}">Off</button><button data-a="preset:${st.id}">Reset pop-off</button><br>SPM cmd <input type=range min=0 max=140 data-k="pumps.${S.pumps.indexOf(st)}.cmd"><br>Liner in <input type=range min=4.5 max=7.5 step=0.25 data-e="liner_in"> Stroke in <input type=range min=8 max=14 step=1 data-e="stroke_in"><br><button data-x="tree">Parts tree (drill down)</button><br><small>Double-click pump: exploded view</small>`}),
   dbl(){e.explode=!e.explode;showTags(e.explode?parts:null)}});
- e.parts=parts;e.st=st;e.key='pump'+st.id;e.type='mudpump';e.removable=e.movable=true;pumps.push(e);if(linesReady)rebuildLines();return e}
+ st.liner_in??=PH.P.pump.liner_in;st.stroke_in??=PH.P.pump.stroke_in;e.parts=parts;e.st=st;e.key='pump'+st.id;e.type='mudpump';e.removable=e.movable=true;pumps.push(e);if(linesReady)rebuildLines();return e}
 let linesReady=false;S.pumps.forEach((st,i)=>makePump(st,-28,4+i*9));
 let tagEls=[];function showTags(parts){tagEls.forEach(t=>t.el.remove());tagEls=[];if(!parts)return;for(const [n,o] of Object.entries(parts)){const el=document.createElement('div');el.className='tag';el.textContent=n;document.body.appendChild(el);tagEls.push({el,o})}}
 // ---------- flow lines with particles ----------
@@ -117,10 +118,10 @@ const W=(n,e,tvd)=>new THREE.Vector3(e*WS,-tvd*WS,-n*WS);
 const strata=[[0,15,0x8a6f4d],[15,40,0xa58a5c],[40,70,0x7b6a58],[70,120,0x5d5248]];
 const strataG=new THREE.Group();strata.forEach(([a,b,c])=>{const m=box(90,b-a,60,new THREE.MeshStandardMaterial({color:c,transparent:true,opacity:0.08,depthWrite:false}),20,-(a+b)/2,-20,strataG);m.castShadow=false});strataG.visible=false;scene.add(strataG);
 {const pp=PH.planPath().map(p=>W(p[3],p[4],p[5]));const g=new THREE.BufferGeometry().setFromPoints(pp);const l=new THREE.Line(g,new THREE.LineDashedMaterial({color:0x33ff66,dashSize:1,gapSize:0.6}));l.computeLineDistances();UG.add(l)}
-let boreMesh=null,strMesh=null,lastBuild=-1;const bha=new THREE.Group();UG.add(bha);
+let boreMesh=null,strMesh=null,lastBuild=-1;const bha=new THREE.Group();bha.name='bhaGroup';UG.add(bha);
 const motorMesh=cyl(0.35,0.35,1.6,mat.paint,0,0.8,0,bha);const bitMesh=cyl(0.45,0.15,0.5,M(0xd4af37,0.9,0.3),0,-0.25,0,bha);
 const tipPath=()=>{const s=S.surveys,l=s[s.length-1];const p=PH.minCurv(l.slice(3),l[0],l[1],l[2],S.md,S.inc,S.azi);return [...s.map(q=>W(q[3],q[4],q[5])),W(...p)]};
-function buildWell(){const pts=tipPath();if(pts.length<2)return;const c=new THREE.CatmullRomCurve3(pts);
+let wellCurve=null;function buildWell(){const pts=tipPath();if(pts.length<2)return;const c=new THREE.CatmullRomCurve3(pts);wellCurve=c;
  boreMesh&&(UG.remove(boreMesh),boreMesh.geometry.dispose());strMesh&&(UG.remove(strMesh),strMesh.geometry.dispose());
  boreMesh=new THREE.Mesh(new THREE.TubeGeometry(c,Math.max(8,pts.length*2),0.9,10),new THREE.MeshStandardMaterial({color:0xff8c3a,emissive:0x552200,transparent:true,opacity:0.55,depthWrite:false,side:THREE.DoubleSide}));UG.add(boreMesh);
  // string ends at bit depth (off bottom when hoisted)
@@ -139,10 +140,9 @@ function select(e){sel=e;panelsEl.innerHTML='';panelEl=null;if(!e||!e.panel)retu
  panelEl.querySelectorAll('button[data-a]').forEach(b=>b.onclick=()=>act(b.dataset.a))}
 function act(a){const ev=m=>PH.ev(S,m);
  const pm=a.match(/^(pon|poff|preset):(\d+)$/);if(pm){const p=S.pumps.find(p=>p.id==+pm[2]);if(!p)return;if(pm[1]=='pon')p.on=true;else if(pm[1]=='poff')p.on=false;else{p.tripped=false;ev('Pop-off reset')}saveLayout();return}
- if(['hoist','lower','hold','auto'].includes(a)){if(a=='auto'&&S.slips){ev('Interlock: release slips before auto-drill');return}S.dw.mode=a}
+ if(['hoist','lower','hold','auto'].includes(a)){if(a=='auto'){PH.doAct(S,'drill');return}S.dw.mode=a}
  else if(a=='rotate'||a=='slide'){S.mode=a;S.autoSteer=false}else if(a=='autosteer'){S.autoSteer=!S.autoSteer;ev('Auto-steer '+(S.autoSteer?'on':'off'))}
- else if(a=='slipset'){if(PH.bitDepth(S)>=S.md-0.5&&S.wob>1){ev('Interlock: pick up off bottom before setting slips');return}S.stickup=S.dw.quill;S.slips=true;ev('Slips set')}
- else if(a=='sliprel'){if(!S.connected){ev('Interlock: cannot release slips, string not connected to top drive');return}S.slips=false;ev('Slips released')}}
+ else if(['slipset','sliprel','roughin','roughout','break','make'].includes(a))PH.doAct(S,a)}
 const ray=new THREE.Raycaster(),mouse=new THREE.Vector2();
 function pick(ev){mouse.set(ev.clientX/innerWidth*2-1,-ev.clientY/innerHeight*2+1);ray.setFromCamera(mouse,cam);const hits=ray.intersectObjects(scene.children,true).filter(h=>h.object.userData.ent&&h.object.visible);return hits.length?hits[0].object.userData.ent:null}
 let downXY=null,drag=null;const gPlane=new THREE.Plane(new THREE.Vector3(0,1,0),-0.3),gHit=new THREE.Vector3();
@@ -152,7 +152,7 @@ ren.domElement.addEventListener('pointerup',e=>{const d=drag;drag=null;ctl.enabl
 ren.domElement.addEventListener('dblclick',e=>{const en=pick(e);if(en&&en.dbl){en.dbl();select(en);ctl.target.copy(en.obj.position).add(lp(0,2,0));cam.position.copy(en.obj.position).add(lp(10,8,14))}});
 // ---------- HUD ----------
 const $=id=>document.getElementById(id);
-$('conn').onclick=startConn;function startConn(){if(S.seq)return;if(S.dw.quill>6){PH.ev(S,'Connection needs the stand drilled down (quill < 6 m). Now '+S.dw.quill.toFixed(1)+' m');return}S.seq={steps:PH.connectionSteps(S),i:0}}
+$('conn').onclick=startConn;function startConn(){if(S.seq)return;if(S.dw.quill>6){PH.ev(S,'Connection needs the stand drilled down (quill < 6 m). Now '+S.dw.quill.toFixed(1)+' m');return}PH.startSeq(S,'conn')}
 document.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{const f=b.dataset.f;S.faults[f]=S.t||1e-3;b.classList.add('on');PH.ev(S,'FAULT injected: '+f)});
 $('clr').onclick=()=>{S.faults={};S.dw.fadeLoad=0;document.querySelectorAll('[data-f]').forEach(b=>b.classList.remove('on'));PH.ev(S,'Faults cleared')};
 let under=false;$('under').onclick=()=>setUnder(!under);
@@ -168,7 +168,7 @@ function sync(dtR){
  const crownY=FLOOR+MH+1.3,bY=tdY+3.3+2.2;dlines.forEach((l,i)=>{const p=l.geometry.attributes.position;p.setXYZ(0,-0.5+i*0.33,crownY,0);p.setXYZ(1,-0.5+i*0.33,bY,0);p.needsUpdate=true});
  drum.rotation.x=S.dw.drum;rotary.rotation.y=S.td.rpm>0?S.td.theta:rotary.rotation.y;
  slipParts.forEach(b=>{b.position.z+=((S.slips?0.25:0.6)-b.position.z)*0.15;b.position.y=S.slips?-0.15:0.2});
- rnG.position.x+=((S.rough?1.0:3.5)-rnG.position.x)*0.08;rnG.position.z+=((S.rough?1.0:3.5)-rnG.position.z)*0.08;rnHead.rotation.y=S.rough&&S.seq&&S.seq.tdOverride?S.t*4:0;
+ rnG.position.x+=((S.rough?1.0:3.5)-rnG.position.x)*0.08;rnG.position.z+=((S.rough?1.0:3.5)-rnG.position.z)*0.08;rnHead.rotation.y=S.rough&&(S.rnOp||S.seq&&S.seq.tdOverride)?S.t*4:0;
  // string above floor: from floor to stringTop
  const top=S.connected&&!S.slips?q:S.stickup;strTop.scale.y=Math.max(0.01,top);strTop.position.set(0,FLOOR+top/2,0);
  if(S.connected&&!S.slips&&q<0.05)strTop.visible=false;else strTop.visible=true;
@@ -195,9 +195,6 @@ const onBtns='<button data-x="on">On</button><button data-x="off">Off</button>';
 function cones(g,n,r,h,x0,dx){for(let k=0;k<n;k++){const c=cyl(r,r*0.25,h,eqMat.grey,x0+k*dx,2.2,0,g);c.rotation.x=Math.PI}}
 const EQ={
  mudpump:{label:'Mud pump',pump:true},
- tank:{label:'Mud tank / pit',init:{cap:500},build(g,st){box(10,3,3.6,eqMat.grey,0,1.5,0,g);box(10.4,0.15,1,mat.yellow,0,3.1,-1.4,g);st._ag=[];for(let k=0;k<3;k++){cyl(0.3,0.3,0.6,mat.blue,-3.5+k*3.5,3.4,0.4,g);const a=box(1.4,0.1,0.15,mat.steel,-3.5+k*3.5,3.8,0.4,g);st._ag.push(a)}},
-  rows:st=>[...onRows(st).map(r=>r[0]=='State'?['Agitators',r[1]]:r),['Capacity bbl (set)',()=>st.cap]],html:()=>onBtns+'<br>Capacity <input type=range min=100 max=1500 step=50 data-e="cap">',
-  update(st,dt){st._ag&&st.on&&st._ag.forEach(a=>a.rotation.y+=dt*30)}},
  shaker:{label:'Shale shaker',build(g,st){box(4,1.2,2.4,mat.dark,0,0.6,0,g);const sc=box(3.6,0.25,2.2,eqMat.screen,0,1.6,0,g);sc.rotation.z=-0.12;st._sc=sc;cyl(0.3,0.3,0.6,mat.blue,0,2.2,1.3,g).rotation.x=Math.PI/2;box(0.8,1.4,2.4,eqMat.grey,-2,1.9,0,g)},
   rows:st=>[...onRows(st),['Returns through gpm',()=>share('shaker',st).toFixed(0)]],html:()=>onBtns+'<br><small>Returns = sim flow in, split across shakers that are ON.</small>',
   update(st){st._sc&&(st._sc.position.y=1.6+(st.on?Math.sin(performance.now()/18)*0.04:0))}},
@@ -220,8 +217,6 @@ const EQ={
   rows:st=>[['Charge pump',()=>st.on?'ON':'off']],html:()=>onBtns+'<br><small>No pressure model.</small>'},
  piperack:{label:'Pipe rack',init:{n:12},build(g,st){for(const x of[-3.5,0,3.5])box(0.4,1,3.2,mat.dark,x,0.5,0,g);st._p=[];for(let k=0;k<24;k++){const p=cyl(0.12,0.12,9.1,mat.pipe,0,1.12+Math.floor(k/12)*0.25,-1.4+(k%12)*0.25,g);p.rotation.z=Math.PI/2;st._p.push(p)}},
   rows:st=>[['Joints on rack',()=>st.n]],html:()=>'Joints <input type=range min=0 max=24 data-e="n">',update(st){st._p&&st._p.forEach((p,k)=>p.visible=k<st.n)}},
- fueltank:{label:'Fuel tank',build(g){const c=cyl(1.2,1.2,5,eqMat.grey,0,1.5,0,g);c.rotation.z=Math.PI/2;for(const x of[-1.8,1.8])box(0.3,0.9,2,mat.dark,x,0.45,0,g)},rows:st=>[['Type',()=>'storage']]},
- watertank:{label:'Water tank',build(g){cyl(1.6,1.6,3,mat.blue,0,1.5,0,g)},rows:st=>[['Type',()=>'storage']]},
  lighttower:{label:'Light tower',build(g,st){box(1.6,1,1.2,mat.yellow,0,0.5,0,g);cyl(0.1,0.1,7,mat.steel,0,4.5,0,g);st._l=box(1.6,0.6,0.3,M(0xffffff,0,0.5),0,8,0,g)},rows:onRows,html:()=>onBtns,
   update(st){st._l&&st._l.material.emissive.setHex(st.on?0xffffcc:0)}},
  doghouse:{label:'Doghouse / office',build(g){box(6,2.8,2.6,mat.white,0,1.4,0,g);box(1,1.8,0.1,mat.blue,1.5,1,1.31,g)},rows:st=>[['Type',()=>'cabin']]},
@@ -233,7 +228,7 @@ function footprintFree(o,ignore){const b=new THREE.Box3().setFromObject(o);for(c
 function autoPlace(e,pref){const o=e.obj,c=[];for(let x=-42;x<=32;x+=1.5)for(let z=-25;z<=41;z+=1.5)c.push([x,z]);c.sort((a,b)=>Math.hypot(a[0]-pref[0],a[1]-pref[1])-Math.hypot(b[0]-pref[0],b[1]-pref[1]));
  for(const [x,z] of c){o.position.x=x;o.position.z=z;o.updateMatrixWorld(true);if(footprintFree(o,e))return true}o.position.set(pref[0],0.3,pref[1]);return false}
 function makeEquip(type,st,pos){const T=EQ[type],g=new THREE.Group();g.position.set(0,0.3,0);T.build(g,st);const name=T.label+' '+st.id;
- const e=entity(name,g,{anchor:new THREE.Vector3(0,new THREE.Box3().setFromObject(g).max.y+0.8,0),update(){},panel:()=>({title:name,rows:T.rows?T.rows(st):[],html:T.html?T.html(st):''})});
+ g.userData.isEquip=1;const e=entity(name,g,{anchor:new THREE.Vector3(0,new THREE.Box3().setFromObject(g).max.y+0.8,0),update(){},panel:()=>({title:name,rows:T.rows?T.rows(st):[],html:T.html?T.html(st):''})});
  e.type=type;e.st=st;e.key='eq'+st.id;e.removable=e.movable=true;eqList.push(e);
  if(pos){g.position.x=pos[0];g.position.z=pos[1]}else autoPlace(e,[-30,26]);return e}
 function addEquip(type,pos,saved){let e;const T=EQ[type];if(!T)throw new Error('unknown type '+type);
@@ -284,7 +279,7 @@ fileIn.onchange=()=>{const f=fileIn.files[0],t=fileTarget;fileIn.value='';if(f&&
 function panelFooter(e){if(!e)return'';let h='';if(e.noModel&&!e.removable)return'';h+='<div style="margin-top:5px;border-top:1px solid #345;padding-top:4px">';
  if(!e.noModel)h+=`<small>3D model:</small><br><button data-x="mfile">Replace with 3D model (file)</button><button data-x="murl">… from URL</button>${e.model?'<button data-x="mreset">Reset to default model</button>':''}<br><label><input type=checkbox id="mall" style="width:auto"> apply to all of this type</label><br>`;
  if(e.removable)h+='<button data-x="remove" style="background:#612">Remove</button> <small>Drag to move</small>';return h+'</div>'}
-function actX(e,x,b){const st=e.st,all=()=>!!document.getElementById('mall')?.checked;
+function actX(e,x,b){if(EXT.actX(e,x,b))return;const st=e.st,all=()=>!!document.getElementById('mall')?.checked;
  if(x=='on'){st.on=true;saveLayout()}else if(x=='off'){st.on=false;saveLayout()}else if(x.startsWith('t:')){const k=x.slice(2);st[k]=st[k]?0:1;PH.ev(S,e.name+': '+k+(st[k]?' closed':' opened'));saveLayout()}
  else if(x=='remove')removeEnt(e);else if(x=='mreset')resetModel(e);
  else if(x=='mfile'){fileTarget={e,all:all()};fileIn.click()}
@@ -297,14 +292,15 @@ function actX(e,x,b){const st=e.st,all=()=>!!document.getElementById('mall')?.ch
  m.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{const e=addEquip(b.dataset.add);m.style.display='none';select(e)});
  m.querySelector('#eqreset').onclick=()=>{if(confirm('Reset equipment layout and 3D models to default?')){localStorage.removeItem(LKEY);localStorage.removeItem(MKEY);try{indexedDB.deleteDatabase('dw3')}catch{}location.reload()}}}
 
+import('./ext.js').then(x=>x.init({THREE,S,PH,scene,cam,ctl,ents,pumps,select,entity,box,cyl,beam,mat,M,lp,curves,FLOOR,MH,td,tdAll,blk,dwG,slG,rnG,rnArm,cwG,UG,W,allCurves:()=>allCurves(),getWell:()=>wellCurve,act,EXT,removeEnt,saveLayout,addEquip,EQ,eqList,pumpsArr:pumps,setUnder})).catch(e=>console.error('ext',e));
 // ---------- loop (fixed step) ----------
 const DT=0.05;let acc=0,last=performance.now(),spd=20,uiT=0;
 function frame(now){const dtR=Math.min(0.1,(now-last)/1000);last=now;spd=+$('spd').value;
- if(!paused){acc+=dtR*spd;let n=0;while(acc>=DT&&n<400){PH.seqTick(S);PH.step(S,DT);acc-=DT;n++}if(n>=400)acc=0;eqTick(n*DT)}
+ if(!paused){acc+=dtR*spd;let n=0;while(acc>=DT&&n<400){PH.seqTick(S);PH.step(S,DT);EXT.afterStep();acc-=DT;n++}if(n>=400)acc=0;eqTick(n*DT)}
  // WASD move
  const f=new THREE.Vector3();cam.getWorldDirection(f);f.y=0;f.normalize();const r=new THREE.Vector3().crossVectors(f,new THREE.Vector3(0,1,0));const m=new THREE.Vector3();const sp=30*dtR;
  if(keys.w)m.add(f);if(keys.s)m.sub(f);if(keys.d)m.add(r);if(keys.a)m.sub(r);if(keys.q)m.y-=1;if(keys.e)m.y+=1;if(m.lengthSq()){m.normalize().multiplyScalar(sp);cam.position.add(m);ctl.target.add(m)}
- sync(dtR);ctl.update();ren.render(scene,cam);
+ sync(dtR);EXT.frame(dtR);ctl.update();ren.render(scene,cam);
  if(sel&&panelEl){sel.obj.updateMatrixWorld();v3.copy(sel.anchor).applyMatrix4(sel.obj.matrixWorld);if(sel===lineEnt)v3.copy(sel.anchor);v3.project(cam);panelEl.style.display=v3.z<1?'':'none';panelEl.style.left=((v3.x+1)/2*innerWidth)+'px';panelEl.style.top=((1-v3.y)/2*innerHeight)+'px'}
  for(const t of tagEls){t.o.getWorldPosition(v3);v3.project(cam);t.el.style.left=((v3.x+1)/2*innerWidth)+'px';t.el.style.top=((1-v3.y)/2*innerHeight)+'px'}
  if(now-uiT>200){uiT=now;panelRows.forEach((r,i)=>{const el=document.getElementById('pv'+i);if(el)el.textContent=r[1]()});
@@ -313,6 +309,6 @@ function frame(now){const dtR=Math.min(0.1,(now-last)/1000);last=now;spd=+$('spd
  requestAnimationFrame(frame)}
 requestAnimationFrame(frame);
 // test hooks
-window.G={S,PH,ents,select:n=>select(ents.find(e=>e.name==n)),view:(p,t)=>{cam.position.set(...p);ctl.target.set(...t)},setUnder,startConn,explode:i=>pumps[i].dbl(),addEquip,removeEnt:n=>removeEnt(ents.find(e=>e.name==n)),replaceModelURL:(n,u)=>replaceFromURL(ents.find(e=>e.name==n),u),resetModel:n=>resetModel(ents.find(e=>e.name==n)),pumps,EQ,run:sec=>{for(let i=0;i<sec/DT;i++){PH.seqTick(S);PH.step(S,DT)}}};
+window.G={EXT,S,PH,ents,select:n=>select(ents.find(e=>e.name==n)),view:(p,t)=>{cam.position.set(...p);ctl.target.set(...t)},setUnder,startConn,explode:i=>pumps[i].dbl(),addEquip,removeEnt:n=>removeEnt(ents.find(e=>e.name==n)),replaceModelURL:(n,u)=>replaceFromURL(ents.find(e=>e.name==n),u),resetModel:n=>resetModel(ents.find(e=>e.name==n)),pumps,EQ,run:sec=>{for(let i=0;i<sec/DT;i++){PH.seqTick(S);PH.step(S,DT)}}};
 
 restoreLayout().catch(e=>console.warn('layout restore',e));

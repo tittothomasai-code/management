@@ -1,0 +1,609 @@
+{
+ "_doc": "Equipment library. Add new types here (or import a JSON file in-game) with no code change. category: surface|subsurface. geometry: primitives (box size [w,h,d], cyl size [rTop,rBottom,h], sphere size [r]); pos [x,y,z] m; rot [x,y,z] deg. parts: nested tree. ports: connection points. sensors: default sensor channels. physics.kind: line_loss (dp = k*Q^2 psi when connected into the flow system) | bha (dp_psi at 600 gpm scaled by Q^2, weight_klbf adds to hookload) | none.",
+ "types": [
+  {
+   "type": "surface_mud_motor",
+   "label": "Surface mud motor (test stand)",
+   "category": "surface",
+   "geometry": [
+    {
+     "shape": "box",
+     "size": [
+      7,
+      0.5,
+      1.4
+     ],
+     "pos": [
+      0,
+      0.25,
+      0
+     ],
+     "color": "#2a2d31"
+    },
+    {
+     "shape": "box",
+     "size": [
+      0.4,
+      1.2,
+      1.2
+     ],
+     "pos": [
+      -3,
+      1,
+      0
+     ],
+     "color": "#e0b020"
+    },
+    {
+     "shape": "box",
+     "size": [
+      0.4,
+      1.2,
+      1.2
+     ],
+     "pos": [
+      2.6,
+      1,
+      0
+     ],
+     "color": "#e0b020"
+    },
+    {
+     "shape": "cyl",
+     "size": [
+      0.35,
+      0.35,
+      5
+     ],
+     "pos": [
+      0,
+      1.2,
+      0
+     ],
+     "rot": [
+      0,
+      0,
+      90
+     ],
+     "color": "#d23b2a"
+    },
+    {
+     "shape": "cyl",
+     "size": [
+      0.3,
+      0.3,
+      0.6
+     ],
+     "pos": [
+      2.9,
+      1.2,
+      0
+     ],
+     "rot": [
+      0,
+      0,
+      90
+     ],
+     "color": "#8a9199",
+     "rotor": true
+    },
+    {
+     "shape": "box",
+     "size": [
+      0.15,
+      0.9,
+      0.15
+     ],
+     "pos": [
+      3.15,
+      1.2,
+      0
+     ],
+     "color": "#ffffff",
+     "rotor": true
+    },
+    {
+     "shape": "box",
+     "size": [
+      1.2,
+      1.4,
+      1.2
+     ],
+     "pos": [
+      3.8,
+      0.95,
+      0
+     ],
+     "color": "#2c5d9e"
+    }
+   ],
+   "parts": [
+    {
+     "name": "Power section",
+     "parts": [
+      {
+       "name": "Rotor"
+      },
+      {
+       "name": "Stator (elastomer)"
+      }
+     ]
+    },
+    {
+     "name": "Transmission (CV joint)"
+    },
+    {
+     "name": "Bearing section",
+     "parts": [
+      {
+       "name": "Thrust bearings"
+      },
+      {
+       "name": "Radial bearings"
+      }
+     ]
+    },
+    {
+     "name": "Drive sub"
+    },
+    {
+     "name": "Test stand",
+     "parts": [
+      {
+       "name": "Dynamometer brake"
+      },
+      {
+       "name": "Inlet hose"
+      },
+      {
+       "name": "Return to pit"
+      }
+     ]
+    }
+   ],
+   "ports": [
+    {
+     "name": "inlet"
+    },
+    {
+     "name": "outlet"
+    }
+   ],
+   "sensors": [
+    "rpm",
+    "dp",
+    "torque",
+    "pressure"
+   ],
+   "physics": {
+    "kind": "motor",
+    "rev_per_gal": 0.16,
+    "dp_off": 150,
+    "torque_per_psi": 5,
+    "stall_torque": 3500,
+    "max_brake": 4000
+   }
+  },
+  {
+   "type": "standpipe_manifold",
+   "label": "Standpipe manifold",
+   "category": "surface",
+   "geometry": [
+    {
+     "shape": "box",
+     "size": [
+      3,
+      0.3,
+      1.6
+     ],
+     "pos": [
+      0,
+      0.15,
+      0
+     ],
+     "color": "#2a2d31"
+    },
+    {
+     "shape": "cyl",
+     "size": [
+      0.18,
+      0.18,
+      3
+     ],
+     "pos": [
+      0,
+      1,
+      0
+     ],
+     "rot": [
+      0,
+      0,
+      90
+     ],
+     "color": "#8a9199"
+    },
+    {
+     "shape": "cyl",
+     "size": [
+      0.28,
+      0.28,
+      0.4
+     ],
+     "pos": [
+      -0.8,
+      1,
+      0.3
+     ],
+     "rot": [
+      90,
+      0,
+      0
+     ],
+     "color": "#d23b2a"
+    },
+    {
+     "shape": "cyl",
+     "size": [
+      0.28,
+      0.28,
+      0.4
+     ],
+     "pos": [
+      0.8,
+      1,
+      0.3
+     ],
+     "rot": [
+      90,
+      0,
+      0
+     ],
+     "color": "#d23b2a"
+    }
+   ],
+   "parts": [
+    {
+     "name": "Gate valve 1"
+    },
+    {
+     "name": "Gate valve 2"
+    },
+    {
+     "name": "Pressure gauge"
+    },
+    {
+     "name": "Bleed-off line"
+    }
+   ],
+   "ports": [
+    {
+     "name": "in"
+    },
+    {
+     "name": "out"
+    }
+   ],
+   "sensors": [
+    "pressure"
+   ],
+   "physics": {
+    "kind": "line_loss",
+    "k": 2e-05
+   }
+  },
+  {
+   "type": "bop_annular",
+   "label": "Annular preventer",
+   "category": "surface",
+   "geometry": [
+    {
+     "shape": "cyl",
+     "size": [
+      1.1,
+      1.3,
+      1.6
+     ],
+     "pos": [
+      0,
+      0.8,
+      0
+     ],
+     "color": "#d23b2a"
+    },
+    {
+     "shape": "cyl",
+     "size": [
+      0.3,
+      0.3,
+      0.4
+     ],
+     "pos": [
+      0,
+      1.8,
+      0
+     ],
+     "color": "#8a9199"
+    }
+   ],
+   "parts": [
+    {
+     "name": "Packing element"
+    },
+    {
+     "name": "Piston"
+    },
+    {
+     "name": "Head"
+    }
+   ],
+   "ports": [
+    {
+     "name": "top"
+    },
+    {
+     "name": "bottom"
+    }
+   ],
+   "sensors": [],
+   "physics": {
+    "kind": "none"
+   }
+  },
+  {
+   "type": "high_pressure_line",
+   "label": "High-pressure line (6 m spool)",
+   "category": "surface",
+   "geometry": [
+    {
+     "shape": "cyl",
+     "size": [
+      0.15,
+      0.15,
+      6
+     ],
+     "pos": [
+      0,
+      0.5,
+      0
+     ],
+     "rot": [
+      0,
+      0,
+      90
+     ],
+     "color": "#6d6f73"
+    }
+   ],
+   "parts": [
+    {
+     "name": "Hammer union A"
+    },
+    {
+     "name": "Spool"
+    },
+    {
+     "name": "Hammer union B"
+    }
+   ],
+   "ports": [
+    {
+     "name": "a"
+    },
+    {
+     "name": "b"
+    }
+   ],
+   "sensors": [
+    "pressure"
+   ],
+   "physics": {
+    "kind": "line_loss",
+    "k": 8e-06
+   }
+  },
+  {
+   "type": "mwd",
+   "label": "MWD tool",
+   "category": "subsurface",
+   "geometry": [
+    {
+     "shape": "cyl",
+     "size": [
+      0.3,
+      0.3,
+      1
+     ],
+     "color": "#2c5d9e"
+    }
+   ],
+   "parts": [
+    {
+     "name": "Pulser"
+    },
+    {
+     "name": "Directional sensor (inc/azi)"
+    },
+    {
+     "name": "Gamma sensor"
+    },
+    {
+     "name": "Battery / turbine"
+    }
+   ],
+   "ports": [
+    {
+     "name": "pin"
+    },
+    {
+     "name": "box"
+    }
+   ],
+   "sensors": [
+    "pressure",
+    "inc",
+    "azi"
+   ],
+   "physics": {
+    "kind": "bha",
+    "length_ft": 30,
+    "dp_psi": 120,
+    "weight_klbf": 2.5
+   }
+  },
+  {
+   "type": "stabiliser",
+   "label": "Stabiliser",
+   "category": "subsurface",
+   "geometry": [
+    {
+     "shape": "cyl",
+     "size": [
+      0.42,
+      0.42,
+      0.4
+     ],
+     "color": "#8a9199"
+    }
+   ],
+   "parts": [
+    {
+     "name": "Blades"
+    },
+    {
+     "name": "Body"
+    }
+   ],
+   "ports": [
+    {
+     "name": "pin"
+    },
+    {
+     "name": "box"
+    }
+   ],
+   "sensors": [],
+   "physics": {
+    "kind": "bha",
+    "length_ft": 6,
+    "dp_psi": 0,
+    "weight_klbf": 0.6
+   }
+  },
+  {
+   "type": "drill_collar",
+   "label": "Drill collar (30 ft)",
+   "category": "subsurface",
+   "geometry": [
+    {
+     "shape": "cyl",
+     "size": [
+      0.32,
+      0.32,
+      1
+     ],
+     "color": "#5d5f63"
+    }
+   ],
+   "parts": [
+    {
+     "name": "Pin"
+    },
+    {
+     "name": "Body"
+    },
+    {
+     "name": "Box"
+    }
+   ],
+   "ports": [
+    {
+     "name": "pin"
+    },
+    {
+     "name": "box"
+    }
+   ],
+   "sensors": [],
+   "physics": {
+    "kind": "bha",
+    "length_ft": 30,
+    "dp_psi": 15,
+    "weight_klbf": 4.5
+   }
+  },
+  {
+   "type": "jar",
+   "label": "Drilling jar",
+   "category": "subsurface",
+   "geometry": [
+    {
+     "shape": "cyl",
+     "size": [
+      0.3,
+      0.3,
+      1
+     ],
+     "color": "#e0b020"
+    }
+   ],
+   "parts": [
+    {
+     "name": "Mandrel"
+    },
+    {
+     "name": "Latch"
+    },
+    {
+     "name": "Housing"
+    }
+   ],
+   "ports": [
+    {
+     "name": "pin"
+    },
+    {
+     "name": "box"
+    }
+   ],
+   "sensors": [],
+   "physics": {
+    "kind": "bha",
+    "length_ft": 32,
+    "dp_psi": 10,
+    "weight_klbf": 3
+   }
+  },
+  {
+   "type": "casing_joint",
+   "label": "Casing string (surface casing)",
+   "category": "subsurface",
+   "geometry": [
+    {
+     "shape": "cyl",
+     "size": [
+      0.6,
+      0.6,
+      1
+     ],
+     "color": "#a8a8a8"
+    }
+   ],
+   "parts": [
+    {
+     "name": "Casing joints"
+    },
+    {
+     "name": "Float shoe"
+    },
+    {
+     "name": "Centralisers"
+    }
+   ],
+   "ports": [],
+   "sensors": [],
+   "physics": {
+    "kind": "none"
+   }
+  }
+ ]
+}
