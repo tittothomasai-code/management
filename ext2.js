@@ -8,7 +8,7 @@ export async function init(ctx){C=ctx;THREE=C.THREE;S=C.S;PH=C.PH;el=C.el;BTN=C.
  const f0=C.EXT.frame;C.EXT.frame=dt=>{f0(dt);frame2(dt)};
  const a0=C.EXT.actX;C.EXT.actX=(e,x,b)=>{if(x=='pvalve'&&e.st){e.st.valve=e.st.valve===false;PH.ev(S,'Pump '+e.st.id+' manifold valve '+(e.st.valve===false?'closed':'open'));if(e.st.valve!==false)e.st.tripped=false;return true}return a0(e,x,b)};
  const s0=C.EXT.afterStep;C.EXT.afterStep=()=>{s0();feedStale()};
- Object.assign(window.GX,{feedPush:(vals,src)=>{FS.src=src||FS.src;Object.assign(FS.vals,vals);FS.last=performance.now();FS.msgs++;if(FS.status!='live')setStatus('live')},feedState:FS,feedCfg:FCFG,feedConnect,feedDisconnect,design:()=>DES,applyDesign,derive,setDesign,addPumpType,PUMP_TYPES,seqLib:()=>SEQLIB,compileSeq,runUserSeq,saveSeqLib,camMode:setCam,seqTree:renderTree});try{(await import('./ext3.js?v=35')).init(C)}catch(err){console.error('ext3',err)}
+ Object.assign(window.GX,{feedStatus:s=>setStatus(s),feedPush:(vals,src)=>{FS.src=src||FS.src;Object.assign(FS.vals,vals);FS.last=performance.now();FS.msgs++;if(FS.status!='live')setStatus('live')},feedState:FS,feedCfg:FCFG,feedConnect,feedDisconnect,design:()=>DES,applyDesign,derive,setDesign,addPumpType,PUMP_TYPES,seqLib:()=>SEQLIB,compileSeq,runUserSeq,saveSeqLib,camMode:setCam,seqTree:renderTree});try{(await import('./ext3.js?v=35')).init(C)}catch(err){console.error('ext3',err)}
 }
 // ======================= 1. VISUALS =======================
 let reeve,fastLine,tdA,bopG,camBtns;
@@ -115,7 +115,7 @@ function feedConnect(cfg){if(cfg)Object.assign(FCFG,cfg);localStorage.setItem(FK
  else{const poll=async()=>{try{const r=await fetch(FCFG.url,{cache:'no-store'});ingest(await r.json())}catch(e){if(FS.status!='poll error, using sim')setStatus('poll error, using sim')}};poll();FS.timer=setInterval(poll,Math.max(200,FCFG.interval_ms))}
  PH.ev(S,'Live feed connecting: '+FCFG.mode.toUpperCase()+' '+FCFG.url);return true}
 function feedDisconnect(quiet){if(FS.ws){const w=FS.ws;FS.ws=null;w.close()}if(FS.timer){clearInterval(FS.timer);FS.timer=null}if(!quiet)setStatus('not connected');FS.vals={}}
-function feedStale(){if(FS.status=='live'&&performance.now()-FS.last>FCFG.stale_s*1000){setStatus('stale, fell back to sim');PH.ev(S,'Live feed stale: signals fall back to SIMULATED')}}
+function feedStale(){if(window.WML&&window.WML.log&&!FS.ws&&!FS.timer)return;if(FS.status=='live'&&performance.now()-FS.last>FCFG.stale_s*1000){setStatus('stale, fell back to sim');PH.ev(S,'Live feed stale: signals fall back to SIMULATED')}}
 function feedInit(){const F=C.FEED,col2sig=()=>Object.fromEntries(Object.entries(C.SIGS).map(([k,v])=>[v[0],k]));
  F.status='not connected';F.connect=url=>feedConnect({url,mode:/^wss?:/.test(url)?'ws':'http'});F.disconnect=()=>feedDisconnect();
  F.value=col=>{if(FS.status!='live')return null;const k=col2sig()[col];return k in FS.vals?FS.vals[k]:null};F.openConfig=openFeedCfg;F.state=FS;

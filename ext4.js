@@ -2,49 +2,100 @@
 let C,S,el,PANEL,BTN;const $=id=>document.getElementById(id);
 const NS='xmlns="http://www.witsml.org/schemas/1series" version="1.4.1.1"';
 const PKEY='dw34-witsml-ui';// stores ONLY proxy URL, server URL, poll interval, mapping. Never username/password.
-const SIGNALS={spp:'Standpipe pressure',Q:'Flow in',hook:'Hookload',wob:'WOB',rpm:'Top drive RPM',md:'Measured depth',quill:'Block height',tq:'Top drive torque','p1.spm':'Pump 1 SPM','p2.spm':'Pump 2 SPM','p3.spm':'Pump 3 SPM','p4.spm':'Pump 4 SPM'};
-const AUTO=[[/^(SPPA|SPP|STPP|PRES_SP|SPPRESS)/i,'spp'],[/^(MFIA|TFLO|FLOWIN|MFI|FLOW_IN|TFLOW)/i,'Q'],[/^(HKLA|HKLD|HOOKLOAD|HKL)/i,'hook'],[/^(SWOB|WOBA|WOB)/i,'wob'],[/^(RPMA|TDRPM|RPM|SRPM)/i,'rpm'],
- [/^(TQA|STOR|TORQ|TDTQ|TQ)/i,'tq'],[/^(DMEA|DBTM|BITDEP|DEPT?H?_?BIT)/i,'md'],[/^(BPOS|BLKPOS|HKHT)/i,'quill'],[/^SPM ?1|^PUMP1|^SPM_1|^SPMA1/i,'p1.spm'],[/^SPM ?2|^PUMP2|^SPM_2|^SPMA2/i,'p2.spm'],[/^SPM ?3|^PUMP3|^SPM_3/i,'p3.spm'],[/^SPM ?4|^PUMP4|^SPM_4/i,'p4.spm']];
-const CFG=Object.assign({proxy:'http://localhost:8796/soap',url:'https://australia.adagasolutions.com/WMLS',interval:2000,map:{}},JSON.parse(localStorage.getItem(PKEY)||'{}'));
+const SIGNALS={spp:'Standpipe pressure',Q:'Flow in',hook:'Hookload',wob:'WOB',rpm:'Top drive RPM',md:'Measured depth',quill:'Block height',tq:'Top drive torque','p1.spm':'Pump 1 SPM','p2.spm':'Pump 2 SPM','p3.spm':'Pump 3 SPM','p4.spm':'Pump 4 SPM',rop:'ROP',bitdepth:'Bit depth',holedepth:'Hole depth (MD)'};
+const AUTO=[[/^(SPPA|SPP|STPP|PRES_SP|SPPRESS)$/i,'spp'],[/^(MFIA|TFLO|FLOWIN|MFI|FLOW_IN|TFLOW|FLOW)$/i,'Q'],[/^(ROPA|ROP)$/i,'rop'],[/^(BDE|BITDEP|DBTM_BIT)$/i,'bitdepth'],[/^(DMEA|DBTM|HOLEDEP)$/i,'holedepth'],[/^(BHE|BPOS|BLKPOS|HKHT)$/i,'quill'],[/^(HKLA|HKLD|HOOKLOAD|HKL)/i,'hook'],[/^(SWOB|WOBA|WOB)/i,'wob'],[/^(RPMA|TDRPM|RPM|SRPM)/i,'rpm'],
+ [/^(TQA|STOR|TORQ|TDTQ|TQ|TORQUE)/i,'tq'],[/^SPM ?1|^PUMP1|^SPM_1|^SPMA1/i,'p1.spm'],[/^SPM ?2|^PUMP2|^SPM_2|^SPMA2/i,'p2.spm'],[/^SPM ?3|^PUMP3|^SPM_3/i,'p3.spm'],[/^SPM ?4|^PUMP4|^SPM_4/i,'p4.spm']];
+const CFG=Object.assign({proxy:'http://localhost:8796/soap',url:'https://australia.adagasolutions.com/WMLS',interval:10000,map:{},defWell:'DR101L',defWb:'WB01B02',defLog:'General Time-Based'},JSON.parse(localStorage.getItem(PKEY)||'{}'));
 let CRED={user:'',pass:''};// memory only
 const WML={status:'not connected',channels:{},log:null,last:null,timer:null,rows:0,polls:0,errors:0,simulated:false,fresh:0,
- tag(){return Date.now()-this.fresh<15000?(this.simulated?'live-sim':'live'):'sim'},
- drives(id){const ok=Date.now()-this.fresh<15000;if(!ok)return null;for(const [mn,s] of Object.entries(CFG.map))if(s==id&&this.channels[mn]?.v!=null)return this.simulated?'live-sim':'live';return null}};
+ mode:'off',liveMode:false,rp:null,okAt:0,miss:0,inflight:false,lastRowMs:0,stale:true,
+ healthy(){return !!this.log&&this.okAt>0&&this.miss<3&&Date.now()-this.okAt<120000&&Object.keys(this.channels).length>0},
+ tag(){if(this.mode=='replay')return 'replay';return this.healthy()?(this.simulated?'live-sim':'live'):'sim'},
+ drives(id){if(this.mode=='replay')return 'replay';const ok=this.healthy();if(!ok)return null;for(const [mn,s] of Object.entries(CFG.map))if(s==id&&this.channels[mn]?.v!=null)return this.simulated?'live-sim':'live';return null}};
 window.WML=WML;const saveCfg=()=>localStorage.setItem(PKEY,JSON.stringify({proxy:CFG.proxy,url:CFG.url,interval:CFG.interval,map:CFG.map}));
-async function call(op,wmlType,query,options){const r=await fetch(CFG.proxy,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:CFG.url,user:CRED.user,pass:CRED.pass,op,wmlType,query,options})});
- const j=await r.json();if(j.error)throw new Error(j.error);if(op=='WMLS_GetFromStore'&&j.result<1)throw new Error('WITSML result '+j.result+' '+(j.supp||''));return j}
+const REPLAY_ENABLED=false;// Replay from data hidden (disabled flag) until auth issue resolved
+function authFail(e){WML.authDead=true;clearInterval(WML.timer);clearInterval(WML.chk);WML.timer=WML.chk=null;WML.liveMode=false;WML.log=null;WML.channels={};try{for(const k in C.SRC)if(C.SRC[k]=='live')C.SRC[k]='sim'}catch{};const m='Auth failed — polling stopped (no auto-retry; press Connect/Start to retry manually)';setSt(m,true);GX.feedStatus&&GX.feedStatus('Auth failed — polling stopped');const b=$('sim');if(b){b.textContent='SIMULATED - Auth failed, polling stopped';b.style.background='#b71c1c';b.style.color='#fff'}}
+async function call(op,wmlType,query,options){if(WML.authDead)throw new Error('Auth failed — polling stopped');const r=await fetch(CFG.proxy,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:CFG.url,user:CRED.user,pass:CRED.pass,op,wmlType,query,options})});
+ const j=await r.json();if(r.status==401||(j.error&&/Authentication failed|\b401\b/.test(j.error))){authFail();throw new Error('Auth failed — polling stopped')}if(j.error)throw new Error(j.error);if(op=='WMLS_GetFromStore'&&j.result<1)throw new Error('WITSML result '+j.result+' '+(j.supp||''));return j}
 const xml=s=>new DOMParser().parseFromString(s||'<x/>','application/xml');const kids=(n,t)=>[...n.getElementsByTagNameNS('*',t)];const txt=(n,t)=>kids(n,t)[0]?.textContent?.trim()??'';
 const setSt=(s,err)=>{WML.status=s;const e=$('wst');if(e){e.textContent=s;e.style.color=err?'#f88':'#fd8'}};
 async function listWells(){const j=await call('WMLS_GetFromStore','well',`<wells ${NS}><well uid=""><name/></well></wells>`,'returnElements=id-only');return kids(xml(j.xml),'well').map(w=>({uid:w.getAttribute('uid'),name:txt(w,'name')||w.getAttribute('uid')}))}
 async function listWellbores(w){const j=await call('WMLS_GetFromStore','wellbore',`<wellbores ${NS}><wellbore uidWell="${w}" uid=""><name/></wellbore></wellbores>`,'returnElements=id-only');return kids(xml(j.xml),'wellbore').map(b=>({uid:b.getAttribute('uid'),name:txt(b,'name')||b.getAttribute('uid')}))}
 async function listLogs(w,b){const j=await call('WMLS_GetFromStore','log',`<logs ${NS}><log uidWell="${w}" uidWellbore="${b}" uid=""/></logs>`,'returnElements=header-only');
- return kids(xml(j.xml),'log').map(l=>({uid:l.getAttribute('uid'),name:txt(l,'name'),nameWell:txt(l,'nameWell'),indexType:txt(l,'indexType'),indexCurve:txt(l,'indexCurve'),start:txt(l,'startDateTimeIndex')||txt(l,'startIndex'),end:txt(l,'endDateTimeIndex')||txt(l,'endIndex'),
+ return kids(xml(j.xml),'log').map(l=>({uom:kids(l,'endIndex')[0]?.getAttribute('uom')||'',uid:l.getAttribute('uid'),name:txt(l,'name'),nameWell:txt(l,'nameWell'),indexType:txt(l,'indexType'),indexCurve:txt(l,'indexCurve'),start:txt(l,'startDateTimeIndex')||txt(l,'startIndex'),end:txt(l,'endDateTimeIndex')||txt(l,'endIndex'),
   curves:kids(l,'logCurveInfo').map(c=>({mn:txt(c,'mnemonic'),unit:txt(c,'unit')}))}))}
 function autoMap(curves){for(const c of curves){if(CFG.map[c.mn]!==undefined)continue;const a=AUTO.find(([re])=>re.test(c.mn));CFG.map[c.mn]=a?a[1]:''}}
 // ---- polling: get only rows after the last index ----
-async function poll(){const L=WML.log;if(!L)return;const time=/time/i.test(L.indexType);let q;
- if(WML.last==null){// first poll: last ~60 s (time) or ~30 ft (depth) before the end index
-  const st=time?new Date(Date.parse(L.end)-60000).toISOString():String((+L.end||0)-30);q=time?`<startDateTimeIndex>${st}</startDateTimeIndex>`:`<startIndex uom="ft">${st}</startIndex>`}
- else q=time?`<startDateTimeIndex>${WML.last}</startDateTimeIndex>`:`<startIndex uom="ft">${WML.last}</startIndex>`;
+const bne=ms=>new Date(ms).toLocaleTimeString('en-AU',{timeZone:'Australia/Brisbane',hour:'2-digit',minute:'2-digit',hour12:false});
+function check(){// stale = 3 missed polls in a row OR >2 min without a successful poll response
+ const h=WML.healthy();if(h&&WML.stale){WML.stale=false;GX.feedStatus&&GX.feedStatus('live');S.events.push([S.t,'WITSML feed LIVE'])}
+ else if(!h&&!WML.stale&&WML.log){WML.stale=true;for(const k of FEEDSIG)if(C.SRC[k]=='live')C.SRC[k]='sim';C.sigRender();GX.feedStatus&&GX.feedStatus('stale, fell back to sim');S.events.push([S.t,'WITSML feed STALE ('+(WML.miss>=3?WML.miss+' missed polls':'no response >2 min')+'): signals fall back to SIMULATED'])}
+ const L=WML.log;if(!L)return;const lr=WML.lastRowMs?bne(WML.lastRowMs):'—';
+ if(h)setSt((WML.simulated?'SIMULATED TEST DATA':'LIVE')+' · last row '+lr+' AEST · '+L.name+' · rows '+WML.rows+' · polls '+WML.polls);
+ else setSt('STALE — showing SIMULATED · last row '+lr+' AEST · missed polls '+WML.miss,true);
+ if(WML.mode=='replay')return;const b=$('sim');if(b){const live=h&&!WML.simulated;b.textContent=live?(WML.liveMode?'LIVE MODE · rig driven by WITSML · ':'LIVE WITSML · ')+L.name+' · last row '+lr+' AEST':'SIMULATED - not real rig data';b.style.background=live?'#1db954':'#b8860b'}}
+async function poll(){const L=WML.log;if(!L)return;if(WML.inflight){WML.miss++;check();return}const time=/time/i.test(L.indexType);let q;
+ if(WML.last==null){const st=time?new Date(Date.parse(L.end)-60000).toISOString():String((+L.end||0)-10);q=time?`<startDateTimeIndex>${st}</startDateTimeIndex>`:`<startIndex uom="${L.uom||'m'}">${st}</startIndex>`}
+ else q=time?`<startDateTimeIndex>${WML.last}</startDateTimeIndex>`:`<startIndex uom="${L.uom||'m'}">${WML.last}</startIndex>`;
+ WML.inflight=true;
  try{const j=await call('WMLS_GetFromStore','log',`<logs ${NS}><log uidWell="${L.w}" uidWellbore="${L.b}" uid="${L.uid}">${q}<logData><mnemonicList/><data/></logData></log></logs>`,'returnElements=data-only;maxReturnNodes=500');
-  WML.polls++;const d=xml(j.xml);const ml=txt(d,'mnemonicList').split(',').map(s=>s.trim()),ul=txt(d,'unitList').split(',');let rows=kids(d,'data').map(n=>n.textContent.split(','));
+  WML.polls++;WML.okAt=Date.now();WML.miss=0;const d=xml(j.xml);const ml=txt(d,'mnemonicList').split(',').map(s=>s.trim()),ul=txt(d,'unitList').split(',');let rows=kids(d,'data').map(n=>n.textContent.split(','));
   const ix=Math.max(0,ml.indexOf(L.indexCurve));const key=r=>time?Date.parse(r[ix]):+r[ix];if(WML.last!=null){const lk=time?Date.parse(WML.last):+WML.last;rows=rows.filter(r=>key(r)>lk)}
-  if(rows.length){const r=rows.at(-1);WML.last=r[ix];WML.rows+=rows.length;WML.fresh=Date.now();
-   ml.forEach((mn,i)=>{if(i==ix)return;const v=r[i]===''||r[i]==null?null:+r[i];const ch=WML.channels[mn]||(WML.channels[mn]={unit:ul[i]||'',log:L.name});ch.v=isFinite(v)?v:null;ch.map=CFG.map[mn]||''});apply()}
-  setSt((WML.simulated?'SIMULATED TEST DATA':'LIVE')+' · '+L.name+' · last index '+WML.last+' · rows '+WML.rows+' · polls '+WML.polls)}
- catch(e){WML.errors++;setSt('poll error: '+e.message+' (game keeps running on sim)',true)}renderMap()}
-const FEEDSIG=['spp','Q','hook','wob','rpm','md','quill'];
-function apply(){const vals={};for(const [mn,s] of Object.entries(CFG.map)){const v=WML.channels[mn]?.v;if(!s||v==null)continue;if(FEEDSIG.includes(s))vals[s]=v}
+  if(rows.length){const r=rows.at(-1);WML.last=r[ix];WML.rows+=rows.length;WML.fresh=Date.now();WML.lastRowMs=time?Date.parse(r[ix]):Date.now();
+   ml.forEach((mn,i)=>{if(i==ix)return;const v=r[i]===''||r[i]==null?null:+r[i];const ch=WML.channels[mn]||(WML.channels[mn]={unit:ul[i]||'',log:L.name});ch.unit=ul[i]||ch.unit;ch.v=isFinite(v)?v:null;ch.map=CFG.map[mn]||''})}
+  else if(time&&!WML.lastRowMs&&L.end)WML.lastRowMs=Date.parse(L.end);
+  if(WML.healthy())apply()}
+ catch(e){WML.errors++;WML.miss++;S.events.push([S.t,'WITSML poll error: '+e.message])}
+ finally{WML.inflight=false}check();renderMap()}
+// unit conversion to game units (psi, gpm, klbf, ft, ft/h, ft.lbf)
+const conv=(s,v,u)=>{u=(u||'').toLowerCase().replace(/[\s.]/g,'');
+ if(s=='Q'){if(/^(lpm|l\/min)$/.test(u))return v/3.78541;if(/^(m3\/min)$/.test(u))return v*264.172;return v}
+ if(s=='spp'){if(u=='kpa')return v*0.145038;if(u=='bar')return v*14.5038;if(u=='mpa')return v*145.038;return v}
+ if(s=='hook'||s=='wob'){if(u=='kn')return v*0.224809;if(u=='t'||u=='tonne')return v*2.20462;if(u=='kkgf')return v*2.20462;return v}
+ if(s=='md'||s=='holedepth'||s=='bitdepth'){return u=='m'?v*3.28084:v}
+ if(s=='rop'){return /^m\/h/.test(u)?v*3.28084:v}
+ if(s=='tq'){return u=='knm'?v*737.562:u=='nm'?v*0.737562:v}
+ return v};
+const FEEDSIG=['spp','Q','hook','wob','rpm','md','quill'];const ALIAS={holedepth:'md'};
+function apply(){const vals={};for(const [mn,s0] of Object.entries(CFG.map)){const ch=WML.channels[mn];const v=ch?.v;if(!s0||v==null)continue;const s=ALIAS[s0]||s0;if(FEEDSIG.includes(s))vals[s]=conv(s0,v,ch.unit)}
  if(Object.keys(vals).length){GX.feedPush(vals,WML.simulated?'SIMULATED WITSML test store':'WITSML '+WML.log.name);for(const k in vals)if(C.SRC[k]!='live'){C.SRC[k]='live'}C.sigRender()}}
-function drive(){// every sim step: hold pump SPM and top-drive torque at their mapped live values while the data is fresh
- if(Date.now()-WML.fresh>15000)return;for(const [mn,s] of Object.entries(CFG.map)){const v=WML.channels[mn]?.v;if(v==null||!s)continue;
-  const m=s.match(/^p(\d)\.spm$/);if(m){const p=S.pumps.find(p=>p.id==+m[1]);if(p){p.on=v>0;p.cmd=v;p.spm=v}}else if(s=='tq'){S.td.torque=v;S.td.tq=v}}}
-async function start(L){stop(true);WML.log=L;WML.last=null;WML.rows=0;WML.polls=0;WML.channels={};WML.simulated=/SIMULATED/i.test(L.nameWell+' '+L.name)||/\/sim\/witsml/.test(CFG.url);autoMap(L.curves);saveCfg();
- S.events.push([S.t,'WITSML connected: '+L.name+(WML.simulated?' (SIMULATED test store)':'')]);await poll();WML.timer=setInterval(poll,Math.max(500,CFG.interval))}
-function stop(quiet){if(WML.timer)clearInterval(WML.timer);WML.timer=null;WML.fresh=0;if(!quiet){WML.log=null;setSt('not connected');for(const k of FEEDSIG)if(C.SRC[k]=='live')C.SRC[k]='sim';C.sigRender()}}
+const chv=n=>{for(const k of n){const c=WML.channels[k];if(c&&c.v!=null)return {v:c.v,u:c.unit}}return null};
+function rigFromData(){S=window.G?.S||S;// data overrides the physics sim (not the player): depth, hookload/block, RPM, SPP/flow/pumps, WOB, torque
+ const g=(n,s)=>{const c=chv(n);return c?conv(s,c.v,c.u):null};
+ let hd=g(['DMEA','DBTM','HOLEDEP'],'md'),bd=g(['BDE','BITDEP'],'md'),hk=g(['HKL','HOOKLOAD','HKLA'],'hook'),rpm=g(['RPM','RPMA'],'x'),spp=g(['SPP','SPPA'],'spp'),q=g(['FLOW','Flow','MFIA','TFLO'],'Q'),wob=g(['WOB','SWOB'],'wob'),tq=g(['TORQUE','TQA'],'tq'),rop=g(['ROP','ROPA'],'rop'),bp=g(['BPOS','BLKPOS','BHE','HKHT'],'x');if(hd==null&&bd!=null){WML.maxBd=Math.max(WML.maxBd||0,bd);hd=WML.maxBd}// no hole-depth curve in the time log: hole depth = deepest bit depth seen
+ if(hd!=null)S.md=hd;if(bd!=null){S.bitDepthLive_ft=bd;S.bitDepth=bd}if(hk!=null)S.hook=hk;if(rpm!=null){S.td.rpm=rpm;S.bitRpm=rpm}if(spp!=null)S.spp=spp;if(q!=null)S.Q=q;if(wob!=null)S.wob=wob;if(tq!=null){S.td.torque=tq;S.td.tq=tq}if(rop!=null)S.rop=rop;
+ // block position: use BPOS if present, else derive from how far the bit is off bottom within a stand (block rises as bit comes off bottom)
+ if(bp!=null)S.dw.quill=bp;else if(hd!=null&&bd!=null){const off=Math.max(0,(hd-bd)*0.3048);S.dw.quill=Math.min(28.5,(S.stickup||1.5)+(off%27))}
+ if(q!=null&&S.pumps?.length){const n=q>20?Math.max(1,Math.min(S.pumps.length,Math.ceil(q/450))):0;S.pumps.forEach((p,i)=>{const on=i<n;p.on=on;p.cmd=p.spm=on?+(q/n/4.36).toFixed(1):0})}
+ S.slips=hk!=null&&hk<45&&(rpm||0)<1&&(q||0)<20}
+function drive(){S=window.G?.S||S;if(WML.mode=='replay'){rigFromData();return}if(WML.liveMode&&WML.healthy()){rigFromData();return}// every sim step: hold pump SPM and top-drive torque at their mapped live values while the data is fresh
+ if(!WML.healthy())return;for(const [mn,s] of Object.entries(CFG.map)){const ch=WML.channels[mn];const v=ch?.v;if(v==null||!s)continue;
+  if(s=='rop'){S.rop=conv('rop',v,ch.unit);continue}if(s=='bitdepth'){S.bitDepthLive_ft=conv('bitdepth',v,ch.unit);continue}if(s=='tq'){const t=conv('tq',v,ch.unit);S.td.torque=t;S.td.tq=t;continue}
+  const m=s.match(/^p(\d)\.spm$/);if(m){const p=S.pumps.find(p=>p.id==+m[1]);if(p){p.on=v>0;p.cmd=v;p.spm=v}}}}
+async function start(L){stop(true);WML.log=L;WML.last=null;WML.rows=0;WML.polls=0;WML.channels={};WML.maxBd=0;WML.okAt=0;WML.miss=0;WML.lastRowMs=0;WML.stale=true;WML.inflight=false;L.uom=L.uom||(/time/i.test(L.indexType)?'':'m');WML.simulated=/SIMULATED/i.test(L.nameWell+' '+L.name)||/\/sim\/witsml/.test(CFG.url);autoMap(L.curves);saveCfg();
+ S.events.push([S.t,'WITSML connected: '+L.name+(WML.simulated?' (SIMULATED test store)':'')]);await poll();WML.timer=setInterval(poll,Math.max(10000,CFG.interval));WML.chk=setInterval(check,5000)}
+function stop(quiet){if(WML.timer)clearInterval(WML.timer);if(WML.chk)clearInterval(WML.chk);WML.timer=WML.chk=null;WML.fresh=0;WML.okAt=0;if(!quiet){WML.log=null;setSt('not connected');GX.feedStatus&&GX.feedStatus('not connected');const b=$('sim');if(b){b.textContent='SIMULATED - not real rig data';b.style.background='#b8860b'}for(const k of FEEDSIG)if(C.SRC[k]=='live')C.SRC[k]='sim';C.sigRender()}}
+// ---- REPLAY · real data (read-only GetFromStore with a time range; never labelled LIVE) ----
+async function loadReplay(L,hours,onProg){const t1=Date.parse(L.end)||Date.now(),t0=t1-hours*3600e3;let from=new Date(t0).toISOString(),rows=[],ml=null,ul=null,guard=0;
+ while(guard++<200){const j=await call('WMLS_GetFromStore','log',`<logs ${NS}><log uidWell="${L.w}" uidWellbore="${L.b}" uid="${L.uid}"><startDateTimeIndex>${from}</startDateTimeIndex><endDateTimeIndex>${new Date(t1).toISOString()}</endDateTimeIndex><logData><mnemonicList/><data/></logData></log></logs>`,'returnElements=data-only;maxReturnNodes=5000');
+  const d=xml(j.xml);ml=ml||txt(d,'mnemonicList').split(',').map(s=>s.trim());ul=ul||txt(d,'unitList').split(',');const ix=Math.max(0,ml.indexOf(L.indexCurve));
+  let r=kids(d,'data').map(n=>n.textContent.split(','));const last=rows.length?rows.at(-1).t:-1;r=r.map(x=>({t:Date.parse(x[ix]),x})).filter(o=>o.t>last);if(!r.length)break;rows.push(...r);onProg&&onProg(rows.length,rows.at(-1).t);from=new Date(rows.at(-1).t+1).toISOString();if(rows.at(-1).t>=t1-1000)break}
+ const ix=Math.max(0,(ml||[]).indexOf(L.indexCurve));return{ml,ul,ix,rows,t0:rows[0]?.t,t1:rows.at(-1)?.t}}
+function replaySet(t){const R=WML.rp;if(!R||!R.rows.length)return;R.t=Math.max(R.t0,Math.min(R.t1,t));let lo=0,hi=R.rows.length-1;while(lo<hi){const m=(lo+hi+1)>>1;if(R.rows[m].t<=R.t)lo=m;else hi=m-1}
+ const r=R.rows[lo].x;R.ml.forEach((mn,i)=>{if(i==R.ix)return;const v=r[i]===''?null:+r[i];const ch=WML.channels[mn]||(WML.channels[mn]={unit:R.ul[i]||'',log:'REPLAY '+(WML.log?.name||'')});ch.v=isFinite(v)?v:null});
+ const lab='REPLAY · real data · '+new Date(R.t).toLocaleString('en-AU',{timeZone:'Australia/Brisbane',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false})+' AEST · '+R.speed+'x';
+ const b=$('sim');if(b){b.textContent=lab;b.style.background='#7c4dff'}const sc=$('wrsc');if(sc&&!R.drag)sc.value=Math.round((R.t-R.t0)/(R.t1-R.t0||1)*1000);const tl=$('wrt');if(tl)tl.textContent=lab;
+ if(GX.feedStatus)GX.feedStatus('REPLAY · real data');for(const k of FEEDSIG)if(C.SRC[k]=='live')C.SRC[k]='sim';}
+function replayTick(){const R=WML.rp;if(!R||!R.playing)return;const now=performance.now(),dt=(now-(R.lt||now))/1000;R.lt=now;replaySet(R.t+dt*1000*R.speed);if(R.t>=R.t1)R.playing=false}
+async function startReplay(L,hours,speed){if(!REPLAY_ENABLED)return setSt('Replay from data is disabled',true);stop(true);WML.mode='loading';setSt('loading replay…');const R=await loadReplay(L,hours,(n,t)=>setSt('loading replay… '+n+' rows'));if(!R.rows.length){WML.mode='off';return setSt('replay: no rows in range',true)}
+ WML.log=L;WML.channels={};WML.maxBd=0;WML.rp=Object.assign(R,{t:R.t0,speed:speed||10,playing:true,lt:0});WML.mode='replay';setSt('REPLAY · real data · '+R.rows.length+' rows ('+hours+' h)');S.events.push([S.t,'REPLAY · real data: '+R.rows.length+' rows of '+L.name]);
+ clearInterval(WML.rpt);WML.rpt=setInterval(replayTick,100);replaySet(R.t0);return R.rows.length}
+function stopReplay(){clearInterval(WML.rpt);WML.rpt=null;WML.rp=null;if(WML.mode=='replay'){WML.mode='off';WML.channels={};WML.log=null;GX.feedStatus&&GX.feedStatus('not connected');const b=$('sim');if(b){b.textContent='SIMULATED - not real rig data';b.style.background='#b8860b'}setSt('replay stopped')}}
+function setLiveMode(v){WML.liveMode=!!v;const b=$('wlm');if(b){b.textContent='LIVE MODE: '+(v?'ON':'OFF');b.style.background=v?'#1db954':'#444'}const c=$('wlmc');if(c)c.checked=!!v;S.events.push([S.t,'LIVE MODE '+(v?'ON: rig follows WITSML data':'OFF')]);check()}
 // ---- UI ----
-let P;function ui(){const b=el('button','background:#2c5d9e;color:#fff;font-weight:700','🛰 WITSML');b.id='wbtn';b.onclick=()=>toggle();$('hud').appendChild(b)}
-function toggle(v){if(P&&v!==true){P.remove();P=null;return}if(P)return;P=el('div',PANEL+';left:50%;top:50px;transform:translateX(-50%);width:560px;max-height:80vh;overflow:auto');P.id='witsml';
+let P,logs=[],SELC=null;function ui(){const b=el('button','background:#2c5d9e;color:#fff;font-weight:700','🛰 WITSML');b.id='wbtn';b.onclick=()=>toggle();$('hud').appendChild(b);
+ const m=el('button','background:#444;color:#fff;font-weight:700','LIVE MODE: OFF');m.id='wlm';m.title='When ON (and the WITSML feed is healthy) the 3D rig and equipment follow the real data, overriding the physics sim';m.onclick=()=>setLiveMode(!WML.liveMode);$('hud').appendChild(m)}
+function toggle(v){if(P&&v!==true){SELC=['wwell','wwb','wlog'].map(id=>[$(id).innerHTML,$(id).value]);P.remove();P=null;return}if(P)return;P=el('div',PANEL+';left:50%;top:50px;transform:translateX(-50%);width:560px;max-height:80vh;overflow:auto');P.id='witsml';
  P.innerHTML=`<b style="color:#8fd">WITSML live data</b> <small>1.4.1.1 SOAP · WMLS_GetFromStore · well → wellbore → log</small>
  <div style="display:grid;grid-template-columns:110px 1fr;gap:3px;margin-top:4px">
  <span>Protocol</span><select id=wproto><option value=soap>WITSML 1.4.1.1 SOAP (via proxy)</option><option value=etp disabled>WITSML 2.0 ETP 1.2 WebSocket (not in this build)</option></select>
@@ -53,24 +104,32 @@ function toggle(v){if(P&&v!==true){P.remove();P=null;return}if(P)return;P=el('di
  <span>Poll every</span><span><input id=wint style="width:60px" value="${CFG.interval}"> ms</span></div>
  <button id=wcon style="${BTN}">Connect + list wells</button><button id=wsim style="${BTN}">Use SIMULATED test store</button><button id=wstop style="${BTN}">Disconnect</button><button id=wx style="${BTN}">Close</button>
  <div style="margin:4px 0">Well <select id=wwell style="max-width:150px"></select> Wellbore <select id=wwb style="max-width:130px"></select> Log <select id=wlog style="max-width:170px"></select> <button id=wgo style="${BTN}">▶ Start live</button></div>
+ <div style="margin:4px 0"><label><input type=checkbox id=wlmc ${WML.liveMode?'checked':''}> <b>LIVE MODE</b> – rig &amp; equipment follow the real WITSML values (overrides the sim)</label></div>
+ <div id=wrbox style="display:${REPLAY_ENABLED?'block':'none'};margin:4px 0;padding:4px;border:1px solid #7c4dff;border-radius:4px"><b style="color:#b9a3ff">Replay from data</b> last <input id=wrh style="width:40px" value="2"> h
+ at <select id=wrs>${[1,2,5,10,20,30,60].map(v=>`<option ${v==10?'selected':''}>${v}</option>`).join('')}</select>x <button id=wrgo style="${BTN}">Load + play</button><button id=wrpp style="${BTN}">⏯</button><button id=wrx style="${BTN}">Stop replay</button>
+ <input id=wrsc type=range min=0 max=1000 value=0 style="width:100%"><div id=wrt style="color:#b9a3ff;font-size:11px">REPLAY · real data – never shown as LIVE</div></div>
  <div>Status: <span id=wst style="color:#fd8">${WML.status}</span></div><div id=wlinfo style="color:#9ab;font-size:11px"></div>
  <div id=wmap style="margin-top:4px"></div>
  <small style="color:#9ab">Start the proxy on your PC: <code>node witsml_proxy.mjs</code> (needed for CORS/SOAP). Credentials are sent per request to your proxy only, held in this tab's memory and cleared on Disconnect. Every curve is also addable in 📈 Traces → "WITSML channel". ETP 2.0 (Avro binary over WebSocket) is not implemented yet.</small>`;
- document.body.appendChild(P);let logs=[];
- const read=()=>{CFG.proxy=$('wproxy').value.trim();CFG.url=$('wurl').value.trim();CFG.interval=+$('wint').value||2000;CRED.user=$('wuser').value;CRED.pass=$('wpass').value;saveCfg()};
- const fill=(id,arr)=>{$(id).innerHTML=arr.map(o=>`<option value="${o.uid}">${o.name.replace(/</g,'&lt;')}</option>`).join('')};
- const wbs=async()=>{try{fill('wwb',await listWellbores($('wwell').value));await lgs()}catch(e){setSt('error: '+e.message,true)}};
- const lgs=async()=>{try{logs=await listLogs($('wwell').value,$('wwb').value);fill('wlog',logs.map(l=>({uid:l.uid,name:l.name+' ['+(/time/i.test(l.indexType)?'time':'depth')+']'})));info()}catch(e){setSt('error: '+e.message,true)}};
+ document.body.appendChild(P);if(SELC)['wwell','wwb','wlog'].forEach((id,i)=>{$(id).innerHTML=SELC[i][0];$(id).value=SELC[i][1]});
+ const read=()=>{CFG.proxy=$('wproxy').value.trim();CFG.url=$('wurl').value.trim();CFG.interval=Math.max(10000,+$('wint').value||10000);$('wint').value=CFG.interval;CRED.user=$('wuser').value;CRED.pass=$('wpass').value;saveCfg()};
+ const fill=(id,arr,def)=>{$(id).innerHTML=arr.map(o=>`<option value="${o.uid}">${o.name.replace(/</g,'&lt;')}</option>`).join('');const d=def&&arr.find(o=>o.name.trim()==def);if(d)$(id).value=d.uid};
+ const wbs=async()=>{try{fill('wwb',await listWellbores($('wwell').value),CFG.defWb);await lgs()}catch(e){setSt('error: '+e.message,true)}};
+ const lgs=async()=>{try{logs=await listLogs($('wwell').value,$('wwb').value);fill('wlog',logs.map(l=>({uid:l.uid,name:l.name+' ['+(/time/i.test(l.indexType)?'time':'depth')+']'})));const dl=logs.find(l=>l.name.trim()==CFG.defLog);if(dl)$('wlog').value=dl.uid;info()}catch(e){setSt('error: '+e.message,true)}};
  const info=()=>{const l=logs.find(l=>l.uid==$('wlog').value);$('wlinfo').textContent=l?`${l.indexType} · index ${l.indexCurve} · ${l.start} → ${l.end} · ${l.curves.length} curves: ${l.curves.map(c=>c.mn).join(', ')}`:'';if(l){autoMap(l.curves);WML.preview=l;renderMap()}};
- $('wcon').onclick=async()=>{read();setSt('connecting…');try{const v=await call('WMLS_GetVersion');setSt('connected · server versions '+(v.version||'?'));fill('wwell',await listWells());await wbs()}catch(e){setSt('error: '+e.message+' — is the proxy running?',true)}};
+ $('wcon').onclick=async()=>{read();setSt('connecting…');try{const v=await call('WMLS_GetVersion');setSt('connected · server versions '+(v.version||'?'));fill('wwell',(await listWells()).sort((a,b)=>a.name.localeCompare(b.name)),CFG.defWell);await wbs()}catch(e){setSt('error: '+e.message+' — is the proxy running?',true)}};
  $('wsim').onclick=()=>{$('wurl').value=CFG.proxy.replace(/\/soap$/,'/sim/witsml');$('wcon').click()};
+ $('wlmc').onchange=e=>setLiveMode(e.target.checked);
+ $('wrgo').onclick=()=>{read();const l=logs.find(l=>l.uid==$('wlog').value);if(!l)return setSt('pick a log first',true);if(!/time/i.test(l.indexType))return setSt('replay needs a time-based log',true);startReplay({...l,w:$('wwell').value,b:$('wwb').value},+$('wrh').value||2,+$('wrs').value).catch(e=>setSt('replay error: '+e.message,true))};
+ $('wrs').onchange=()=>{if(WML.rp)WML.rp.speed=+$('wrs').value};$('wrpp').onclick=()=>{const R=WML.rp;if(R){R.playing=!R.playing;R.lt=0}};$('wrx').onclick=stopReplay;
+ $('wrsc').oninput=()=>{const R=WML.rp;if(R){R.drag=true;replaySet(R.t0+(R.t1-R.t0)*$('wrsc').value/1000);R.drag=false}};
  $('wwell').onchange=wbs;$('wwb').onchange=lgs;$('wlog').onchange=info;$('wstop').onclick=()=>{stop();CRED={user:'',pass:''};$('wuser').value=$('wpass').value=''};$('wx').onclick=()=>toggle();
- $('wgo').onclick=()=>{read();const l=logs.find(l=>l.uid==$('wlog').value);if(!l)return setSt('pick a log first',true);start({...l,w:$('wwell').value,b:$('wwb').value})};renderMap()}
+ $('wgo').onclick=()=>{read();WML.authDead=false;stopReplay();const l=logs.find(l=>l.uid==$('wlog').value);if(!l)return setSt('pick a log first',true);start({...l,w:$('wwell').value,b:$('wwb').value})};renderMap()}
 function renderMap(){const m=$('wmap');if(!m)return;const L=WML.log||WML.preview;if(!L){m.innerHTML='';return}
  m.innerHTML=`<b>Mnemonic → game signal</b> <small>(auto-mapped; change any; unmapped curves are still traceable)</small><table style="font-size:11px;width:100%">`+L.curves.filter(c=>c.mn!=L.indexCurve).map(c=>{const ch=WML.channels[c.mn];
   return `<tr><td>${c.mn}</td><td>${c.unit}</td><td>${ch?.v??'—'}</td><td><select data-mn="${c.mn}"><option value="">(trace only)</option>${Object.entries(SIGNALS).map(([k,n])=>`<option value="${k}" ${CFG.map[c.mn]==k?'selected':''}>${n}</option>`).join('')}</select></td><td><button data-tr="${c.mn}">📈</button></td></tr>`}).join('')+'</table>';
  m.querySelectorAll('[data-mn]').forEach(s=>s.onchange=()=>{CFG.map[s.dataset.mn]=s.value;saveCfg();if(WML.channels[s.dataset.mn])WML.channels[s.dataset.mn].map=s.value});
  m.querySelectorAll('[data-tr]').forEach(b=>b.onclick=()=>GX.traces.addTrack('wml:'+b.dataset.tr))}
 export function init(ctx){C=ctx;S=C.S;el=C.el;PANEL=C.PANEL;BTN=C.BTN||'';ui();
- const E=window.EXT,o=E.afterStep.bind(E);E.afterStep=()=>{o();drive()};
- Object.assign(window.GX,{witsml:{WML,CFG,open:()=>toggle(true),start,stop,poll,listWells,listWellbores,listLogs,setCred:(u,p)=>{CRED={user:u,pass:p}}}})}
+ const E=window.EXT,o=E.afterStep.bind(E);E.afterStep=()=>{drive();o();drive()};
+ Object.assign(window.GX,{witsml:{WML,CFG,open:()=>toggle(true),start,stop,poll,listWells,listWellbores,listLogs,setLiveMode,startReplay,stopReplay,replaySet,setCred:(u,p)=>{CRED={user:u,pass:p}}}})}

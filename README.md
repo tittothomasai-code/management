@@ -51,3 +51,14 @@ Click **📈 Traces** (top-left). Pick a signal from the list and press **+ Add 
 
 **ƒ Formula** traces: name + unit + expression with `[signal id]` (click a tree item to insert it), e.g. `[p1.flow]+[p2.flow]`, or `[spp]-base[spp]` (base = the value when added). Functions: abs min max sqrt pow exp log round. Formulas are saved in the browser.
 Test: `node witsml_proxy.mjs & LNA_OFF=1 node witsml_test.mjs <url> <outdir>`.
+
+## v3.5 — WITSML live hardening (2026-10-29)
+- **Stale rules:** feed is LIVE only while healthy; marked STALE after 3 consecutive missed polls OR >2 min without a successful poll. Healthy shows `LIVE · last row hh:mm AEST`. Stale/disconnected falls back to physics sim and is labelled **SIMULATED** — sim data is never labelled LIVE.
+- **Poll interval:** minimum 10 s (default 10 s). With 3 misses that is ~30 s to stale; 2-minute ceiling unchanged.
+- **Auth guard:** any 401/403 from the proxy or upstream stops polling immediately and shows `Auth failed — polling stopped`. No auto-retry; reconnect is manual (Start). `witsml_proxy.mjs` also refuses all upstream calls after one upstream 401/403 until the proxy is restarted.
+- **Defaults:** DR101L / WB01B02 / General Time-Based.
+- **Mapping:** FLOW→flow (lpm→gpm), HKL/HOOKLOAD→hookload, ROP→ROP, BDE→bit depth, BHE→block height (m; not hole depth), SPP, WOB, RPM, TORQUE. Hole depth = DMEA if present, else max bit depth seen.
+- **LIVE MODE toggle:** when on and the feed is healthy, WITSML values drive the 3D rig (bit/hole depth, hookload, block, top-drive RPM, pumps from SPP/flow, WOB, torque) instead of the physics sim.
+- **Replay from data:** code present but **hidden** (`REPLAY_ENABLED=false` in ext4.js) after an upstream 401 during testing. Labelled `REPLAY · real data` when enabled, never LIVE.
+- **Known data issue — hookload:** during the Adaga test HKL swung from **+17.8 to −18.6 klbf** within minutes. Mapping left unchanged; needs a check of the HKL zero/offset or tare on the source before relying on hookload.
+- **Caveat:** the public GitHub Pages site cannot reach WITSML directly — it needs a local `witsml_proxy.mjs` on 127.0.0.1:8796. No credentials are stored in the site; the user enters them in the panel at runtime (not persisted).

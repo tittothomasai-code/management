@@ -56,14 +56,15 @@ function simSoap(body){const op=(body.match(/<(?:\w+:)?(WMLS_\w+)/)||[])[1];
  if(op=='WMLS_GetFromStore'){const x=simStore(unesc(tag(body,'WMLtypeIn')||''),unesc(tag(body,'QueryIn')||''),unesc(tag(body,'OptionsIn')||''));return wrap(`<Result>1</Result><XMLout>${esc(x)}</XMLout><SuppMsgOut>SIMULATED test store</SuppMsgOut>`)}
  return wrap('<Result>-424</Result><SuppMsgOut>Not supported by SIMULATED store</SuppMsgOut>')}
 // ---------------- server ----------------
+let AUTH_DEAD=false;// after one upstream 401/403, refuse all upstream calls until proxy restart
 const srv=http.createServer(async(q,r)=>{r.setHeader('Access-Control-Allow-Origin','*');r.setHeader('Access-Control-Allow-Headers','Content-Type');r.setHeader('Access-Control-Allow-Private-Network','true');
  if(q.method=='OPTIONS'){r.writeHead(204);return r.end()}let b='';for await(const d of q)b+=d;const u=new URL(q.url,'http://x');
  if(u.pathname=='/sim/witsml'){r.writeHead(200,{'Content-Type':'text/xml; charset=utf-8'});return r.end(simSoap(b))}
  if(u.pathname=='/soap'&&q.method=='POST'){const t0=Date.now();let a;try{a=JSON.parse(b)}catch{r.writeHead(400);return r.end('{"error":"bad json"}')}
   const send=(c,o)=>{r.writeHead(c,{'Content-Type':'application/json'});r.end(JSON.stringify(o))};
   try{const tu=new URL(a.url);if(!/^https?:$/.test(tu.protocol))throw new Error('url must be http(s)');if(ALLOW.length&&!ALLOW.some(x=>a.url.startsWith(x)))throw new Error('target not in WITSML_PROXY_ALLOW')
-   const op=a.op||'WMLS_GetFromStore';const resp=await post(a.url,envelope(op,a),op,a.user,a.pass);
-   if(resp.status==401||resp.status==403)return send(200,{result:-1,error:'Authentication failed ('+resp.status+')'});
+   if(AUTH_DEAD)return send(200,{result:-1,error:'Authentication failed earlier (401) — proxy refuses upstream calls until restarted'});const op=a.op||'WMLS_GetFromStore';const resp=await post(a.url,envelope(op,a),op,a.user,a.pass);
+   if(resp.status==401||resp.status==403){AUTH_DEAD=true;console.error('upstream auth failure '+resp.status+' — upstream calls disabled until restart')}if(resp.status==401||resp.status==403)return send(200,{result:-1,error:'Authentication failed ('+resp.status+')'});
    const fault=tag(resp.body,'faultstring');if(fault)return send(200,{result:-1,error:'SOAP fault: '+unesc(fault)});
    if(resp.status>=400)return send(200,{result:-1,error:'HTTP '+resp.status});
    const res=tag(resp.body,'Result');const xml=unesc(tag(resp.body,'XMLout')||tag(resp.body,'CapabilitiesOut')||'');

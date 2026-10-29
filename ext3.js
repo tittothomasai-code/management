@@ -3,7 +3,7 @@ let C,S,PH,el,PANEL;const COLORS=['#4fc3f7','#ffb74d','#81c784','#e57373','#ba68
 const TR={formulas:[],on:false,tracks:[],t:[],data:{},marks:[],win:120,paused:false,offset:0,cursor:null,last:-1e9,dt:0.25,max:14400};
 const KEY='dw33-traces-v1';
 const simFeed=()=>/SIMULATED/i.test((GX.feedState||{}).src||'');
-const sigSrc=k=>{const m={spp:'spp',Q:'Q',hook:'hook',wob:'wob',rpm:'rpm',md:'md',quill:'quill'};const v=m[k]&&C.SRC?C.SRC[m[k]]:'sim';return v=='live'&&simFeed()?'live-sim':v};
+const sigSrc=k=>{const m={spp:'spp',Q:'Q',hook:'hook',wob:'wob',rpm:'rpm',md:'md',quill:'quill'};if(window.WML&&m[k]&&WML.mode=='replay')return 'replay';if(window.WML&&m[k]&&WML.liveMode&&WML.healthy())return 'live';const v=m[k]&&C.SRC?C.SRC[m[k]]:'sim';if(v=='live'&&window.WML&&WML.mode=='replay')return 'replay';if(v=='live'&&(GX.feedState||{}).status!='live')return 'sim';return v=='live'&&simFeed()?'live-sim':v};
 const liveTag=(id,d)=>(window.WML&&WML.drives&&WML.drives(id))||d||'sim';// LIVE when a WITSML channel drives this signal
 // ---- signal catalogue ----
 function catalogue(){const L=[];const add=(id,label,unit,get,src)=>L.push({id,label,unit,get,src:src||(()=>'sim'),group:label.split(' · ')[0]});
@@ -48,7 +48,7 @@ function catalogue(){const L=[];const add=(id,label,unit,get,src)=>L.push({id,la
  if(S.seq)for(const [k2,v2] of Object.entries(S.seq))if(typeof v2=='number'||typeof v2=='boolean')add('st.seq.'+k2,'Sequence · raw › '+k2,'',()=>+(S.seq||{})[k2]);
  if(!S.env)add('st.env.none','Environment hook · (S.envHook not set - set S.env values to trace them)','',()=>0);
  // ---- live channels: every WITSML curve and every raw live-feed field, mapped or not ----
- const W=window.WML;if(W)for(const [mn,ch] of Object.entries(W.channels||{}))add('wml:'+mn,'WITSML channel · '+(ch.log?ch.log+' › ':'')+mn+(ch.map?' → '+ch.map:''),ch.unit||'',()=>W.channels[mn]?.v??null,()=>W.tag());
+ const W=window.WML;if(W)for(const [mn,ch] of Object.entries(W.channels||{}))add('wml:'+mn,'WITSML channel · '+(ch.log?ch.log+' › ':'')+mn+(ch.map?' → '+ch.map:''),ch.unit||'',()=>W.healthy&&!W.healthy()?null:(W.channels[mn]?.v??null),()=>W.tag());
  const FR=(GX.feedState||{}).raw;if(FR)for(const k of Object.keys(FR))if(isFinite(+FR[k]))add('feed:'+k,'Live feed field · '+k,'',()=>{const f=GX.feedState;return f.status=='live'?+f.raw[k]:null},()=>simFeed()?'live-sim':'live');
  // ---- custom formula traces ----
  for(const f of TR.formulas)add(f.id,'Formula · '+f.name+'  = '+f.expr,f.unit,f.get,f.src);
@@ -103,7 +103,7 @@ function ui(){const b=el('button','background:#0a6;color:#fff;font-weight:700','
  cv.onmousemove=e=>{const r=cv.getBoundingClientRect();TR.cursor=(e.clientX-r.left)/r.width};cv.onmouseleave=()=>TR.cursor=null;cv.onclick=e=>{const r=cv.getBoundingClientRect(),X=e.clientX-r.left,Y=e.clientY-r.top;if(X>160&&X<190){const tr=TR.tracks.find(t=>t._y&&Y>=t._y[0]&&Y<t._y[0]+20);if(tr)rmTrack(tr.id)}};
  cv.onwheel=e=>{e.preventDefault();if(!TR.paused)q('#trpause').click();TR.offset=Math.max(0,Math.min(1,TR.offset+e.deltaY*0.0005));q('#trscroll').value=1000-TR.offset*1000}}
 const esc=x=>String(x).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const SC={live:'#1db954','live-sim':'#e08a00',csv:'#2f7fd0',sim:'#6b7580'},SL={live:'LIVE','live-sim':'SIM-TEST',csv:'CSV',sim:'SIM'};
+const SC={live:'#1db954','live-sim':'#e08a00',csv:'#2f7fd0',sim:'#6b7580',replay:'#7c4dff'},SL={live:'LIVE','live-sim':'SIM-TEST',csv:'CSV',sim:'SIM',replay:'REPLAY'};
 const pill=k=>`<span style="background:${SC[k]||'#6b7580'};color:#fff;font-weight:700;font-size:10px;padding:0 4px;border-radius:3px">${SL[k]||k}</span>`;
 function badge(X,Y,k){ctx.font='bold 10px sans-serif';const t=SL[k]||k,w=ctx.measureText(t).width+8;ctx.fillStyle=SC[k]||'#6b7580';ctx.fillRect(X,Y,w,13);ctx.fillStyle='#fff';ctx.fillText(t,X+4,Y+10);ctx.font='11px sans-serif'}
 let SRCF='all';const srcOk=k=>SRCF=='all'||(SRCF=='live'?k=='live':k!='live');
@@ -127,7 +127,7 @@ function draw(){if(!TR.on||!cv)return;const w=cv.clientWidth|0;if(cv.width!=w)cv
  TR.tracks.forEach((tr,k)=>{const y0=k*H_T,d=TR.data[tr.id]||[];let mn=Infinity,mx=-Infinity;for(let i=i0;i<i1;i++){const v=d[i];if(v!=null){if(v<mn)mn=v;if(v>mx)mx=v}}
   if(!isFinite(mn)){mn=0;mx=1}{const ms=Math.max(1,Math.abs(mx)*0.05);if(mx-mn<ms){const c=(mx+mn)/2;mx=c+ms/2;mn=c-ms/2}}const pad=(mx-mn)*0.1;mn-=pad;mx+=pad;const y=v=>y0+H_T-4-(v-mn)/(mx-mn)*(H_T-10);
   ctx.strokeStyle='#2a3a46';ctx.beginPath();ctx.moveTo(0,y0+H_T);ctx.lineTo(w,y0+H_T);ctx.stroke();
-  ctx.strokeStyle=tr.color;const ss=tr.srcs||[];let seg=null,px=null,py=null;const dash=k=>k=='live'?[]:k=='csv'?[2,3]:[6,4];
+  ctx.strokeStyle=tr.color;const ss=tr.srcs||[];let seg=null,px=null,py=null;const dash=k=>k=='live'?[]:k=='replay'?[8,2]:k=='csv'?[2,3]:[6,4];
   for(let i=i0;i<i1;i++){const v=d[i];if(v==null){px=null;continue}const X=x(TR.t[i]),Y=y(v),k=ss[i]||'sim';
    if(k!==seg){if(seg!=null)ctx.stroke();seg=k;ctx.setLineDash(dash(k));ctx.lineWidth=k=='live'?2.2:1.4;ctx.beginPath();if(px!=null){ctx.moveTo(px,py);ctx.lineTo(X,Y)}else ctx.moveTo(X,Y);
     if(px!=null&&i>i0&&(ss[i-1]||'sim')!==k){ctx.save();ctx.setLineDash([]);ctx.strokeStyle='#fff6';ctx.beginPath();ctx.moveTo(X,y0+2);ctx.lineTo(X,y0+H_T-2);ctx.stroke();ctx.restore();ctx.beginPath();ctx.moveTo(X,Y)}}
