@@ -81,8 +81,20 @@ function renderSeq(){const q=S.seq;
 const SIGS={spp:['spp_psi',v=>S.spp=v],Q:['flow_gpm',v=>S.Q=v],hook:['hookload_klbf',v=>S.hook=v],wob:['wob_klbf',v=>S.wob=v],rpm:['td_rpm',v=>S.td.rpm=v],md:['md_ft',v=>S.md=v],quill:['quill_m',v=>S.dw.quill=v],slips:['slips',v=>S.slips=!!v]};
 const SRC=Object.fromEntries(Object.keys(SIGS).map(k=>[k,'sim']));
 let CSV=null,REPLAY=null;
-function parseCSV(t){const L=t.trim().split(/\r?\n/),h=L[0].split(',').map(s=>s.trim());return L.slice(1).map(l=>{const c=l.split(','),o={};h.forEach((k,i)=>{const v=c[i];o[k]=v===undefined?null:(isNaN(+v)||v===''?v:+v)});return o})}
-function loadCSVText(t,name){CSV={rows:parseCSV(t),name:name||'csv'};PH.ev(S,`CSV loaded: ${CSV.name} (${CSV.rows.length} rows)`);sigRender();return CSV.rows.length}
+// v3.7: CSV import accepts either unit system; unit from each column header (spp_kpa, flow_lpm, depth_m, hookload_kn, torque_knm, "SPP [bar]", "Flow (L/min)").
+// Unitless headers are assumed to be in the currently selected unit system. Values are converted to game-internal units (imperial).
+const CSVQ={spp:['spp_psi','psi',['spp','sppa','standpipe','standpipepressure','pressure']],Q:['flow_gpm','gpm',['flow','flowin','q','tflo','flowrate']],hook:['hookload_klbf','klbf',['hookload','hkl','hkla','hook']],wob:['wob_klbf','klbf',['wob','swob']],
+ md:['md_ft','ft',['md','depth','holedepth','dmea','dbtm','bitdepth','bde']],quill:['quill_m','m',['quill','block','blockheight','blkpos','bpos','bhe']],tq:['torque_ftlbf','ft·lbf',['torque','tq','tqa']],rop:['rop_fth','ft/h',['rop','ropa']],rpm:['td_rpm','',['rpm','tdrpm','td','rpma']],time:['time_s','',['time','times','t','time_s']]};
+function csvCol(h0){const h=h0.trim();let m=h.match(/^(.*?)\s*[\[(]([^\])]+)[\])]\s*$/),base,unit='';if(m){base=m[1];unit=m[2]}else base=h;base=base.toLowerCase().replace(/[\s\-]+/g,'_');
+ const key=b=>{b=b.replace(/_/g,'');for(const q in CSVQ)if(CSVQ[q][2].includes(b))return q;return null};let q=key(base);
+ if(!q&&!m){const p=base.split('_');for(let i=p.length-1;i>0;i--){const k=key(p.slice(0,i).join('_'));if(k){q=k;unit=p.slice(i).join('/').replace(/^m\/h(r)?$/,'m/h');break}}}
+ if(!q)return{from:h,to:h,note:'kept'};const [to,gu]=CSVQ[q];if(q=='time'||!gu)return{from:h,to,note:''};
+ if(unit&&!U.dim(unit))unit=unit.replace(/\//g,'');if(unit&&!U.dim(unit))return{from:h,to:h,note:'unknown unit "'+unit+'", column ignored'};
+ let assumed=false;if(!unit){unit=U.u(gu);assumed=true}const a=U.dim(unit),b=U.dim(gu);if(!a||!b||a[0]!=b[0])return{from:h,to:h,note:'unit "'+unit+'" does not fit '+q+', ignored'};
+ return{from:h,to,unit,gu,note:assumed?'no unit in header, assumed '+unit+' ('+U.sys+')':unit}}
+function parseCSV(t){const L=t.trim().split(/\r?\n/),h=L[0].split(',').map(s=>s.trim()),cols=h.map(csvCol);parseCSV.cols=cols;
+ return L.slice(1).map(l=>{const c=l.split(','),o={};cols.forEach((col,i)=>{const v=c[i];let x=v===undefined?null:(isNaN(+v)||v===''?v:+v);if(col.gu&&typeof x=='number')x=U.x(x,col.unit,col.gu);if(o[col.to]===undefined||col.gu)o[col.to]=x});return o})}
+function loadCSVText(t,name){CSV={rows:parseCSV(t),name:name||'csv'};CSV.cols=parseCSV.cols;PH.ev(S,`CSV loaded: ${CSV.name} (${CSV.rows.length} rows)`);CSV.cols.filter(c=>c.gu||/ignored/.test(c.note)).forEach(c=>PH.ev(S,`CSV column ${c.from} → ${c.to}${c.note?' ['+c.note+']':''}`));sigRender();return CSV.rows.length}
 async function loadSample(){const t=await (await fetch('./sample_sequence.csv')).text();loadCSVText(t,'sample_sequence.csv (SIMULATED sample)')}
 function useCSV(on){if(on&&!CSV){PH.ev(S,'No CSV loaded');return}
  if(on){REPLAY={t0:S.t,i:0,ended:false};for(const k in SIGS)if(CSV.rows[0][SIGS[k][0]]!=null)SRC[k]='csv';PH.ev(S,'CSV replay started: '+CSV.name)}else{if(REPLAY)PH.ev(S,'CSV replay stopped');REPLAY=null;for(const k in SRC)if(SRC[k]=='csv')SRC[k]='sim'}sigRender()}
@@ -102,7 +114,7 @@ function afterStep(){
 let sigEl;function signals(){sigEl=el('div',PANEL+';right:8px;top:44px;width:250px');document.body.appendChild(sigEl);
  const fi=el('input');fi.type='file';fi.accept='.csv';fi.style.display='none';fi.id='csvFile';document.body.appendChild(fi);
  fi.onchange=async()=>{const f=fi.files[0];fi.value='';if(f)loadCSVText(await f.text(),f.name)};sigRender()}
-function sigRender(){if(!sigEl)return;sigEl.innerHTML=`<b style="color:#8fd">Signal sources</b><br>`+Object.keys(SIGS).map(k=>`<div style="display:flex;justify-content:space-between"><span>${SIGS[k][0]}</span><select data-sig="${k}">${['sim','csv','live'].map(v=>`<option ${SRC[k]==v?'selected':''}>${v}</option>`).join('')}</select></div>`).join('')+
+function sigRender(){if(!sigEl)return;sigEl.innerHTML=`<b style="color:#8fd">Signal sources</b> <small style="color:#9ab">(${U.sys=='metric'?'Metric':'Imperial'})</small><br>`+Object.keys(SIGS).map(k=>`<div style="display:flex;justify-content:space-between"><span title="${SIGS[k][0]} (internal)">${k}${(u=>u?' · '+U.u(u):'')(({spp:'psi',Q:'gpm',hook:'klbf',wob:'klbf',md:'ft',quill:'m',rpm:'rpm'})[k]||'')}</span><select data-sig="${k}">${['sim','csv','live'].map(v=>`<option ${SRC[k]==v?'selected':''}>${v}</option>`).join('')}</select></div>`).join('')+
  `<button id="csvload" style="${BTN}">Load CSV file…</button><button id="csvsample" style="${BTN}">Sample CSV</button><br><small>CSV: ${CSV?CSV.name+' '+CSV.rows.length+' rows':'none'}${REPLAY?' · replaying':''}</small><br><small>Live feed: ${FEED.status}</small> <button id="feedc" style="${BTN}">Connect…</button>`;
  sigEl.querySelectorAll('[data-sig]').forEach(s=>s.onchange=()=>setSource(s.dataset.sig,s.value));
  sigEl.querySelector('#csvload').onclick=()=>document.getElementById('csvFile').click();
@@ -220,3 +232,5 @@ function restore(){let d=null;try{d=JSON.parse(localStorage.getItem(XKEY)||'null
  (d.sensors||[]).forEach(s=>{X.sensors.push(s);mkSensor(s)});X.lib.forEach(it=>{if(LIB[it.type])placeLib(it.type,it)});physicsHooks();drawBha();drawConns()}
 function exportLayout(){return{format:'drilling-world-layout',version:1,core:JSON.parse(localStorage.getItem('dw3-layout-v1')||'null'),ext:X,userTypes:JSON.parse(localStorage.getItem(LIBKEY)||'[]')}}
 function importLayout(j){if(j.format!='drilling-world-layout'){PH.ev(S,'Not a layout file');return}if(j.core)localStorage.setItem('dw3-layout-v1',JSON.stringify(j.core));localStorage.setItem(XKEY,JSON.stringify(j.ext||{}));if(j.userTypes)localStorage.setItem(LIBKEY,JSON.stringify(j.userTypes));location.reload()}
+
+try{U.on(()=>sigRender())}catch{}

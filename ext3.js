@@ -6,7 +6,7 @@ const simFeed=()=>/SIMULATED/i.test((GX.feedState||{}).src||'');
 const sigSrc=k=>{const m={spp:'spp',Q:'Q',hook:'hook',wob:'wob',rpm:'rpm',md:'md',quill:'quill'};if(window.WML&&m[k]&&WML.mode=='replay')return 'replay';if(window.WML&&m[k]&&WML.liveMode&&WML.healthy())return 'live';const v=m[k]&&C.SRC?C.SRC[m[k]]:'sim';if(v=='live'&&window.WML&&WML.mode=='replay')return 'replay';if(v=='live'&&(GX.feedState||{}).status!='live')return 'sim';return v=='live'&&simFeed()?'live-sim':v};
 const liveTag=(id,d)=>(window.WML&&WML.drives&&WML.drives(id))||d||'sim';// LIVE when a WITSML channel drives this signal
 // ---- signal catalogue ----
-function catalogue(){const L=[];const add=(id,label,unit,get,src)=>{const w=!String(id).startsWith('f:')&&!!U.dim(unit);L.push({id,label,u0:unit,get unit(){return w?U.u(unit):unit},get:w?()=>{const v=get();return v==null?v:U.v(unit,v)}:get,src:src||(()=>'sim'),group:label.split(' · ')[0]})};
+function catalogue(){const L=[];const add=(id,label,unit,get,src)=>{const isF=String(id).startsWith('f:'),w=!isF&&!!U.dim(unit);L.push({id,label,u0:unit,get unit(){return (w||isF)?U.u(unit):unit},get:w?()=>{const v=get();return v==null?v:U.v(unit,v)}:get,src:src||(()=>'sim'),group:label.split(' · ')[0]})};
  add('spp','Rig · Standpipe pressure','psi',()=>S.spp,()=>sigSrc('spp'));add('Q','Rig · Flow in','gpm',()=>S.Q,()=>sigSrc('Q'));
  add('hook','Rig · Hookload','klbf',()=>S.hook,()=>sigSrc('hook'));add('wob','Rig · WOB','klbf',()=>S.wob,()=>sigSrc('wob'));
  add('rpm','Rig · Top drive RPM','rpm',()=>S.td.rpm,()=>sigSrc('rpm'));add('tq','Rig · Top drive torque','ft-lbf',()=>S.td.tq||S.td.torque||0,()=>liveTag('tq'));
@@ -55,7 +55,7 @@ function catalogue(){const L=[];const add=(id,label,unit,get,src)=>{const w=!Str
  return L}
 let CAT=[];const byId=id=>CAT.find(c=>c.id==id);
 function refreshCat(){CAT=catalogue();for(const tr of TR.tracks){const c=byId(tr.id);if(c){tr.get=c.get;tr.src=c.src}}}
-function addTrack(id){refreshCat();if(TR.tracks.find(t=>t.id==id))return;const c=byId(id);if(!c)return;TR.tracks.push({id,label:c.label,u0:c.u0??c.unit,get unit(){return String(this.id).startsWith('f:')?this.u0:U.u(this.u0)},color:COLORS[TR.tracks.length%COLORS.length],get:c.get,src:c.src});TR.data[id]=new Array(TR.t.length).fill(null);save();open(true);build()}
+function addTrack(id){refreshCat();if(TR.tracks.find(t=>t.id==id))return;const c=byId(id);if(!c)return;TR.tracks.push({id,label:c.label,u0:c.u0??c.unit,get unit(){return U.u(this.u0)},color:COLORS[TR.tracks.length%COLORS.length],get:c.get,src:c.src});TR.data[id]=new Array(TR.t.length).fill(null);save();open(true);build()}
 function rmTrack(id){TR.tracks=TR.tracks.filter(t=>t.id!=id);delete TR.data[id];save();build()}
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify({ids:TR.tracks.map(t=>t.id),win:TR.win,formulas:TR.formulas.map(f=>({name:f.name,unit:f.unit,expr:f.expr}))}))}catch{}};
 // ---- formula traces: [id] = any signal, base[id] = its value when the formula was added (baseline) ----
@@ -65,7 +65,7 @@ function makeFormula(name,unit,expr){name=String(name||'').trim();expr=String(ex
  const bare=code.replace(/[vb]\("[^"]*"\)/g,'0');for(const w of bare.match(/[A-Za-z_$][\w$]*/g)||[])if(!FN.has(w))throw new Error('unknown word "'+w+'" (use [signal id])');if(/[^\w\s+\-*/%().,<>=!?:&|^]/.test(bare))throw new Error('bad character');
  refreshCat();for(const r of refs)if(!byId(r))throw new Error('unknown signal ['+r+']');
  const fn=new Function('v','b','M','const {'+[...FN].join(',')+'}=M;return ('+code+')');const base={};
- const f={id:'f:'+name.replace(/\W+/g,'_'),name,unit:unit||'',expr,refs,base};
+ const f={id:'f:'+name.replace(/\W+/g,'_'),name,unit:U.base(String(unit||'').trim()),expr,refs,base};
  const val=id=>{const c=byId(id);if(!c)return NaN;const x=c.get();return x==null?NaN:+x};
  f.get=()=>{const r=fn(val,id=>id in base?base[id]:(base[id]=val(id)),Math);return isFinite(r)?r:null};
  f.src=()=>{const ss=refs.map(id=>byId(id)?.src()||'sim');return ss.find(x=>x=='live')||ss.find(x=>x=='live-sim')||ss.find(x=>x=='csv')||'sim'};
@@ -86,7 +86,7 @@ function ui(){const b=el('button','background:#0a6;color:#fff;font-weight:700','
  <select id=trwin><option value=30>30 s</option><option value=120>2 min</option><option value=600>10 min</option></select>
  <button id=trpause>⏸ Pause</button><input id=trscroll type=range min=0 max=1000 value=1000 style="width:120px" title="scroll back"><button id=trlive>Live ▶|</button>
  <input id=trq placeholder="🔍 search any signal…" style="width:170px"><select id=trsrcf title="source filter"><option value=all>All sources</option><option value=live>LIVE only</option><option value=sim>SIM / CSV only</option></select><button id=trtree>Signals ▾</button><button id=trfx>ƒ Formula</button><button id=trpump>+ All pump traces</button><button id=trcsv>Export CSV</button><button id=trclr>Clear</button><button id=trx>×</button></div>
- <div id=trfrow style="display:none;margin:4px 0;background:#0e1a22;padding:4px;border-radius:4px">Name <input id=trfn style="width:110px" placeholder="Total flow"> Unit <input id=trfu style="width:50px" placeholder="gpm"> = <input id=trfe style="width:300px" placeholder="[p1.flow]+[p2.flow]   or   [spp]-base[spp]"> <button id=trfadd>Add formula trace</button> <small id=trferr style="color:#f88"></small><br><small style="color:#9ab">Click a signal in the tree to insert its [id]. base[id] = value when added (baseline). Functions: abs min max sqrt pow exp log round.</small></div>
+ <div id=trfrow style="display:none;margin:4px 0;background:#0e1a22;padding:4px;border-radius:4px">Name <input id=trfn style="width:110px" placeholder="Total flow"> Quantity <select id=trfq title="Pick a quantity so the trace converts with the Units switch"><option value="">none / custom</option><option value=psi>Pressure</option><option value=gpm>Flow</option><option value=klbf>Force (hookload/WOB)</option><option value=ft>Depth / length</option><option value=ft/h>ROP</option><option value=ft·lbf>Torque</option><option value=hp>Power</option><option value=ppg>Mud density</option></select> or unit <input id=trfu style="width:50px" placeholder="rpm"> = <input id=trfe style="width:300px" placeholder="[p1.flow]+[p2.flow]   or   [spp]-base[spp]"> <button id=trfadd>Add formula trace</button> <small id=trferr style="color:#f88"></small><br><small style="color:#9ab">Click a signal in the tree to insert its [id]. base[id] = value when added (baseline). Functions: abs min max sqrt pow exp log round.</small></div>
  <div id=trtbox style="display:none;max-height:260px;overflow:auto;background:#0b1218;border:1px solid #2a3a46;padding:4px;font-size:12px;margin:4px 0"></div><div id=trhdr></div><canvas id=trcv style="width:100%;display:block;cursor:crosshair"></canvas>`;
  cv=W.querySelector('#trcv');ctx=cv.getContext('2d');hdr=W.querySelector('#trhdr');picker=W.querySelector('#trq');tbox=W.querySelector('#trtbox');
  const q=s=>W.querySelector(s);q('#trwin').value=TR.win;q('#trwin').onchange=e=>{TR.win=+e.target.value;save()};
@@ -96,7 +96,7 @@ function ui(){const b=el('button','background:#0a6;color:#fff;font-weight:700','
  picker.oninput=()=>{tbox.style.display='';renderTree()};picker.onfocus=()=>{tbox.style.display='';renderTree()};q('#trtree').onclick=()=>{tbox.style.display=tbox.style.display?'':'none';renderTree()};
  q('#trsrcf').onchange=e=>{SRCF=e.target.value;tbox.style.display='';renderTree()};
  q('#trfx').onclick=()=>{const r=q('#trfrow');r.style.display=r.style.display?'':'none';if(!r.style.display){tbox.style.display='';renderTree()}};
- q('#trfadd').onclick=()=>{try{addFormula(q('#trfn').value,q('#trfu').value,q('#trfe').value);q('#trferr').textContent=''}catch(e){q('#trferr').textContent=e.message}};
+ q('#trfadd').onclick=()=>{try{addFormula(q('#trfn').value,q('#trfq').value||q('#trfu').value,q('#trfe').value);q('#trferr').textContent=''}catch(e){q('#trferr').textContent=e.message}};
  tbox.onclick=e=>{const id=e.target.closest('[data-sig]')?.dataset.sig;if(!id)return;if(!q('#trfrow').style.display){const f=q('#trfe');f.value+=(f.value&&!/[\s+\-*/(]$/.test(f.value)?' + ':'')+'['+id+']';f.focus()}else addTrack(id)};q('#trpump').onclick=()=>{refreshCat();S.pumps.forEach(p=>['spm','flow','psi','hp'].forEach(k=>addTrack('p'+p.id+'.'+k)))};
  q('#trcsv').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([toCSV()],{type:'text/csv'}));a.download='trace_'+Math.round(S.t)+'s.csv';a.click()};
  q('#trclr').onclick=()=>{TR.t=[];TR.marks=[];for(const tr of TR.tracks){TR.data[tr.id]=[];tr.srcs=[]}};q('#trx').onclick=()=>open(false);
@@ -165,6 +165,6 @@ export async function init(ctx){C=ctx;S=C.S;PH=C.PH;el=C.el;PANEL=C.PANEL;ui();
  try{const d=JSON.parse(localStorage.getItem(KEY)||'null');if(d){TR.win=d.win||120;(d.formulas||[]).forEach(f=>{try{makeFormula(f.name,f.unit,f.expr)}catch{}});W.querySelector('#trwin').value=TR.win;refreshCat();d.ids.forEach(id=>{if(byId(id))addTrack(id)});open(false)}}catch{}
  const E=window.EXT,o=E.afterStep.bind(E);E.afterStep=()=>{o();sample()};const of=E.frame.bind(E);E.frame=(...a)=>{of(...a);draw()};
  setInterval(panelHook,300);setInterval(sigBadges,500);setInterval(()=>{if(TR.on){const n=catalogue().length;if(n!=CAT.length&&document.activeElement!==picker)renderTree();refreshCat()}},2000);
- U.on((o,n)=>{for(const tr of TR.tracks){if(String(tr.id).startsWith('f:'))continue;const k=U.f(tr.u0,n)/U.f(tr.u0,o);if(k!=1&&TR.data[tr.id])TR.data[tr.id]=TR.data[tr.id].map(v=>v==null?v:v*k)}try{build()}catch{}});
+ U.on((o,n)=>{for(const tr of TR.tracks){const k=U.f(tr.u0,n)/U.f(tr.u0,o);if(k!=1&&TR.data[tr.id])TR.data[tr.id]=TR.data[tr.id].map(v=>v==null?v:v*k)}try{build()}catch{}});
  Object.assign(window.GX,{traces:{TR,addTrack,rmTrack,open,toCSV,catalogue:()=>(refreshCat(),CAT.map(c=>({id:c.id,label:c.label,unit:c.unit}))),entSignals:n=>entSignals(C.ents.find(e=>e.name==n)).map(c=>c.id),addFormula,renderTree}});
  try{(await import('./ext4.js?v=35')).init(C)}catch(err){console.error('ext4',err)}}

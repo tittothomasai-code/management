@@ -70,3 +70,11 @@ Test: `node witsml_proxy.mjs & LNA_OFF=1 node witsml_test.mjs <url> <outdir>`.
 - WITSML: each channel is converted from its own `uom` in the log header (e.g. lpm, m3/min, bar, kPa, MPa, kN, klbs, t, m, m/hr, N.m, kN.m, ftlb) to the game's internal units via one conversion table; unknown uoms pass through unchanged.
 - Not converted (by design / caveat): rig-designer **input** fields stay imperial (results are converted); CSV **import** column names (spp_psi, flow_gpm, hookload_klbf, md_ft…) stay imperial; raw `wml:` channel traces display in the selected system; user formula traces keep the unit you typed.
 - **Open question — depth datum:** time-log BDE ≈ 8768 ft (2672.5 m) vs the depth log ≈ 2656.9 m (~15.6 m apart). Check each log's uom and depth datum (RKB vs MSL, or rig floor vs ground) once the Adaga account is confirmed.
+
+## v3.7 — metric everywhere
+- Rig designer inputs show/accept the selected unit system (converted to internal imperial); designer re-renders on unit switch; derived capacities (power, hoist speed, BOP) converted.
+- Event log text converted to selected units.
+- Formula traces have a Quantity picker (Pressure/Flow/Force/Depth/ROP/Torque/Power/Mud density) and rescale on unit switch (linear formulas only).
+- CSV import accepts either system by header unit: `spp_psi|spp_kpa|spp_bar`, `flow_gpm|flow_lpm`, `depth_ft|depth_m` (also `md_*`), `hookload_klbf|hookload_kn`, `torque_ftlbf|torque_knm`, `wob_*`, `rop_*`; also `name [unit]` / `name (unit)`. Unitless headers assume the currently selected system (logged); unknown units are ignored (logged).
+- Signal sources panel shows (Metric/Imperial) and per-signal units.
+- Caveats: bit/liner sizes stay in inches; pump model names (e.g. "1600 HP") unchanged; torque/ROP CSV columns are converted but not yet driven into physics; nonlinear formulas are not unit-aware.

@@ -189,19 +189,19 @@ function designerInit(){let d=DEF;try{const s=JSON.parse(localStorage.getItem(DK
  // keep design pump list in sync when user adds/removes pumps from the equipment menu
  setInterval(()=>{if(C.pumpsArr.length!=DES.pumps.length){const d=JSON.parse(JSON.stringify(DES));while(d.pumps.length<C.pumpsArr.length)d.pumps.push({type:DEF.pumps[0].type,liner_in:6});d.pumps.length=C.pumpsArr.length;applyDesign(d,true)}},1000)}
 function renderDesigner(){const d=DES,r=derive(d);const opt=(o,v)=>Object.keys(o).map(k=>`<option ${k==v?'selected':''}>${k}</option>`).join('');
- const num=(k,lab,step=1)=>`<label>${lab} <input data-d="${k}" type=number step=${step} value="${d[k]}" style="width:70px"></label> `;
+ const UK={derrick_klbf:'klbf',dw_hp:'hp',td_torque:'ft-lbf',mwd_dp600:'psi',mw_ppg:'ppg'};const num=(k,lab,step=1)=>{const u=UK[k];return `<label>${U.lab(lab)} <input data-d="${k}" ${u?`data-u="${u}"`:''} type=number step=${u&&U.sys=='metric'?'any':step} value="${u?+U.fmt(U.v(u,d[k])):d[k]}" style="width:70px"></label> `};
  dEl.innerHTML=U.txt(`<b style="color:#8fd">Rig designer</b> <span style="color:#fc6">engineering estimates, SIMULATED physics</span> <button id="dx" style="${BTN};float:right">×</button><br>
  Name <input data-ds="name" value="${d.name}" style="width:250px"><br>
- <b>Hoisting</b><br>${num('derrick_klbf','Derrick rating klbf',50)}${num('dw_hp','Drawworks HP',100)}<label>Lines <select data-dn="lines">${[6,8,10,12,14].map(v=>`<option ${v==d.lines?'selected':''}>${v}</option>`).join('')}</select></label> <label>Wire in <select data-dn="wire_in">${Object.keys(WIRE).map(v=>`<option ${+v==d.wire_in?'selected':''}>${v}</option>`).join('')}</select></label><br>
+ <b>Hoisting</b><br>${num('derrick_klbf','Derrick rating klbf',50)}${num('dw_hp','Drawworks hp',100)}<label>Lines <select data-dn="lines">${[6,8,10,12,14].map(v=>`<option ${v==d.lines?'selected':''}>${v}</option>`).join('')}</select></label> <label>Wire in <select data-dn="wire_in">${Object.keys(WIRE).map(v=>`<option ${+v==d.wire_in?'selected':''}>${v}</option>`).join('')}</select></label><br>
  <b>Rotation</b><br>${num('td_torque','Top drive torque ft-lbf',1000)}${num('td_rpm','Max RPM',10)}<br>
- <b>Well control</b><br><label>BOP <select data-dn="bop_psi">${[3000,5000,10000,15000].map(v=>`<option ${v==d.bop_psi?'selected':''}>${v}</option>`).join('')}</select> psi</label><br>
+ <b>Well control</b><br><label>BOP <select data-dn="bop_psi">${[3000,5000,10000,15000].map(v=>`<option value="${v}" ${v==d.bop_psi?'selected':''}>${U.txt(v+' psi')}</option>`).join('')}</select></label><br>
  <b>Mud pumps</b> (${d.pumps.length})<table style="width:100%;font-size:11px">${r.pumps.map((p,i)=>`<tr><td>#${i+1}</td><td><select data-pt="${i}">${opt(PUMP_TYPES,p.type)}</select></td><td>liner <select data-pl="${i}">${p.T.liners.map(l=>`<option ${l==p.liner_in?'selected':''}>${l}</option>`).join('')}</select></td><td>${p.qmax.toFixed(0)} gpm · ${p.pmax.toFixed(0)} psi</td><td><button data-prm="${i}" style="${BTN}">−</button></td></tr>`).join('')}</table>
  <select id="dnewp">${opt(PUMP_TYPES)}</select><button id="daddp" style="${BTN}">+ Add mud pump</button><br>
- <b>Drillstring / BHA</b><br><label>Drill pipe <select data-dsel="dp">${opt(DP,d.dp)}</select></label> <label>Motor <select data-dsel="motor">${opt(MOTORS,d.motor)}</select></label><br>${num('mwd_dp600','MWD ΔP@600gpm psi',10)}${num('bit_in','Bit in',0.25)}${num('nozzles','Nozzles')}${num('noz_32','Nozzle /32')}${num('mw_ppg','Mud ppg',0.1)}<br>
+ <b>Drillstring / BHA</b><br><label>Drill pipe <select data-dsel="dp">${opt(DP,d.dp)}</select></label> <label>Motor <select data-dsel="motor">${opt(MOTORS,d.motor)}</select></label><br>${num('mwd_dp600','MWD ΔP @ 600 gpm psi',10)}${num('bit_in','Bit in',0.25)}${num('nozzles','Nozzles')}${num('noz_32','Nozzle /32')}${num('mw_ppg','Mud ppg',0.1)}<br>
  <b>Derived capacities</b><div style="display:grid;grid-template-columns:1fr 1fr;gap:1px 10px">
  <span>Rated hookload</span><b>${r.hook_rating.toFixed(0)} klbf</b><span>Drill-line limit (${d.lines} lines, eff ${(r.eff*100).toFixed(0)}%)</span><b>${r.wire_hook.toFixed(0)} klbf</b>
- <span>String weight at TD (${PH.PLAN.td_md} ft)</span><b>${r.string_klbf.toFixed(0)} klbf</b><span>Hoist speed at TD weight</span><b>${r.hoist_mps.toFixed(2)} m/s</b>
- <span>Top drive power</span><b>${r.td_hp.toFixed(0)} HP</b><span>Total pump hydraulic HP</span><b>${r.hhp} HP</b>
+ <span>String weight at TD (${PH.PLAN.td_md} ft)</span><b>${r.string_klbf.toFixed(0)} klbf</b><span>Hoist speed at TD weight</span><b>${U.sys==="metric"?r.hoist_mps.toFixed(2)+" m/s":(r.hoist_mps/0.3048).toFixed(1)+" ft/s"}</b>
+ <span>Top drive power</span><b>${r.td_hp.toFixed(0)} hp</b><span>Total pump hydraulic power</span><b>${r.hhp} hp</b>
  <span>Max flow (all pumps)</span><b>${r.qmax.toFixed(0)} gpm</b><span>Max pump pressure</span><b>${r.pmax.toFixed(0)} psi</b>
  <span>Est. SPP at ${r.qop.toFixed(0)} gpm</span><b>${r.spp_op.toFixed(0)} psi</b><span>Bit TFA</span><b>${r.tfa.toFixed(3)} in²</b></div>
  <div style="color:${r.W.length?'#f96':'#8f8'};margin-top:3px">${r.W.length?r.W.map(w=>'⚠ '+w).join('<br>'):'✓ No validation warnings'}</div>
@@ -209,7 +209,7 @@ function renderDesigner(){const d=DES,r=derive(d);const opt=(o,v)=>Object.keys(o
  <div style="color:#9ab;margin-top:2px"><small>Changes apply live to the physics: hookload interlock, hoist speed, TD torque/RPM limits, pump flow and pop-off, string losses, motor, MWD, bit.</small></div>`);
  const up=f=>{const n=JSON.parse(JSON.stringify(DES));f(n);applyDesign(n);renderDesigner()};
  dEl.querySelector('#dx').onclick=()=>dEl.style.display='none';
- dEl.querySelectorAll('[data-d]').forEach(i=>i.onchange=()=>up(n=>n[i.dataset.d]=+i.value));
+ dEl.querySelectorAll('[data-d]').forEach(i=>i.onchange=()=>up(n=>n[i.dataset.d]=i.dataset.u?U.x(+i.value,U.u(i.dataset.u),i.dataset.u):+i.value));
  dEl.querySelectorAll('[data-dn]').forEach(i=>i.onchange=()=>up(n=>n[i.dataset.dn]=+i.value));
  dEl.querySelectorAll('[data-ds],[data-dsel]').forEach(i=>i.onchange=()=>up(n=>n[i.dataset.ds||i.dataset.dsel]=i.value));
  dEl.querySelectorAll('[data-pt]').forEach(i=>i.onchange=()=>up(n=>{const T=PUMP_TYPES[i.value];n.pumps[+i.dataset.pt]={type:i.value,liner_in:T.liners[2]}}));
@@ -313,3 +313,4 @@ function renderEd(){const D=SEQLIB[cur]||{steps:[]};const names=Object.keys(SEQL
  E('qrawb').onclick=()=>{try{SEQLIB[cur]=JSON.parse(E('qraw').value);save()}catch(e){E('qmsg').textContent='JSON error: '+e.message}}}
 function importSeqs(t){const j=typeof t=='string'?JSON.parse(t):t;const s=j.sequences||j;let n=0;for(const k in s)if(Array.isArray(s[k].steps)){SEQLIB[k]={...s[k],_builtin:false};n++}saveSeqLib();PH.ev(S,'Imported '+n+' sequences');return n}
 window.__importSeqs=importSeqs;
+try{U.on(()=>{if(typeof dEl!=='undefined'&&dEl&&dEl.style.display!=='none'&&dEl.innerHTML)renderDesigner()})}catch(e){}

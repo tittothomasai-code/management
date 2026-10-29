@@ -305,7 +305,7 @@ function frame(now){const dtR=Math.min(0.1,(now-last)/1000);last=now;spd=+$('spd
  for(const t of tagEls){t.o.getWorldPosition(v3);v3.project(cam);t.el.style.left=((v3.x+1)/2*innerWidth)+'px';t.el.style.top=((1-v3.y)/2*innerHeight)+'px'}
  if(now-uiT>200){uiT=now;panelRows.forEach((r,i)=>{const el=document.getElementById('pv'+i);if(el)el.textContent=U.val(r[0],r[1]());const lb=document.getElementById('pl'+i);if(lb)lb.textContent=U.lab(r[0])});
   const h=Math.floor(S.t/3600),mi=Math.floor(S.t/60)%60;$('clock').textContent=U.txt(`SIM time ${h}h${String(mi).padStart(2,'0')}m  ×${spd}  |  MD ${S.md.toFixed(0)} ft  SPP ${S.spp.toFixed(0)} psi  Q ${S.Q.toFixed(0)} gpm  ROP ${S.rop.toFixed(0)} ft/h`)+(S.seq?'  |  CONNECTION: '+S.seq.steps[S.seq.i][0]:'');
-  $('log').innerHTML=S.events.slice(-6).reverse().map(e=>`${(e[0]/60).toFixed(1)}m ${e[1]}`).join('<br>')}
+  $('log').innerHTML=S.events.slice(-6).reverse().map(e=>`${(e[0]/60).toFixed(1)}m ${U.txt(e[1])}`).join('<br>')}
  requestAnimationFrame(frame)}
 requestAnimationFrame(frame);
 // test hooks
