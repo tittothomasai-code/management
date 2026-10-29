@@ -156,3 +156,11 @@ New files: `geo.js` (pure maths/parsers, node-testable) and `ext5.js` (UI/3D). H
 - Guardrails: parent match (trajectory must be in the active log's uidWell/uidWellbore; other wellbores never auto-used, manual pick shows "Wellbore mismatch"); HUD "Well / Wellbore / Trajectory"; currency ("Survey stale" > 100 m behind hole or > 24 h older than log; "Survey deeper than hole" > 100 m); re-poll every 60–300 s, stops on 401; sanity (MD monotonic, incl 0–180, azi 0–360, dogleg ≤ 15°/30 m) drops + counts bad stations.
 - "Survey debug" (WITSML panel): each query step, counts, first 300 chars of raw XMLout (credentials redacted), source, freshness, sanity badges.
 - Tests: v47_test.mjs (24 checks, SIM-TEST mock). Screenshots shots_live/96_v47_*.png.
+
+## v4.8 — MWD image, geology curtain, rotary/slide, Survey QC, connection rings
+- 🧭 Geo → Load from WITSML (read-only): id-only log listing in the active log's wellbore only, then mnemonic list. Image log = numbered bin set (e.g. ABG_B01..16) → unrolled strip vs MD + texture on 3D bore near bit.
+- Curtain section (TVD vs HD): trajectory coloured by mode, bit projection, target roof/floor following dip (WITSML marker if present, else "USER-DEFINED target (not from WITSML)"), gamma alongside; dipped planes in 3D.
+- Rotary (blue) / slide (orange): on-bottom only, slide = RPM < threshold (default 5) with pumps on; short flips smoothed; gaps off-bottom; slide % per stand; "mode unknown" without RPM.
+- Survey QC: slide intervals should show dogleg, rotary ≈ straight; survey vs near-bit inclination; summary with flags.
+- Connection rings toggle (default on): tap → time, depth, duration, joint length, source, confidence; optional colour by source (cyan detected / yellow inferred).
+- Tests: v48_test.mjs (mock SIM-TEST data). Real Adaga image mnemonics not yet verified.

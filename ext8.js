@@ -1,0 +1,150 @@
+// ext8.js v4.8: MWD azimuthal image + geology curtain section + drilling mode (rotary/slide) + Survey QC.
+// Read-only WITSML (GetFromStore via the existing proxy/call path). Guardrails: only logs in the ACTIVE LOG'S wellbore are used
+// (same uidWell + uidWellbore as the trajectory), data freshness shown, SIM-TEST labels on mock data, user-defined targets labelled as such.
+let C,S,THREE,X;const $=id=>document.getElementById(id);const FT=0.3048;
+const CF=JSON.parse(localStorage.getItem('dw_geo48')||'{}');const DEF={rpmThr:5,flowOn:200,sppOn:2000,minRun:3,standM:28.5,roof:null,rings:true,ringSrc:true,thick:3,dip:0,hd0:null,kb:0,dlsSlide:1.0,dlsRot:2.0,nbiTol:1.5};for(const k in DEF)if(CF[k]===undefined)CF[k]=DEF[k];
+const save=()=>localStorage.setItem('dw_geo48',JSON.stringify(CF));
+export const G8={img:null,fe:null,dr:null,modes:[],modeSrc:'',qc:null,state:'not loaded',diag:[],wb:'',well:'',sim:false,loadedAt:''};window.G8=G8;
+const es=t=>String(t??'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+// ---------- pure helpers (unit-tested) ----------
+export function findImageCurves(curves){const g={};for(const c of curves){const m=/^(.*?\D)(\d{1,2})$/i.exec(c.mn);if(!m||!m[1])continue;(g[m[1]]=g[m[1]]||[]).push({...c,bin:+m[2]})}
+ let best=null;for(const k in g){const a=g[k].sort((x,y)=>x.bin-y.bin);if(a.length>=4&&(!best||a.length>best.bins.length))best={prefix:k,bins:a}}return best}
+const pick=(ml,re)=>ml.findIndex(m=>re.test(m));
+export function classifyModes(rows,o=CF){// rows: {md(m), rpm, flow, spp, onBottom(bool|undefined)} sorted by md. Returns intervals {from,to,mode}
+ if(!rows.length)return [];const hasRpm=rows.some(r=>isFinite(r.rpm));const iv=[];
+ for(let i=1;i<rows.length;i++){const a=rows[i-1],r=rows[i];if(!(r.md>a.md))continue;if(r.onBottom===false){continue}
+  let m='unknown';if(hasRpm&&isFinite(a.rpm)){const pumps=(isFinite(a.flow)?a.flow>=o.flowOn:false)||(isFinite(a.spp)?a.spp>=o.sppOn:false)||(!isFinite(a.flow)&&!isFinite(a.spp));m=a.rpm<o.rpmThr&&pumps?'slide':'rotary'}
+  const gap=r.md-a.md>5;const L=iv.at(-1);if(L&&L.mode==m&&!gap&&Math.abs(L.to-a.md)<1e-6)L.to=r.md;else iv.push({from:a.md,to:r.md,mode:m})}
+ // smooth: runs shorter than minRun m between two runs of the same other mode are flipped
+ for(let k=1;k<iv.length-1;k++){const p=iv[k-1],c=iv[k],n=iv[k+1];if(c.to-c.from<o.minRun&&p.mode==n.mode&&p.mode!=c.mode&&Math.abs(p.to-c.from)<1e-6&&Math.abs(c.to-n.from)<1e-6){p.to=n.to;iv.splice(k,2);k--}}
+ return iv}
+export function slidePerStand(iv,o=CF){if(!iv.length)return [];const s0=Math.floor(iv[0].from/o.standM)*o.standM,e=iv.at(-1).to,out=[];
+ for(let a=s0;a<e;a+=o.standM){const b=a+o.standM;let sl=0,rot=0;for(const x of iv){const ov=Math.max(0,Math.min(b,x.to)-Math.max(a,x.from));if(x.mode=='slide')sl+=ov;else if(x.mode=='rotary')rot+=ov}if(sl+rot>0)out.push({from:a,to:b,slidePct:100*sl/(sl+rot),drilled:sl+rot})}return out}
+const R=Math.PI/180;
+export function dlsOf(a,b){const c=Math.cos((b.inc-a.inc)*R)-Math.sin(b.inc*R)*Math.sin(a.inc*R)*(1-Math.cos((b.azi-a.azi)*R));return Math.acos(Math.max(-1,Math.min(1,c)))/R/((b.mdM-a.mdM)||1)*30}
+// Survey QC: each survey interval vs mode in that interval. stations: [{mdM,inc,azi}], iv: mode intervals (m), nbi: [{md,v}] near-bit inclination
+export function surveyQC(st,iv,nbi,o=CF){const out={intervals:[],flags:[],nbi:[],ok:0,n:0};
+ for(let k=1;k<st.length;k++){const a=st[k-1],b=st[k];let sl=0,rot=0;for(const x of iv){const ov=Math.max(0,Math.min(b.mdM,x.to)-Math.max(a.mdM,x.from));if(x.mode=='slide')sl+=ov;else if(x.mode=='rotary')rot+=ov}
+  if(sl+rot<0.5*(b.mdM-a.mdM))continue;const pct=100*sl/(sl+rot),d=dlsOf(a,b),build=(b.inc-a.inc)/((b.mdM-a.mdM)||1)*30;let turn=((b.azi-a.azi+540)%360-180)/((b.mdM-a.mdM)||1)*30;
+  const r={from:a.mdM,to:b.mdM,slidePct:pct,dls:d,build,turn,flag:''};
+  if(pct>=50&&d<o.dlsSlide)r.flag='slide but near-straight survey (DLS '+d.toFixed(2)+'°/30m) — bad survey or misclassified mode';
+  else if(pct<=10&&d>o.dlsRot)r.flag='rotary but dogleg '+d.toFixed(2)+'°/30m — bad survey, misclassified mode, or formation walk';
+  out.n++;if(r.flag)out.flags.push(r);else out.ok++;out.intervals.push(r)}
+ if(nbi&&nbi.length)for(const s of st){let best=null;for(const p of nbi)if(!best||Math.abs(p.md-s.mdM)<Math.abs(best.md-s.mdM))best=p;if(best&&Math.abs(best.md-s.mdM)<=5){const d=s.inc-best.v;const r={md:s.mdM,survey:s.inc,nbi:best.v,diff:d};out.nbi.push(r);if(Math.abs(d)>o.nbiTol)out.flags.push({from:s.mdM,to:s.mdM,flag:'survey inc '+s.inc.toFixed(2)+'° vs near-bit '+best.v.toFixed(2)+'° (Δ '+d.toFixed(2)+'° > '+o.nbiTol+'°)'})}}
+ return out}
+// curtain geometry from min-curvature stations (ft): returns [{hd(m), tvd(m), md(m)}]
+export function curtain(calc){const o=[];let hd=0;for(let i=0;i<calc.length;i++){const p=calc[i];if(i){const q=calc[i-1];hd+=Math.hypot(p.ns-q.ns,p.ew-q.ew)*FT}o.push({hd,tvd:p.tvd*FT,md:p.md*FT})}return o}
+export const surfTvd=(hd,roofTvd,dip,hd0)=>roofTvd-Math.tan(dip*R)*(hd-hd0);// dip>0: surface rises (shallower) along the well direction
+// ---------- WITSML loading ----------
+async function Q(step,typ,q,opt){const r=await X.svQ(step,typ,q,opt);G8.diag.push(r.diag);return r}
+const NS='xmlns="http://www.witsml.org/schemas/1series" version="1.4.1.1"';
+const K=(d,t)=>[...d.getElementsByTagNameNS('*',t)],T=(n,t)=>K(n,t)[0]?.textContent?.trim()??'';
+async function depthData(w,b,L,fromM,toM){const r=await Q('data '+L.name,'log',`<logs ${NS}><log uidWell="${w}" uidWellbore="${b}" uid="${L.uid}"><startIndex uom="m">${fromM}</startIndex><endIndex uom="m">${toM}</endIndex><logData><mnemonicList/><unitList/><data/></logData></log></logs>`,'returnElements=data-only;maxReturnNodes=20000');
+ if(!r.ok)return null;const ml=T(r.d,'mnemonicList').split(',').map(s=>s.trim()),ul=T(r.d,'unitList').split(',').map(s=>s.trim());const rows=K(r.d,'data').map(n=>n.textContent.split(',').map(v=>v===''?NaN:+v));
+ const ix=Math.max(0,ml.indexOf(L.indexCurve||ml[0]));const f=/ft/i.test(ul[ix]||'')?FT:1;rows.forEach(rw=>rw.md=rw[ix]*f);rows.sort((a,b)=>a.md-b.md);return {ml,ul,rows,L}}
+export async function load(){const W=X.WML,CFG=X.CFG;G8.diag=[];if(W.authDead){G8.state='auth failed — not loading';return}
+ const w=W.log?.w||CFG.svWell,b=W.log?.b||W.sv?.logWb||CFG.svWellbore;if(!w||!b){G8.state='no active well/wellbore — connect and Start a log first';render();return}
+ G8.well=w;G8.wb=b;G8.sim=X.svSimTest();G8.state='loading…';render();
+ const li=await Q('1 list logs (id-only) in log wellbore '+b,'log',`<logs ${NS}><log uidWell="${w}" uidWellbore="${b}" uid=""><name/></log></logs>`,'returnElements=id-only');
+ const logs=li.ok?K(li.d,'log').filter(l=>l.getAttribute('uidWellbore')==b||!l.getAttribute('uidWellbore')).map(l=>({uid:l.getAttribute('uid'),name:T(l,'name')})):[];G8.logs=logs;
+ const hdr=async L=>{const r=await Q('2 mnemonics of "'+L.name+'"','log',`<logs ${NS}><log uidWell="${w}" uidWellbore="${b}" uid="${L.uid}"><name/><indexType/><indexCurve/><startIndex/><endIndex/><logCurveInfo><mnemonic/><unit/></logCurveInfo></log></logs>`,'returnElements=requested');
+  if(!r.ok)return L;const l=K(r.d,'log')[0];if(!l)return L;return {...L,indexType:T(l,'indexType'),indexCurve:T(l,'indexCurve'),end:+T(l,'endIndex'),endUom:K(l,'endIndex')[0]?.getAttribute('uom')||'m',curves:K(l,'logCurveInfo').map(c=>({mn:T(c,'mnemonic'),unit:T(c,'unit')}))}};
+ const byName=re=>logs.filter(l=>re.test(l.name));const hole=(S.md||0)*FT;
+ // image
+ let img=null;for(const L0 of [...byName(/image/i),...logs.filter(l=>!/image/i.test(l.name))].slice(0,8)){const L=await hdr(L0);const ic=L.curves&&findImageCurves(L.curves);if(ic&&!/time/i.test(L.indexType||'')){img={L,ic};break}}
+ if(img){const d=await depthData(w,b,img.L,Math.max(0,(img.L.end||hole)-400),img.L.end||hole+50);if(d){const idx=img.ic.bins.map(c=>d.ml.indexOf(c.mn));G8.img={name:img.L.name,prefix:img.ic.prefix,unit:img.ic.bins[0].unit,nb:idx.length,rows:d.rows.map(r=>({md:r.md,v:idx.map(i=>r[i])})),end:img.L.end}}}else G8.img=null;
+ // formation eval: gamma + near-bit inclination
+ const fe0=byName(/formation eval/i)[0];G8.fe=null;if(fe0){const L=await hdr(fe0);const d=await depthData(w,b,L,0,(L.end||hole)+50);if(d){const gi=pick(d.ml,/^(GR|GRA|GAM|GAMMA|GRC|GR_?CORR|MWD_?GR|GRAM)\b/i),ni=pick(d.ml,/^(NBI|INCL?_?NB|NB_?INC|NEAR.?BIT|ABI|INCNB)/i);
+  G8.fe={name:L.name,gr:gi>=0?d.rows.map(r=>({md:r.md,v:r[gi]})).filter(p=>isFinite(p.v)):[],grMn:d.ml[gi]||'',nbi:ni>=0?d.rows.map(r=>({md:r.md,v:r[ni]})).filter(p=>isFinite(p.v)):[],nbiMn:d.ml[ni]||'',end:L.end}}}
+ // drilling mode: depth-based drilling log (preferred), else live time-log history
+ const dr0=byName(/depth.?based|drilling.*depth/i)[0];G8.modes=[];G8.modeSrc='';
+ if(dr0){const L=await hdr(dr0);const d=await depthData(w,b,L,0,(L.end||hole)+50);if(d){const ri=pick(d.ml,/^(RPMA|RPM|SRPM|TRPM|TDRPM|ROTARY_?RPM|RPM_?SURF)/i),fi=pick(d.ml,/^(MFIA|FLOW|MFI|TFLO|FLOWIN)/i),pi=pick(d.ml,/^(SPPA|SPP)/i);
+  G8.modeSrc=ri>=0?'"'+L.name+'" '+d.ml[ri]+' (depth-based)':'"'+L.name+'": no RPM curve — mode unknown';G8.modes=classifyModes(d.rows.map(r=>({md:r.md,rpm:ri>=0?r[ri]:NaN,flow:fi>=0?r[fi]:NaN,spp:pi>=0?r[pi]:NaN})))}}
+ if(!G8.modes.length)modeFromHist();
+ G8.loadedAt=new Date().toISOString();qc();G8.state='loaded';render();build3D()}
+function modeFromHist(){const W=X.WML,h=W.hist||[],ml=W.histMl||[];if(!h.length){G8.modeSrc='no drilling data — mode unknown';return}
+ const ix=n=>ml.findIndex(m=>n.test(m)),dm=ix(/^DMEA$|^DEPT?H?$|HOLE/i),bd=ix(/^BDE|^BDEP|BIT/i),rp=ix(/^RPMA|RPM/i),fl=ix(/^MFIA|FLOW/i),sp=ix(/^SPPA|SPP/i);if(dm<0){G8.modeSrc='time log has no hole depth — mode unknown';return}
+ let prev=-1;const rows=[];for(const {x} of h){const hd=+x[dm],bdv=bd>=0?+x[bd]:hd;const on=hd>prev&&bdv>=hd-1.5;rows.push({md:hd,rpm:rp>=0?+x[rp]:NaN,flow:fl>=0?+x[fl]:NaN,spp:sp>=0?+x[sp]:NaN,onBottom:prev<0?true:on});prev=Math.max(prev,hd)}
+ G8.modes=classifyModes(rows);G8.modeSrc=rp>=0?'live time log '+ml[rp]+' (on-bottom only)':'time log has no RPM — mode unknown'}
+function qc(){const st=(window.GEO?.surv?.stations||[]).map(s=>({mdM:s.md*FT,inc:s.inc,azi:s.azi}));G8.qc=surveyQC(st,G8.modes,G8.fe?.nbi||[])}
+// ---------- 3D: mode-coloured path, image texture near bit, dipping target planes ----------
+let grp=null;const MC={rotary:0x2f7cff,slide:0xff8a00,unknown:0x888888};
+function curvePart(c,a,b){const n=Math.max(2,Math.ceil((b-a)*40)),pts=[];for(let i=0;i<=n;i++)pts.push(c.getPointAt(Math.min(1,a+(b-a)*i/n)));return new THREE.CatmullRomCurve3(pts)}
+function build3D(){try{const c=C.getWell&&C.getWell();if(grp){C.UG.remove(grp);grp.traverse(o=>{o.geometry&&o.geometry.dispose()})}grp=new THREE.Group();grp.name='g8';C.UG.add(grp);if(!c)return;const tot=(S.md||1)*FT;
+ for(const m of G8.modes){const a=m.from/tot,b=Math.min(1,m.to/tot);if(!(b>a)||a>=1)continue;grp.add(new THREE.Mesh(new THREE.TubeGeometry(curvePart(c,a,b),8,1.0,8),new THREE.MeshBasicMaterial({color:MC[m.mode]})))}
+ if(G8.img&&G8.img.rows.length>2){const cv=imgCanvas(512,64,true);const tx=new THREE.CanvasTexture(cv);const r=G8.img.rows,a=Math.max(0,r[0].md/tot),b=Math.min(1,r.at(-1).md/tot);if(b>a)grp.add(new THREE.Mesh(new THREE.TubeGeometry(curvePart(c,a,b),64,1.15,32),new THREE.MeshBasicMaterial({map:tx,side:THREE.DoubleSide,transparent:true,opacity:0.95})))}
+ const tg=target();if(tg&&window.GEO?.calc?.length>=2){const cu=curtain(GEO.calc),l=cu.at(-1),f=cu[0];const p0=GEO.calc[0],p1=GEO.calc.at(-1);let ux=(p1.ns-p0.ns),uy=(p1.ew-p0.ew);const n=Math.hypot(ux,uy)||1;ux/=n;uy/=n;
+  for(const [tv,col] of [[tg.roof,0x66ff66],[tg.roof+tg.thick,0xff6666]]){const P=(hd,lat)=>{const t=surfTvd(hd,tv,tg.dip,tg.hd0)/FT;const h=hd/FT;return C.W(p0.ns+ux*h-uy*lat,p0.ew+uy*h+ux*lat,t)};const g=new THREE.BufferGeometry().setFromPoints([P(f.hd,-300),P(l.hd+200,-300),P(l.hd+200,300),P(f.hd,-300),P(l.hd+200,300),P(f.hd,300)]);g.computeVertexNormals();grp.add(new THREE.Mesh(g,new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:0.22,side:THREE.DoubleSide,depthWrite:false})))}}
+ }catch(e){console.warn('g8 3D',e)}}
+// ---------- connection rings on the drilled path (tap for details) ----------
+let RG=null,RK='';export function connList(){const L=(GX.bit?.conns?.()||[]).filter(c=>isFinite(c.depth_m)).sort((a,b)=>a.depth_m-b.depth_m);return L.map((c,i)=>({...c,joint_m:i?c.depth_m-L[i-1].depth_m:NaN,src:c.inferred?'inferred':'detected'}))}
+export function buildRings(force){const L=CF.rings?connList():[],k=L.length+'|'+(L.at(-1)?.depth_m||0)+'|'+CF.ringSrc+'|'+Math.round(S.md||0)+'|'+CF.rings;if(!force&&k==RK)return;RK=k;
+ if(RG){C.UG.remove(RG);RG.traverse(o=>o.geometry&&o.geometry.dispose())}RG=new THREE.Group();RG.name='connRings';C.UG.add(RG);const c=C.getWell&&C.getWell();if(!c||!L.length)return;const tot=(S.md||1)*FT;
+ for(const x of L){const f=x.depth_m/tot;if(!(f>0&&f<=1.0001))continue;const t=Math.min(1,f),p=c.getPointAt(t),tg=c.getTangentAt(t);const col=!CF.ringSrc?0xffffff:x.inferred?0xffd54f:0x00e5ff;
+  const m=new THREE.Mesh(new THREE.TorusGeometry(1.5,0.22,8,24),new THREE.MeshBasicMaterial({color:col}));m.position.copy(p);m.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),tg.normalize());m.userData.conn=x;RG.add(m)}}
+function ringTap(ev){if(!RG||!RG.children.length||!C.cam)return;const el=ev.target,r=el.getBoundingClientRect();const v=new THREE.Vector2((ev.clientX-r.left)/r.width*2-1,-(ev.clientY-r.top)/r.height*2+1);const rc=new THREE.Raycaster();rc.setFromCamera(v,C.cam);const h=rc.intersectObjects(RG.children,false)[0];if(h)showConn(h.object.userData.conn,ev.clientX,ev.clientY)}
+export function showConn(x,cx=60,cy=200){let e=$('ringpop');if(!e){e=document.createElement('div');e.id='ringpop';e.style.cssText='position:fixed;z-index:70;background:#000d;color:#fff;border:1px solid #0ef;border-radius:6px;padding:6px 8px;font:12px system-ui;max-width:240px';e.onclick=()=>e.style.display='none';document.body.appendChild(e)}
+ const sim=/SIM/i.test(GX.bit?.state?.()?.tag||'')||GX.bit?.state?.()?.st?.on;const tt=x.tSlipsIn??x.tOff;const ts=isFinite(tt)?(tt>1e9?new Date(tt*1000).toLocaleString('en-AU',{timeZone:'Australia/Brisbane'})+' AEST':'t+'+Math.round(tt-(GX.bit.connT0?.()||0))+' s (SIM-TEST timeline)'):'–';
+ e.innerHTML=`<b>Connection ${sim?'(SIM-TEST)':''}</b><br>Time: ${ts}<br>Depth: ${x.depth_m.toFixed(1)} m${isFinite(x.bitDepth_m)?' (bit '+x.bitDepth_m.toFixed(1)+' m)':''}<br>Duration: ${isFinite(x.duration_s)?Math.round(x.duration_s)+' s':'–'}${isFinite(x.slips_s)?' · in slips '+Math.round(x.slips_s)+' s':''}<br>Joint/stand added: ${isFinite(x.joint_m)?x.joint_m.toFixed(1)+' m':'– (first)'}<br>Source: ${x.src}${x.inferred?' ('+es(x.label||'inferred from bit depth')+')':' (slips/pump data)'}<br>Confidence: ${isFinite(x.confidence)?(x.confidence*100).toFixed(0)+'%':x.inferred?'–':'high (detected)'}<div style="opacity:.6">tap to close</div>`;
+ e.style.left=Math.min(innerWidth-250,cx)+'px';e.style.top=Math.min(innerHeight-170,cy)+'px';e.style.display='block'}
+// ---------- target (WITSML markers if present, else user-defined) ----------
+function target(){const L=(window.GEO?.layers||[]).filter(l=>/roof|target|top/i.test(l.name)&&isFinite(l.top_tvd));if(L.length&&CF.roof==null){const r=L[0];return {roof:r.top_tvd*FT,thick:isFinite(r.base_tvd)?(r.base_tvd-r.top_tvd)*FT:CF.thick,dip:r.dip??0,hd0:0,src:'WITSML formationMarker "'+r.name+'"'+(r.dip==null?' (no dip given → flat)':'')}}
+ if(CF.roof==null)return null;return {roof:CF.roof,thick:CF.thick,dip:CF.dip,hd0:CF.hd0??0,src:'USER-DEFINED target (not from WITSML)'}}
+// ---------- drawing ----------
+const GR=v=>{const t=Math.max(0,Math.min(1,(v-20)/130));return `rgb(${255-90*t|0},${245-200*t|0},${200-200*t|0})`};
+function imgCanvas(w,h,unrolled){const cv=document.createElement('canvas');cv.width=w;cv.height=h;const g=cv.getContext('2d'),I=G8.img;if(!I)return cv;const r=I.rows,a=r[0].md,b=r.at(-1).md;let lo=1e9,hi=-1e9;r.forEach(x=>x.v.forEach(v=>{if(isFinite(v)){lo=Math.min(lo,v);hi=Math.max(hi,v)}}));
+ for(const x of r){const px=(x.md-a)/(b-a||1)*w;for(let k=0;k<I.nb;k++){const v=x.v[k],t=(v-lo)/((hi-lo)||1);g.fillStyle=isFinite(v)?`rgb(${255-60*t|0},${240-170*t|0},${200-190*t|0})`:'#000';g.fillRect(px,k*h/I.nb,Math.max(1,w/r.length)+1,h/I.nb+1)}}return cv}
+function axisMD(g,a,b,x0,w,y){g.fillStyle='#ccc';g.font='10px system-ui';for(let m=Math.ceil(a/20)*20;m<=b;m+=20){const x=x0+(m-a)/(b-a)*w;g.fillRect(x,y,1,4);g.fillText(m,x-8,y+14)}}
+function render(){const box=$('g8body');if(!box)return;const lab=G8.sim?'<b style="color:#fd8">SIM-TEST mock data — not real</b>':'WITSML (read-only)';const tg=target();
+ $('g8st').innerHTML=`${lab} · well ${es(G8.well)} / wellbore ${es(G8.wb)} (same parent as active log + trajectory) · ${es(G8.state)}${G8.loadedAt?' · loaded '+G8.loadedAt.slice(11,19)+' UTC':''}`;
+ const md=(S.md||0)*FT;const fresh=[];if(G8.img){const beh=md-G8.img.rows.at(-1).md;fresh.push('image to '+G8.img.rows.at(-1).md.toFixed(0)+' m ('+(beh>30?'<span style="color:#fb4">⚠ '+beh.toFixed(0)+' m behind hole — stale/sensor offset</span>':'current')+')')}
+ if(G8.fe?.gr?.length)fresh.push('gamma ('+es(G8.fe.grMn)+') to '+G8.fe.gr.at(-1).md.toFixed(0)+' m');
+ $('g8fr').innerHTML=(fresh.join(' · ')||'no MWD image/gamma loaded')+'<br>Mode: '+es(G8.modeSrc||'not loaded')+` · <span style="color:#2f7cff">■ Rotary</span> <span style="color:#ff8a00">■ Slide</span> <span style="color:#888">■ mode unknown</span> · slide = RPM &lt; ${CF.rpmThr} rpm with pumps on, on bottom`;
+ drawTracks();drawCurtain();drawQC()}
+function drawTracks(){const cv=$('g8trk');if(!cv)return;const w=cv.width=Math.min(900,cv.clientWidth*2||700),h=cv.height=300,g=cv.getContext('2d');g.fillStyle='#111';g.fillRect(0,0,w,h);
+ const md=(S.md||0)*FT,a=G8.img?G8.img.rows[0].md:Math.max(0,md-300),b=Math.max(a+10,G8.img?G8.img.rows.at(-1).md:md);g.font='11px system-ui';
+ if(G8.img){g.drawImage(imgCanvas(Math.round(w-40),90,true),40,4);g.fillStyle='#ccc';g.fillText('IMG',2,40);g.fillText(G8.img.nb+' bins',2,54)}else{g.fillStyle='#888';g.fillText('No MWD image log in this wellbore',50,50)}
+ const gr=(G8.fe?.gr||[]).filter(p=>p.md>=a&&p.md<=b);g.strokeStyle='#e040fb';g.beginPath();gr.forEach((p,i)=>{const x=40+(p.md-a)/(b-a)*(w-40),y=190-Math.min(1,Math.max(0,p.v/250))*90;i?g.lineTo(x,y):g.moveTo(x,y)});g.stroke();g.fillStyle='#ccc';g.fillText('GR',2,150);
+ for(const m of G8.modes){if(m.to<a||m.from>b)continue;g.fillStyle='#'+MC[m.mode].toString(16).padStart(6,'0');const x0=40+(Math.max(a,m.from)-a)/(b-a)*(w-40),x1=40+(Math.min(b,m.to)-a)/(b-a)*(w-40);g.fillRect(x0,200,Math.max(1,x1-x0),16)}g.fillStyle='#ccc';g.fillText('MODE',2,212);
+ for(const s of slidePerStand(G8.modes)){if(s.to<a||s.from>b)continue;const x0=40+(Math.max(a,s.from)-a)/(b-a)*(w-40),x1=40+(Math.min(b,s.to)-a)/(b-a)*(w-40);g.fillStyle='#ff8a00';g.fillRect(x0,260-s.slidePct*0.3,Math.max(1,x1-x0-1),s.slidePct*0.3);g.fillStyle='#fff';g.fillText(s.slidePct.toFixed(0)+'%',x0+1,258-s.slidePct*0.3)}
+ g.fillStyle='#ccc';g.fillText('slide%',2,250);g.fillText('/stand',2,262);axisMD(g,a,b,40,w-40,272);g.fillText('MD, m',w-40,296)}
+function drawCurtain(){const cv=$('g8cur');if(!cv)return;const w=cv.width=Math.min(900,cv.clientWidth*2||700),h=cv.height=380,g=cv.getContext('2d');g.fillStyle='#2a1c10';g.fillRect(0,0,w,h);
+ const calc=window.GEO?.calc||[];if(calc.length<2){g.fillStyle='#fd8';g.font='14px system-ui';g.fillText('No survey — no curtain section (load trajectory first)',20,40);return}
+ const cu=curtain(calc),md=(S.md||0)*FT,l=cu.at(-1),c2=calc.at(-1);const proj=md>l.md?{hd:l.hd+(md-l.md)*Math.sin(c2.inc*R),tvd:l.tvd+(md-l.md)*Math.cos(c2.inc*R),md}:null;
+ const tg=target();const gx0=70;const hdA=Math.max(0,(proj||l).hd-Math.max(200,(proj||l).hd*0.5)),hdB=(proj||l).hd+60;const vis=cu.filter(p=>p.hd>=hdA);const tv=[...vis.map(p=>p.tvd),proj?.tvd??l.tvd];if(tg){tv.push(surfTvd(hdA,tg.roof,tg.dip,tg.hd0),surfTvd(hdB,tg.roof+tg.thick,tg.dip,tg.hd0))}
+ let t0=Math.min(...tv)-10,t1=Math.max(...tv)+10;const X0=hd=>gx0+(hd-hdA)/(hdB-hdA)*(w-gx0-50),Y=t=>20+(t-t0)/(t1-t0)*(h-50);
+ // gamma colour bands by TVD (from FE gamma mapped through trajectory)
+ if(G8.fe?.gr?.length){const pts=G8.fe.gr.map(p=>{let k=cu.findIndex(c=>c.md>=p.md);if(k<1)return null;const a=cu[k-1],b=cu[k],f=(p.md-a.md)/((b.md-a.md)||1);return {tvd:a.tvd+(b.tvd-a.tvd)*f,v:p.v}}).filter(Boolean);for(const p of pts){g.fillStyle=GR(p.v);g.globalAlpha=0.25;g.fillRect(gx0,Y(p.tvd),w-gx0-50,2)}g.globalAlpha=1;
+  // gamma log alongside (left track)
+  g.strokeStyle='#7f7';g.beginPath();pts.forEach((p,i)=>{const x=4+Math.min(1,p.v/250)*60;i?g.lineTo(x,Y(p.tvd)):g.moveTo(x,Y(p.tvd))});g.stroke();g.fillStyle='#7f7';g.font='10px system-ui';g.fillText('GR '+es(G8.fe.grMn),4,14)}
+ if(tg){g.fillStyle='rgba(255,200,0,0.28)';g.beginPath();g.moveTo(X0(hdA),Y(surfTvd(hdA,tg.roof,tg.dip,tg.hd0)));g.lineTo(X0(hdB),Y(surfTvd(hdB,tg.roof,tg.dip,tg.hd0)));g.lineTo(X0(hdB),Y(surfTvd(hdB,tg.roof+tg.thick,tg.dip,tg.hd0)));g.lineTo(X0(hdA),Y(surfTvd(hdA,tg.roof+tg.thick,tg.dip,tg.hd0)));g.fill();
+  for(const [d,col,nm] of [[0,'#ff5','TARGET ROOF'],[tg.thick,'#f66','TARGET FLOOR']]){g.strokeStyle=col;g.beginPath();g.moveTo(X0(hdA),Y(surfTvd(hdA,tg.roof+d,tg.dip,tg.hd0)));g.lineTo(X0(hdB),Y(surfTvd(hdB,tg.roof+d,tg.dip,tg.hd0)));g.stroke();g.fillStyle=col;g.font='11px system-ui';g.fillText(nm,X0(hdB)-80,Y(surfTvd(hdB,tg.roof+d,tg.dip,tg.hd0))-3)}
+  g.fillStyle='#fd8';g.fillText(tg.src+' · dip '+tg.dip+'°',gx0+4,h-6)}
+ // plan (if a plan trajectory exists in the SAME wellbore)
+ const plan=(X.WML.svCands||[]).find(c=>/plan/i.test(c.name)&&c.parent&&c.st?.length>=2);if(plan&&window.GEO?.minCurv){}
+ if(plan){try{const pc=curtain(GEO.minCurv?GEO.minCurv(plan.st):[]);if(pc.length){g.setLineDash([6,4]);g.strokeStyle='#33f';g.beginPath();pc.forEach((p,i)=>i?g.lineTo(X0(p.hd),Y(p.tvd)):g.moveTo(X0(p.hd),Y(p.tvd)));g.stroke();g.setLineDash([])}}catch{}}
+ // trajectory coloured by mode
+ const modeAt=m=>G8.modes.find(x=>m>=x.from&&m<x.to)?.mode;g.lineWidth=3;for(let i=1;i<cu.length;i++){const a=cu[i-1],b=cu[i];if(b.hd<hdA)continue;g.strokeStyle={rotary:'#2f7cff',slide:'#ff8a00'}[modeAt((a.md+b.md)/2)]||'#f4f';g.beginPath();g.moveTo(X0(a.hd),Y(a.tvd));g.lineTo(X0(b.hd),Y(b.tvd));g.stroke()}g.lineWidth=1;
+ for(const p of vis){g.fillStyle='#fff';g.fillRect(X0(p.hd)-1,Y(p.tvd)-1,3,3)}
+ if(proj){g.strokeStyle='#0f0';g.setLineDash([4,3]);g.beginPath();g.moveTo(X0(l.hd),Y(l.tvd));g.lineTo(X0(proj.hd),Y(proj.tvd));g.stroke();g.setLineDash([]);g.fillStyle='#0f0';g.fillText('bit projection '+md.toFixed(0)+' m MD',X0(proj.hd)-90,Y(proj.tvd)+14)}
+ g.fillStyle='#ccc';g.font='10px system-ui';for(let t=Math.ceil(t0/10)*10;t<=t1;t+=10){g.fillText(t+(CF.kb?' ('+(t-CF.kb).toFixed(0)+' ss)':''),w-48,Y(t)+3)}for(let d=Math.ceil(hdA/50)*50;d<=hdB;d+=50)g.fillText(d,X0(d)-8,h-18);g.fillText('TVD m',w-48,12);g.fillText('HD along well, m',w/2-30,h-6+0)}
+function drawQC(){const e=$('g8qc');if(!e)return;const q=G8.qc;if(!q){e.innerHTML='Survey QC: not run';return}const sp=slidePerStand(G8.modes),tot=sp.reduce((s,x)=>s+x.drilled,0),sl=sp.reduce((s,x)=>s+x.drilled*x.slidePct/100,0);
+ e.innerHTML=`<b>Survey QC</b> ${G8.sim?'(SIM-TEST)':''}: ${q.n} survey intervals with mode data · ${q.ok} consistent · <span style="color:${q.flags.length?'#fb4':'#7f7'}">${q.flags.length} flagged</span> · overall slide ${tot?(100*sl/tot).toFixed(0):'–'}% of ${tot.toFixed(0)} m${G8.fe?.nbi?.length?' · near-bit inc '+es(G8.fe.nbiMn)+' compared at '+q.nbi.length+' stations':' · no near-bit inclination curve'}`+
+ (q.flags.length?'<ul style="margin:2px 0;padding-left:16px">'+q.flags.slice(0,12).map(f=>`<li>${f.from.toFixed(0)}–${f.to.toFixed(0)} m: ${es(f.flag)}</li>`).join('')+'</ul>':'')+`<div style="opacity:.7">Rule: slide ≥50% interval should show DLS ≥ ${CF.dlsSlide}°/30m; rotary (≤10% slide) should be ≤ ${CF.dlsRot}°/30m; |survey − near-bit inc| ≤ ${CF.nbiTol}°.</div>`}
+// ---------- UI ----------
+function ui(){if($('g8btn'))return;const b=document.createElement('button');b.id='g8btn';b.textContent='🧭 Geo';b.style.cssText='position:fixed;right:6px;top:calc(env(safe-area-inset-top,0px) + 120px);z-index:40;background:#234;color:#fff;border:1px solid #567;border-radius:6px;padding:6px 8px;font:13px system-ui';document.body.appendChild(b);
+ const p=document.createElement('div');p.id='g8';p.style.cssText='display:none;position:fixed;inset:0;z-index:60;background:#0d1117f2;color:#ddd;overflow:auto;padding:calc(env(safe-area-inset-top,0px) + 8px) 8px 40px;font:12px system-ui';
+ const inp=(id,l,v,st='any')=>`<label style="margin-right:6px">${l} <input id=${id} type=number step=${st} value="${v??''}" style="width:64px"></label>`;
+ p.innerHTML=`<div style="display:flex;gap:6px;align-items:center"><b style="font-size:14px">Geosteering · MWD image · geology</b><span style="flex:1"></span><button id=g8load>⟳ Load from WITSML</button><button id=g8x>✕</button></div>
+ <div id=g8st style="margin:4px 0"></div><div id=g8fr style="margin:4px 0"></div><div id=g8body><canvas id=g8trk style="width:100%;height:150px;display:block"></canvas><div style="margin:4px 0;font-weight:bold">Curtain section (TVD vs horizontal length along well)</div><canvas id=g8cur style="width:100%;height:190px;display:block"></canvas><div id=g8qc style="margin:6px 0;padding:4px;background:#1b2330;border-radius:4px"></div></div>
+ <details><summary>Target / mode settings</summary>${inp('g8roof','Roof TVD m',CF.roof)}${inp('g8th','Thickness m',CF.thick)}${inp('g8dip','Dip ° (+ rises along well)',CF.dip)}${inp('g8hd0','Ref HD m',CF.hd0)}${inp('g8kb','RT elev m (TVDSS)',CF.kb)}<br>${inp('g8rpm','Slide if RPM <',CF.rpmThr)}${inp('g8min','Smooth runs < m',CF.minRun)}${inp('g8std','Stand m',CF.standM)}<br><label><input type=checkbox id=g8ring ${CF.rings?'checked':''}> Connection rings</label> <label><input type=checkbox id=g8rsrc ${CF.ringSrc?'checked':''}> colour by source (<span style=color:#0ef>detected</span> / <span style=color:#fd5>inferred</span>)</label><br><button id=g8apply>Apply</button> <button id=g8clr>Clear user target</button></details>`;
+ document.body.appendChild(p);b.onclick=()=>{p.style.display=p.style.display=='none'?'block':'none';if(p.style.display=='block'){if(G8.state=='not loaded'&&X.WML.connected)load();else render()}};$('g8x').onclick=()=>p.style.display='none';$('g8load').onclick=()=>load();
+ $('g8apply').onclick=()=>{const n=id=>{const v=$(id).value;return v===''?null:+v};CF.roof=n('g8roof');CF.thick=n('g8th')??3;CF.dip=n('g8dip')??0;CF.hd0=n('g8hd0');CF.kb=n('g8kb')??0;CF.rpmThr=n('g8rpm')??5;CF.minRun=n('g8min')??3;CF.standM=n('g8std')??28.5;save();if(G8.loadedAt)load();else{render();build3D()}};
+ $('g8ring').onchange=e=>{CF.rings=e.target.checked;save();buildRings(true)};$('g8rsrc').onchange=e=>{CF.ringSrc=e.target.checked;save();buildRings(true)};
+ $('g8clr').onclick=()=>{CF.roof=null;save();render();build3D()}}
+export function init(ctx){C=ctx;S=C.S;THREE=C.THREE;X=window.GX?.witsml;if(!X){console.warn('ext8: no witsml');return}ui();
+ function view3D(u=0.8){const o={modes:0,img:0,planes:0};if(grp)grp.traverse(m=>{if(m.isMesh){if(m.material.map)o.img++;else if(m.material.transparent)o.planes++;else o.modes++}});const c=C.getWell&&C.getWell();if(c&&C.ctl){const p=C.UG.localToWorld(c.getPointAt(u).clone());C.ctl.target.copy(p);C.cam.position.copy(p.clone().add(new THREE.Vector3(60,15,60)));C.ctl.update&&C.ctl.update()}return o}
+GX.geo8={view3D,buildRings,connList,showConn,G8,load,render,build3D,classifyModes,slidePerStand,surveyQC,findImageCurves,curtain,surfTvd,dlsOf,CF};
+ setInterval(()=>{if(G8.loadedAt&&X.WML.connected&&!X.WML.authDead&&Date.now()-Date.parse(G8.loadedAt)>300000)load().catch(()=>{})},30000);// re-load at most every 5 min; stops on 401
+ try{(C.ren?.domElement||document.querySelector('canvas')).addEventListener('pointerup',ringTap)}catch{};setInterval(()=>buildRings(),2000);
+ setInterval(()=>{if(G8.loadedAt&&$('g8')?.style.display=='block'){qc();render()}},5000)}

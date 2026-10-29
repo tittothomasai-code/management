@@ -1,7 +1,7 @@
 // ext5.js v3.8: subsurface layers (formation tops as 3D strata) + survey (min curvature) panels.
 // No server calls: WITSML formationMarker / trajectory XML is parsed from pasted or loaded text (hand-made samples in tests).
 // LIVE badge only ever shown for survey data pushed via GEO.ingestTrajectory(xml,{live:true}) from a live WITSML connection; files/manual/examples are SIM.
-import * as GG from './geo.js?v=47';
+import * as GG from './geo.js?v=48';
 let C,S,THREE,G3,PATH,lay,sur,rd;const KEY='dw-geo';const $=id=>document.getElementById(id);
 const GEO={layers:[],surv:{src:'SIM',name:'',live:false,stations:[]},calc:[]};window.GEO=GEO;
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -96,7 +96,7 @@ function importSurvey(t,name,o={}){try{let st,src,nm=name;if(/<\s*(\w+:)?traject
 GEO.appendStations=(st,o={})=>{if(!(GEO.surv.src==o.src&&GEO.surv.name==o.name)||!GEO.surv.stations.length){GEO.surv={src:o.src,name:o.name,live:!!o.live,simTest:!!o.simTest,stations:[]}}GEO.surv.live=!!o.live;GEO.surv.simTest=!!o.simTest;const n=GG.mergeStations(GEO.surv.stations,st);if(n){ev((o.live?'LIVE':'SIM-TEST')+' survey: +'+n+' station(s), last MD '+L(GEO.surv.stations.at(-1).md)+' '+LU());changed()}return n};
 GEO.ingestTrajectory=(xml,o={})=>importSurvey(xml,'WITSML',o);GEO.importLayers=importLayers;
 // v3.9 per-well replica: full reset (no carry-over) + casing from wbGeometry
-GEO.casing=[];GEO.resetWell=(tag)=>{GEO.surv={src:'SIM',name:'',live:false,simTest:false,stations:[]};GEO.layers=GG.SIM_LAYERS();GEO.layerSrc='SIM';GEO.casing=[];GEO._proj=null;try{localStorage.removeItem(KEY)}catch{}ev('Well switched'+(tag?' to '+tag:'')+': survey, layers and casing reset (SIM until the server provides them)');changed()};
+GEO.minCurv=st=>GG.minCurvStations(st);GEO.casing=[];GEO.resetWell=(tag)=>{GEO.surv={src:'SIM',name:'',live:false,simTest:false,stations:[]};GEO.layers=GG.SIM_LAYERS();GEO.layerSrc='SIM';GEO.casing=[];GEO._proj=null;try{localStorage.removeItem(KEY)}catch{}ev('Well switched'+(tag?' to '+tag:'')+': survey, layers and casing reset (SIM until the server provides them)');changed()};
 GEO.setCasing=(secs)=>{GEO.casing=secs||[];build3D()};;GEO.importSurvey=importSurvey;
 function changed(keepLay){recalc();S._lastBD=null;save();build3D();if(!keepLay)renderLay();renderSur()}
 function readout(){const bd=C.PH.bitDepth(S),Lr=GG.formationAt(GEO.layers,bd,pos(bd)?.tvd),f=GG.rockFactors(Lr),p=pos(bd);
