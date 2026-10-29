@@ -7,7 +7,7 @@ const p=await b.newPage();const errs=[],ext=[];p.on('pageerror',e=>errs.push(e.m
 await p.setRequestInterception(true);p.on('request',r=>{const u=r.url();if(/adaga|netlify\.app|supabase\.co|witsml/i.test(u)){ext.push(u);r.abort()}else r.continue()});
 await p.setViewport({width:390,height:844,deviceScaleFactor:3,isMobile:true,hasTouch:true});
 await p.setUserAgent('Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1');
-await p.goto(BASE+'/index.html?'+Date.now());await w(2500);await p.evaluate(()=>localStorage.clear());await p.reload();await w(9000);
+await p.goto(BASE+'/index.html?ui=classic&'+Date.now());await w(2500);await p.evaluate(()=>localStorage.clear());await p.reload();await w(9000);
 ok(await p.evaluate(()=>!!window.GX?.ws&&!!document.getElementById('btnExpl')&&!!document.getElementById('btnBhaB')),'ext12 loaded, HUD buttons present');
 await p.evaluate(()=>document.getElementById('btnExpl').click());await w(2500);
 const geo=()=>p.evaluate(()=>{const v=document.getElementById('wsView').getBoundingClientRect(),s=document.getElementById('wsSheet').getBoundingClientRect();return {vb:v.bottom,st:s.top,vh:v.height,sh:s.height}});

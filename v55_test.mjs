@@ -12,7 +12,7 @@ ok(Math.abs(sc.roof.mean-0.1)<1e-9&&Math.abs(sc.roof.bias-0.1)<1e-9&&sc.floor.ma
 const b=await puppeteer.launch({executablePath:'/usr/bin/google-chrome',args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--no-sandbox']});const p=await b.newPage();const errs=[],ext=[];p.on('pageerror',e=>errs.push(e.message));
 await p.setRequestInterception(true);p.on('request',r=>{const u=r.url();if(/adaga|netlify\.app|supabase\.co|witsml|:8796|:8799/i.test(u)){ext.push(u);r.abort()}else r.continue()});
 await p.setViewport({width:390,height:844,deviceScaleFactor:3,isMobile:true,hasTouch:true});await p.setUserAgent('Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1');
-await p.goto(BASE+'/index.html?'+Date.now());await w(2000);await p.evaluate(()=>localStorage.clear());await p.reload();await w(9000);
+await p.goto(BASE+'/index.html?ui=classic&'+Date.now());await w(2000);await p.evaluate(()=>localStorage.clear());await p.reload();await w(9000);
 await p.click('#g8btn');await w(800);await p.click('#r53btn');await w(500);ok(await p.evaluate(()=>!!document.getElementById('p55')&&!!GX.p55),'blind-log section inside 🎯 Roof/floor panel');
 await p.evaluate(()=>document.getElementById('p55').scrollIntoView());await p.screenshot({path:SH+'1_panel_empty.png'});
 // import Doug picks by paste (exactly how Titto would)
