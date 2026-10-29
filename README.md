@@ -123,3 +123,7 @@ New files: `geo.js` (pure maths/parsers, node-testable) and `ext5.js` (UI/3D). H
 - Same rules as before: only the Adaga /WMLS URL, read ops only, SOAP built server-side, CORS for tittothomasai-code.github.io only, credentials only in X-Witsml-Authorization and never stored, 401/403 passed back, no logging. Rate limit: 60 requests/min per IP (best effort).
 - Supabase `witsml-proxy` is still available as a fallback in the Proxy field's dropdown. Its cert is always verified, so it fails while the Adaga cert is expired.
 - Live log poll default is 15 s (minimum 10 s).
+
+## v4.3 — Geology layers on iPhone + connection / joint detection (estimated)
+- **Subsurface layers**: one card per layer, 16 px / 40 px+ fields, colour picker, big **+ Add layer** and **+ Add layer at bit depth** (splits the layer containing the bit), delete with Undo. Depths follow Metric/Imperial.
+- **Connections panel** (`ext6.js`, logic in `conn.js`, tests in `conn_test.mjs`, `v43_test.mjs`): detects off bottom → pumps off → RPM 0 → hookload to block weight (slips) → block travels up → pumps/rotation resume → drilling resumes, from BDE/DMEA/BHE/HKL/RPM/FLOW/SPP/WOB (+ slips channel if present). Per connection: slips-in/out, slips-to-slips duration, pumps-off time, depth, joint length (depth differences; median → single/double/stand). Tool-joint depth list, 3D rings, chart markers, KPI line, CSV export, configurable thresholds. Sources: live WITSML history (accumulates since Connect), Replay, CSV import, SIM-TEST synthetic. **All results are estimates from data.**

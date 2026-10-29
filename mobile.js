@@ -23,7 +23,7 @@ body.mob #mdock{display:flex;position:fixed;left:0;right:0;bottom:0;height:calc(
 `;
 const st=document.createElement('style');st.textContent=css;document.head.appendChild(st);
 const dock=document.createElement('div');dock.id='mdock';document.body.appendChild(dock);
-const SKIP=new Set(['wtoast','sim','clock','mdock','panels']);const NAMES={hud:'☰ Tools',witsml:'WITSML',seqpanel:'Sequence',traces:'Traces',geoLay:'Layers',geoSur:'Survey',geoRd:'Formation',log:'Events',designer:'Designer',seqeditor:'Seq editor',seqtree:'Seq tree',eqmenu:'Add equip',libmenu:'Library',wcov:'Coverage'};
+const SKIP=new Set(['wtoast','sim','clock','mdock','panels']);const NAMES={hud:'☰ Tools',witsml:'WITSML',seqpanel:'Sequence',traces:'Traces',geoLay:'Layers',geoSur:'Survey',geoRd:'Formation',log:'Events',designer:'Designer',seqeditor:'Seq editor',seqtree:'Seq tree',eqmenu:'Add equip',libmenu:'Library',wcov:'Coverage',connp:'Connections'};
 const NOAUTO=new Set(["hud","geoRd","log","seqpanel"]);let t0=0,open=null,seen=new Map(),uid=0,on=false;
 function name(e){if(NAMES[e.id])return NAMES[e.id];const t=(e.querySelector('b,h4')||e).textContent.trim().replace(/\s+/g,' ');return t.slice(0,16)||'Panel'}
 function cands(){const out=[...document.body.children].filter(e=>e.tagName=='DIV'&&!SKIP.has(e.id)&&getComputedStyle(e).position=='fixed');document.querySelectorAll('#panels>.panel').forEach(e=>out.push(e));return out}

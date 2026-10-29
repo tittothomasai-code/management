@@ -1,7 +1,7 @@
 // ext5.js v3.8: subsurface layers (formation tops as 3D strata) + survey (min curvature) panels.
 // No server calls: WITSML formationMarker / trajectory XML is parsed from pasted or loaded text (hand-made samples in tests).
 // LIVE badge only ever shown for survey data pushed via GEO.ingestTrajectory(xml,{live:true}) from a live WITSML connection; files/manual/examples are SIM.
-import * as GG from './geo.js?v=42';
+import * as GG from './geo.js?v=43';
 let C,S,THREE,G3,PATH,lay,sur,rd;const KEY='dw-geo';const $=id=>document.getElementById(id);
 const GEO={layers:[],surv:{src:'SIM',name:'',live:false,stations:[]},calc:[]};window.GEO=GEO;
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -42,20 +42,41 @@ function hook(prev){S.envHook=(s,dt)=>{prev&&prev(s,dt);const bd=C.PH.bitDepth(s
 // ---- UI ----
 function panel(id,top){const d=document.createElement('div');d.id=id;d.style.cssText=C.PANEL+`;left:10px;top:${top}px;width:640px;max-height:46vh;overflow:auto;display:none;border-color:#c96`;document.body.appendChild(d);return d}
 const B=(id,t)=>`<button id="${id}" style="${C.BTN}">${t}</button>`;const inp=(k,i,v,w=60,t='text')=>`<input data-${k}="${i}" type="${t}" value="${esc(v)}" style="width:${w}px;background:#0b1218;color:#def;border:1px solid #456">`;
-function renderLay(){if(lay.style.display=='none')return;const ex=GEO.layers.some(l=>/SIMULATED/.test(l.name));
- lay.innerHTML=`<b style="color:#fc9">Subsurface layers</b> <span style="color:#fc6">${ex?'SIMULATED example data — not real formations':'user data'} · ${U.sys=='metric'?'Metric':'Imperial'}</span> <button id="lyx" style="${C.BTN};float:right">×</button><br>
- <table style="border-collapse:collapse;font-size:10px"><tr><th>Name</th><th>Top MD ${LU()}</th><th>Base MD ${LU()}</th><th>Top TVD ${LU()}</th><th>Base TVD ${LU()}</th><th>Colour</th><th>UCS ${UCSU()}</th><th>φ %</th><th>Pore ${EMU()}</th><th>Frac ${EMU()}</th><th></th></tr>`+
- GEO.layers.map((l,i)=>`<tr><td>${inp('ln',i,l.name,150)}</td><td>${inp('ltm',i,L(l.top_md))}</td><td>${inp('lbm',i,L(l.base_md))}</td><td>${inp('ltt',i,L(l.top_tvd))}</td><td>${inp('lbt',i,L(l.base_tvd))}</td><td>${inp('lc',i,/^#[0-9a-f]{6}$/i.test(l.color)?l.color:'#888888',36,'color')}</td><td>${inp('lu',i,UCS(l.ucs_psi),50)}</td><td>${inp('lp',i,isFinite(l.porosity)?(l.porosity*100).toFixed(0):'',34)}</td><td>${inp('lpp',i,EM(l.pp_ppg),46)}</td><td>${inp('lfp',i,EM(l.fp_ppg),46)}</td><td><button data-ldel="${i}" style="${C.BTN}">✕</button></td></tr>`).join('')+`</table>
- ${B('lyadd','+ Add layer')}${B('lysim','Load SIMULATED example')}${B('lyclr','Clear all')} <label style="${C.BTN}">Import CSV<input id="lyf" type="file" accept=".csv,.txt" style="display:none"></label><br>
- <textarea id="lyta" placeholder="Paste layer CSV (name,top_m,base_m,top_tvd_m,base_tvd_m,lith,ucs_mpa,porosity,pp_sg,fp_sg) or WITSML formationMarker XML" style="width:600px;height:46px;background:#0b1218;color:#def;font:10px monospace"></textarea><br>${B('lyimp','Import pasted text')}
- <small>Physics: formation at the bit scales ROP and top-drive torque through S.envHook (SIMULATED rock model, factor 1.0 at UCS 55 MPa / 8000 psi). Unitless CSV headers assume the selected unit system.</small>`;
+let UNDO=null;
+function addAtBit(){const bdF=C.PH.bitDepth(S);if(!isFinite(bdF)||bdF<=0){ev('Add layer at bit depth: bit depth unknown');return}const p=pos(bdF),tv=p?.tvd??bdF;
+ const host=GEO.layers.find(l=>l.top_md<=bdF&&l.base_md>bdF);const nxt=GEO.layers.filter(l=>l.top_md>bdF).sort((a,b)=>a.top_md-b.top_md)[0];
+ let base=host?host.base_md:nxt?nxt.top_md:bdF+Lin(met()?100:300),baseT=host?host.base_tvd:nxt?nxt.top_tvd:tv+(base-bdF);
+ if(host){host.base_md=bdF;host.base_tvd=tv}
+ const nl={name:'New layer @ '+L(bdF)+' '+LU(),top_md:bdF,base_md:base,top_tvd:tv,base_tvd:baseT,color:'#'+((Math.random()*0xffffff)|0).toString(16).padStart(6,'0'),ucs_psi:8000,porosity:.1,pp_ppg:9,fp_ppg:14,src:'manual'};
+ GEO.layers.push(nl);GEO.layers.sort((a,b)=>(a.top_md??0)-(b.top_md??0));GEO._focus=GEO.layers.indexOf(nl);ev('Added layer at bit depth '+L(bdF)+' '+LU()+(host?' (split '+host.name+')':''));changed()}
+function renderLay(){if(lay.style.display=='none')return;const ex=GEO.layers.some(l=>/SIMULATED/.test(l.name));const bdF=C.PH.bitDepth(S);
+ const F='font-size:16px;min-height:40px;box-sizing:border-box;background:#0b1218;color:#def;border:1px solid #456;border-radius:6px;padding:4px 6px';
+ const fld=(k,i,lab,v,u)=>`<label style="display:flex;flex-direction:column;flex:1 1 120px;min-width:110px;font-size:12px;color:#9ab">${lab}${u?' ('+u+')':''}<input data-${k}="${i}" inputmode="decimal" value="${esc(v)}" style="${F};width:100%"></label>`;
+ const BB=(id,t,c='#1b5e20')=>`<button id="${id}" style="${C.BTN};font-size:15px;min-height:44px;padding:6px 12px;background:${c};color:#fff;border-radius:8px;font-weight:700">${t}</button>`;
+ lay.innerHTML=`<b style="color:#fc9">Subsurface layers</b> <span style="color:#fc6">${ex?'SIMULATED example data — not real formations':'user data'} · depths in ${LU()} (${met()?'Metric':'Imperial'})</span> <button id="lyx" style="${C.BTN};float:right;min-width:40px;min-height:40px">×</button>
+ <div style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0">${BB('lyadd','+ Add layer')}${BB('lybit','+ Add layer at bit depth ('+L(bdF)+' '+LU()+')','#2a6f97')}${UNDO?BB('lyundo','↶ Undo delete','#6b4a2b'):''}</div>
+ <div id="lycards" style="display:flex;flex-direction:column;gap:8px">`+
+ (GEO.layers.length?GEO.layers.map((l,i)=>`<div data-card="${i}" style="border:1px solid #456;border-left:8px solid ${esc(/^#[0-9a-f]{6}$/i.test(l.color)?l.color:'#888')};border-radius:8px;padding:6px;background:#0f1820${GG.formationAt([l],bdF,pos(bdF)?.tvd)?';box-shadow:0 0 0 2px #fd8':''}">
+  <div style="display:flex;gap:6px;align-items:center"><input data-lc="${i}" type="color" aria-label="Layer colour" value="${/^#[0-9a-f]{6}$/i.test(l.color)?l.color:'#888888'}" style="width:48px;height:44px;padding:0;border:1px solid #456;border-radius:6px;background:none">
+  <input data-ln="${i}" aria-label="Layer name" value="${esc(l.name)}" style="${F};flex:1;min-width:0;font-weight:700">
+  <button data-ldel="${i}" aria-label="Delete layer" style="${C.BTN};min-width:44px;min-height:44px;font-size:18px;background:#7a1d1d;color:#fff;border-radius:8px">✕</button></div>
+  <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">${fld('ltm',i,'Top MD',L(l.top_md),LU())}${fld('lbm',i,'Base MD',L(l.base_md),LU())}</div>
+  <details style="margin-top:4px"><summary style="font-size:13px;color:#9cf;min-height:28px">More: TVD, rock properties</summary><div style="display:flex;flex-wrap:wrap;gap:6px">
+  ${fld('ltt',i,'Top TVD',L(l.top_tvd),LU())}${fld('lbt',i,'Base TVD',L(l.base_tvd),LU())}${fld('lu',i,'UCS',UCS(l.ucs_psi),UCSU())}${fld('lp',i,'Porosity',isFinite(l.porosity)?(l.porosity*100).toFixed(0):'','%')}${fld('lpp',i,'Pore press.',EM(l.pp_ppg),EMU())}${fld('lfp',i,'Frac grad.',EM(l.fp_ppg),EMU())}</div></details></div>`).join(''):'<div style="color:#fc6;font-size:14px;padding:8px">No layers. Press “+ Add layer” or “+ Add layer at bit depth”.</div>')+`</div>
+ <div style="margin-top:8px">${B('lysim','Load SIMULATED example')}${B('lyclr','Clear all')} <label style="${C.BTN}">Import CSV<input id="lyf" type="file" accept=".csv,.txt" style="display:none"></label></div>
+ <textarea id="lyta" placeholder="Paste layer CSV (name,top_m,base_m,top_tvd_m,base_tvd_m,lith,ucs_mpa,porosity,pp_sg,fp_sg) or WITSML formationMarker XML" style="width:100%;box-sizing:border-box;height:46px;background:#0b1218;color:#def;font:12px monospace"></textarea><br>${B('lyimp','Import pasted text')}
+ <small>Highlighted card = layer at the bit. Physics: formation at the bit scales ROP and top-drive torque through S.envHook (SIMULATED rock model, factor 1.0 at UCS 55 MPa / 8000 psi). Unitless CSV headers assume the selected unit system.</small>`;
  lay.querySelector('#lyx').onclick=()=>lay.style.display='none';
- const set=(sel,fn)=>lay.querySelectorAll(`[data-${sel}]`).forEach(e=>e.onchange=()=>{const l=GEO.layers[+e.dataset[sel]];fn(l,e.value);changed(true)});
- set('ln',(l,v)=>l.name=v);set('ltm',(l,v)=>l.top_md=Lin(v));set('lbm',(l,v)=>l.base_md=Lin(v));set('ltt',(l,v)=>l.top_tvd=Lin(v));set('lbt',(l,v)=>l.base_tvd=Lin(v));set('lc',(l,v)=>l.color=v);set('lu',(l,v)=>l.ucs_psi=UCSin(v));set('lp',(l,v)=>l.porosity=+v/100);set('lpp',(l,v)=>l.pp_ppg=EMin(v));set('lfp',(l,v)=>l.fp_ppg=EMin(v));
- lay.querySelectorAll('[data-ldel]').forEach(b=>b.onclick=()=>{GEO.layers.splice(+b.dataset.ldel,1);changed()});
- $('lyadd').onclick=()=>{const l=GEO.layers.at(-1),t=l?l.base_md:0;GEO.layers.push({name:'New layer',top_md:t,base_md:t+500,top_tvd:l?l.base_tvd:0,base_tvd:(l?l.base_tvd:0)+500,color:'#888888',ucs_psi:8000,porosity:.1,pp_ppg:9,fp_ppg:14,src:'manual'});changed()};
- $('lysim').onclick=()=>{GEO.layers=GG.SIM_LAYERS();ev('Loaded SIMULATED example layers (not real formation data)');changed()};$('lyclr').onclick=()=>{GEO.layers=[];changed()};
- $('lyf').onchange=async e=>{const f=e.target.files[0];if(f)importLayers(await f.text(),f.name)};$('lyimp').onclick=()=>importLayers($('lyta').value,'pasted')}
+ const set=(sel,fn,ev2='onchange')=>lay.querySelectorAll(`[data-${sel}]`).forEach(e=>e[ev2]=()=>{const l=GEO.layers[+e.dataset[sel]];fn(l,e.value);if(sel=='lc')e.closest('[data-card]').style.borderLeftColor=e.value;changed(true)});
+ set('ln',(l,v)=>l.name=v);set('ltm',(l,v)=>l.top_md=Lin(v));set('lbm',(l,v)=>l.base_md=Lin(v));set('ltt',(l,v)=>l.top_tvd=Lin(v));set('lbt',(l,v)=>l.base_tvd=Lin(v));set('lc',(l,v)=>l.color=v,'oninput');set('lu',(l,v)=>l.ucs_psi=UCSin(v));set('lp',(l,v)=>l.porosity=+v/100);set('lpp',(l,v)=>l.pp_ppg=EMin(v));set('lfp',(l,v)=>l.fp_ppg=EMin(v));
+ lay.querySelectorAll('[data-ldel]').forEach(b=>b.onclick=()=>{const k=+b.dataset.ldel;UNDO={i:k,l:GEO.layers[k]};GEO.layers.splice(k,1);ev('Deleted layer '+UNDO.l.name);changed()});
+ const u=$('lyundo');if(u)u.onclick=()=>{GEO.layers.splice(Math.min(UNDO.i,GEO.layers.length),0,UNDO.l);UNDO=null;changed()};
+ $('lyadd').onclick=()=>{const l=[...GEO.layers].sort((a,b)=>(a.base_md??0)-(b.base_md??0)).at(-1),t=l?l.base_md:0,d=Lin(met()?150:500);GEO.layers.push({name:'New layer '+(GEO.layers.length+1),top_md:t,base_md:t+d,top_tvd:l?l.base_tvd:0,base_tvd:(l?l.base_tvd:0)+d,color:'#'+((Math.random()*0xffffff)|0).toString(16).padStart(6,'0'),ucs_psi:8000,porosity:.1,pp_ppg:9,fp_ppg:14,src:'manual'});GEO._focus=GEO.layers.length-1;changed()};
+ $('lybit').onclick=addAtBit;
+ $('lysim').onclick=()=>{GEO.layers=GG.SIM_LAYERS();ev('Loaded SIMULATED example layers (not real formation data)');changed()};$('lyclr').onclick=()=>{UNDO=null;GEO.layers=[];changed()};
+ $('lyf').onchange=async e=>{const f=e.target.files[0];if(f)importLayers(await f.text(),f.name)};$('lyimp').onclick=()=>importLayers($('lyta').value,'pasted');
+ if(GEO._focus!=null){const c=lay.querySelector(`[data-card="${GEO._focus}"]`);GEO._focus=null;if(c){c.scrollIntoView({block:'nearest'});c.style.outline='2px solid #7cf'}}}
+GEO.addAtBit=addAtBit;
 function importLayers(t,name){try{let r;if(/<\s*(\w+:)?formationMarker/.test(t)){r=GG.parseFormationMarkers(t);ev('Imported '+r.length+' formation markers from WITSML XML ('+name+') — file data, SIM badge')}else{const x=GG.parseLayersCSV(t,U.sys);r=x.layers;ev('Imported '+r.length+' layers from CSV ('+name+'): '+x.log.join(', '))}if(!r.length)throw new Error('no layers found');GEO.layers=r;changed()}catch(e){ev('Layer import failed: '+e.message)}}
 function renderSur(){if(sur.style.display=='none')return;const s=GEO.calc.length?GEO.calc:GG.minCurvStations(simStations().map(({md,inc,azi})=>({md,inc,azi})),{});
  sur.innerHTML=`<b style="color:#fc9">Survey</b> ${srcBadge()} <span style="color:#9ab">${esc(GEO.surv.name||'')} · min curvature · ${U.sys=='metric'?'Metric':'Imperial'}</span> <button id="svx" style="${C.BTN};float:right">×</button><br>
