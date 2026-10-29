@@ -184,3 +184,12 @@ New files: `geo.js` (pure maths/parsers, node-testable) and `ext5.js` (UI/3D). H
 - Auto-connect on load with the saved settings plus the Keychain/session password. If no password is available, it asks you to tap Password and pick the Keychain suggestion.
 - A 401 turns auto-connect OFF and never retries; you have to press Connect yourself. "Forget saved connection" clears everything.
 - Test: v51_test.mjs at 390x844 (SIM-TEST mock), screenshots shots_live/99_v51_*.png.
+
+## v5.2 — WestSide report check (DR101L WB01B02 @ 2879 m)
+- `fixtures/westside_dr101l_wb01b02_2879.json`: SIM-TEST reference, transcribed by hand from the WestSide/Ensign 958 report image (NOT live).
+- Maths fix: a trajectory that starts deep (sidetrack/partial) now ties in at the first station's reported TVD (WITSML `<tvd>`), not md·cos(inc). The path starts at the tie-in; the upper hole is not invented.
+- Our min curvature vs report: TVDSS max |Δ| 0.076 m (18 stations), DLS max |Δ| 0.11°/10 m, last survey Δ TVD +0.02 m, projection Δ +0.01 m (the report projects straight at the last-survey inclination).
+- Geo panel → "📋 Compare to report": paste Last survey / Projection rows to get deltas vs our values.
+- Curtain: adaptive TVD ticks (2 m), TVDSS labels, vertical exaggeration shown. Kalman sanity line (thickness not measured / collapsed / floor above roof / σ > seam).
+- Fixed: "View image + estimate in 3D" threw `view3D is not defined`.
+- Test: v52_test.mjs, screenshots shots_live/100_v52_*.png.

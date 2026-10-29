@@ -7,8 +7,9 @@ const angToDeg=(v,u)=>v*(ANG[String(u||'dega').toLowerCase()]??1);
 // ---- minimum curvature ----
 export function minCurvStations(st,{vsAzi=null,tieIn=null}={}){
  const s=st.filter(x=>isFinite(x.md)&&isFinite(x.inc)&&isFinite(x.azi)).map(x=>({...x})).sort((a,b)=>a.md-b.md);if(!s.length)return[];
- const t=tieIn||{tvd:s[0].md*Math.cos(s[0].inc*R),ns:0,ew:0};// default: straight hole from surface to first station
- Object.assign(s[0],{tvd:t.tvd,ns:t.ns,ew:t.ew,dls:0});
+ // v5.2: a survey that starts deep (sidetrack / partial trajectory) ties in at the first station's REPORTED TVD (WITSML <tvd>), not md*cos(inc)
+ const r0=s[0],hasRep=isFinite(r0.tvd_rep)&&r0.md>0;const t=tieIn||(hasRep?{tvd:r0.tvd_rep,ns:r0.ns_rep??0,ew:r0.ew_rep??0}:{tvd:r0.md*Math.cos(r0.inc*R),ns:0,ew:0});// else: straight hole from surface to first station
+ Object.assign(s[0],{tvd:t.tvd,ns:t.ns,ew:t.ew,dls:0});if(!tieIn&&hasRep)s[0].tie='reported TVD';
  for(let k=1;k<s.length;k++){const a=s[k-1],b=s[k],i1=a.inc*R,i2=b.inc*R,a1=a.azi*R,a2=b.azi*R,dm=b.md-a.md;
   const cb=Math.cos(i2-i1)-Math.sin(i1)*Math.sin(i2)*(1-Math.cos(a2-a1)),dl=Math.acos(Math.max(-1,Math.min(1,cb))),rf=dl<1e-9?1:2/dl*Math.tan(dl/2);
   b.ns=a.ns+dm/2*(Math.sin(i1)*Math.cos(a1)+Math.sin(i2)*Math.cos(a2))*rf;b.ew=a.ew+dm/2*(Math.sin(i1)*Math.sin(a1)+Math.sin(i2)*Math.sin(a2))*rf;b.tvd=a.tvd+dm/2*(Math.cos(i1)+Math.cos(i2))*rf;b.dls=dm>0?dl/R/dm*100:0}
@@ -66,6 +67,7 @@ export function pointAt(s,md){if(!s.length)return null;if(md<=s[0].md){const a=s
   const inc=Math.acos(Math.max(-1,Math.min(1,t[2])))/R,azi=Math.hypot(t[0],t[1])<1e-12?a.azi:((Math.atan2(t[1],t[0])/R)+360)%360;
   const q=minCurvStations([{md:a.md,inc:a.inc,azi:a.azi},{md,inc,azi}],{tieIn:{tvd:a.tvd,ns:a.ns,ew:a.ew}})[1];return {md,inc,azi,ns:q.ns,ew:q.ew,tvd:q.tvd,dls:b.dls,projected:false}}
  const l=s.at(-1),dm=md-l.md,t=tv(l.inc,l.azi);return {md,inc:l.inc,azi:l.azi,ns:l.ns+dm*t[0],ew:l.ew+dm*t[1],tvd:l.tvd+dm*t[2],dls:0,projected:true}}
-export function samplePath(s,mdTo,step=20){const out=[];const n=Math.max(2,Math.ceil(mdTo/step));for(let i=0;i<=n;i++)out.push(pointAt(s,mdTo*i/n));return out}
+export function samplePath(s,mdTo,step=20){const out=[];const m0=s[0]?.tie?s[0].md:0;// v5.2: deep tie-in → path starts at the tie-in (upper hole not in the survey, not invented)
+ mdTo=Math.max(mdTo,m0+1);const n=Math.max(2,Math.ceil((mdTo-m0)/step));for(let i=0;i<=n;i++)out.push(pointAt(s,m0+(mdTo-m0)*i/n));return out}
 // merge stations: dedupe by MD (|ΔMD|<0.05 ft) or uid; returns count of new stations
 export function mergeStations(have,add){let n=0;for(const x of add){if(have.some(h=>(x.uid&&h.uid===x.uid)||Math.abs(h.md-x.md)<0.05))continue;have.push(x);n++}have.sort((a,b)=>a.md-b.md);return n}

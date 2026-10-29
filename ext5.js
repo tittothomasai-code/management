@@ -1,7 +1,7 @@
 // ext5.js v3.8: subsurface layers (formation tops as 3D strata) + survey (min curvature) panels.
 // No server calls: WITSML formationMarker / trajectory XML is parsed from pasted or loaded text (hand-made samples in tests).
 // LIVE badge only ever shown for survey data pushed via GEO.ingestTrajectory(xml,{live:true}) from a live WITSML connection; files/manual/examples are SIM.
-import * as GG from './geo.js?v=51';
+import * as GG from './geo.js?v=52';
 let C,S,THREE,G3,PATH,lay,sur,rd;const KEY='dw-geo';const $=id=>document.getElementById(id);
 const GEO={layers:[],surv:{src:'SIM',name:'',live:false,stations:[]},calc:[]};window.GEO=GEO;
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -92,7 +92,7 @@ function renderSur(){if(sur.style.display=='none')return;const s=GEO.calc.length
  $('svsim').onclick=()=>{GEO.surv={src:'SIM',name:'',live:false,stations:[]};changed()};
  $('svf').onchange=async e=>{const f=e.target.files[0];if(f)importSurvey(await f.text(),f.name)};$('svimp').onclick=()=>importSurvey($('svta').value,'pasted')}
 function importSurvey(t,name,o={}){try{let st,src,nm=name;if(/<\s*(\w+:)?trajectoryStation/.test(t)){const r=GG.parseTrajectory(t);st=r.stations;nm=r.name;src=o.live?'WITSML':'WITSML file'}else{st=GG.parseSurveyCSV(t,U.sys);src='CSV'}
-  if(st.length<1)throw new Error('no stations');if(st[0].md>0)st.unshift({md:0,inc:0,azi:st[0].azi});GEO.surv={src,name:nm,live:!!o.live,stations:st};ev('Imported '+st.length+' survey stations ('+src+': '+nm+')'+(o.live?' LIVE':' — SIM badge'));changed()}catch(e){ev('Survey import failed: '+e.message)}}
+  if(st.length<1)throw new Error('no stations');if(st[0].md>0&&!isFinite(st[0].tvd_rep))st.unshift({md:0,inc:0,azi:st[0].azi});GEO.surv={src,name:nm,live:!!o.live,stations:st};ev('Imported '+st.length+' survey stations ('+src+': '+nm+')'+(o.live?' LIVE':' — SIM badge'));changed()}catch(e){ev('Survey import failed: '+e.message)}}
 GEO.appendStations=(st,o={})=>{if(!(GEO.surv.src==o.src&&GEO.surv.name==o.name)||!GEO.surv.stations.length){GEO.surv={src:o.src,name:o.name,live:!!o.live,simTest:!!o.simTest,stations:[]}}GEO.surv.live=!!o.live;GEO.surv.simTest=!!o.simTest;const n=GG.mergeStations(GEO.surv.stations,st);if(n){ev((o.live?'LIVE':'SIM-TEST')+' survey: +'+n+' station(s), last MD '+L(GEO.surv.stations.at(-1).md)+' '+LU());changed()}return n};
 GEO.ingestTrajectory=(xml,o={})=>importSurvey(xml,'WITSML',o);GEO.importLayers=importLayers;
 // v3.9 per-well replica: full reset (no carry-over) + casing from wbGeometry
