@@ -29,7 +29,7 @@ function name(e){if(NAMES[e.id])return NAMES[e.id];const t=(e.querySelector('b,h
 function cands(){const out=[...document.body.children].filter(e=>e.tagName=='DIV'&&!SKIP.has(e.id)&&getComputedStyle(e).position=='fixed');document.querySelectorAll('#panels>.panel').forEach(e=>out.push(e));return out}
 function appVis(e){return e.style.display!=='none'&&!(e.id=='hud'?false:e.childElementCount==0&&!e.textContent.trim())}
 function setOpen(e){open=e;render()}
-function render(){if(!on)return;const list=cands().filter(e=>e.id=='hud'||appVis(e));
+function render(){if(!on)return;if(document.body.classList.contains('ui57')){for(const e of cands()){e.classList.add('msheet');e.classList.remove('mcol')}return}const list=cands().filter(e=>e.id=='hud'||appVis(e));
  for(const e of cands()){e.classList.add('msheet');if(!e.dataset.mid)e.dataset.mid=++uid;const was=seen.get(e.dataset.mid),now=e.id=='hud'||appVis(e);
   if(now&&was!==true&&!NOAUTO.has(e.id)&&Date.now()-t0>2500)open=e;seen.set(e.dataset.mid,now)}
  if(open&&!list.includes(open))open=null;
