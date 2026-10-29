@@ -177,3 +177,10 @@ New files: `geo.js` (pure maths/parsers, node-testable) and `ext5.js` (UI/3D). H
 - Fallbacks when listing finds nothing (read-only, stop on 401): F1 uidWell+uidWellbore id-only; F2 full template with empty elements (no returnElements, then requested); F3 by name "Survey - Directional"; F4 requestObjectSelectionCapability + GetCap check.
 - Fixed: 401 guard no longer trips on "-401" text in SOAP faults or on proxy 403 (origin/op) refusals; uids are XML-escaped (spaces/&); non-JSON proxy answers (Netlify 504) and client timeouts (28 s) reported; discovery stops after 3 transport failures in a row.
 - Mock: GET /ctl/tfail?m=needwb|noidonly|fullonly|nameonly|unsupported|fault|http500|spaceuid. Test: v410_test.mjs.
+
+## v5.1 — Remember WITSML connection on this device
+- "Remember on this device" saves server URL, proxy, username, last well/wellbore/log and poll intervals in localStorage (`dw-witsml-remember`). The password is never stored in localStorage and nothing is stored on the server.
+- Login is a real `<form>` (autocomplete=username / current-password, submit Connect) so iOS Keychain can save and autofill it.
+- Auto-connect on load with the saved settings plus the Keychain/session password. If no password is available, it asks you to tap Password and pick the Keychain suggestion.
+- A 401 turns auto-connect OFF and never retries; you have to press Connect yourself. "Forget saved connection" clears everything.
+- Test: v51_test.mjs at 390x844 (SIM-TEST mock), screenshots shots_live/99_v51_*.png.
