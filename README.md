@@ -200,3 +200,10 @@ New files: `geo.js` (pure maths/parsers, node-testable) and `ext5.js` (UI/3D). H
 - One boundary only → thickness PRIOR, labelled as such. Floor is only measurable within ~1 m of the bit.
 - Doug's BL ROOF/FLOOR digitised from the report image (`fixtures/westside_roof_floor_2879.json`, SIM-TEST reference) or pasted; residuals, RMS, % within 2σ.
 - No real quadrant gamma has been tested — synthetic and mock only.
+
+## v5.4 — Exploded view + BHA builder (SIM)
+- `ext12.js`: HUD buttons 🔩 Exploded view / 🧰 BHA builder open a workshop with its own 3D viewer placed ABOVE the control sheet (the sheet never covers the model; ▾ hide panel collapses it to a strip). Desktop: side panel.
+- Exploded view: 12 generic models (top drive, drawworks, triplex mud pump, BOP stack, swivel, crown/travelling block, PDC bit, tricone bit, mud motor, MWD/LWD, RSS, jar). Animated explode, labelled parts, tap a part (3D raycast, label or chip) for a short description, 🔧 Reassemble. Opens on the matching model if a scene item is selected.
+- BHA builder: 14-item library (PDC/tricone bit, mud motor, RSS, MWD, LWD, NMDC, near-bit/string stabilisers, drill collar, HWDP, jar, crossover, float sub). Presets vertical/slick, packed pendulum, motor build, RSS lateral. Add / remove / ▲▼ reorder, edit L/OD/ID; per-item and total length (m), OD/ID (mm), weight (kg, t, kN in air). 3D in a translucent wellbore (bit at bottom, radial ×40, lengths true). Saved in localStorage `dw-bha` (no credentials).
+- All models, dimensions and weights are generic SIM library values (badged SIM), nothing is from the live feed. No WITSML calls.
+- Test: v54_test.mjs at 390x844, screenshots shots_live/102_v54_*.png.

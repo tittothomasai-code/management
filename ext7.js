@@ -2,7 +2,7 @@
 // The 3D string/bit follow bit depth from data (Live WITSML, Replay, or the SIM-TEST timeline), smoothly interpolated
 // between polls. Hole depth vs bit depth shown separately. On each connection a joint/stand is lifted from the catwalk or
 // racking board, stabbed, spun up, slips pulled and lowered; a tool-joint ring rides down with it. Read-only: no network calls here.
-import * as SL from './slips.js?v=53';
+import * as SL from './slips.js?v=54';
 // v4.5: slips state inferred from bit depth when the data has no slips curve (hookload deliberately not used).
 let C,S,THREE,P,HUD,BIT,HOLE,ANIM=null,TJ=null,CAP='';
 const $=id=>document.getElementById(id);const FT=0.3048;

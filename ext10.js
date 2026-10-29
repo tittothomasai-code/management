@@ -1,6 +1,6 @@
 // ext10.js v5.2: SIM-TEST reference fixture (hand-transcribed from the WestSide/Ensign 958 geosteering report, NOT live)
 // + "Compare to report": paste the report's Last survey / Projection rows → deltas vs our minimum-curvature values.
-import * as GG from './geo.js?v=53';
+import * as GG from './geo.js?v=54';
 const FT=0.3048,R=Math.PI/180;let C,S;const $=id=>document.getElementById(id);const es=t=>String(t??'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
 export const REF_URL='fixtures/westside_dr101l_wb01b02_2879.json';
 // parse pasted report rows. Accepts "Last survey 2,851.05 92.34 171.74 171.74 250.52 109.41 1.08" (7 nums incl. magnetic azi), 6 nums (no mag azi), or 5 (no DLS).
@@ -22,7 +22,7 @@ export function ours(calc,rep,elev){const res={};if(!calc||calc.length<2)return 
 export function deltas(rep,o){const d=(a,b)=>(isFinite(a)&&isFinite(b))?b-a:null;const r={};
  if(rep.last&&o.last)r.last={inc:d(rep.last.inc,o.last.inc),azi:o.last?((d(rep.last.azi,o.last.azi)+540)%360)-180:null,tvd:d(rep.last.tvd,o.last.tvd),tvdss:d(rep.last.tvdss,o.last.tvdss),dls:d(rep.last.dls,o.last.dls)};
  if(rep.proj&&o.proj)r.proj={tvd:d(rep.proj.tvd,o.proj.tvd),tvdss:d(rep.proj.tvdss,o.proj.tvdss),tvdMC:d(rep.proj.tvd,o.proj.tvdMC)};return r}
-export async function loadReference(){const F=await (await fetch(REF_URL+'?v=53')).json();const st=F.stations.map((r,i)=>({md:r[0]/FT,inc:r[1],azi:r[2],...(i==0?{tvd_rep:(r[3]+F.elevation_m)/FT}:{})}));
+export async function loadReference(){const F=await (await fetch(REF_URL+'?v=54')).json();const st=F.stations.map((r,i)=>({md:r[0]/FT,inc:r[1],azi:r[2],...(i==0?{tvd_rep:(r[3]+F.elevation_m)/FT}:{})}));
  GEO.appendStations(st,{src:'SIM-TEST reference (WestSide report, transcribed)',name:'DR101L WB01B02 · '+F.stations.length+' stations · NOT LIVE',live:false,simTest:true});
  const G=GX.geo8,CF=G.CF;CF.kb=F.elevation_m;CF.thick=F.seam.roof_floor_gap_m;CF.dip=+(F.seam.dip_deg-90).toFixed(2);
  const calc=GEO.calc,l=calc.at(-1),cu=G.curtain(calc);CF.hd0=+cu.at(-1).hd.toFixed(1);CF.roof=+(F.last.tvd-F.seam.roof_floor_gap_m/2).toFixed(2);// user-defined target: bit mid-seam at last survey (report: "slow climb into mid seam")
