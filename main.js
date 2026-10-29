@@ -120,8 +120,10 @@ const strataG=new THREE.Group();strata.forEach(([a,b,c])=>{const m=box(90,b-a,60
 {const pp=PH.planPath().map(p=>W(p[3],p[4],p[5]));const g=new THREE.BufferGeometry().setFromPoints(pp);const l=new THREE.Line(g,new THREE.LineDashedMaterial({color:0x33ff66,dashSize:1,gapSize:0.6}));l.computeLineDistances();UG.add(l)}
 let boreMesh=null,strMesh=null,lastBuild=-1;const bha=new THREE.Group();bha.name='bhaGroup';UG.add(bha);
 const motorMesh=cyl(0.35,0.35,1.6,mat.paint,0,0.8,0,bha);const bitMesh=cyl(0.45,0.15,0.5,M(0xd4af37,0.9,0.3),0,-0.25,0,bha);
-const tipPath=()=>{const gp=window.GEO&&window.GEO.pathPts&&window.GEO.pathPts(S.md);if(gp&&gp.length>=2)return gp.map(q=>W(q.ns,q.ew,q.tvd));const s=S.surveys,l=s[s.length-1];const p=PH.minCurv(l.slice(3),l[0],l[1],l[2],S.md,S.inc,S.azi);return [...s.map(q=>W(q[3],q[4],q[5])),W(...p)]};
-let wellCurve=null;function buildWell(){const pts=tipPath();if(pts.length<2)return;const c=new THREE.CatmullRomCurve3(pts);wellCurve=c;
+// v4.0: single path. If md moved back (well switch / reset / replay) drop stations deeper than md so the sim path never folds back into a V.
+function trimSurveys(){const s=S.surveys;if(!s||!s.length){S.surveys=[[0,0,0,0,0,0]];return}if(s.at(-1)[0]<=S.md+0.5)return;const k=s.filter(q=>q[0]<=S.md);S.surveys=k.length?k:[s[0][0]<=S.md?s[0]:[0,0,0,0,0,0]];S.lastS=S.surveys.at(-1)[0];S.pos=S.surveys.at(-1).slice(3)}
+const tipPath=()=>{const gp=window.GEO&&window.GEO.pathPts&&window.GEO.pathPts(S.md);if(gp&&gp.length>=2)return gp.map(q=>W(q.ns,q.ew,q.tvd));trimSurveys();const s=S.surveys,l=s[s.length-1];const p=PH.minCurv(l.slice(3),l[0],l[1],l[2],S.md,S.inc,S.azi);return [...s.map(q=>W(q[3],q[4],q[5])),W(...p)]};
+let wellCurve=null;function buildWell(){const pts=tipPath();if(pts.length<2||S.md<=0){boreMesh&&(UG.remove(boreMesh),boreMesh.geometry.dispose(),boreMesh=null);strMesh&&(UG.remove(strMesh),strMesh.geometry.dispose(),strMesh=null);wellCurve=null;return}const c=new THREE.CatmullRomCurve3(pts);wellCurve=c;
  boreMesh&&(UG.remove(boreMesh),boreMesh.geometry.dispose());strMesh&&(UG.remove(strMesh),strMesh.geometry.dispose());
  boreMesh=new THREE.Mesh(new THREE.TubeGeometry(c,Math.max(8,pts.length*2),0.9,10),new THREE.MeshStandardMaterial({color:0xff8c3a,emissive:0x552200,transparent:true,opacity:0.55,depthWrite:false,side:THREE.DoubleSide}));UG.add(boreMesh);
  // string ends at bit depth (off bottom when hoisted)
@@ -181,7 +183,7 @@ function sync(dtR){
  const cs=allCurves();const flows=[...pumps.map(e=>e.st.flow),S.Q,S.Q,S.Q];const pres=[...pumps.map(()=>S.spp+(S.prof?.man||0)),S.spp,S.spp-(S.prof?.surf||0)*0.5,S.spp-(S.prof?.surf||0)];
  for(let c=0;c<cs.length;c++){const len=cs[c].getLength(),sp=flows[c]/1000*6/len;for(let k=0;k<NP;k++){const j=c*NP+k;pu[j]=(pu[j]+sp*dtR*(spd/20)**0.3)%1;cs[c].getPoint(pu[j],v3);pPos.set([v3.x,v3.y,v3.z],j*3);const cc=pcol(pres[c]);pCol.set([cc.r,cc.g,cc.b],j*3)}}
  pMesh.visible=S.Q>5;pGeom.attributes.position.needsUpdate=true;pGeom.attributes.color.needsUpdate=true;
- if(Math.abs(S.md-lastBuild)>2||S._lastBD!==Math.round(PH.bitDepth(S))){buildWell();lastBuild=S.md;S._lastBD=Math.round(PH.bitDepth(S))}
+ trimSurveys();if(Math.abs(S.md-lastBuild)>2||S._lastBD!==Math.round(PH.bitDepth(S))){buildWell();lastBuild=S.md;S._lastBD=Math.round(PH.bitDepth(S))}
  motorMesh.material.emissive.setHex(S.stalled?0xff2200:0x000000);
  ents.forEach(e=>e.update());_upd0();
 }
@@ -292,7 +294,7 @@ function actX(e,x,b){if(EXT.actX(e,x,b))return;const st=e.st,all=()=>!!document.
  m.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{const e=addEquip(b.dataset.add);m.style.display='none';select(e)});
  m.querySelector('#eqreset').onclick=()=>{if(confirm('Reset equipment layout and 3D models to default?')){localStorage.removeItem(LKEY);localStorage.removeItem(MKEY);try{indexedDB.deleteDatabase('dw3')}catch{}location.reload()}}}
 
-import('./ext.js?v=39').then(x=>x.init({THREE,S,PH,scene,cam,ctl,ents,pumps,select,entity,box,cyl,beam,mat,M,lp,curves,FLOOR,MH,td,tdAll,blk,dwG,slG,rnG,rnArm,cwG,UG,W,allCurves:()=>allCurves(),getWell:()=>wellCurve,act,EXT,removeEnt,saveLayout,addEquip,EQ,eqList,pumpsArr:pumps,setUnder,ren,groundMat,pad,sun,bha,rigG,dwG,ctl,makePump,rebuildLines,sel:()=>sel})).catch(e=>console.error('ext',e));
+import('./ext.js?v=40').then(x=>x.init({THREE,S,PH,scene,cam,ctl,ents,pumps,select,entity,box,cyl,beam,mat,M,lp,curves,FLOOR,MH,td,tdAll,blk,dwG,slG,rnG,rnArm,cwG,UG,W,allCurves:()=>allCurves(),getWell:()=>wellCurve,act,EXT,removeEnt,saveLayout,addEquip,EQ,eqList,pumpsArr:pumps,setUnder,ren,groundMat,pad,sun,bha,rigG,dwG,ctl,makePump,rebuildLines,sel:()=>sel})).catch(e=>console.error('ext',e));
 // ---------- loop (fixed step) ----------
 const DT=0.05;let acc=0,last=performance.now(),spd=20,uiT=0;
 function frame(now){const dtR=Math.min(0.1,(now-last)/1000);last=now;spd=+$('spd').value;
@@ -309,6 +311,6 @@ function frame(now){const dtR=Math.min(0.1,(now-last)/1000);last=now;spd=+$('spd
  requestAnimationFrame(frame)}
 requestAnimationFrame(frame);
 // test hooks
-window.G={EXT,S,PH,ents,select:n=>select(ents.find(e=>e.name==n)),view:(p,t)=>{cam.position.set(...p);ctl.target.set(...t)},setUnder,startConn,explode:i=>pumps[i].dbl(),addEquip,removeEnt:n=>removeEnt(ents.find(e=>e.name==n)),replaceModelURL:(n,u)=>replaceFromURL(ents.find(e=>e.name==n),u),resetModel:n=>resetModel(ents.find(e=>e.name==n)),pumps,EQ,run:sec=>{for(let i=0;i<sec/DT;i++){PH.seqTick(S);PH.step(S,DT);EXT.afterStep()}}};
+window.G={EXT,S,PH,ents,_scene:scene,select:n=>select(ents.find(e=>e.name==n)),view:(p,t)=>{cam.position.set(...p);ctl.target.set(...t)},setUnder,startConn,explode:i=>pumps[i].dbl(),addEquip,removeEnt:n=>removeEnt(ents.find(e=>e.name==n)),replaceModelURL:(n,u)=>replaceFromURL(ents.find(e=>e.name==n),u),resetModel:n=>resetModel(ents.find(e=>e.name==n)),pumps,EQ,run:sec=>{for(let i=0;i<sec/DT;i++){PH.seqTick(S);PH.step(S,DT);EXT.afterStep()}}};
 
 restoreLayout().catch(e=>console.warn('layout restore',e));

@@ -5,8 +5,14 @@ const PKEY='dw34-witsml-ui';// stores ONLY proxy URL, server URL, poll interval,
 const SIGNALS={spp:'Standpipe pressure',Q:'Flow in',hook:'Hookload',wob:'WOB',rpm:'Top drive RPM',md:'Measured depth',quill:'Block height',tq:'Top drive torque','p1.spm':'Pump 1 SPM','p2.spm':'Pump 2 SPM','p3.spm':'Pump 3 SPM','p4.spm':'Pump 4 SPM',rop:'ROP',bitdepth:'Bit depth',holedepth:'Hole depth (MD)'};
 const AUTO=[[/^(SPPA|SPP|STPP|PRES_SP|SPPRESS)$/i,'spp'],[/^(MFIA|TFLO|FLOWIN|MFI|FLOW_IN|TFLOW|FLOW)$/i,'Q'],[/^(ROPA|ROP)$/i,'rop'],[/^(BDE|BITDEP|DBTM_BIT)$/i,'bitdepth'],[/^(DMEA|DBTM|HOLEDEP)$/i,'holedepth'],[/^(BHE|BPOS|BLKPOS|HKHT)$/i,'quill'],[/^(HKLA|HKLD|HOOKLOAD|HKL)/i,'hook'],[/^(SWOB|WOBA|WOB)/i,'wob'],[/^(RPMA|TDRPM|RPM|SRPM)/i,'rpm'],
  [/^(TQA|STOR|TORQ|TDTQ|TQ|TORQUE)/i,'tq'],[/^SPM ?1|^PUMP1|^SPM_1|^SPMA1/i,'p1.spm'],[/^SPM ?2|^PUMP2|^SPM_2|^SPMA2/i,'p2.spm'],[/^SPM ?3|^PUMP3|^SPM_3/i,'p3.spm'],[/^SPM ?4|^PUMP4|^SPM_4/i,'p4.spm']];
-const CFG=Object.assign({proxy:'http://localhost:8796/soap',url:'https://australia.adagasolutions.com/WMLS',interval:10000,map:{},defWell:'DR101L',defWb:'WB01B02',defLog:'General Time-Based'},JSON.parse(localStorage.getItem(PKEY)||'{}'));
-let CRED={user:'',pass:''};
+const HOSTED_PROXY='https://kxwuaasuaskfyecjmuwa.supabase.co/functions/v1/witsml-proxy';
+const CFG=Object.assign({proxy:HOSTED_PROXY,url:'https://australia.adagasolutions.com/WMLS',interval:10000,map:{},defWell:'DR101L',defWb:'WB01B02',defLog:'General Time-Based'},JSON.parse(localStorage.getItem(PKEY)||'{}'));
+// v4.0: hosted HTTPS proxy is the default. Old saved localhost default is migrated (a custom URL is kept).
+if(CFG.proxy==='http://localhost:8796/soap'&&!CFG.proxyPinned)CFG.proxy=HOSTED_PROXY;
+// Credentials: sessionStorage only (cleared when the tab closes or on Disconnect); never localStorage, never logged.
+const CKEY='dw-witsml-cred';let CRED={user:'',pass:''};try{const c=JSON.parse(sessionStorage.getItem(CKEY)||'null');if(c&&typeof c.user=='string')CRED={user:c.user,pass:String(c.pass||'')}}catch{}
+const saveCred=()=>{try{CRED.user||CRED.pass?sessionStorage.setItem(CKEY,JSON.stringify(CRED)):sessionStorage.removeItem(CKEY)}catch{}};
+const isHosted=u=>/\/functions\/v1\/witsml-proxy\b/.test(u||'');
 // v3.9 survey feed: trajectory (+formationMarker) polling, incremental via mdMn, min 60 s, independent of the 10 s log poll
 CFG.svWell=CFG.svWell||'DR101L';CFG.svWellbore=CFG.svWellbore||'WB01B02';CFG.svInterval=Math.max(60000,+CFG.svInterval||60000);
 // memory only
@@ -15,10 +21,12 @@ const WML={status:'not connected',channels:{},log:null,last:null,timer:null,rows
  healthy(){return !!this.log&&this.okAt>0&&this.miss<3&&Date.now()-this.okAt<120000&&Object.keys(this.channels).length>0},
  tag(){if(this.mode=='replay')return 'replay';return this.healthy()?(this.simulated?'live-sim':'live'):'sim'},
  drives(id){if(this.mode=='replay')return 'replay';const ok=this.healthy();if(!ok)return null;for(const [mn,s] of Object.entries(CFG.map))if(s==id&&this.channels[mn]?.v!=null)return this.simulated?'live-sim':'live';return null}};
-window.WML=WML;const saveCfg=()=>localStorage.setItem(PKEY,JSON.stringify({proxy:CFG.proxy,url:CFG.url,interval:CFG.interval,map:CFG.map}));
+window.WML=WML;const saveCfg=()=>localStorage.setItem(PKEY,JSON.stringify({proxyPinned:CFG.proxyPinned,proxy:CFG.proxy,url:CFG.url,interval:CFG.interval,map:CFG.map}));
 const REPLAY_ENABLED=false;// Replay from data hidden (disabled flag) until auth issue resolved
 function authFail(e){WML.authDead=true;clearInterval(WML.sv.timer);WML.sv.timer=null;WML.sv.state='STOPPED · auth failure (no retry)';clearInterval(WML.timer);clearInterval(WML.chk);WML.timer=WML.chk=null;WML.liveMode=false;WML.log=null;WML.channels={};try{for(const k in C.SRC)if(C.SRC[k]=='live')C.SRC[k]='sim'}catch{};const m='Auth failed — polling stopped (no auto-retry; press Connect/Start to retry manually)';setSt(m,true);GX.feedStatus&&GX.feedStatus('Auth failed — polling stopped');const b=$('sim');if(b){b.textContent='SIMULATED - Auth failed, polling stopped';b.style.background='#b71c1c';b.style.color='#fff'}}
-async function call(op,wmlType,query,options){if(WML.authDead)throw new Error('Auth failed — polling stopped');const r=await fetch(CFG.proxy,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:CFG.url,user:CRED.user,pass:CRED.pass,op,wmlType,query,options})});
+async function call(op,wmlType,query,options){if(WML.authDead)throw new Error('Auth failed — polling stopped');const hosted=isHosted(CFG.proxy),h={'Content-Type':'application/json'};if(hosted&&(CRED.user||CRED.pass))h['X-Witsml-Authorization']='Basic '+btoa(unescape(encodeURIComponent(CRED.user+':'+CRED.pass)));
+ const r=await fetch(CFG.proxy,{method:'POST',headers:h,body:JSON.stringify(hosted?{url:CFG.url,op,wmlType,query,options}:{url:CFG.url,user:CRED.user,pass:CRED.pass,op,wmlType,query,options})});
+ if(r.status==401||r.status==403){authFail();throw new Error('Auth failed ('+r.status+') — polling stopped')}
  const j=await r.json();if(r.status==401||(j.error&&/Authentication failed|\b401\b/.test(j.error))){authFail();throw new Error('Auth failed — polling stopped')}if(j.error)throw new Error(j.error);if(op=='WMLS_GetFromStore'&&j.result<1)throw new Error('WITSML result '+j.result+' '+(j.supp||''));return j}
 const xml=s=>new DOMParser().parseFromString(s||'<x/>','application/xml');const kids=(n,t)=>[...n.getElementsByTagNameNS('*',t)];const txt=(n,t)=>kids(n,t)[0]?.textContent?.trim()??'';
 const setSt=(s,err)=>{WML.status=s;const e=$('wst');if(e){e.textContent=s;e.style.color=err?'#f88':'#fd8'}};
@@ -162,9 +170,10 @@ function toggle(v){if(P&&v!==true){SELC=['wwell','wwb','wlog'].map(id=>[$(id).in
  <div style="margin:4px 0;padding:4px;border:1px solid #2f7fd0;border-radius:4px"><b style="color:#8cf">Survey feed</b> (trajectory + formationMarker, incremental by mdMn) well <input id=svw style="width:70px" value="${CFG.svWell}"> wellbore <input id=svb style="width:70px" value="${CFG.svWellbore}"> every <input id=svi style="width:40px" value="${CFG.svInterval/1000}"> s (min 60) <button id=svgo style="${BTN}">▶ Start survey feed</button><button id=svx style="${BTN}">Stop</button><div id=svst style="font-size:11px;color:#fd8">${WML.sv.state}</div></div>
  <div>Status: <span id=wst style="color:#fd8">${WML.status}</span></div><div id=wlinfo style="color:#9ab;font-size:11px"></div>
  <div id=wmap style="margin-top:4px"></div>
- <small style="color:#9ab">Start the proxy on your PC: <code>node witsml_proxy.mjs</code> (needed for CORS/SOAP). Credentials are sent per request to your proxy only, held in this tab's memory and cleared on Disconnect. Every curve is also addable in 📈 Traces → "WITSML channel". ETP 2.0 (Avro binary over WebSocket) is not implemented yet.</small>`;
+ <small style="color:#9ab">Default proxy: hosted HTTPS function (read-only, one allowed server, stores no credentials). Your username/password stay in this tab's sessionStorage and are sent per request as Basic auth; cleared on Disconnect or when the tab closes. A 401 stops all polling. Local alternative: <code>node witsml_proxy.mjs</code> → http://localhost:8796/soap. Every curve is also addable in 📈 Traces → "WITSML channel". ETP 2.0 (Avro binary over WebSocket) is not implemented yet.</small>`;
  document.body.appendChild(P);if(SELC)['wwell','wwb','wlog'].forEach((id,i)=>{$(id).innerHTML=SELC[i][0];$(id).value=SELC[i][1]});
- const read=()=>{CFG.proxy=$('wproxy').value.trim();CFG.url=$('wurl').value.trim();CFG.interval=Math.max(10000,+$('wint').value||10000);$('wint').value=CFG.interval;CRED.user=$('wuser').value;CRED.pass=$('wpass').value;saveCfg()};
+ if($('wuser')&&!$('wuser').value&&CRED.user){$('wuser').value=CRED.user;$('wpass').value=CRED.pass}
+ const read=()=>{CFG.proxy=$('wproxy').value.trim();CFG.url=$('wurl').value.trim();CFG.interval=Math.max(10000,+$('wint').value||10000);$('wint').value=CFG.interval;CRED.user=$('wuser').value;CRED.pass=$('wpass').value;saveCred();if(CFG.proxy!==HOSTED_PROXY)CFG.proxyPinned=true;saveCfg()};
  const fill=(id,arr,def)=>{$(id).innerHTML=arr.map(o=>`<option value="${o.uid}">${o.name.replace(/</g,'&lt;')}</option>`).join('');const d=def&&arr.find(o=>o.name.trim()==def);if(d)$(id).value=d.uid};
  const wbs=async()=>{try{fill('wwb',await listWellbores($('wwell').value),CFG.defWb);await lgs()}catch(e){setSt('error: '+e.message,true)}};
  const lgs=async()=>{try{logs=await listLogs($('wwell').value,$('wwb').value);fill('wlog',logs.map(l=>({uid:l.uid,name:l.name+' ['+(/time/i.test(l.indexType)?'time':'depth')+']'})));const dl=logs.find(l=>l.name.trim()==CFG.defLog);if(dl)$('wlog').value=dl.uid;info()}catch(e){setSt('error: '+e.message,true)}};
@@ -175,7 +184,7 @@ function toggle(v){if(P&&v!==true){SELC=['wwell','wwb','wlog'].map(id=>[$(id).in
  $('wrgo').onclick=()=>{read();const l=logs.find(l=>l.uid==$('wlog').value);if(!l)return setSt('pick a log first',true);if(!/time/i.test(l.indexType))return setSt('replay needs a time-based log',true);startReplay({...l,w:$('wwell').value,b:$('wwb').value},+$('wrh').value||2,+$('wrs').value).catch(e=>setSt('replay error: '+e.message,true))};
  $('wrs').onchange=()=>{if(WML.rp)WML.rp.speed=+$('wrs').value};$('wrpp').onclick=()=>{const R=WML.rp;if(R){R.playing=!R.playing;R.lt=0}};$('wrx').onclick=stopReplay;
  $('wrsc').oninput=()=>{const R=WML.rp;if(R){R.drag=true;replaySet(R.t0+(R.t1-R.t0)*$('wrsc').value/1000);R.drag=false}};
- const sw=()=>{if(WML.log||WML.liveMode||WML.covWell){read();loadWell($('wwell').value,$('wwb').value)}};$('wwell').onchange=async()=>{await wbs();sw()};$('wwb').onchange=async()=>{await lgs();sw()};$('wlog').onchange=info;$('wstop').onclick=()=>{stop();svStop('stopped (disconnect)');CRED={user:'',pass:''};$('wuser').value=$('wpass').value=''};$('wx').onclick=()=>toggle();
+ const sw=()=>{if(WML.log||WML.liveMode||WML.covWell){read();loadWell($('wwell').value,$('wwb').value)}};$('wwell').onchange=async()=>{await wbs();sw()};$('wwb').onchange=async()=>{await lgs();sw()};$('wlog').onchange=info;$('wstop').onclick=()=>{stop();svStop('stopped (disconnect)');CRED={user:'',pass:''};saveCred();$('wuser').value=$('wpass').value=''};$('wx').onclick=()=>toggle();
  $('wgo').onclick=()=>{read();WML.authDead=false;stopReplay();const l=logs.find(l=>l.uid==$('wlog').value);if(!l)return setSt('pick a log first',true);start({...l,w:$('wwell').value,b:$('wwb').value})};
  $('svgo').onclick=()=>{read();CFG.svWell=$('svw').value.trim();CFG.svWellbore=$('svb').value.trim();CFG.svInterval=Math.max(60000,(+$('svi').value||60)*1000);$('svi').value=CFG.svInterval/1000;saveCfg();svStart()};$('svx').onclick=()=>svStop();$('wrep').onclick=()=>{read();loadWell($('wwell').value,$('wwb').value)};svRender();renderMap()}
 function renderMap(){const m=$('wmap');if(!m)return;const L=WML.log||WML.preview;if(!L){m.innerHTML='';return}
@@ -185,4 +194,4 @@ function renderMap(){const m=$('wmap');if(!m)return;const L=WML.log||WML.preview
  m.querySelectorAll('[data-tr]').forEach(b=>b.onclick=()=>GX.traces.addTrack('wml:'+b.dataset.tr))}
 export function init(ctx){C=ctx;S=C.S;el=C.el;PANEL=C.PANEL;BTN=C.BTN||'';ui();
  const E=window.EXT,o=E.afterStep.bind(E);E.afterStep=()=>{drive();o();drive()};
- Object.assign(window.GX,{witsml:{WML,CFG,loadWell,resetAll,covCompute,covRender,svStart,svStop,svPoll,svParse,open:()=>toggle(true),start,stop,poll,listWells,listWellbores,listLogs,setLiveMode,startReplay,stopReplay,replaySet,setCred:(u,p)=>{CRED={user:u,pass:p}}}})}
+ Object.assign(window.GX,{witsml:{WML,CFG,loadWell,resetAll,covCompute,covRender,svStart,svStop,svPoll,svParse,open:()=>toggle(true),start,stop,poll,listWells,listWellbores,listLogs,setLiveMode,startReplay,stopReplay,replaySet,setCred:(u,p)=>{CRED={user:u,pass:p};saveCred()},HOSTED_PROXY}})}

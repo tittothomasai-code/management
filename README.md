@@ -3,6 +3,19 @@ Run: cd /workspace/drill-sim/v3-game && python3 -m http.server 8000  -> open htt
 Files: index.html (HUD), main.js (scene, entities, input, loop), physics.js (ported v2 physics + connection sequence), vendor/ (three r160, offline), shoot.mjs (headless test + screenshots).
 Controls: drag orbit, wheel zoom, WASD/QE fly, click machine = panel, double-click pump = exploded view.
 
+## v4.0 — single wellbore fix, phone layout, hosted HTTPS WITSML proxy
+
+**Rendering fix:** when measured depth jumps back (after a reset or a well switch), survey stations deeper than the bit are now dropped (`trimSurveys`). That stale deep leg is what made the "V" of two pipes. Now there is one wellbore and one drill string along a single path from surface.
+
+**Mobile:** the page now has a `viewport` meta tag, and `mobile.js` turns on phone mode at ≤600 css px or on a touch screen. Every panel becomes a collapsible bottom sheet (a right-side drawer in landscape), opened from a dock of chips. Only one panel is open at a time, controls are ≥40 px, inputs use 16 px text (so iOS doesn't zoom), and the iPhone notch/home-bar safe areas are respected.
+
+**Hosted proxy** (default): `https://kxwuaasuaskfyecjmuwa.supabase.co/functions/v1/witsml-proxy` (source: `supabase/functions/witsml-proxy/index.ts`).
+- Stores **no** credentials. You type the username/password in the game. They stay in this tab's sessionStorage, are sent per request as `X-Witsml-Authorization: Basic …`, and are cleared on Disconnect or when the tab closes.
+- Talks to exactly one upstream: `https://australia.adagasolutions.com/WMLS`. Read actions only (GetVersion, GetCap, GetFromStore); the function builds the SOAP envelope itself.
+- CORS allows `https://tittothomasai-code.github.io` only. An upstream 401/403 is passed straight back and the game hard-stops (no retry).
+- Nothing is logged. `verify_jwt` is off because browser users have no Supabase JWT; access is gated by the WITSML credentials, the origin, the host and the operation.
+- **TLS verification is always on.** Supabase Edge (Deno) cannot skip certificate checks for a single host: there are no runtime flags, and `Deno.createHttpClient` has no ignore option. So while the Adaga certificate is expired, the proxy returns 502 "Upstream TLS certificate failed verification" and never sends credentials over an unverified link. The local `node witsml_proxy.mjs` remains an alternative.
+
 ## Equipment (v3 equip)
 - "Add equipment" menu: add mud pumps (real sim hydraulics), tanks, shakers, desander, desilter, degasser, generator, BOP, choke manifold, accumulator, pipe rack, fuel/water tank, light tower, doghouse. Non-pump items are visual + simple state only.
 - Click an item: panel with controls, Remove, and "Replace with 3D model" (GLB/GLTF/OBJ/FBX/STL file or URL). Drag to move. Layout and models are saved in this browser.
