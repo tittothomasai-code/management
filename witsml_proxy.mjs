@@ -5,9 +5,11 @@
 //   POST http://localhost:8796/soap  {url, user, pass, op:"WMLS_GetFromStore"|"WMLS_GetVersion"|"WMLS_GetCap", wmlType, query, options}
 //        -> {result, xml, supp, ms}
 //   SIMULATED store for testing (clearly labelled, NOT real rig data): http://localhost:8796/sim/witsml  (any user/password)
+//   WITSML_PROXY_INSECURE_HOSTS=host1,host2  skip TLS certificate checks for these hosts only (default: none). Use only temporarily, e.g. expired cert.
 // Security: listens on 127.0.0.1 only; credentials are forwarded per request (HTTP Basic) and never stored or logged.
 //   Set WITSML_PROXY_ALLOW="https://witsml.example.com,https://other" to restrict target servers.
 import http from 'http';import https from 'https';import fs from 'fs';
+const INSECURE=(process.env.WITSML_PROXY_INSECURE_HOSTS||'').split(',').map(x=>x.trim()).filter(Boolean);// hosts whose TLS certificate is NOT verified (off by default; e.g. expired cert)
 const PORT=+process.argv[2]||8796,ALLOW=(process.env.WITSML_PROXY_ALLOW||'').split(',').filter(Boolean);
 const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 const unesc=s=>String(s).replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&amp;/g,'&');
@@ -17,7 +19,7 @@ function envelope(op,a){const body=op=='WMLS_GetVersion'?'':op=='WMLS_GetCap'?`<
  return `<?xml version="1.0" encoding="utf-8"?><soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"><soap:Body soap:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"><q1:${op} xmlns:q1="http://www.witsml.org/message/120">${body}</q1:${op}></soap:Body></soap:Envelope>`}
 function post(url,xml,op,user,pass){return new Promise((res,rej)=>{const u=new URL(url),lib=u.protocol=='https:'?https:http;
  const h={'Content-Type':'text/xml; charset=utf-8','SOAPAction':'"http://www.witsml.org/action/120/Store.'+op+'"','Content-Length':Buffer.byteLength(xml)};if(user)h.Authorization='Basic '+Buffer.from(user+':'+(pass||'')).toString('base64');
- const r=lib.request(u,{method:'POST',headers:h,timeout:30000},s=>{let b='';s.setEncoding('utf8');s.on('data',d=>b+=d);s.on('end',()=>res({status:s.statusCode,body:b}))});r.on('error',rej);r.on('timeout',()=>r.destroy(new Error('timeout')));r.end(xml)})}
+ const r=lib.request(u,{method:'POST',headers:h,timeout:30000,...(INSECURE.includes(u.hostname)?{rejectUnauthorized:false}:{})},s=>{let b='';s.setEncoding('utf8');s.on('data',d=>b+=d);s.on('end',()=>res({status:s.statusCode,body:b}))});r.on('error',rej);r.on('timeout',()=>r.destroy(new Error('timeout')));r.end(xml)})}
 // ---------------- SIMULATED store ----------------
 const CSV=fs.readFileSync(new URL('./sample_sequence.csv',import.meta.url),'utf8').trim().split(/\r?\n/);const H=CSV[0].split(',');
 const ROWS=CSV.slice(1).map(l=>{const c=l.split(','),o={};H.forEach((k,i)=>o[k]=+c[i]||0);return o});const T0=Date.now(),RATE=2;// rows per second
