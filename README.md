@@ -171,3 +171,9 @@ New files: `geo.js` (pure maths/parsers, node-testable) and `ext5.js` (UI/3D). H
 - Advanced settings: Q (slope noise per m), R (crossing TVD variance m²), gamma cutoff (default 75 gAPI).
 - Synthetic benchmark (known truth, 11 crossings): RMS top 0.02 m, bottom 0.01 m, dip 1.54° vs 1.5°. SIM-TEST mock (only 2 crossings, 45° well): RMS 2.6/2.5 m vs truth, dip unconstrained (0 ± 2.35°) but truth inside ±2σ.
 - 3D view button (📷) switches to orbit camera and turns off bit-follow so the image texture is visible.
+
+## v4.10 — survey load: real failure reasons + fallback strategies
+- Every survey failure now shows on screen (toast + status + "No survey — vertical · WHY:" banner) the step, WITSML Result code, SuppMsgOut and HTTP status.
+- Fallbacks when listing finds nothing (read-only, stop on 401): F1 uidWell+uidWellbore id-only; F2 full template with empty elements (no returnElements, then requested); F3 by name "Survey - Directional"; F4 requestObjectSelectionCapability + GetCap check.
+- Fixed: 401 guard no longer trips on "-401" text in SOAP faults or on proxy 403 (origin/op) refusals; uids are XML-escaped (spaces/&); non-JSON proxy answers (Netlify 504) and client timeouts (28 s) reported; discovery stops after 3 transport failures in a row.
+- Mock: GET /ctl/tfail?m=needwb|noidonly|fullonly|nameonly|unsupported|fault|http500|spaceuid. Test: v410_test.mjs.

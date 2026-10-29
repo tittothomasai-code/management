@@ -299,7 +299,7 @@ function actX(e,x,b){if(EXT.actX(e,x,b))return;const st=e.st,all=()=>!!document.
  m.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{const e=addEquip(b.dataset.add);m.style.display='none';select(e)});
  m.querySelector('#eqreset').onclick=()=>{if(confirm('Reset equipment layout and 3D models to default?')){localStorage.removeItem(LKEY);localStorage.removeItem(MKEY);try{indexedDB.deleteDatabase('dw3')}catch{}location.reload()}}}
 
-import('./ext.js?v=49').then(x=>x.init({THREE,S,PH,scene,cam,ctl,ents,pumps,select,entity,box,cyl,beam,mat,M,lp,curves,FLOOR,MH,td,tdAll,blk,dwG,slG,rnG,rnArm,cwG,UG,W,allCurves:()=>allCurves(),getWell:()=>wellCurve,act,EXT,removeEnt,saveLayout,addEquip,EQ,eqList,pumpsArr:pumps,setUnder,ren,groundMat,pad,sun,bha,rigG,dwG,ctl,makePump,rebuildLines,sel:()=>sel})).catch(e=>console.error('ext',e));
+import('./ext.js?v=50').then(x=>x.init({THREE,S,PH,scene,cam,ctl,ents,pumps,select,entity,box,cyl,beam,mat,M,lp,curves,FLOOR,MH,td,tdAll,blk,dwG,slG,rnG,rnArm,cwG,UG,W,allCurves:()=>allCurves(),getWell:()=>wellCurve,act,EXT,removeEnt,saveLayout,addEquip,EQ,eqList,pumpsArr:pumps,setUnder,ren,groundMat,pad,sun,bha,rigG,dwG,ctl,makePump,rebuildLines,sel:()=>sel})).catch(e=>console.error('ext',e));
 // ---------- loop (fixed step) ----------
 const DT=0.05;let acc=0,last=performance.now(),spd=20,uiT=0;
 function frame(now){const dtR=Math.min(0.1,(now-last)/1000);last=now;spd=+$('spd').value;
@@ -313,7 +313,7 @@ function frame(now){const dtR=Math.min(0.1,(now-last)/1000);last=now;spd=+$('spd
  if(now-uiT>200){uiT=now;panelRows.forEach((r,i)=>{const el=document.getElementById('pv'+i);if(el)el.textContent=U.val(r[0],r[1]());const lb=document.getElementById('pl'+i);if(lb)lb.textContent=U.lab(r[0])});
   const rm=realMode(),pl=UG.getObjectByName('simPlan');if(pl)pl.visible=!rm;
   let ns=document.getElementById('nosurv');if(!ns){ns=document.createElement('div');ns.id='nosurv';ns.style.cssText='position:fixed;left:50%;transform:translateX(-50%);top:calc(84px + env(safe-area-inset-top));background:#5a3a00ee;color:#ffd27a;font:bold 13px sans-serif;padding:4px 10px;border-radius:6px;z-index:41;pointer-events:none;display:none;text-align:center;max-width:92vw';document.body.appendChild(ns)}
-  ns.style.display=rm&&PATHSRC=='VERTICAL'?'':'none';ns.textContent='No survey — trajectory assumed vertical ('+rm+')';
+  ns.style.display=rm&&PATHSRC=='VERTICAL'?'':'none';ns.textContent='No survey — trajectory assumed vertical ('+rm+')'+(window.WML?.sv?.why?' · WHY: '+WML.sv.why:'');
   if(rm){$('clock').textContent=U.txt(`${rm} data  |  MD ${S.md.toFixed(0)} ft  |  well path: ${PATHSRC=='SURVEY'?'survey ('+(window.GEO?.surv?.src||'')+')':'no survey, vertical'}`)}else{
   const h=Math.floor(S.t/3600),mi=Math.floor(S.t/60)%60;$('clock').textContent=U.txt(`SIM time ${h}h${String(mi).padStart(2,'0')}m  ×${spd}  |  MD ${S.md.toFixed(0)} ft  SPP ${S.spp.toFixed(0)} psi  Q ${S.Q.toFixed(0)} gpm  ROP ${S.rop.toFixed(0)} ft/h`)+(S.seq?'  |  CONNECTION: '+S.seq.steps[S.seq.i][0]:'');}
   $('log').innerHTML=S.events.slice(-6).reverse().map(e=>`${(e[0]/60).toFixed(1)}m ${U.txt(e[1])}`).join('<br>')}

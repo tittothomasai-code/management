@@ -11,7 +11,7 @@ export async function init(ctx){C=ctx;THREE=C.THREE;S=C.S;PH=C.PH;S.src=SRC;
  detailGeometry();seqPanel();signals();sensorsInit();await libInit();
  C.EXT.afterStep=afterStep;C.EXT.frame=frame;C.EXT.actX=actX;
  window.GX={csvData:()=>CSV,circuitAt,startSeq:(k,sm)=>{PH.startSeq(S,k,sm);renderSeq()},stepNext,loadCSVText,useCSV,addSensor,setSensor,placeLib,addBha,exportLayout,importLayout,lib:()=>LIB,ext:X,partSelect,showTree,setSource,feed:FEED};
- try{const m2=await import('./ext2.js?v=49');await m2.init({...C,FEED,SIGS,SRC,sigRender,el,BTN,PANEL,renderSeq})}catch(err){console.error('ext2',err)}
+ try{const m2=await import('./ext2.js?v=50');await m2.init({...C,FEED,SIGS,SRC,sigRender,el,BTN,PANEL,renderSeq})}catch(err){console.error('ext2',err)}
  window.GX_READY=true}
 
 function smotorSteps(){const M=()=>X.lib.find(i=>LIB[i.type]?.physics?.kind=='motor'&&inFlow(i));const keep=S.pumps.map(p=>p.cmd);
