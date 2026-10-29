@@ -110,3 +110,9 @@ New files: `geo.js` (pure maths/parsers, node-testable) and `ext5.js` (UI/3D). H
 - **Data Coverage panel**: shows each item as LIVE / SIM-TEST / SIM / missing.
 - **Mock**: `mock_upstream.mjs` serves 2 fictional wells on 127.0.0.1 and is always labelled **SIM-TEST**, never LIVE.
 - Caveats: not tested against any real WITSML server yet. `mdMn` is treated as inclusive (the dedupe handles overlap). After a 401, polling only restarts if the user presses Start again.
+
+## v4.1 — never fail silently (WITSML)
+- Every WITSML action (Start live, Load full well replica, Start survey feed, well switch) shows a red banner when not connected: "Not connected — enter Adaga login in WITSML panel and press Connect", opens the WITSML panel and focuses the username field. No proxy call is made.
+- Connect with an empty login asks for username/password. Connect, survey feed and load-well show clear messages for errors, network failures, and empty results.
+- On phones, the username/password inputs are 46 px touch targets. Test: `node v41_conn_test.mjs`.
+- Cert note: a scoped TLS skip (node:https / node:tls with rejectUnauthorized:false for one host) does NOT work on Supabase Edge. The runtime still enforces verification. witsml-proxy stays at v1 with verification on. The Adaga cert must be renewed, or a different host is needed.

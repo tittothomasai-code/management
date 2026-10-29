@@ -10,7 +10,7 @@ body.mob .msheet{position:fixed!important;left:0!important;right:0!important;top
 body.mob .msheet::before{content:'';position:sticky;display:block;top:-12px;margin:-12px auto 6px;width:44px;height:5px;border-radius:3px;background:#789}
 body.mob #hud.msheet:not(.mcol){display:flex!important;flex-wrap:wrap!important;gap:6px}
 body.mob .mcol{display:none!important}
-body.mob .msheet button,body.mob .msheet select,body.mob .msheet label,body.mob #mdock button{min-height:40px;min-width:40px;font-size:14px!important;touch-action:manipulation}
+body.mob .msheet button,body.mob .msheet select,body.mob .msheet input,body.mob .msheet label,body.mob #mdock button{min-height:40px;min-width:40px;font-size:16px!important;touch-action:manipulation}
 body.mob .msheet input,body.mob .msheet select,body.mob .msheet textarea{font-size:16px!important;max-width:100%}
 body.mob .msheet input[type=checkbox]{width:22px;height:22px}
 body.mob .msheet textarea{width:100%!important;box-sizing:border-box}
@@ -23,7 +23,7 @@ body.mob #mdock{display:flex;position:fixed;left:0;right:0;bottom:0;height:calc(
 `;
 const st=document.createElement('style');st.textContent=css;document.head.appendChild(st);
 const dock=document.createElement('div');dock.id='mdock';document.body.appendChild(dock);
-const SKIP=new Set(['sim','clock','mdock','panels']);const NAMES={hud:'☰ Tools',witsml:'WITSML',seqpanel:'Sequence',traces:'Traces',geoLay:'Layers',geoSur:'Survey',geoRd:'Formation',log:'Events',designer:'Designer',seqeditor:'Seq editor',seqtree:'Seq tree',eqmenu:'Add equip',libmenu:'Library',wcov:'Coverage'};
+const SKIP=new Set(['wtoast','sim','clock','mdock','panels']);const NAMES={hud:'☰ Tools',witsml:'WITSML',seqpanel:'Sequence',traces:'Traces',geoLay:'Layers',geoSur:'Survey',geoRd:'Formation',log:'Events',designer:'Designer',seqeditor:'Seq editor',seqtree:'Seq tree',eqmenu:'Add equip',libmenu:'Library',wcov:'Coverage'};
 const NOAUTO=new Set(["hud","geoRd","log","seqpanel"]);let t0=0,open=null,seen=new Map(),uid=0,on=false;
 function name(e){if(NAMES[e.id])return NAMES[e.id];const t=(e.querySelector('b,h4')||e).textContent.trim().replace(/\s+/g,' ');return t.slice(0,16)||'Panel'}
 function cands(){const out=[...document.body.children].filter(e=>e.tagName=='DIV'&&!SKIP.has(e.id)&&getComputedStyle(e).position=='fixed');document.querySelectorAll('#panels>.panel').forEach(e=>out.push(e));return out}

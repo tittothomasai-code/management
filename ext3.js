@@ -168,5 +168,5 @@ export async function init(ctx){C=ctx;S=C.S;PH=C.PH;el=C.el;PANEL=C.PANEL;ui();
  setInterval(panelHook,300);setInterval(sigBadges,500);setInterval(()=>{if(TR.on){const n=catalogue().length;if(n!=CAT.length&&document.activeElement!==picker)renderTree();refreshCat()}},2000);
  U.on((o,n)=>{for(const tr of TR.tracks){const k=U.f(tr.u0,n)/U.f(tr.u0,o);if(k!=1&&TR.data[tr.id])TR.data[tr.id]=TR.data[tr.id].map(v=>v==null?v:v*k)}try{build()}catch{}});
  Object.assign(window.GX,{traces:{TR,addTrack,rmTrack,open,toCSV,catalogue:()=>(refreshCat(),CAT.map(c=>({id:c.id,label:c.label,unit:c.unit}))),entSignals:n=>entSignals(C.ents.find(e=>e.name==n)).map(c=>c.id),addFormula,renderTree}});
- try{(await import('./ext4.js?v=40')).init(C)}catch(err){console.error('ext4',err)}
- try{(await import('./ext5.js?v=40')).init(C)}catch(err){console.error('ext5',err)}}
+ try{(await import('./ext4.js?v=41')).init(C)}catch(err){console.error('ext4',err)}
+ try{(await import('./ext5.js?v=41')).init(C)}catch(err){console.error('ext5',err)}}
