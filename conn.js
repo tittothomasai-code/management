@@ -44,7 +44,7 @@ export function toolJoints(C,bitNow,len){const out=[];if(!Number.isFinite(bitNow
  if(len>1&&C.length){let d=bitNow-C[0].depth_m+len,guard=0;while(d<bitNow&&guard++<5000){out.push({depth_m:d,fromConn:null,extrapolated:true});d+=len}}
  out.sort((a,b)=>a.depth_m-b.depth_m);out.forEach((j,k)=>j.joint=k+1);return out}
 export function toCSV(res,fmtT=t=>t){const h='n,slips_in,slips_out,pumps_off,pumps_on,duration_s,pump_off_s,hole_depth_m,bit_depth_m,length_m,block_travel_m';
- return '# Connections — Estimated from data (Drilling World v4.3). Mode: '+(res.kpi?.mode||'?')+'\n'+h+'\n'+res.connections.map(c=>[c.n,fmtT(c.tSlipsIn),fmtT(c.tSlipsOut),fmtT(c.tOff),fmtT(c.tOn),c.duration_s.toFixed(0),c.pumpOff_s.toFixed(0),c.depth_m.toFixed(2),c.bitDepth_m?.toFixed(2)??'',c.length_m==null?'':c.length_m.toFixed(2),c.blockTravel_m?.toFixed(2)??''].join(',')).join('\n')+'\n'}
+ return '# Connections — Estimated from data (Drilling World v4.4). Mode: '+(res.kpi?.mode||'?')+'\n'+h+'\n'+res.connections.map(c=>[c.n,fmtT(c.tSlipsIn),fmtT(c.tSlipsOut),fmtT(c.tOff),fmtT(c.tOn),c.duration_s.toFixed(0),c.pumpOff_s.toFixed(0),c.depth_m.toFixed(2),c.bitDepth_m?.toFixed(2)??'',c.length_m==null?'':c.length_m.toFixed(2),c.blockTravel_m?.toFixed(2)??''].join(',')).join('\n')+'\n'}
 // ---- synthetic generator (SIM-TEST) with known connections; used by unit tests and the in-game SIM-TEST button ----
 export function synth({joints=6,len=9.4,start_m=1500,dt=5,rop_mh=30,conn_s=240,pumpBlip_at=null,pumpBlip_s=30,stand=false,noBlock=false,withSlips=false}={}){
  const L=stand?28.2:len,rows=[],truth=[];let t=0,hd=start_m,bd=start_m;const BW=180,ST=900,FL=2800,RPM=120;

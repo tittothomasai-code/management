@@ -1,7 +1,7 @@
 // ext5.js v3.8: subsurface layers (formation tops as 3D strata) + survey (min curvature) panels.
 // No server calls: WITSML formationMarker / trajectory XML is parsed from pasted or loaded text (hand-made samples in tests).
 // LIVE badge only ever shown for survey data pushed via GEO.ingestTrajectory(xml,{live:true}) from a live WITSML connection; files/manual/examples are SIM.
-import * as GG from './geo.js?v=43';
+import * as GG from './geo.js?v=44';
 let C,S,THREE,G3,PATH,lay,sur,rd;const KEY='dw-geo';const $=id=>document.getElementById(id);
 const GEO={layers:[],surv:{src:'SIM',name:'',live:false,stations:[]},calc:[]};window.GEO=GEO;
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));

@@ -1,5 +1,5 @@
 // v4.3 Connections / joints panel. Detection is in conn.js (pure, unit-tested). Results are ESTIMATES derived from the time log.
-import * as K from './conn.js?v=43';
+import * as K from './conn.js?v=44';
 let C,S,THREE,P,RES=null,SRC='auto',RINGS=null,timer=null,LAST=null;
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -68,4 +68,4 @@ export function init(ctx){C=ctx;S=C.S;THREE=C.THREE;
  b.onclick=()=>{P.style.display=P.style.display=='none'?'':'none';if(P.style.display!='none')run();else rings()};
  window.U?.on?.(()=>render());
  timer=setInterval(()=>{if(P.style.display!='none'&&RES&&(RES.src.tag=='LIVE'||RES.src.tag=='SIMULATED'))run()},15000);
- window.GX=window.GX||{};GX.conn={run,result:()=>RES,setSource:s=>{SRC=s;LAST=s=='sim'?'sim':null;run()},opt:()=>OPT}}
+ window.GX=window.GX||{};GX.conn={fromWitsml,synth:K.synth,detect:K.detect,run,result:()=>RES,setSource:s=>{SRC=s;LAST=s=='sim'?'sim':null;run()},opt:()=>OPT}}
