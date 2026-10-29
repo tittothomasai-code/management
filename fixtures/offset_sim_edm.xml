@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<export><!-- SIM fixture in EDM-style table rows -->
+<CD_WELL well_id="W9" well_common_name="SIM EDM Offset-B" offset_north="-120" offset_east="-80"/>
+<CD_WELLBORE wellbore_id="WB9" well_id="W9" wellbore_name="OH"/>
+<CD_DEFINITIVE_SURVEY_STATION wellbore_id="WB9" md="0" inclination="0" azimuth="0"/>
+<CD_DEFINITIVE_SURVEY_STATION wellbore_id="WB9" md="400" inclination="0" azimuth="0"/>
+<CD_DEFINITIVE_SURVEY_STATION wellbore_id="WB9" md="800" inclination="20" azimuth="200"/>
+<CD_DEFINITIVE_SURVEY_STATION wellbore_id="WB9" md="1600" inclination="20" azimuth="200"/>
+</export>
