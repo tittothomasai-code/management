@@ -1,7 +1,7 @@
 // ext8.js v4.8: MWD azimuthal image + geology curtain section + drilling mode (rotary/slide) + Survey QC.
 // Read-only WITSML (GetFromStore via the existing proxy/call path). Guardrails: only logs in the ACTIVE LOG'S wellbore are used
 // (same uidWell + uidWellbore as the trajectory), data freshness shown, SIM-TEST labels on mock data, user-defined targets labelled as such.
-import * as K9 from './ext9.js?v=54';
+import * as K9 from './ext9.js?v=55';
 let C,S,THREE,X;const $=id=>document.getElementById(id);const FT=0.3048;
 const CF=JSON.parse(localStorage.getItem('dw_geo48')||'{}');const DEF={rpmThr:5,flowOn:200,sppOn:2000,minRun:3,standM:28.5,roof:null,rings:true,ringSrc:true,thick:3,dip:0,hd0:null,kb:0,dlsSlide:1.0,kQ:1e-6,kR:0.25,grCut:75,dlsRot:2.0,nbiTol:1.5};for(const k in DEF)if(CF[k]===undefined)CF[k]=DEF[k];
 const save=()=>localStorage.setItem('dw_geo48',JSON.stringify(CF));

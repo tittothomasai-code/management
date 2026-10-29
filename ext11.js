@@ -70,7 +70,7 @@ export function seamFrom(refs,thick){const R=[...refs].sort((a,b)=>a.hd-b.hd);re
 const ST=(globalThis.window||globalThis).Q53={};
 function G(){return window.GX?.geo8}
 function curt(){const g=G();const calc=window.GEO?.calc||[];if(calc.length<2)return null;const cu=g.curtain(calc);const S0=window.S||{};return cu}
-async function loadDoug(){const F=await (await fetch(DOUG_URL+'?v=54')).json();ST.dougF=F;$('r53t').value=F.points.map(p=>p.hpl+' '+p.roof+' '+p.floor).join('\n');$('r53ax').value='hpl';ST.dougSrc='Doug (transcribed from WestSide report image, SIM-TEST)';return F}
+async function loadDoug(){const F=await (await fetch(DOUG_URL+'?v=55')).json();ST.dougF=F;$('r53t').value=F.points.map(p=>p.hpl+' '+p.roof+' '+p.floor).join('\n');$('r53ax').value='hpl';ST.dougSrc='Doug (transcribed from WestSide report image, SIM-TEST)';return F}
 function dougRefs(){const cu=curt();if(!cu)return [];const g=G(),kb=+g.CF.kb||0;const p=parseDoug($('r53t').value,$('r53ax').value,ST.dougF?.hplToMd??288.4);return dougToCurtain(p,cu,kb,g.K9)}
 function opts(){return {L:+$('r53L').value||0.35,thPrior:+$('r53th').value||2,priorSrc:'user prior',K9:G().K9}}
 export async function runSynth(trueThick){const g=G();if(!(window.GEO?.calc?.length>=2)||!window.REF52)await GX.ref52.loadReference();if(!ST.dougF)await loadDoug();const cu=curt();const refs=dougRefs();
