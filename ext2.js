@@ -8,7 +8,7 @@ export async function init(ctx){C=ctx;THREE=C.THREE;S=C.S;PH=C.PH;el=C.el;BTN=C.
  const f0=C.EXT.frame;C.EXT.frame=dt=>{f0(dt);frame2(dt)};
  const a0=C.EXT.actX;C.EXT.actX=(e,x,b)=>{if(x=='pvalve'&&e.st){e.st.valve=e.st.valve===false;PH.ev(S,'Pump '+e.st.id+' manifold valve '+(e.st.valve===false?'closed':'open'));if(e.st.valve!==false)e.st.tripped=false;return true}return a0(e,x,b)};
  const s0=C.EXT.afterStep;C.EXT.afterStep=()=>{s0();feedStale()};
- Object.assign(window.GX,{feedCfg:FCFG,feedConnect,feedDisconnect,design:()=>DES,applyDesign,derive,setDesign,addPumpType,PUMP_TYPES,seqLib:()=>SEQLIB,compileSeq,runUserSeq,saveSeqLib,camMode:setCam,seqTree:renderTree});
+ Object.assign(window.GX,{feedCfg:FCFG,feedConnect,feedDisconnect,design:()=>DES,applyDesign,derive,setDesign,addPumpType,PUMP_TYPES,seqLib:()=>SEQLIB,compileSeq,runUserSeq,saveSeqLib,camMode:setCam,seqTree:renderTree});try{(await import('./ext3.js?v=33')).init(C)}catch(err){console.error('ext3',err)}
 }
 // ======================= 1. VISUALS =======================
 let reeve,fastLine,tdA,bopG,camBtns;
