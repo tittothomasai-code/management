@@ -85,7 +85,7 @@ function ui(){const b=el('button','background:#0a6;color:#fff;font-weight:700','
  W.innerHTML=`<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><b style="color:#8fd">Trace recorder</b><small>sim time · step markers on axis</small>
  <select id=trwin><option value=30>30 s</option><option value=120>2 min</option><option value=600>10 min</option></select>
  <button id=trpause>⏸ Pause</button><input id=trscroll type=range min=0 max=1000 value=1000 style="width:120px" title="scroll back"><button id=trlive>Live ▶|</button>
- <input id=trq placeholder="🔍 search any signal…" style="width:170px"><button id=trtree>Signals ▾</button><button id=trfx>ƒ Formula</button><button id=trpump>+ All pump traces</button><button id=trcsv>Export CSV</button><button id=trclr>Clear</button><button id=trx>×</button></div>
+ <input id=trq placeholder="🔍 search any signal…" style="width:170px"><select id=trsrcf title="source filter"><option value=all>All sources</option><option value=live>LIVE only</option><option value=sim>SIM / CSV only</option></select><button id=trtree>Signals ▾</button><button id=trfx>ƒ Formula</button><button id=trpump>+ All pump traces</button><button id=trcsv>Export CSV</button><button id=trclr>Clear</button><button id=trx>×</button></div>
  <div id=trfrow style="display:none;margin:4px 0;background:#0e1a22;padding:4px;border-radius:4px">Name <input id=trfn style="width:110px" placeholder="Total flow"> Unit <input id=trfu style="width:50px" placeholder="gpm"> = <input id=trfe style="width:300px" placeholder="[p1.flow]+[p2.flow]   or   [spp]-base[spp]"> <button id=trfadd>Add formula trace</button> <small id=trferr style="color:#f88"></small><br><small style="color:#9ab">Click a signal in the tree to insert its [id]. base[id] = value when added (baseline). Functions: abs min max sqrt pow exp log round.</small></div>
  <div id=trtbox style="display:none;max-height:260px;overflow:auto;background:#0b1218;border:1px solid #2a3a46;padding:4px;font-size:12px;margin:4px 0"></div><div id=trhdr></div><canvas id=trcv style="width:100%;display:block;cursor:crosshair"></canvas>`;
  cv=W.querySelector('#trcv');ctx=cv.getContext('2d');hdr=W.querySelector('#trhdr');picker=W.querySelector('#trq');tbox=W.querySelector('#trtbox');
@@ -94,6 +94,7 @@ function ui(){const b=el('button','background:#0a6;color:#fff;font-weight:700','
  q('#trscroll').oninput=e=>{TR.offset=(1000-+e.target.value)/1000;if(TR.offset>0&&!TR.paused)q('#trpause').click()};
  q('#trlive').onclick=()=>{TR.offset=0;q('#trscroll').value=1000;if(TR.paused)q('#trpause').click()};
  picker.oninput=()=>{tbox.style.display='';renderTree()};picker.onfocus=()=>{tbox.style.display='';renderTree()};q('#trtree').onclick=()=>{tbox.style.display=tbox.style.display?'':'none';renderTree()};
+ q('#trsrcf').onchange=e=>{SRCF=e.target.value;tbox.style.display='';renderTree()};
  q('#trfx').onclick=()=>{const r=q('#trfrow');r.style.display=r.style.display?'':'none';if(!r.style.display){tbox.style.display='';renderTree()}};
  q('#trfadd').onclick=()=>{try{addFormula(q('#trfn').value,q('#trfu').value,q('#trfe').value);q('#trferr').textContent=''}catch(e){q('#trferr').textContent=e.message}};
  tbox.onclick=e=>{const id=e.target.closest('[data-sig]')?.dataset.sig;if(!id)return;if(!q('#trfrow').style.display){const f=q('#trfe');f.value+=(f.value&&!/[\s+\-*/(]$/.test(f.value)?' + ':'')+'['+id+']';f.focus()}else addTrack(id)};q('#trpump').onclick=()=>{refreshCat();S.pumps.forEach(p=>['spm','flow','psi','hp'].forEach(k=>addTrack('p'+p.id+'.'+k)))};
@@ -102,11 +103,14 @@ function ui(){const b=el('button','background:#0a6;color:#fff;font-weight:700','
  cv.onmousemove=e=>{const r=cv.getBoundingClientRect();TR.cursor=(e.clientX-r.left)/r.width};cv.onmouseleave=()=>TR.cursor=null;cv.onclick=e=>{const r=cv.getBoundingClientRect(),X=e.clientX-r.left,Y=e.clientY-r.top;if(X>160&&X<190){const tr=TR.tracks.find(t=>t._y&&Y>=t._y[0]&&Y<t._y[0]+20);if(tr)rmTrack(tr.id)}};
  cv.onwheel=e=>{e.preventDefault();if(!TR.paused)q('#trpause').click();TR.offset=Math.max(0,Math.min(1,TR.offset+e.deltaY*0.0005));q('#trscroll').value=1000-TR.offset*1000}}
 const esc=x=>String(x).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const SC={live:'#3d3','live-sim':'#fa0',csv:'#6cf',sim:'#fc6'},SL={live:'LIVE','live-sim':'SIM-TEST FEED',csv:'CSV',sim:'SIM'};
+const SC={live:'#1db954','live-sim':'#e08a00',csv:'#2f7fd0',sim:'#6b7580'},SL={live:'LIVE','live-sim':'SIM-TEST',csv:'CSV',sim:'SIM'};
+const pill=k=>`<span style="background:${SC[k]||'#6b7580'};color:#fff;font-weight:700;font-size:10px;padding:0 4px;border-radius:3px">${SL[k]||k}</span>`;
+function badge(X,Y,k){ctx.font='bold 10px sans-serif';const t=SL[k]||k,w=ctx.measureText(t).width+8;ctx.fillStyle=SC[k]||'#6b7580';ctx.fillRect(X,Y,w,13);ctx.fillStyle='#fff';ctx.fillText(t,X+4,Y+10);ctx.font='11px sans-serif'}
+let SRCF='all';const srcOk=k=>SRCF=='all'||(SRCF=='live'?k=='live':k!='live');
 function renderTree(){if(!tbox||tbox.style.display)return;refreshCat();const qs=(picker.value||'').toLowerCase().split(/\s+/).filter(Boolean);
- const hit=c=>qs.every(w=>(c.label+' '+c.id+' '+c.unit).toLowerCase().includes(w));const root={};let n=0;
+ const hit=c=>srcOk(c.src())&&qs.every(w=>(c.label+' '+c.id+' '+c.unit).toLowerCase().includes(w));const root={};let n=0;
  for(const c of CAT){if(!hit(c))continue;n++;const path=c.label.split(/ · | › /);let node=root;for(const seg of path.slice(0,-1))node=(node[seg]=node[seg]||{});(node.__l=node.__l||[]).push([path.at(-1),c])}
- const open=qs.length>0;const rec=(node,d)=>Object.keys(node).filter(k=>k!='__l').map(k=>{const sub=node[k],cnt=JSON.stringify(sub).split('"__l"').length;return `<details ${open||d<0?'open':''} style="margin-left:${d?10:0}px"><summary style="cursor:pointer;color:#8fd">${esc(k)}</summary>${rec(sub,d+1)}${(sub.__l||[]).map(([leaf,c])=>{const on=TR.tracks.some(t=>t.id==c.id),s=c.src();return `<div data-sig="${esc(c.id)}" title="id: ${esc(c.id)}" style="margin-left:14px;cursor:pointer;padding:1px 3px;${on?'color:#6f6':''}">${on?'✓ ':'+ '}${esc(leaf)} <small style="color:#789">${esc(c.unit)}</small> <small style="color:${SC[s]||'#fc6'}">${SL[s]||s}</small></div>`}).join('')}</details>`}).join('');
+ const open=qs.length>0;const rec=(node,d)=>Object.keys(node).filter(k=>k!='__l').map(k=>{const sub=node[k],cnt=JSON.stringify(sub).split('"__l"').length;return `<details ${open||d<0?'open':''} style="margin-left:${d?10:0}px"><summary style="cursor:pointer;color:#8fd">${esc(k)}</summary>${rec(sub,d+1)}${(sub.__l||[]).map(([leaf,c])=>{const on=TR.tracks.some(t=>t.id==c.id),s=c.src();return `<div data-sig="${esc(c.id)}" title="id: ${esc(c.id)}" style="margin-left:14px;cursor:pointer;padding:1px 3px;${on?'color:#6f6':''}">${on?'✓ ':'+ '}${esc(leaf)} <small style="color:#789">${esc(c.unit)}</small> ${pill(s)}</div>`}).join('')}</details>`}).join('');
  tbox.innerHTML=`<small style="color:#9ab">${n} of ${CAT.length} signals · click to add (or insert into formula)</small>`+rec(root,0)}
 function build(){refreshCat();renderTree();
  hdr.innerHTML='';cv.height=Math.max(1,TR.tracks.length)*H_T+18;cv.style.height=cv.height+'px'}
@@ -123,15 +127,19 @@ function draw(){if(!TR.on||!cv)return;const w=cv.clientWidth|0;if(cv.width!=w)cv
  TR.tracks.forEach((tr,k)=>{const y0=k*H_T,d=TR.data[tr.id]||[];let mn=Infinity,mx=-Infinity;for(let i=i0;i<i1;i++){const v=d[i];if(v!=null){if(v<mn)mn=v;if(v>mx)mx=v}}
   if(!isFinite(mn)){mn=0;mx=1}{const ms=Math.max(1,Math.abs(mx)*0.05);if(mx-mn<ms){const c=(mx+mn)/2;mx=c+ms/2;mn=c-ms/2}}const pad=(mx-mn)*0.1;mn-=pad;mx+=pad;const y=v=>y0+H_T-4-(v-mn)/(mx-mn)*(H_T-10);
   ctx.strokeStyle='#2a3a46';ctx.beginPath();ctx.moveTo(0,y0+H_T);ctx.lineTo(w,y0+H_T);ctx.stroke();
-  ctx.strokeStyle=tr.color;ctx.lineWidth=1.5;ctx.beginPath();let pen=false;for(let i=i0;i<i1;i++){const v=d[i];if(v==null){pen=false;continue}const X=x(TR.t[i]),Y=y(v);pen?ctx.lineTo(X,Y):ctx.moveTo(X,Y);pen=true}ctx.stroke();ctx.lineWidth=1;
+  ctx.strokeStyle=tr.color;const ss=tr.srcs||[];let seg=null,px=null,py=null;const dash=k=>k=='live'?[]:k=='csv'?[2,3]:[6,4];
+  for(let i=i0;i<i1;i++){const v=d[i];if(v==null){px=null;continue}const X=x(TR.t[i]),Y=y(v),k=ss[i]||'sim';
+   if(k!==seg){if(seg!=null)ctx.stroke();seg=k;ctx.setLineDash(dash(k));ctx.lineWidth=k=='live'?2.2:1.4;ctx.beginPath();if(px!=null){ctx.moveTo(px,py);ctx.lineTo(X,Y)}else ctx.moveTo(X,Y);
+    if(px!=null&&i>i0&&(ss[i-1]||'sim')!==k){ctx.save();ctx.setLineDash([]);ctx.strokeStyle='#fff6';ctx.beginPath();ctx.moveTo(X,y0+2);ctx.lineTo(X,y0+H_T-2);ctx.stroke();ctx.restore();ctx.beginPath();ctx.moveTo(X,Y)}}
+   else ctx.lineTo(X,Y);px=X;py=Y}if(seg!=null)ctx.stroke();ctx.setLineDash([]);ctx.lineWidth=1;
   const li=ci??(i1-1),cur=d[li],src=(tr.srcs||[])[li]||tr.src();
   ctx.fillStyle=tr.color;ctx.fillRect(4,y0+6,4,H_T-14);ctx.fillStyle='#dde';ctx.fillText(tr.label.slice(0,30),12,y0+14);
   ctx.font='bold 13px sans-serif';ctx.fillStyle=tr.color;ctx.fillText(fmt(cur)+' '+tr.unit,12,y0+29);ctx.font='11px sans-serif';
-  ctx.fillStyle=SC[src]||'#fc6';ctx.fillText(SL[src]||src.toUpperCase(),12,y0+45);ctx.fillStyle='#678';ctx.fillText('max '+fmt(mx-pad)+' min '+fmt(mn+pad),50,y0+45);
+  badge(12,y0+36,src);ctx.fillStyle='#678';ctx.fillText('max '+fmt(mx-pad)+' min '+fmt(mn+pad),12+ctx.measureText(SL[src]||src).width+16,y0+46);
   ctx.fillStyle='#e55';ctx.fillText('✕',LX-14,y0+14);ctx.fillStyle='#678';ctx.fillText(SL[src]?'':'',0,0);tr._y=[y0,y0+H_T]});
  if(ci!=null&&TR.t[ci]!=null){const xx=x(TR.t[ci]);ctx.strokeStyle='#fff8';ctx.beginPath();ctx.moveTo(xx,0);ctx.lineTo(xx,Hh-18);ctx.stroke();ctx.fillStyle='#fff';ctx.fillText('t='+TR.t[ci].toFixed(1)+'s',Math.min(xx+3,w-60),10);
   const mk=TR.marks.filter(m=>Math.abs(m[0]-TR.t[ci])<(b-a)/150).at(-1);if(mk){ctx.fillStyle='#fc6';ctx.fillText(mk[1].slice(0,60),Math.min(xx+3,w-300),22)}}
- if(!TR.tracks.length){ctx.fillStyle='#9ab';ctx.fillText('No traces yet: pick a signal and "+ Add trace", or click a pump / sensor in 3D and press "Add to trace".',LX,30)}
+ ctx.fillStyle='#9ab';ctx.fillText('solid = LIVE · dashed = SIM / SIM-TEST · dotted = CSV',w-300,10);if(!TR.tracks.length){ctx.fillText('No traces yet: pick a signal and "+ Add trace", or click a pump / sensor in 3D and press "Add to trace".',LX,30)}
  ctx.fillStyle=TR.paused?'#fc6':'#3d3';ctx.fillText(TR.paused?(TR.offset>0?'PAUSED · scrolled back':'PAUSED'):'● REC',w-90,Hh-5)}
 function toCSV(){const ids=TR.tracks.map(t=>t.id);const head=['time_s',...TR.tracks.map(t=>`${t.label.replace(/,/g,' ')} [${t.unit}]`),...TR.tracks.map(t=>t.id+'_source'),'event'];
  const lines=['# Drilling World trace export. Source column per signal: sim = SIMULATED physics, csv = replayed file, live = live feed / WITSML, live-sim = SIMULATED test feed (not real data)',head.join(',')];let mi=0;
@@ -145,12 +153,17 @@ function entSignals(e){if(!e)return[];refreshCat();const p=e.st&&S.pumps.include
  const lm=[...(GX.ext.lib||[]),...(GX.ext.bha||[])].find(it=>it.uid&&e.name.endsWith(String(it.uid).slice(-3)));if(lm)return CAT.filter(c=>c.id.startsWith('lm'+lm.uid)||c.id.startsWith('eq.'+lm.uid+'.'));
  // generic: numeric panel rows of any entity
  try{return e.panel().rows.filter(r=>typeof r[1]=='function'&&isFinite(parseFloat(r[1]()))).map(r=>{const id='ent:'+e.name+':'+r[0];if(!byId(id))CAT.push({id,label:e.name+' · '+r[0],unit:(r[0].match(/(psi|gpm|klbf|rpm|ft|spm|hp|%|m|s)\b/)||[''])[0],get:()=>parseFloat(r[1]()),src:()=>'sim',group:e.name});return byId(id)})}catch{return[]}}
-function panelHook(){const pn=document.querySelector('#panels .panel');const e=C.sel&&C.sel();if(!pn||!e||pn.querySelector('.tradd'))return;const sig=entSignals(e);if(!sig.length)return;
+function panelHook(){const pn=document.querySelector('#panels .panel');const e=C.sel&&C.sel();if(!pn||!e)return;const sig0=pn.querySelector('.tradd')?null:entSignals(e);
+ {let b=pn.querySelector('.srcb');const ks=[...new Set((pn._sig||sig0||[]).map(c=>c.src()))];if(sig0)pn._sig=sig0;if(ks.length){if(!b){b=el('div','margin-top:4px');b.className='srcb';pn.insertBefore(b,pn.firstChild.nextSibling)}const h='Source: '+ks.map(pill).join(' ');if(b.innerHTML!=h)b.innerHTML=h}}
+ if(pn.querySelector('.tradd'))return;const sig=sig0;if(!sig||!sig.length)return;
  const d=el('div','margin-top:5px;border-top:1px solid #345;padding-top:4px');d.className='tradd';d.innerHTML=`<select style="max-width:170px">${sig.map(c=>`<option value="${c.id}">${c.label.split(' · ').at(-1)}</option>`).join('')}</select> <button>📈 Add to trace</button> <button>All</button>`;
  const [s,b1,b2]=d.children;b1.onclick=()=>{CAT.push(...sig.filter(c=>!byId(c.id)));addTrack(s.value)};b2.onclick=()=>{sig.forEach(c=>{if(!byId(c.id))CAT.push(c)});sig.forEach(c=>{const keep=CAT;addTrack(c.id)})};pn.appendChild(d)}
+// signals panel / HUD readouts: coloured source badges on each row
+function sigBadges(){const r=document.querySelectorAll('select');for(const sel of r){if(sel.id=='trsrcf')continue;const o=[...sel.options].map(x=>x.value);if(!(o.includes('sim')&&o.includes('live')))continue;let k=sel.value;if(k=='live'&&/SIMULATED/i.test((GX.feedState||{}).src||''))k='live-sim';
+ let b=sel.nextElementSibling;if(!b||!b.classList.contains('srcpill')){b=document.createElement('span');b.className='srcpill';b.style.marginLeft='4px';sel.after(b)}const h=pill(k);if(b.innerHTML!=h)b.innerHTML=h}}
 export async function init(ctx){C=ctx;S=C.S;PH=C.PH;el=C.el;PANEL=C.PANEL;ui();
  try{const d=JSON.parse(localStorage.getItem(KEY)||'null');if(d){TR.win=d.win||120;(d.formulas||[]).forEach(f=>{try{makeFormula(f.name,f.unit,f.expr)}catch{}});W.querySelector('#trwin').value=TR.win;refreshCat();d.ids.forEach(id=>{if(byId(id))addTrack(id)});open(false)}}catch{}
  const E=window.EXT,o=E.afterStep.bind(E);E.afterStep=()=>{o();sample()};const of=E.frame.bind(E);E.frame=(...a)=>{of(...a);draw()};
- setInterval(panelHook,300);setInterval(()=>{if(TR.on){const n=catalogue().length;if(n!=CAT.length&&document.activeElement!==picker)renderTree();refreshCat()}},2000);
+ setInterval(panelHook,300);setInterval(sigBadges,500);setInterval(()=>{if(TR.on){const n=catalogue().length;if(n!=CAT.length&&document.activeElement!==picker)renderTree();refreshCat()}},2000);
  Object.assign(window.GX,{traces:{TR,addTrack,rmTrack,open,toCSV,catalogue:()=>(refreshCat(),CAT.map(c=>({id:c.id,label:c.label,unit:c.unit}))),entSignals:n=>entSignals(C.ents.find(e=>e.name==n)).map(c=>c.id),addFormula,renderTree}});
- try{(await import('./ext4.js?v=34')).init(C)}catch(err){console.error('ext4',err)}}
+ try{(await import('./ext4.js?v=35')).init(C)}catch(err){console.error('ext4',err)}}
