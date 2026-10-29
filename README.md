@@ -149,3 +149,10 @@ New files: `geo.js` (pure maths/parsers, node-testable) and `ext5.js` (UI/3D). H
 - Now: LIVE/Replay without real surveys draws a vertical well and shows "No survey — trajectory assumed vertical"; the SIM plan line is hidden; the clock shows "LIVE data | MD … | well path: …". SIM-TEST stations are never used as a LIVE trajectory.
 - Trajectory parse: if incl/azi have no uom and every value fits the radian range, they are read as radians (`radGuess`). Explicit `uom="rad"` was already converted.
 - Test: `node v46_test.mjs` (screens shots_live/95_v46_*.png).
+
+## v4.7 — trajectory discovery + survey guardrails
+- "▶ Find surveys / start feed" lists every wellbore of the well and every trajectory (id-only), fetches stations, prefers the active log's wellbore (uid match, not names), chooser when >1.
+- Parser handles prefixed namespaces, CDATA, double-escaped XMLout, unit-less angles (radian guess).
+- Guardrails: parent match (trajectory must be in the active log's uidWell/uidWellbore; other wellbores never auto-used, manual pick shows "Wellbore mismatch"); HUD "Well / Wellbore / Trajectory"; currency ("Survey stale" > 100 m behind hole or > 24 h older than log; "Survey deeper than hole" > 100 m); re-poll every 60–300 s, stops on 401; sanity (MD monotonic, incl 0–180, azi 0–360, dogleg ≤ 15°/30 m) drops + counts bad stations.
+- "Survey debug" (WITSML panel): each query step, counts, first 300 chars of raw XMLout (credentials redacted), source, freshness, sanity badges.
+- Tests: v47_test.mjs (24 checks, SIM-TEST mock). Screenshots shots_live/96_v47_*.png.

@@ -1,5 +1,5 @@
 // v4.3 Connections / joints panel. Detection is in conn.js (pure, unit-tested). Results are ESTIMATES derived from the time log.
-import * as K from './conn.js?v=46';
+import * as K from './conn.js?v=47';
 let C,S,THREE,P,RES=null,SRC='auto',RINGS=null,timer=null,LAST=null;
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));

@@ -19,7 +19,7 @@ ok(a.labV&&/No survey — trajectory assumed vertical/.test(a.labT),'label shown
 ok(!/SIM time/.test(a.clk)&&/LIVE/.test(a.clk),'clock in LIVE has no "SIM time": '+a.clk);
 await p.screenshot({path:SH+'1_iphone_live_no_survey_vertical.png'});
 // live surveys arrive (radian uom) -> survey path, label hidden
-await p.evaluate(async()=>{const GG=await import('./geo.js?v=46');const x='<trajectory><name>T</name>'+[[0,0,0],[500,0,0.785],[1500,0.35,0.785],[2842,0.52,0.8]].map(r=>`<trajectoryStation><md uom="m">${r[0]}</md><incl uom="rad">${r[1]}</incl><azi uom="rad">${r[2]}</azi></trajectoryStation>`).join('')+'</trajectory>';const t=GG.parseTrajectory(x);GEO.appendStations(t.stations,{src:'WITSML',name:'T',live:true})});await w(1500);
+await p.evaluate(async()=>{const GG=await import('./geo.js?v=47');const x='<trajectory><name>T</name>'+[[0,0,0],[500,0,0.785],[1500,0.35,0.785],[2842,0.52,0.8]].map(r=>`<trajectoryStation><md uom="m">${r[0]}</md><incl uom="rad">${r[1]}</incl><azi uom="rad">${r[2]}</azi></trajectoryStation>`).join('')+'</trajectory>';const t=GG.parseTrajectory(x);GEO.appendStations(t.stations,{src:'WITSML',name:'T',live:true})});await w(1500);
 const c=await p.evaluate(()=>({src:pathSrc(),st:GEO.surv.stations.map(s=>s.inc),lv:document.getElementById('nosurv').style.display,clk:document.getElementById('clock').textContent}));
 ok(c.src=='SURVEY'&&c.lv=='none'&&Math.abs(Math.max(...c.st)-29.79)<0.1,'LIVE with rad surveys -> survey path, inc in degrees max '+Math.max(...c.st).toFixed(2)+', label hidden');
 await p.screenshot({path:SH+'2_iphone_live_with_survey.png'});
