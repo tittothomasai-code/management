@@ -164,3 +164,10 @@ New files: `geo.js` (pure maths/parsers, node-testable) and `ext5.js` (UI/3D). H
 - Survey QC: slide intervals should show dogleg, rotary ≈ straight; survey vs near-bit inclination; summary with flags.
 - Connection rings toggle (default on): tap → time, depth, duration, joint length, source, confidence; optional colour by source (cyan detected / yellow inferred).
 - Tests: v48_test.mjs (mock SIM-TEST data). Real Adaga image mnemonics not yet verified.
+
+## v4.9 — Kalman reservoir top/bottom from gamma (Estimated (Kalman, gamma))
+- ext9.js: gamma cutoff crossings (smoothed, hysteresis) → each crossing classified top/bottom from MWD image up vs down bins (fallback: crossing direction). Kalman filter + RTS smoother, state [top TVD, thickness, slope] → top/bottom TVD and dip along HL with ±1σ; shown in curtain (cyan top / magenta bottom bands, crossing dots) and 3D (surfaces + ±1σ lines), labelled "Estimated (Kalman, gamma)".
+- Matches WITSML formationMarkers (when the survey feed loaded them) inside the estimated interval: residual, RMS, agreement (|res| ≤ 2σ); otherwise "no reference picks in data".
+- Advanced settings: Q (slope noise per m), R (crossing TVD variance m²), gamma cutoff (default 75 gAPI).
+- Synthetic benchmark (known truth, 11 crossings): RMS top 0.02 m, bottom 0.01 m, dip 1.54° vs 1.5°. SIM-TEST mock (only 2 crossings, 45° well): RMS 2.6/2.5 m vs truth, dip unconstrained (0 ± 2.35°) but truth inside ±2σ.
+- 3D view button (📷) switches to orbit camera and turns off bit-follow so the image texture is visible.

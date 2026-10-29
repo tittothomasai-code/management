@@ -1,4 +1,4 @@
-import * as SL from './slips.js?v=48';
+import * as SL from './slips.js?v=49';
 // conn.js v4.5 (slips inferred from bit depth when no slips/hookload curve): connection + joint detection from time-log channels. Pure functions (no DOM) so node can unit-test.
 // Rows (SI): {t: seconds, bd: bit depth m, hd: hole depth m|null, bh: block height m|null, hkl: hookload kN|null,
 //            rpm, flow: L/min, spp: kPa|null, wob: kN|null, slips: 0/1|null}. Results are ESTIMATES from data.

@@ -40,8 +40,14 @@ function store(typ,q){const uw=attr(q,'uidWell'),W=WELLS[uw];
 // v4.8 SIM-TEST depth logs for DR101L/WB01B02: slides 300–750 m (= the 3°/30m build) with a 2 m rotary flip at 495 m (smoothing),
 // a deliberate "slide" at 1000–1020 m on a straight hold section (Survey QC must flag it), near-bit inclination offset +3° near 1200 m (QC flag).
 const INC=md=>md<=300?0:Math.min(45,(md-300)/30*3);const SLIDE=md=>(md>=300&&md<750&&!(md>=495&&md<497))||(md>=1000&&md<1020);
-const DLOGS=hole=>({IMGLOG:{name:'MWD Image (SIM-TEST)',a:Math.max(0,Math.floor(hole)-400),step:1,c:[...Array(16).keys()].map(b=>['ABG_B'+String(b+1).padStart(2,'0'),'gAPI',md=>50+120*Math.exp(-1*(((md+6*Math.cos(2*Math.PI*b/16))-1300)/4)**2)+70*Math.exp(-1*(((md+5*Math.cos(2*Math.PI*b/16))-1420)/3)**2)+8*Math.sin(md*1.7+b)])},
- FELOG:{name:'MWD Formation Eval (SIM-TEST)',a:0,step:1,c:[['GR','gAPI',md=>60+90*Math.exp(-1*((md-1300)/5)**2)+60*Math.exp(-1*((md-1420)/4)**2)+25*Math.sin(md/37)],['NBI','dega',md=>INC(md)+(Math.abs(md-1200)<3?3:0)]]},
+// v4.9 SIM-TEST geology truth: reservoir (sand ≈40 gAPI) between dipping top/bottom surfaces; shale ≈110 gAPI.
+const TRAJ=(()=>{const a=[{md:0,tvd:0,hd:0}];for(let m=1;m<=3000;m++){const i=(INC(m-0.5))*Math.PI/180,p=a[m-1];a.push({md:m,tvd:p.tvd+Math.cos(i),hd:p.hd+Math.sin(i)})}return a})();
+const TAT=md=>{const k=Math.max(0,Math.min(2999,Math.floor(md))),f=md-k,a=TRAJ[k],b=TRAJ[k+1];return {tvd:a.tvd+(b.tvd-a.tvd)*f,hd:a.hd+(b.hd-a.hd)*f}};
+export const RES=(()=>{const dip=2,sl=-Math.tan(dip*Math.PI/180),A=TAT(1250),B=TAT(1400);const top=hd=>A.tvd+sl*(hd-A.hd);return {dip,top,bot:hd=>top(hd)+(B.tvd-top(B.hd)),thick:B.tvd-top(B.hd)}})();
+const FAC=(md,dz)=>{const p=TAT(md),z=p.tvd+dz;return (z>RES.top(p.hd)&&z<RES.bot(p.hd))?40:110};
+{const a=TAT(1250),b=TAT(1400);WELLS.DR101L.fm.push(['SIM-TEST Reservoir Sand',1250,+(RES.top(a.hd)+0.3).toFixed(2)],['SIM-TEST Reservoir Base',1400,+(RES.bot(b.hd)-0.2).toFixed(2)])}
+const DLOGS=hole=>({IMGLOG:{name:'MWD Image (SIM-TEST)',a:Math.max(0,Math.floor(hole)-400),step:1,c:[...Array(16).keys()].map(b=>['ABG_B'+String(b+1).padStart(2,'0'),'gAPI',md=>FAC(md,-1.0*Math.cos(2*Math.PI*b/16))+6*Math.sin(md*1.7+b)])},
+ FELOG:{name:'MWD Formation Eval (SIM-TEST)',a:0,step:1,c:[['GR','gAPI',md=>FAC(md,0)+6*Math.sin(md*2.3)+4*Math.sin(md/37)],['NBI','dega',md=>INC(md)+(Math.abs(md-1200)<3?3:0)]]},
  DRLOG:{name:'Drilling - Depth Based (SIM-TEST)',a:0,step:1,c:[['RPMA','rpm',md=>SLIDE(md)?0:120],['MFIA','L/min',()=>2600],['SPPA','kPa',()=>18500],['ROPA','m/h',md=>SLIDE(md)?12:30]]}});
 function traj(W,uw,mdMn){const n=W.n0+grow;const all=[...Array(n).keys()].map(k=>({uid:'SIMTEST-'+uw+'-'+k,...W.st(k)})).filter(s=>mdMn==null||s.md>=mdMn-1e-9);stats.returned.push(all.length);
  return `<trajectorys ${NSA}><trajectory uidWell="${uw}" uidWellbore="${W.wb}" uid="SIMTEST-TRAJ"><nameWell>${W.name}</nameWell><name>${uw=='DR101L'?'Survey - Directional (SIM-TEST)':'SIM-TEST mock trajectory '+uw}</name>${all.map(s=>`<trajectoryStation uid="${s.uid}"><dTimStn>${new Date(Date.UTC(2026,9,29)+s.md*1000).toISOString()}</dTimStn><md uom="m">${s.md}</md><incl uom="dega">${s.inc.toFixed(3)}</incl><azi uom="dega">${s.azi}</azi></trajectoryStation>`).join('')}</trajectory></trajectorys>`}
@@ -51,6 +57,7 @@ const wrapT=(op,x)=>FMT=='prefixed'?wrap(op,1,pref(x)):FMT=='cdata'?wrap(op,1,nu
 if(GROW)setInterval(()=>grow++,GROW);
 http.createServer(async(q,r)=>{const u=new URL(q.url,'http://x');
  if(u.pathname.startsWith('/ctl/')){r.setHeader('Content-Type','application/json');r.setHeader('Access-Control-Allow-Origin','*');
+  if(u.pathname=='/ctl/res'){const hs=(u.searchParams.get('hd')||'').split(',').map(Number);return r.end(JSON.stringify({dip:RES.dip,thick:RES.thick,pts:hs.map(h=>({hd:h,top:RES.top(h),bot:RES.bot(h)}))}))}
   if(u.pathname=='/ctl/fail401')fail401=u.searchParams.get('on')!=='0';if(u.pathname=='/ctl/fmt')FMT=u.searchParams.get('f')||'plain';if(u.pathname=='/ctl/grow')grow+=+(u.searchParams.get('k')||1);return r.end(JSON.stringify({grow,fail401,fmt:FMT,...stats}))}
  let b='';for await(const d of q)b+=d;stats.calls++;if(fail401)stats.afterFail++;
  const op=(q.headers.soapaction||'').replace(/.*Store\.|"/g,'');stats.ops[op]=(stats.ops[op]||0)+1;
@@ -66,5 +73,5 @@ http.createServer(async(q,r)=>{const u=new URL(q.url,'http://x');
   const body=sel.map(t=>{const st=idOnly?[]:(t.st?t.st.filter(s=>mn==null||s.md>=mn-1e-9):null);if(!t.st&&!idOnly)return traj(W,uw,mn).replace(/^<trajectorys[^>]*>|<\/trajectorys>$/g,'');
    return `<trajectory uidWell="${uw}" uidWellbore="${t.wb}" uid="${t.uid}"><nameWell>${W.name}</nameWell><name>${t.name}</name>${idOnly?'':`<objectGrowing>${t.grow}</objectGrowing>`+(t.time?`<commonData><dTimLastChange>${t.time}</dTimLastChange></commonData>`:'')+st.map(s=>`<trajectoryStation uid="${s.uid}"><md uom="m">${s.md}</md><tvd uom="m">${s.md}</tvd><incl uom="dega">${s.inc}</incl><azi uom="dega">${s.azi}</azi></trajectoryStation>`).join('')}</trajectory>`}).join('');
   return r.end(wrapT(op,`<trajectorys ${NSA}>${body}</trajectorys>`))}
- if(typ=='formationMarker'){stats.fm++;if(!W||!W.fm)return r.end(wrap(op,-485,null));return r.end(wrap(op,1,`<formationMarkers ${NSA}>${W.fm.map(([nm,a],i)=>`<formationMarker uidWell="${uw}" uidWellbore="${W.wb}" uid="FM${i}"><name>${nm}</name><mdTopSample uom="m">${a}</mdTopSample><tvdTopSample uom="m">${a}</tvdTopSample></formationMarker>`).join('')}</formationMarkers>`))}
+ if(typ=='formationMarker'){stats.fm++;if(!W||!W.fm)return r.end(wrap(op,-485,null));return r.end(wrap(op,1,`<formationMarkers ${NSA}>${W.fm.map(([nm,a,tv],i)=>`<formationMarker uidWell="${uw}" uidWellbore="${W.wb}" uid="FM${i}"><name>${nm}</name><mdTopSample uom="m">${a}</mdTopSample><tvdTopSample uom="m">${tv??a}</tvdTopSample></formationMarker>`).join('')}</formationMarkers>`))}
  const x=store(typ,qx);return r.end(x==null?wrap(op,-485,null):wrap(op,1,x))}).listen(PORT,'127.0.0.1',()=>console.log('SIM-TEST mock upstream on http://127.0.0.1:'+PORT+'/witsml'));

@@ -2,7 +2,7 @@
 // The 3D string/bit follow bit depth from data (Live WITSML, Replay, or the SIM-TEST timeline), smoothly interpolated
 // between polls. Hole depth vs bit depth shown separately. On each connection a joint/stand is lifted from the catwalk or
 // racking board, stabbed, spun up, slips pulled and lowered; a tool-joint ring rides down with it. Read-only: no network calls here.
-import * as SL from './slips.js?v=48';
+import * as SL from './slips.js?v=49';
 // v4.5: slips state inferred from bit depth when the data has no slips curve (hookload deliberately not used).
 let C,S,THREE,P,HUD,BIT,HOLE,ANIM=null,TJ=null,CAP='';
 const $=id=>document.getElementById(id);const FT=0.3048;
@@ -136,5 +136,5 @@ export function init(ctx){C=ctx;S=C.S;THREE=C.THREE;
  HUD=document.createElement('div');HUD.id='bithud';HUD.style.cssText='position:fixed;left:50%;transform:translateX(-50%);top:calc(26px + env(safe-area-inset-top));background:#0b1218cc;color:#def;font:12px sans-serif;padding:3px 8px;border-radius:6px;z-index:41;pointer-events:none;text-align:center;max-width:94vw';document.body.appendChild(HUD);
  const anchor=$('btnConn')||$('under');const b=document.createElement('button');b.id='btnBit';b.textContent='Bit depth';b.className=anchor?.className||'';anchor?.after(b);
  b.onclick=()=>{P.style.display=P.style.display=='none'?'':'none';if(P.style.display!='none'){panel();window.MOB?.on&&MOB.open('bitp')}};window.U?.on?.(()=>panel());
- window.GX=window.GX||{};GX.bit={conns:()=>ST.on?ST.conns:T.conns,connT0:()=>ST.on?ST.t0:0,slips:()=>({...SLS}),slipsRes:()=>BAND.res,slipsOpt:()=>SO,state:()=>({...T,disp:{...T.disp},anim:!!ANIM,cap:CAP,st:{on:ST.on,t:ST.t,t0:ST.t0,t1:ST.t1,playing:ST.playing,conns:ST.conns.length}}),simStart,simStop,seek:t=>{ST.t=t},pause:()=>{ST.playing=false},opt:O,anim:()=>ANIM,panel};
+ window.GX=window.GX||{};GX.bit={setFollow:v=>{O.follow=!!v;const e=document.getElementById('btfol');if(e)e.checked=O.follow},conns:()=>ST.on?ST.conns:T.conns,connT0:()=>ST.on?ST.t0:0,slips:()=>({...SLS}),slipsRes:()=>BAND.res,slipsOpt:()=>SO,state:()=>({...T,disp:{...T.disp},anim:!!ANIM,cap:CAP,st:{on:ST.on,t:ST.t,t0:ST.t0,t1:ST.t1,playing:ST.playing,conns:ST.conns.length}}),simStart,simStop,seek:t=>{ST.t=t},pause:()=>{ST.playing=false},opt:O,anim:()=>ANIM,panel};
  requestAnimationFrame(tick)}
