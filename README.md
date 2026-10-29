@@ -31,3 +31,23 @@ Click **📈 Traces** (top-left). Pick a signal from the list and press **+ Add 
 - Stacked tracks with colour, units, auto-scaled min/max and the current value. The source tag shows SIM, CSV or LIVE per sample. Time window 30 s / 2 min / 10 min (sim time). Use ⏸ Pause, the slider or the mouse wheel to scroll back, and **Live ▶|** to return. Hover for a cursor readout of all tracks plus the nearest event. Sequence steps are dashed markers on the time axis. ✕ removes a track.
 - **Export CSV**: time, each signal with units, the per-signal source column and the step events. The buffer holds 1 hour of sim time at 0.25 s.
 - Test: `node trace_test.mjs [url] [outdir]` runs 4 pumps plus the surface motor through "Drill stand + connect" and takes shots 15–17.
+
+## v3.4 – WITSML live data + trace any signal
+**WITSML 1.4.1.1 (SOAP)**: press **🛰 WITSML** → enter server URL (default: Adaga `https://australia.adagasolutions.com/WMLS`), username and password → **Connect + list wells** → pick well / wellbore / log (time or depth) → check the auto-mapping (mnemonic → game signal; any can be changed or left as "trace only") → **▶ Start live**. The game polls `WMLS_GetFromStore` for rows after the last index (default every 2 s). Mapped curves drive SPP, flow, hookload, WOB, RPM, depth, block height, top drive torque and pumps 1–4 SPM, and are tagged **LIVE** in the signals panel and traces. If the data stops for 15 s, the rig falls back to the simulation.
+- Read-only: only WMLS_GetVersion, WMLS_GetCap and WMLS_GetFromStore are used. Nothing is ever written to the store.
+- **The proxy is required** (browsers can't call SOAP servers cross-origin): `node witsml_proxy.mjs` → `http://localhost:8796/soap`. It listens on 127.0.0.1 only. Credentials are sent per request, held only in the tab's memory, cleared on Disconnect, never saved or logged. Restrict targets with `WITSML_PROXY_ALLOW=https://australia.adagasolutions.com`. The proxy refuses servers with invalid or expired TLS certificates.
+- Chrome may block an https page from calling localhost. Allow "local network access" for the site when asked, or run the game locally.
+- **SIMULATED test store**: "Use SIMULATED test store" → `http://localhost:8796/sim/witsml`. It has 1 well, 1 wellbore, a time log and a depth log, generated from sample_sequence.csv. It is clearly labelled SIMULATED, the feed badge shows "SIMULATED TEST" (amber), and traces show "SIM-TEST FEED". It is never shown as LIVE.
+- WITSML 2.0 / ETP 1.2 (WebSocket + Avro binary) is **not implemented yet** (shown disabled).
+
+**Trace any signal**: 📈 Traces → search box / **Signals ▾** tree. Every signal is listed:
+- Rig and pump signals.
+- Every surface and BHA equipment item, and every nested part from equipment.json (flow, pressure, ΔP, rpm, torque, inc/azi, weight), including user-added items.
+- Sensors and circuit points.
+- Bit and hole values.
+- Sequence values.
+- All physics state, and `S.env` (env hook).
+- Every WITSML curve (mapped or not) and every raw live-feed field.
+
+**ƒ Formula** traces: name + unit + expression with `[signal id]` (click a tree item to insert it), e.g. `[p1.flow]+[p2.flow]`, or `[spp]-base[spp]` (base = the value when added). Functions: abs min max sqrt pow exp log round. Formulas are saved in the browser.
+Test: `node witsml_proxy.mjs & LNA_OFF=1 node witsml_test.mjs <url> <outdir>`.

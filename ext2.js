@@ -8,7 +8,7 @@ export async function init(ctx){C=ctx;THREE=C.THREE;S=C.S;PH=C.PH;el=C.el;BTN=C.
  const f0=C.EXT.frame;C.EXT.frame=dt=>{f0(dt);frame2(dt)};
  const a0=C.EXT.actX;C.EXT.actX=(e,x,b)=>{if(x=='pvalve'&&e.st){e.st.valve=e.st.valve===false;PH.ev(S,'Pump '+e.st.id+' manifold valve '+(e.st.valve===false?'closed':'open'));if(e.st.valve!==false)e.st.tripped=false;return true}return a0(e,x,b)};
  const s0=C.EXT.afterStep;C.EXT.afterStep=()=>{s0();feedStale()};
- Object.assign(window.GX,{feedCfg:FCFG,feedConnect,feedDisconnect,design:()=>DES,applyDesign,derive,setDesign,addPumpType,PUMP_TYPES,seqLib:()=>SEQLIB,compileSeq,runUserSeq,saveSeqLib,camMode:setCam,seqTree:renderTree});try{(await import('./ext3.js?v=33')).init(C)}catch(err){console.error('ext3',err)}
+ Object.assign(window.GX,{feedPush:(vals,src)=>{FS.src=src||FS.src;Object.assign(FS.vals,vals);FS.last=performance.now();FS.msgs++;if(FS.status!='live')setStatus('live')},feedState:FS,feedCfg:FCFG,feedConnect,feedDisconnect,design:()=>DES,applyDesign,derive,setDesign,addPumpType,PUMP_TYPES,seqLib:()=>SEQLIB,compileSeq,runUserSeq,saveSeqLib,camMode:setCam,seqTree:renderTree});try{(await import('./ext3.js?v=34')).init(C)}catch(err){console.error('ext3',err)}
 }
 // ======================= 1. VISUALS =======================
 let reeve,fastLine,tdA,bopG,camBtns;
@@ -105,7 +105,7 @@ function ingest(obj){if(!obj||typeof obj!='object')return;let flat={};
  const ld=obj.logData||obj.log||obj;if(ld.mnemonicList&&ld.data){const m=ld.mnemonicList.split(',').map(s=>s.trim()),d=String(ld.data.at(-1)).split(',');m.forEach((k,i)=>flat[k]=+d[i])}
  else if(Array.isArray(ld.mnemonics)&&Array.isArray(ld.data)){const d=ld.data.at(-1);ld.mnemonics.forEach((k,i)=>flat[k]=+d[i])}
  else if(Array.isArray(obj.curves)){obj.curves.forEach(c=>flat[c.mnemonic]=+c.value)}else flat=obj;
- if(flat.source)FS.src=flat.source;
+ FS.raw=flat;if(flat.source)FS.src=flat.source;
  let got=0;for(const [sig,field] of Object.entries(FCFG.map)){if(field&&flat[field]!=null&&flat[field]!==''){FS.vals[sig]=+flat[field]*(FCFG.scale[sig]||1);got++}}
  if(FCFG.witsml)for(const [tag,sig] of Object.entries(WITS))if(flat[tag]!=null){FS.vals[sig]=+flat[tag];got++}
  if(got){FS.last=performance.now();FS.msgs++;if(FS.status!='live')setStatus('live')}}
@@ -121,7 +121,7 @@ function feedInit(){const F=C.FEED,col2sig=()=>Object.fromEntries(Object.entries
  F.value=col=>{if(FS.status!='live')return null;const k=col2sig()[col];return k in FS.vals?FS.vals[k]:null};F.openConfig=openFeedCfg;F.state=FS;
  const b=el('span','display:inline-flex;align-items:center;gap:4px;background:#0009;padding:3px 7px;border-radius:4px;color:#cde;cursor:pointer','<span id="fdot" style="width:9px;height:9px;border-radius:50%;background:#777;display:inline-block"></span><span id="ftxt">Feed: sim</span>');b.title='Live feed settings';b.onclick=openFeedCfg;$('hud').appendChild(b)}
 function feedBadge(){const d=$('fdot');if(!d)return;const s=FS.status;d.style.background=s=='live'?'#3d3':/connect/.test(s)?'#fc3':/error|stale|closed/.test(s)?'#e44':'#777';
- const t=s=='live'?'Feed: LIVE '+Object.keys(FS.vals).length+' sig':'Feed: '+s.split(',')[0];if($('ftxt').textContent!=t)$('ftxt').textContent=t}
+ const sim=/SIMULATED/i.test(FS.src||'');if(s=='live'&&sim)d.style.background='#fa0';const t=s=='live'&&sim?'Feed: SIMULATED TEST '+Object.keys(FS.vals).length+' sig':s=='live'?'Feed: LIVE '+Object.keys(FS.vals).length+' sig':'Feed: '+s.split(',')[0];if($('ftxt').textContent!=t)$('ftxt').textContent=t}
 let fcEl;function openFeedCfg(){if(fcEl){fcEl.remove();fcEl=null;return}fcEl=el('div',PANEL+';left:50%;top:60px;transform:translateX(-50%);width:420px');fcEl.id='feedcfg';
  fcEl.innerHTML=`<b style="color:#8fd">Live feed adapter</b> <small>(any signal with source "live" uses it; stale or failed feed falls back to SIMULATED)</small><br>
  Mode <select id="fmode"><option value="ws">WebSocket (push JSON)</option><option value="http">HTTP polling (GET JSON)</option></select> every <input id="fint" style="width:50px" value="${FCFG.interval_ms}"> ms<br>
