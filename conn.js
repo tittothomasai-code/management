@@ -1,4 +1,5 @@
-// conn.js v4.3: connection + joint detection from time-log channels. Pure functions (no DOM) so node can unit-test.
+import * as SL from './slips.js?v=45';
+// conn.js v4.5 (slips inferred from bit depth when no slips/hookload curve): connection + joint detection from time-log channels. Pure functions (no DOM) so node can unit-test.
 // Rows (SI): {t: seconds, bd: bit depth m, hd: hole depth m|null, bh: block height m|null, hkl: hookload kN|null,
 //            rpm, flow: L/min, spp: kPa|null, wob: kN|null, slips: 0/1|null}. Results are ESTIMATES from data.
 export const DEFAULTS={flowOffFrac:0.10,rpmOff:5,onBottomTol_m:0.5,slipsMargin_kN:0,minPumpOff_s:45,maxConn_s:3600,minSlips_s:10,minBlockTravel_m:3,resume_s:1800,minNewHole_m:0.3,blockWeight_kN:0};
@@ -12,10 +13,14 @@ export function detect(rows0,opt={}){const o={...DEFAULTS,...opt};const R=prepar
  const flowRef=q(R.map(x=>x.flow),0.9),flowThr=Math.max(1,o.flowOffFrac*(flowRef||0));
  const hk=R.map(x=>x.hkl).filter(Number.isFinite),hasHk=hk.length>n*0.5,hasSl=R.some(x=>x.slips===0||x.slips===1),hasBh=R.filter(x=>Number.isFinite(x.bh)).length>n*0.5;
  const bw=o.blockWeight_kN>0?o.blockWeight_kN:q(hk,0.03),hkRange=q(hk,0.97)-bw,margin=o.slipsMargin_kN>0?o.slipsMargin_kN:Math.max(10,0.15*(hkRange||0));
- Object.assign(res.info,{flowRef,flowThr,blockWeight_kN:bw,slipsThr_kN:bw+margin,slipsFrom:hasSl?'slips channel':hasHk?'hookload ≤ block weight + margin':'none',hasBlock:hasBh});
- if(!hasSl&&!hasHk)return res;
- const inSlips=x=>hasSl&&(x.slips===0||x.slips===1)?x.slips===1:Number.isFinite(x.hkl)&&x.hkl<=bw+margin;
- const off=x=>!(x.flow>flowThr);let i=0;
+ Object.assign(res.info,{flowRef,flowThr,blockWeight_kN:bw,slipsThr_kN:bw+margin,slipsFrom:hasSl?'slips channel':hasHk&&o.slipsSource!='bitdepth'?'hookload ≤ block weight + margin':SL.LABEL,hasBlock:hasBh});
+ const useInf=!hasSl&&(!hasHk||o.slipsSource=='bitdepth');let INF=null,FL=null;
+ if(useInf){INF=SL.infer(R,o.slips||{});FL=SL.flags(R,INF);res.inferred=INF.intervals;res.info.inferred=true}
+ const inSlips=useInf?(x=>!!FL[R.indexOf(x)]):(x=>hasSl&&(x.slips===0||x.slips===1)?x.slips===1:Number.isFinite(x.hkl)&&x.hkl<=bw+margin);
+ const hasFl=R.filter(x=>Number.isFinite(x.flow)).length>n*0.5;
+ if(useInf&&!hasFl){for(const v of INF.intervals){if(!v.inSlips||v.kind!='connection')continue;const rr=R.find(x=>x.t>=v.tIn)||R[0];
+   res.connections.push({tOff:v.tIn,tOn:v.tOut,pumpOff_s:NaN,tSlipsIn:v.tIn,tSlipsOut:v.tOut,slips_s:v.tOut-v.tIn,duration_s:v.tOut-v.tIn,depth_m:v.hd,bitDepth_m:v.bd,inferred:true,confidence:v.conf,label:SL.LABEL})}}
+ const off=x=>!(x.flow>flowThr);let i=useInf&&!hasFl?n:0;
  while(i<n){if(!off(R[i])){i++;continue}let j=i;while(j+1<n&&off(R[j+1]))j++;const a=R[i],b=R[j],dur=b.t-a.t;const nx=R[Math.min(n-1,j+1)];
   const rec={tOff:a.t,tOn:nx.t,pumpOff_s:nx.t-a.t};const ia=i;i=j+1;
   if(rec.pumpOff_s<o.minPumpOff_s||rec.pumpOff_s>o.maxConn_s){continue}
@@ -29,7 +34,7 @@ export function detect(rows0,opt={}){const o={...DEFAULTS,...opt};const R=prepar
   if(hasBh){const bh0=sIn.bh,bhMax=Math.max(...seg.slice(best[0],best[1]+1).map(x=>x.bh).filter(Number.isFinite));if(!(bhMax-bh0>=o.minBlockTravel_m))continue;rec.blockTravel_m=bhMax-bh0}
   const hd0=sIn.hd;let resumed=null;for(let k=j+1;k<n&&R[k].t-b.t<=o.resume_s;k++){if(R[k].hd-hd0>=o.minNewHole_m&&R[k].flow>flowThr&&(R[k].rpm??1)>=o.rpmOff){resumed=R[k];break}}
   if(!resumed)continue;
-    Object.assign(rec,{tSlipsIn:sIn.t,tSlipsOut:(seg[best[1]+1]||nx).t,depth_m:hd0,bitDepth_m:sIn.bd,tResume:resumed.t});rec.slips_s=rec.tSlipsOut-rec.tSlipsIn;rec.duration_s=rec.slips_s;
+    Object.assign(rec,{tSlipsIn:sIn.t,tSlipsOut:(seg[best[1]+1]||nx).t,depth_m:hd0,bitDepth_m:sIn.bd,tResume:resumed.t});rec.slips_s=rec.tSlipsOut-rec.tSlipsIn;if(useInf){const v=FL[R.indexOf(sIn)];rec.inferred=true;rec.confidence=v?.conf;rec.label=SL.LABEL}rec.duration_s=rec.slips_s;
   res.connections.push(rec)}
  const C=res.connections;C.forEach((c,k)=>{c.n=k+1;c.length_m=k?c.depth_m-C[k-1].depth_m:null});
  const lens=C.slice(1).map(c=>c.length_m).filter(x=>x>0.5);const ml=median(lens);
@@ -43,8 +48,8 @@ export function toolJoints(C,bitNow,len){const out=[];if(!Number.isFinite(bitNow
  for(const c of C){const d=bitNow-c.depth_m;if(d>=0&&d<=bitNow)out.push({depth_m:d,fromConn:c.n,extrapolated:false})}
  if(len>1&&C.length){let d=bitNow-C[0].depth_m+len,guard=0;while(d<bitNow&&guard++<5000){out.push({depth_m:d,fromConn:null,extrapolated:true});d+=len}}
  out.sort((a,b)=>a.depth_m-b.depth_m);out.forEach((j,k)=>j.joint=k+1);return out}
-export function toCSV(res,fmtT=t=>t){const h='n,slips_in,slips_out,pumps_off,pumps_on,duration_s,pump_off_s,hole_depth_m,bit_depth_m,length_m,block_travel_m';
- return '# Connections — Estimated from data (Drilling World v4.4). Mode: '+(res.kpi?.mode||'?')+'\n'+h+'\n'+res.connections.map(c=>[c.n,fmtT(c.tSlipsIn),fmtT(c.tSlipsOut),fmtT(c.tOff),fmtT(c.tOn),c.duration_s.toFixed(0),c.pumpOff_s.toFixed(0),c.depth_m.toFixed(2),c.bitDepth_m?.toFixed(2)??'',c.length_m==null?'':c.length_m.toFixed(2),c.blockTravel_m?.toFixed(2)??''].join(',')).join('\n')+'\n'}
+export function toCSV(res,fmtT=t=>t){const inf=res.info?.inferred;const h='n,slips_in,slips_out,pumps_off,pumps_on,duration_s,pump_off_s,hole_depth_m,bit_depth_m,length_m,block_travel_m'+(inf?',slips_confidence,slips_source':'');
+ return '# Connections — Estimated from data (Drilling World v4.5). Mode: '+(res.kpi?.mode||'?')+'\n'+h+'\n'+res.connections.map(c=>[c.n,fmtT(c.tSlipsIn),fmtT(c.tSlipsOut),fmtT(c.tOff),fmtT(c.tOn),c.duration_s.toFixed(0),(Number.isFinite(c.pumpOff_s)?c.pumpOff_s.toFixed(0):''),c.depth_m.toFixed(2),c.bitDepth_m?.toFixed(2)??'',c.length_m==null?'':c.length_m.toFixed(2),c.blockTravel_m?.toFixed(2)??''].concat(inf?[c.confidence??'',SL.LABEL]:[]).join(',')).join('\n')+'\n'}
 // ---- synthetic generator (SIM-TEST) with known connections; used by unit tests and the in-game SIM-TEST button ----
 export function synth({joints=6,len=9.4,start_m=1500,dt=5,rop_mh=30,conn_s=240,pumpBlip_at=null,pumpBlip_s=30,stand=false,noBlock=false,withSlips=false}={}){
  const L=stand?28.2:len,rows=[],truth=[];let t=0,hd=start_m,bd=start_m;const BW=180,ST=900,FL=2800,RPM=120;
