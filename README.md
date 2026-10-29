@@ -88,3 +88,12 @@ New files: `geo.js` (pure maths/parsers, node-testable) and `ext5.js` (UI/3D). H
 - **Badges**: example, manual, CSV and WITSML-file data are always **SIM**. LIVE is only possible through `GEO.ingestTrajectory(xml,{live:true})`, which is not yet wired to the live poller.
 - **Tests**: `geo_test.mjs` checks min curvature against the exact circular-arc solution (3°/100 ft build: TVD = departure = R = 1909.859 ft, DLS 3) and a 3D arc against numerical integration, plus the parsers and CSV units. `geo_ui_test.mjs` is the headless UI test. All WITSML samples are hand-made; no server was contacted.
 - **Caveats**: the drill string/bore tube still follows the simulator path (only the BHA moves to the imported path). Layer properties don't yet affect pressures/kicks. Strata are flat (no dip).
+
+## v3.9 — Live survey feed + per-well replica (offline-tested only)
+- **Survey feed**: WITSML `trajectory` polling (default/min 60 s, separate from the 10 s log poll), incremental via `mdMn`, stations deduped by uid / ΔMD. `formationMarker` polled every 5th cycle if the server supports it.
+- **401 guard**: any 401 in the game or the proxy stops every poll (logs + survey). No automatic retry. The proxy only allows GetFromStore/GetVersion/GetCap.
+- **Path following**: the drill string, bore and bit follow the minimum-curvature survey path. Priority: live stations, then imported, then manual. Beyond the last station a straight tangent is drawn as a magenta dashed line labelled `PROJECTED · SIM`.
+- **Per-well replica**: changing the well or wellbore in Live mode resets all state. It then rebuilds from that well's trajectory, formation markers, wbGeometry casing, rig/location and log channels. Anything missing is tagged SIM.
+- **Data Coverage panel**: shows each item as LIVE / SIM-TEST / SIM / missing.
+- **Mock**: `mock_upstream.mjs` serves 2 fictional wells on 127.0.0.1 and is always labelled **SIM-TEST**, never LIVE.
+- Caveats: not tested against any real WITSML server yet. `mdMn` is treated as inclusive (the dedupe handles overlap). After a 401, polling only restarts if the user presses Start again.

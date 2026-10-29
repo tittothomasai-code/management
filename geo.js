@@ -55,3 +55,14 @@ export function parseSurveyCSV(text,sys='metric'){const [H,...R0]=rows(text);con
  return R0.map(r=>({md:+r[im]*lenC(hs[im].u,sys),inc:+r[ii]*ac(hs[ii]),azi:+r[ia]*ac(hs[ia])})).filter(s=>[s.md,s.inc,s.azi].every(isFinite)).sort((a,b)=>a.md-b.md)}
 // SIMULATED physics coupling: ROP and torque factors from formation (1.0 at UCS 8000 psi)
 export const rockFactors=L=>{if(!L||!isFinite(L.ucs_psi))return {rop:1,tq:1};const u=Math.max(500,L.ucs_psi);return {rop:Math.max(0.25,Math.min(2.5,Math.sqrt(8000/u)*(1+((L.porosity??0.1)-0.1)))),tq:Math.max(0.7,Math.min(1.5,0.85+0.15*u/8000))}};
+// ---- v3.9: exact minimum-curvature position at any MD (arc between stations; straight tangent beyond the last) ----
+const tv=(i,a)=>[Math.sin(i*R)*Math.cos(a*R),Math.sin(i*R)*Math.sin(a*R),Math.cos(i*R)];
+export function pointAt(s,md){if(!s.length)return null;if(md<=s[0].md){const a=s[0],dm=md-a.md,t=tv(a.inc,a.azi);return {md,inc:a.inc,azi:a.azi,ns:a.ns+dm*t[0],ew:a.ew+dm*t[1],tvd:a.tvd+dm*t[2],projected:false}}
+ for(let k=1;k<s.length;k++){const a=s[k-1],b=s[k];if(md>b.md)continue;const dm=b.md-a.md;if(dm<=0)return {...b,md,projected:false};const u=(md-a.md)/dm,t1=tv(a.inc,a.azi),t2=tv(b.inc,b.azi);
+  const dl=Math.acos(Math.max(-1,Math.min(1,t1[0]*t2[0]+t1[1]*t2[1]+t1[2]*t2[2])));let t;if(dl<1e-9)t=t1;else{const w1=Math.sin((1-u)*dl)/Math.sin(dl),w2=Math.sin(u*dl)/Math.sin(dl);t=t1.map((x,j)=>w1*x+w2*t2[j])}
+  const inc=Math.acos(Math.max(-1,Math.min(1,t[2])))/R,azi=Math.hypot(t[0],t[1])<1e-12?a.azi:((Math.atan2(t[1],t[0])/R)+360)%360;
+  const q=minCurvStations([{md:a.md,inc:a.inc,azi:a.azi},{md,inc,azi}],{tieIn:{tvd:a.tvd,ns:a.ns,ew:a.ew}})[1];return {md,inc,azi,ns:q.ns,ew:q.ew,tvd:q.tvd,dls:b.dls,projected:false}}
+ const l=s.at(-1),dm=md-l.md,t=tv(l.inc,l.azi);return {md,inc:l.inc,azi:l.azi,ns:l.ns+dm*t[0],ew:l.ew+dm*t[1],tvd:l.tvd+dm*t[2],dls:0,projected:true}}
+export function samplePath(s,mdTo,step=20){const out=[];const n=Math.max(2,Math.ceil(mdTo/step));for(let i=0;i<=n;i++)out.push(pointAt(s,mdTo*i/n));return out}
+// merge stations: dedupe by MD (|ΔMD|<0.05 ft) or uid; returns count of new stations
+export function mergeStations(have,add){let n=0;for(const x of add){if(have.some(h=>(x.uid&&h.uid===x.uid)||Math.abs(h.md-x.md)<0.05))continue;have.push(x);n++}have.sort((a,b)=>a.md-b.md);return n}

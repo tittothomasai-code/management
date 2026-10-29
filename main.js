@@ -120,12 +120,12 @@ const strataG=new THREE.Group();strata.forEach(([a,b,c])=>{const m=box(90,b-a,60
 {const pp=PH.planPath().map(p=>W(p[3],p[4],p[5]));const g=new THREE.BufferGeometry().setFromPoints(pp);const l=new THREE.Line(g,new THREE.LineDashedMaterial({color:0x33ff66,dashSize:1,gapSize:0.6}));l.computeLineDistances();UG.add(l)}
 let boreMesh=null,strMesh=null,lastBuild=-1;const bha=new THREE.Group();bha.name='bhaGroup';UG.add(bha);
 const motorMesh=cyl(0.35,0.35,1.6,mat.paint,0,0.8,0,bha);const bitMesh=cyl(0.45,0.15,0.5,M(0xd4af37,0.9,0.3),0,-0.25,0,bha);
-const tipPath=()=>{const s=S.surveys,l=s[s.length-1];const p=PH.minCurv(l.slice(3),l[0],l[1],l[2],S.md,S.inc,S.azi);return [...s.map(q=>W(q[3],q[4],q[5])),W(...p)]};
+const tipPath=()=>{const gp=window.GEO&&window.GEO.pathPts&&window.GEO.pathPts(S.md);if(gp&&gp.length>=2)return gp.map(q=>W(q.ns,q.ew,q.tvd));const s=S.surveys,l=s[s.length-1];const p=PH.minCurv(l.slice(3),l[0],l[1],l[2],S.md,S.inc,S.azi);return [...s.map(q=>W(q[3],q[4],q[5])),W(...p)]};
 let wellCurve=null;function buildWell(){const pts=tipPath();if(pts.length<2)return;const c=new THREE.CatmullRomCurve3(pts);wellCurve=c;
  boreMesh&&(UG.remove(boreMesh),boreMesh.geometry.dispose());strMesh&&(UG.remove(strMesh),strMesh.geometry.dispose());
  boreMesh=new THREE.Mesh(new THREE.TubeGeometry(c,Math.max(8,pts.length*2),0.9,10),new THREE.MeshStandardMaterial({color:0xff8c3a,emissive:0x552200,transparent:true,opacity:0.55,depthWrite:false,side:THREE.DoubleSide}));UG.add(boreMesh);
  // string ends at bit depth (off bottom when hoisted)
- const bd=PH.bitDepth(S),f=Math.max(0.01,Math.min(1,bd/S.md));const sp=[];for(let i=0;i<=60;i++)sp.push(c.getPoint(f*i/60));
+ const bd=PH.bitDepth(S),f=Math.max(0.01,Math.min(1,(S.md>0&&isFinite(bd))?bd/S.md:1))||1;const sp=[];for(let i=0;i<=60;i++)sp.push(c.getPoint(f*i/60));
  strMesh=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(sp),80,0.15,6),mat.pipe);UG.add(strMesh);
  const tip=c.getPoint(f),tan=c.getTangent(f);bha.position.copy(tip);bha.quaternion.setFromUnitVectors(new THREE.Vector3(0,-1,0),tan.normalize());}
 const wellEnt={noModel:true,name:'Well',obj:bha,update(){},anchor:new THREE.Vector3(0,0,0),panel:()=>({title:'Well + BHA (directional)',rows:[['MD ft',()=>S.md.toFixed(0)],['TVD ft',()=>S.pos[2].toFixed(0)],['Inc / Azi °',()=>S.inc.toFixed(1)+' / '+S.azi.toFixed(0)],['Mode / TF°',()=>S.mode+' / '+S.tf.toFixed(0)],['ROP ft/h',()=>S.rop.toFixed(0)],['Motor RPM',()=>S.motorRpm.toFixed(0)+(S.stalled?' STALL':'')],['Bit RPM',()=>S.bitRpm.toFixed(0)],['Motor ΔP psi',()=>S.dpm.toFixed(0)],['Bit ΔP psi',()=>S.dpb.toFixed(0)],['Washout %',()=>((S.wf||0)*100).toFixed(0)]]})};
@@ -292,7 +292,7 @@ function actX(e,x,b){if(EXT.actX(e,x,b))return;const st=e.st,all=()=>!!document.
  m.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{const e=addEquip(b.dataset.add);m.style.display='none';select(e)});
  m.querySelector('#eqreset').onclick=()=>{if(confirm('Reset equipment layout and 3D models to default?')){localStorage.removeItem(LKEY);localStorage.removeItem(MKEY);try{indexedDB.deleteDatabase('dw3')}catch{}location.reload()}}}
 
-import('./ext.js?v=35').then(x=>x.init({THREE,S,PH,scene,cam,ctl,ents,pumps,select,entity,box,cyl,beam,mat,M,lp,curves,FLOOR,MH,td,tdAll,blk,dwG,slG,rnG,rnArm,cwG,UG,W,allCurves:()=>allCurves(),getWell:()=>wellCurve,act,EXT,removeEnt,saveLayout,addEquip,EQ,eqList,pumpsArr:pumps,setUnder,ren,groundMat,pad,sun,bha,rigG,dwG,ctl,makePump,rebuildLines,sel:()=>sel})).catch(e=>console.error('ext',e));
+import('./ext.js?v=39').then(x=>x.init({THREE,S,PH,scene,cam,ctl,ents,pumps,select,entity,box,cyl,beam,mat,M,lp,curves,FLOOR,MH,td,tdAll,blk,dwG,slG,rnG,rnArm,cwG,UG,W,allCurves:()=>allCurves(),getWell:()=>wellCurve,act,EXT,removeEnt,saveLayout,addEquip,EQ,eqList,pumpsArr:pumps,setUnder,ren,groundMat,pad,sun,bha,rigG,dwG,ctl,makePump,rebuildLines,sel:()=>sel})).catch(e=>console.error('ext',e));
 // ---------- loop (fixed step) ----------
 const DT=0.05;let acc=0,last=performance.now(),spd=20,uiT=0;
 function frame(now){const dtR=Math.min(0.1,(now-last)/1000);last=now;spd=+$('spd').value;

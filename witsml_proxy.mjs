@@ -63,7 +63,7 @@ const srv=http.createServer(async(q,r)=>{r.setHeader('Access-Control-Allow-Origi
  if(u.pathname=='/soap'&&q.method=='POST'){const t0=Date.now();let a;try{a=JSON.parse(b)}catch{r.writeHead(400);return r.end('{"error":"bad json"}')}
   const send=(c,o)=>{r.writeHead(c,{'Content-Type':'application/json'});r.end(JSON.stringify(o))};
   try{const tu=new URL(a.url);if(!/^https?:$/.test(tu.protocol))throw new Error('url must be http(s)');if(ALLOW.length&&!ALLOW.some(x=>a.url.startsWith(x)))throw new Error('target not in WITSML_PROXY_ALLOW')
-   if(AUTH_DEAD)return send(200,{result:-1,error:'Authentication failed earlier (401) — proxy refuses upstream calls until restarted'});const op=a.op||'WMLS_GetFromStore';const resp=await post(a.url,envelope(op,a),op,a.user,a.pass);
+   if(AUTH_DEAD)return send(200,{result:-1,error:'Authentication failed earlier (401) — proxy refuses upstream calls until restarted'});const op=a.op||'WMLS_GetFromStore';if(!['WMLS_GetFromStore','WMLS_GetVersion','WMLS_GetCap'].includes(op))throw new Error('read-only proxy: op not allowed');const resp=await post(a.url,envelope(op,a),op,a.user,a.pass);
    if(resp.status==401||resp.status==403){AUTH_DEAD=true;console.error('upstream auth failure '+resp.status+' — upstream calls disabled until restart')}if(resp.status==401||resp.status==403)return send(200,{result:-1,error:'Authentication failed ('+resp.status+')'});
    const fault=tag(resp.body,'faultstring');if(fault)return send(200,{result:-1,error:'SOAP fault: '+unesc(fault)});
    if(resp.status>=400)return send(200,{result:-1,error:'HTTP '+resp.status});
