@@ -33,7 +33,7 @@ export function kalman(cr,grid,o={}){const Q=o.Q??1e-6,R=o.R??0.25,th0=o.th0??5,
  const F=[],Pp=[],xp=[],Xf=[],Pf=[],H=[];
  for(const e of ev){const dh=Math.max(0,e.hd-h);const f=[[1,0,dh],[0,1,0],[0,0,1]];const q=[[Q*dh**3/3,0,Q*dh**2/2],[0,qth*dh,0],[Q*dh**2/2,0,Q*dh]];
   const xP=mv(f,x),PP=ad(mm(mm(f,P),tr(f)),q);let xn=xP,Pn=PP;
-  if(e.m){const Hm=e.m.boundary=='top'?[1,0,0]:[1,1,0];const y=e.m.tvd-Hm.reduce((s,v,k)=>s+v*xP[k],0);const PH=PP.map(r=>r.reduce((s,v,k)=>s+v*Hm[k],0));const Sv=Hm.reduce((s,v,k)=>s+v*PH[k],0)+R;const K=PH.map(v=>v/Sv);
+  if(e.m){const Hm=e.m.boundary=='top'?[1,0,0]:[1,1,0];const y=e.m.tvd-Hm.reduce((s,v,k)=>s+v*xP[k],0);const PH=PP.map(r=>r.reduce((s,v,k)=>s+v*Hm[k],0));const Sv=Hm.reduce((s,v,k)=>s+v*PH[k],0)+(e.m.R??R);const K=PH.map(v=>v/Sv);
    xn=xP.map((v,i)=>v+K[i]*y);Pn=PP.map((r,i)=>r.map((v,j)=>v-K[i]*PH[j]));e.innov=y;e.S=Sv}
   F.push(f);xp.push(xP);Pp.push(PP);Xf.push(xn);Pf.push(Pn);x=xn;P=Pn;h=e.hd}
  // RTS smoother

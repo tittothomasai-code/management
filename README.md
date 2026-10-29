@@ -193,3 +193,10 @@ New files: `geo.js` (pure maths/parsers, node-testable) and `ext5.js` (UI/3D). H
 - Curtain: adaptive TVD ticks (2 m), TVDSS labels, vertical exaggeration shown. Kalman sanity line (thickness not measured / collapsed / floor above roof / σ > seam).
 - Fixed: "View image + estimate in 3D" threw `view3D is not defined`.
 - Test: v52_test.mjs, screenshots shots_live/100_v52_*.png.
+
+## v5.3 — Auto-picked roof/floor (filter) + 4-quadrant gamma
+- `ext11.js`: scans ALL WITSML logs for quadrant gamma mnemonics (GR_UP/GRUP/GMUP/GMDN/GMLT/GMRT, GRU/GRD/GRL/GRR, ABG, GMUQ/GMDQ/GMLQ/GMRQ/GMHQ, GMAVG/MG); manual mapping box; mnemonics shown in debug.
+- Otsu cutoff (plateau midpoint), robust noise, up/down gamma → distance-to-boundary obs (g = gc+(gs−gc)·e^(−d/L), L 0.35 m) fed to Kalman/RTS with per-obs R; left/right used as inside/outside check.
+- One boundary only → thickness PRIOR, labelled as such. Floor is only measurable within ~1 m of the bit.
+- Doug's BL ROOF/FLOOR digitised from the report image (`fixtures/westside_roof_floor_2879.json`, SIM-TEST reference) or pasted; residuals, RMS, % within 2σ.
+- No real quadrant gamma has been tested — synthetic and mock only.

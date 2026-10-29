@@ -1,7 +1,7 @@
 // ext8.js v4.8: MWD azimuthal image + geology curtain section + drilling mode (rotary/slide) + Survey QC.
 // Read-only WITSML (GetFromStore via the existing proxy/call path). Guardrails: only logs in the ACTIVE LOG'S wellbore are used
 // (same uidWell + uidWellbore as the trajectory), data freshness shown, SIM-TEST labels on mock data, user-defined targets labelled as such.
-import * as K9 from './ext9.js?v=52';
+import * as K9 from './ext9.js?v=53';
 let C,S,THREE,X;const $=id=>document.getElementById(id);const FT=0.3048;
 const CF=JSON.parse(localStorage.getItem('dw_geo48')||'{}');const DEF={rpmThr:5,flowOn:200,sppOn:2000,minRun:3,standM:28.5,roof:null,rings:true,ringSrc:true,thick:3,dip:0,hd0:null,kb:0,dlsSlide:1.0,kQ:1e-6,kR:0.25,grCut:75,dlsRot:2.0,nbiTol:1.5};for(const k in DEF)if(CF[k]===undefined)CF[k]=DEF[k];
 const save=()=>localStorage.setItem('dw_geo48',JSON.stringify(CF));
@@ -57,6 +57,11 @@ export async function load(){const W=X.WML,CFG=X.CFG;G8.diag=[];if(W.authDead){G
  // formation eval: gamma + near-bit inclination
  const fe0=byName(/formation eval/i)[0];G8.fe=null;if(fe0){const L=await hdr(fe0);const d=await depthData(w,b,L,0,(L.end||hole)+50);if(d){const gi=pick(d.ml,/^(GR|GRA|GAM|GAMMA|GRC|GR_?CORR|MWD_?GR|GRAM)\b/i),ni=pick(d.ml,/^(NBI|INCL?_?NB|NB_?INC|NEAR.?BIT|ABI|INCNB)/i);
   G8.fe={name:L.name,gr:gi>=0?d.rows.map(r=>({md:r.md,v:r[gi]})).filter(p=>isFinite(p.v)):[],grMn:d.ml[gi]||'',nbi:ni>=0?d.rows.map(r=>({md:r.md,v:r[ni]})).filter(p=>isFinite(p.v)):[],nbiMn:d.ml[ni]||'',end:L.end}}}
+ // v5.3 quadrant gamma (up/down/left/right): scan ALL logs of the wellbore for quadrant mnemonics (manual mapping overrides)
+ G8.quad=null;G8.quadScan=[];try{const QF=window.GX?.q53;if(QF){const fe1=G8.fe?.name;const ord=[...logs.filter(l=>/image|formation|eval|gamma|abg/i.test(l.name)),...logs.filter(l=>!/image|formation|eval|gamma|abg/i.test(l.name))].slice(0,12);
+  for(const L0 of ord){const L=await hdr(L0);if(!L.curves)continue;const mns=L.curves.map(c=>c.mn);const f=QF.findQuad(mns,CF.qmap||'');G8.quadScan.push({log:L.name,mn:mns,f});
+   if(f.ok&&!/time/i.test(L.indexType||'')&&!G8.quad){const d=await depthData(w,b,L,Math.max(0,(L.end||hole)-600),(L.end||hole)+50);if(d){const I={};for(const k of ['up','dn','lt','rt','avg'])I[k]=f[k]?d.ml.indexOf(f[k]):-1;
+    G8.quad={log:L.name,map:f,rows:d.rows.map(r=>({md:r.md,up:r[I.up],dn:r[I.dn],lt:I.lt>=0?r[I.lt]:NaN,rt:I.rt>=0?r[I.rt]:NaN,avg:I.avg>=0?r[I.avg]:NaN})).filter(r=>isFinite(r.up)&&isFinite(r.dn))}}}}}}catch(e){G8.quadErr=String(e)}
  // drilling mode: depth-based drilling log (preferred), else live time-log history
  const dr0=byName(/depth.?based|drilling.*depth/i)[0];G8.modes=[];G8.modeSrc='';
  if(dr0){const L=await hdr(dr0);const d=await depthData(w,b,L,0,(L.end||hole)+50);if(d){const ri=pick(d.ml,/^(RPMA|RPM|SRPM|TRPM|TDRPM|ROTARY_?RPM|RPM_?SURF)/i),fi=pick(d.ml,/^(MFIA|FLOW|MFI|TFLO|FLOWIN)/i),pi=pick(d.ml,/^(SPPA|SPP)/i);
