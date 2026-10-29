@@ -117,12 +117,17 @@ const UG=new THREE.Group();scene.add(UG);const WS=0.03;// m per ft (well geometr
 const W=(n,e,tvd)=>new THREE.Vector3(e*WS,-tvd*WS,-n*WS);
 const strata=[[0,15,0x8a6f4d],[15,40,0xa58a5c],[40,70,0x7b6a58],[70,120,0x5d5248]];
 const strataG=new THREE.Group();strata.forEach(([a,b,c])=>{const m=box(90,b-a,60,new THREE.MeshStandardMaterial({color:c,transparent:true,opacity:0.08,depthWrite:false}),20,-(a+b)/2,-20,strataG);m.castShadow=false});strataG.visible=false;scene.add(strataG);
-{const pp=PH.planPath().map(p=>W(p[3],p[4],p[5]));const g=new THREE.BufferGeometry().setFromPoints(pp);const l=new THREE.Line(g,new THREE.LineDashedMaterial({color:0x33ff66,dashSize:1,gapSize:0.6}));l.computeLineDistances();UG.add(l)}
+{const pp=PH.planPath().map(p=>W(p[3],p[4],p[5]));const g=new THREE.BufferGeometry().setFromPoints(pp);const l=new THREE.Line(g,new THREE.LineDashedMaterial({color:0x33ff66,dashSize:1,gapSize:0.6}));l.computeLineDistances();l.name='simPlan';UG.add(l)}
 let boreMesh=null,strMesh=null,lastBuild=-1;const bha=new THREE.Group();bha.name='bhaGroup';UG.add(bha);
 const motorMesh=cyl(0.35,0.35,1.6,mat.paint,0,0.8,0,bha);const bitMesh=cyl(0.45,0.15,0.5,M(0xd4af37,0.9,0.3),0,-0.25,0,bha);
 // v4.0: single path. If md moved back (well switch / reset / replay) drop stations deeper than md so the sim path never folds back into a V.
 function trimSurveys(){const s=S.surveys;if(!s||!s.length){S.surveys=[[0,0,0,0,0,0]];return}if(s.at(-1)[0]<=S.md+0.5)return;const k=s.filter(q=>q[0]<=S.md);S.surveys=k.length?k:[s[0][0]<=S.md?s[0]:[0,0,0,0,0,0]];S.lastS=S.surveys.at(-1)[0];S.pos=S.surveys.at(-1).slice(3)}
-const tipPath=()=>{const gp=window.GEO&&window.GEO.pathPts&&window.GEO.pathPts(S.md);if(gp&&gp.length>=2)return gp.map(q=>W(q.ns,q.ew,q.tvd));trimSurveys();const s=S.surveys,l=s[s.length-1];const p=PH.minCurv(l.slice(3),l[0],l[1],l[2],S.md,S.inc,S.azi);return [...s.map(q=>W(q[3],q[4],q[5])),W(...p)]};
+// v4.6: real-data mode (Live WITSML connected, or Replay). In real mode the SIM physics trajectory must never be drawn.
+const realMode=()=>{const X=window.GX?.witsml?.WML||window.WML;if(!X)return null;if(X.mode=='replay'&&X.rp)return 'REPLAY';if(X.liveMode)return X.simulated?'SIMULATED':'LIVE';return null};
+window.realMode=realMode;window.pathSrc=()=>PATHSRC;window.wellPts=()=>tipPath().map(v=>[v.x,v.y,v.z]);let PATHSRC='SIM';
+const realSurvey=(rm)=>{const g=window.GEO;return g&&g.calc&&g.calc.length>=2&&!(rm=='LIVE'&&g.surv?.simTest)&&g.surv?.src!='SIM'};
+const tipPath=()=>{const rm=realMode();if(rm&&!realSurvey(rm)){PATHSRC='VERTICAL';return [W(0,0,0),W(0,0,Math.max(1,S.md))]}
+ const gp=window.GEO&&window.GEO.pathPts&&window.GEO.pathPts(S.md);if(gp&&gp.length>=2){PATHSRC='SURVEY';return gp.map(q=>W(q.ns,q.ew,q.tvd))}PATHSRC='SIM';trimSurveys();const s=S.surveys,l=s[s.length-1];const p=PH.minCurv(l.slice(3),l[0],l[1],l[2],S.md,S.inc,S.azi);return [...s.map(q=>W(q[3],q[4],q[5])),W(...p)]};
 let wellCurve=null;function buildWell(){const pts=tipPath();if(pts.length<2||S.md<=0){boreMesh&&(UG.remove(boreMesh),boreMesh.geometry.dispose(),boreMesh=null);strMesh&&(UG.remove(strMesh),strMesh.geometry.dispose(),strMesh=null);wellCurve=null;return}const c=new THREE.CatmullRomCurve3(pts);wellCurve=c;
  boreMesh&&(UG.remove(boreMesh),boreMesh.geometry.dispose());strMesh&&(UG.remove(strMesh),strMesh.geometry.dispose());
  boreMesh=new THREE.Mesh(new THREE.TubeGeometry(c,Math.max(8,pts.length*2),0.9,10),new THREE.MeshStandardMaterial({color:0xff8c3a,emissive:0x552200,transparent:true,opacity:0.55,depthWrite:false,side:THREE.DoubleSide}));UG.add(boreMesh);
@@ -183,7 +188,7 @@ function sync(dtR){
  const cs=allCurves();const flows=[...pumps.map(e=>e.st.flow),S.Q,S.Q,S.Q];const pres=[...pumps.map(()=>S.spp+(S.prof?.man||0)),S.spp,S.spp-(S.prof?.surf||0)*0.5,S.spp-(S.prof?.surf||0)];
  for(let c=0;c<cs.length;c++){const len=cs[c].getLength(),sp=flows[c]/1000*6/len;for(let k=0;k<NP;k++){const j=c*NP+k;pu[j]=(pu[j]+sp*dtR*(spd/20)**0.3)%1;cs[c].getPoint(pu[j],v3);pPos.set([v3.x,v3.y,v3.z],j*3);const cc=pcol(pres[c]);pCol.set([cc.r,cc.g,cc.b],j*3)}}
  pMesh.visible=S.Q>5;pGeom.attributes.position.needsUpdate=true;pGeom.attributes.color.needsUpdate=true;
- trimSurveys();if(Math.abs(S.md-lastBuild)>2||S._lastBD!==Math.round(PH.bitDepth(S))){buildWell();lastBuild=S.md;S._lastBD=Math.round(PH.bitDepth(S))}
+ trimSurveys();const _pk=(realMode()||'')+'|'+(window.GEO?.calc?.length||0)+'|'+(window.GEO?.surv?.src||'');if(Math.abs(S.md-lastBuild)>2||S._lastBD!==Math.round(PH.bitDepth(S))||S._pk!==_pk){S._pk=_pk;buildWell();lastBuild=S.md;S._lastBD=Math.round(PH.bitDepth(S))}
  motorMesh.material.emissive.setHex(S.stalled?0xff2200:0x000000);
  ents.forEach(e=>e.update());_upd0();
 }
@@ -294,7 +299,7 @@ function actX(e,x,b){if(EXT.actX(e,x,b))return;const st=e.st,all=()=>!!document.
  m.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{const e=addEquip(b.dataset.add);m.style.display='none';select(e)});
  m.querySelector('#eqreset').onclick=()=>{if(confirm('Reset equipment layout and 3D models to default?')){localStorage.removeItem(LKEY);localStorage.removeItem(MKEY);try{indexedDB.deleteDatabase('dw3')}catch{}location.reload()}}}
 
-import('./ext.js?v=45').then(x=>x.init({THREE,S,PH,scene,cam,ctl,ents,pumps,select,entity,box,cyl,beam,mat,M,lp,curves,FLOOR,MH,td,tdAll,blk,dwG,slG,rnG,rnArm,cwG,UG,W,allCurves:()=>allCurves(),getWell:()=>wellCurve,act,EXT,removeEnt,saveLayout,addEquip,EQ,eqList,pumpsArr:pumps,setUnder,ren,groundMat,pad,sun,bha,rigG,dwG,ctl,makePump,rebuildLines,sel:()=>sel})).catch(e=>console.error('ext',e));
+import('./ext.js?v=46').then(x=>x.init({THREE,S,PH,scene,cam,ctl,ents,pumps,select,entity,box,cyl,beam,mat,M,lp,curves,FLOOR,MH,td,tdAll,blk,dwG,slG,rnG,rnArm,cwG,UG,W,allCurves:()=>allCurves(),getWell:()=>wellCurve,act,EXT,removeEnt,saveLayout,addEquip,EQ,eqList,pumpsArr:pumps,setUnder,ren,groundMat,pad,sun,bha,rigG,dwG,ctl,makePump,rebuildLines,sel:()=>sel})).catch(e=>console.error('ext',e));
 // ---------- loop (fixed step) ----------
 const DT=0.05;let acc=0,last=performance.now(),spd=20,uiT=0;
 function frame(now){const dtR=Math.min(0.1,(now-last)/1000);last=now;spd=+$('spd').value;
@@ -306,7 +311,11 @@ function frame(now){const dtR=Math.min(0.1,(now-last)/1000);last=now;spd=+$('spd
  if(sel&&panelEl){sel.obj.updateMatrixWorld();v3.copy(sel.anchor).applyMatrix4(sel.obj.matrixWorld);if(sel===lineEnt)v3.copy(sel.anchor);v3.project(cam);panelEl.style.display=v3.z<1?'':'none';panelEl.style.left=((v3.x+1)/2*innerWidth)+'px';panelEl.style.top=((1-v3.y)/2*innerHeight)+'px'}
  for(const t of tagEls){t.o.getWorldPosition(v3);v3.project(cam);t.el.style.left=((v3.x+1)/2*innerWidth)+'px';t.el.style.top=((1-v3.y)/2*innerHeight)+'px'}
  if(now-uiT>200){uiT=now;panelRows.forEach((r,i)=>{const el=document.getElementById('pv'+i);if(el)el.textContent=U.val(r[0],r[1]());const lb=document.getElementById('pl'+i);if(lb)lb.textContent=U.lab(r[0])});
-  const h=Math.floor(S.t/3600),mi=Math.floor(S.t/60)%60;$('clock').textContent=U.txt(`SIM time ${h}h${String(mi).padStart(2,'0')}m  ×${spd}  |  MD ${S.md.toFixed(0)} ft  SPP ${S.spp.toFixed(0)} psi  Q ${S.Q.toFixed(0)} gpm  ROP ${S.rop.toFixed(0)} ft/h`)+(S.seq?'  |  CONNECTION: '+S.seq.steps[S.seq.i][0]:'');
+  const rm=realMode(),pl=UG.getObjectByName('simPlan');if(pl)pl.visible=!rm;
+  let ns=document.getElementById('nosurv');if(!ns){ns=document.createElement('div');ns.id='nosurv';ns.style.cssText='position:fixed;left:50%;transform:translateX(-50%);top:calc(84px + env(safe-area-inset-top));background:#5a3a00ee;color:#ffd27a;font:bold 13px sans-serif;padding:4px 10px;border-radius:6px;z-index:41;pointer-events:none;display:none;text-align:center;max-width:92vw';document.body.appendChild(ns)}
+  ns.style.display=rm&&PATHSRC=='VERTICAL'?'':'none';ns.textContent='No survey — trajectory assumed vertical ('+rm+')';
+  if(rm){$('clock').textContent=U.txt(`${rm} data  |  MD ${S.md.toFixed(0)} ft  |  well path: ${PATHSRC=='SURVEY'?'survey ('+(window.GEO?.surv?.src||'')+')':'no survey, vertical'}`)}else{
+  const h=Math.floor(S.t/3600),mi=Math.floor(S.t/60)%60;$('clock').textContent=U.txt(`SIM time ${h}h${String(mi).padStart(2,'0')}m  ×${spd}  |  MD ${S.md.toFixed(0)} ft  SPP ${S.spp.toFixed(0)} psi  Q ${S.Q.toFixed(0)} gpm  ROP ${S.rop.toFixed(0)} ft/h`)+(S.seq?'  |  CONNECTION: '+S.seq.steps[S.seq.i][0]:'');}
   $('log').innerHTML=S.events.slice(-6).reverse().map(e=>`${(e[0]/60).toFixed(1)}m ${U.txt(e[1])}`).join('<br>')}
  requestAnimationFrame(frame)}
 requestAnimationFrame(frame);

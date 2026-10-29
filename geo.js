@@ -31,8 +31,11 @@ export function parseFormationMarkers(xml){const out=[];for(const b of blocks(xm
   const lith=tag(b,'lithostratigraphic')?.v||tag(b,'chronostratigraphic')?.v||'';out.push({name,top_md:md,top_tvd:tvd,th,lith,src:'WITSML formationMarker'})}
  out.sort((a,b)=>(a.top_md??a.top_tvd)-(b.top_md??b.top_tvd));
  out.forEach((L,i)=>{const n=out[i+1];L.base_md=L.th?L.top_md+L.th:(n?n.top_md:L.top_md+500);L.base_tvd=isFinite(L.top_tvd)?(L.th?L.top_tvd+L.th:(n&&isFinite(n.top_tvd)?n.top_tvd:L.top_tvd+500)):undefined;if(!isFinite(L.top_tvd)){L.top_tvd=L.top_md;L.base_tvd=L.base_md}delete L.th;L.color=colorFor(L.lith||L.name,i)});return out}
-export function parseTrajectory(xml){const st=[];for(const b of blocks(xml,'trajectoryStation')){const md=num(b,'md',lenToFt),inc=num(b,'incl',angToDeg),azi=num(b,'azi',angToDeg);if([md,inc,azi].every(isFinite))st.push({md,inc,azi,tvd_rep:num(b,'tvd',lenToFt)})}
- const name=tag(xml.replace(/<trajectoryStation[\s\S]*$/,''),'name')?.v||'trajectory';return {name,stations:st.sort((a,b)=>a.md-b.md)}}
+export function parseTrajectory(xml){const st=[];for(const b of blocks(xml,'trajectoryStation')){const md=num(b,'md',lenToFt),inc=num(b,'incl',angToDeg),azi=num(b,'azi',angToDeg);if([md,inc,azi].every(isFinite))st.push({md,inc,azi,tvd_rep:num(b,'tvd',lenToFt),_nu:!tag(b,'incl')?.uom&&!tag(b,'azi')?.uom})}
+ // v4.6: no uom at all + every angle within radian range (inc<=pi, azi<=2pi, some azi>0.2 and none >6.3) -> values are radians
+ let radGuess=false;if(st.length>=3&&st.every(s=>s._nu)&&st.every(s=>Math.abs(s.inc)<=Math.PI+1e-6&&s.azi>=0&&s.azi<=2*Math.PI+1e-6)&&st.some(s=>s.inc>0.05)){radGuess=true;for(const s of st){s.inc*=180/Math.PI;s.azi*=180/Math.PI}}
+ st.forEach(s=>delete s._nu);
+ const name=tag(xml.replace(/<trajectoryStation[\s\S]*$/,''),'name')?.v||'trajectory';return {name,radGuess,stations:st.sort((a,b)=>a.md-b.md)}}
 const PAL={sand:'#d8b46a',clay:'#9c7b52',shale:'#6b6458',lime:'#b9b5a6',carb:'#b9b5a6',dolo:'#a7a39a',salt:'#e8e8f0',coal:'#333',silt:'#a08a6a'};
 export function colorFor(s,i=0){s=String(s).toLowerCase();for(const k in PAL)if(s.includes(k))return PAL[k];return ['#8a6f4d','#a58a5c','#7b6a58','#5d5248','#9b8c70'][i%5]}
 // ---- CSV (unit in header: top_m / top_ft / "top [m]"; unitless = current system) ----

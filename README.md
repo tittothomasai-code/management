@@ -143,3 +143,9 @@ New files: `geo.js` (pure maths/parsers, node-testable) and `ext5.js` (UI/3D). H
 - ext7: Bit-depth panel and top bar show **SLIPS IN ~NN% · Inferred from bit depth** (Live = provisional, no look-ahead); slips band on the timeline (orange = connection, purple = trip, grey = below min confidence); live new-pipe animation triggers on inferred slips (not on trips). "Advanced: slips inference" holds the thresholds (metric default, ft in imperial). SIM-TEST checkbox runs the timeline with slips + hookload removed.
 - Tests: `node v45_unit.mjs` (accuracy table), `node v45_test.mjs` (iPhone 390×844, offline). Screenshots shots_live/90_v45_*.
 - Caveats: tested on synthetic data only; slips-out timing is ±20 s with pumps, ±60 s with bit depth only; a real rig that reciprocates the string or has a noisy/laggy BDE may need a larger tolerance.
+
+## v4.6 — Live well profile fix
+- Root cause: in LIVE/Replay with no survey stations, the 3D well fell back to the SIM physics trajectory (KOP 1500 ft, 3°/100 ft build to 35°, az 45) stretched to the live MD → invented curve. The top bar also always said "SIM time".
+- Now: LIVE/Replay without real surveys draws a vertical well and shows "No survey — trajectory assumed vertical"; the SIM plan line is hidden; the clock shows "LIVE data | MD … | well path: …". SIM-TEST stations are never used as a LIVE trajectory.
+- Trajectory parse: if incl/azi have no uom and every value fits the radian range, they are read as radians (`radGuess`). Explicit `uom="rad"` was already converted.
+- Test: `node v46_test.mjs` (screens shots_live/95_v46_*.png).
