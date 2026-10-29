@@ -5,14 +5,15 @@ const PKEY='dw34-witsml-ui';// stores ONLY proxy URL, server URL, poll interval,
 const SIGNALS={spp:'Standpipe pressure',Q:'Flow in',hook:'Hookload',wob:'WOB',rpm:'Top drive RPM',md:'Measured depth',quill:'Block height',tq:'Top drive torque','p1.spm':'Pump 1 SPM','p2.spm':'Pump 2 SPM','p3.spm':'Pump 3 SPM','p4.spm':'Pump 4 SPM',rop:'ROP',bitdepth:'Bit depth',holedepth:'Hole depth (MD)'};
 const AUTO=[[/^(SPPA|SPP|STPP|PRES_SP|SPPRESS)$/i,'spp'],[/^(MFIA|TFLO|FLOWIN|MFI|FLOW_IN|TFLOW|FLOW)$/i,'Q'],[/^(ROPA|ROP)$/i,'rop'],[/^(BDE|BITDEP|DBTM_BIT)$/i,'bitdepth'],[/^(DMEA|DBTM|HOLEDEP)$/i,'holedepth'],[/^(BHE|BPOS|BLKPOS|HKHT)$/i,'quill'],[/^(HKLA|HKLD|HOOKLOAD|HKL)/i,'hook'],[/^(SWOB|WOBA|WOB)/i,'wob'],[/^(RPMA|TDRPM|RPM|SRPM)/i,'rpm'],
  [/^(TQA|STOR|TORQ|TDTQ|TQ|TORQUE)/i,'tq'],[/^SPM ?1|^PUMP1|^SPM_1|^SPMA1/i,'p1.spm'],[/^SPM ?2|^PUMP2|^SPM_2|^SPMA2/i,'p2.spm'],[/^SPM ?3|^PUMP3|^SPM_3/i,'p3.spm'],[/^SPM ?4|^PUMP4|^SPM_4/i,'p4.spm']];
-const HOSTED_PROXY='https://kxwuaasuaskfyecjmuwa.supabase.co/functions/v1/witsml-proxy';
-const CFG=Object.assign({proxy:HOSTED_PROXY,url:'https://australia.adagasolutions.com/WMLS',interval:10000,map:{},defWell:'DR101L',defWb:'WB01B02',defLog:'General Time-Based'},JSON.parse(localStorage.getItem(PKEY)||'{}'));
+const HOSTED_PROXY='https://tryfecta-witsml-proxy.netlify.app/witsml-proxy';// default (Netlify: per-request cert skip for the Adaga host only)
+const SUPABASE_PROXY='https://kxwuaasuaskfyecjmuwa.supabase.co/functions/v1/witsml-proxy';// fallback (cert always verified)
+const CFG=Object.assign({proxy:HOSTED_PROXY,url:'https://australia.adagasolutions.com/WMLS',interval:15000,map:{},defWell:'DR101L',defWb:'WB01B02',defLog:'General Time-Based'},JSON.parse(localStorage.getItem(PKEY)||'{}'));
 // v4.0: hosted HTTPS proxy is the default. Old saved localhost default is migrated (a custom URL is kept).
-if(CFG.proxy==='http://localhost:8796/soap'&&!CFG.proxyPinned)CFG.proxy=HOSTED_PROXY;
+if((CFG.proxy==='http://localhost:8796/soap'||CFG.proxy===SUPABASE_PROXY)&&!CFG.proxyPinned)CFG.proxy=HOSTED_PROXY;if(!CFG.intervalV41){if(!CFG.interval||CFG.interval===10000)CFG.interval=15000;CFG.intervalV41=1}
 // Credentials: sessionStorage only (cleared when the tab closes or on Disconnect); never localStorage, never logged.
 const CKEY='dw-witsml-cred';let CRED={user:'',pass:''};try{const c=JSON.parse(sessionStorage.getItem(CKEY)||'null');if(c&&typeof c.user=='string')CRED={user:c.user,pass:String(c.pass||'')}}catch{}
 const saveCred=()=>{try{CRED.user||CRED.pass?sessionStorage.setItem(CKEY,JSON.stringify(CRED)):sessionStorage.removeItem(CKEY)}catch{}};
-const isHosted=u=>/\/functions\/v1\/witsml-proxy\b/.test(u||'');
+const isHosted=u=>/\/functions\/v1\/witsml-proxy\b|^https:\/\/tryfecta-witsml-proxy\.netlify\.app\/witsml-proxy\b/.test(u||'');
 // v3.9 survey feed: trajectory (+formationMarker) polling, incremental via mdMn, min 60 s, independent of the 10 s log poll
 CFG.svWell=CFG.svWell||'DR101L';CFG.svWellbore=CFG.svWellbore||'WB01B02';CFG.svInterval=Math.max(60000,+CFG.svInterval||60000);
 // memory only
@@ -162,7 +163,7 @@ function toggle(v){if(P&&v!==true){SELC=['wwell','wwb','wlog'].map(id=>[$(id).in
  P.innerHTML=`<b style="color:#8fd">WITSML live data</b> <small>1.4.1.1 SOAP · WMLS_GetFromStore · well → wellbore → log</small>
  <div style="display:grid;grid-template-columns:110px 1fr;gap:3px;margin-top:4px">
  <span>Protocol</span><select id=wproto><option value=soap>WITSML 1.4.1.1 SOAP (via proxy)</option><option value=etp disabled>WITSML 2.0 ETP 1.2 WebSocket (not in this build)</option></select>
- <span>Proxy</span><input id=wproxy value="${CFG.proxy}"><span>Server URL</span><input id=wurl value="${CFG.url}">
+ <span>Proxy</span><span><input id=wproxy list=wproxyl value="${CFG.proxy}"><datalist id=wproxyl><option value="${HOSTED_PROXY}">Netlify (default)</option><option value="${SUPABASE_PROXY}">Supabase fallback (cert must be valid)</option></datalist></span><span>Server URL</span><input id=wurl value="${CFG.url}">
  <span>Username</span><input id=wuser autocomplete=off placeholder="session only, never saved"><span>Password</span><input id=wpass type=password autocomplete=new-password placeholder="session only, never saved">
  <span>Poll every</span><span><input id=wint style="width:60px" value="${CFG.interval}"> ms</span></div>
  <button id=wcon style="${BTN}">Connect + list wells</button><button id=wsim style="${BTN}">Use SIMULATED test store</button><button id=wstop style="${BTN}">Disconnect</button><button id=wx style="${BTN}">Close</button>
@@ -178,7 +179,7 @@ function toggle(v){if(P&&v!==true){SELC=['wwell','wwb','wlog'].map(id=>[$(id).in
  <small style="color:#9ab">Default proxy: hosted HTTPS function (read-only, one allowed server, stores no credentials). Your username/password stay in this tab's sessionStorage and are sent per request as Basic auth; cleared on Disconnect or when the tab closes. A 401 stops all polling. Local alternative: <code>node witsml_proxy.mjs</code> → http://localhost:8796/soap. Every curve is also addable in 📈 Traces → "WITSML channel". ETP 2.0 (Avro binary over WebSocket) is not implemented yet.</small>`;
  document.body.appendChild(P);if(SELC)['wwell','wwb','wlog'].forEach((id,i)=>{$(id).innerHTML=SELC[i][0];$(id).value=SELC[i][1]});
  if($('wuser')&&!$('wuser').value&&CRED.user){$('wuser').value=CRED.user;$('wpass').value=CRED.pass}
- const read=()=>{CFG.proxy=$('wproxy').value.trim();CFG.url=$('wurl').value.trim();CFG.interval=Math.max(10000,+$('wint').value||10000);$('wint').value=CFG.interval;CRED.user=$('wuser').value;CRED.pass=$('wpass').value;saveCred();if(CFG.proxy!==HOSTED_PROXY)CFG.proxyPinned=true;saveCfg()};
+ const read=()=>{CFG.proxy=$('wproxy').value.trim();CFG.url=$('wurl').value.trim();CFG.interval=Math.max(10000,+$('wint').value||15000);$('wint').value=CFG.interval;CRED.user=$('wuser').value;CRED.pass=$('wpass').value;saveCred();CFG.proxyPinned=CFG.proxy!==HOSTED_PROXY;saveCfg()};
  const fill=(id,arr,def)=>{$(id).innerHTML=arr.map(o=>`<option value="${o.uid}">${o.name.replace(/</g,'&lt;')}</option>`).join('');const d=def&&arr.find(o=>o.name.trim()==def);if(d)$(id).value=d.uid};
  const wbs=async()=>{try{fill('wwb',await listWellbores($('wwell').value),CFG.defWb);await lgs()}catch(e){setSt('error: '+e.message,true)}};
  const lgs=async()=>{try{logs=await listLogs($('wwell').value,$('wwb').value);fill('wlog',logs.map(l=>({uid:l.uid,name:l.name+' ['+(/time/i.test(l.indexType)?'time':'depth')+']'})));const dl=logs.find(l=>l.name.trim()==CFG.defLog);if(dl)$('wlog').value=dl.uid;info()}catch(e){setSt('error: '+e.message,true)}};
@@ -199,4 +200,4 @@ function renderMap(){const m=$('wmap');if(!m)return;const L=WML.log||WML.preview
  m.querySelectorAll('[data-tr]').forEach(b=>b.onclick=()=>GX.traces.addTrack('wml:'+b.dataset.tr))}
 export function init(ctx){C=ctx;S=C.S;el=C.el;PANEL=C.PANEL;BTN=C.BTN||'';ui();
  const E=window.EXT,o=E.afterStep.bind(E);E.afterStep=()=>{drive();o();drive()};
- Object.assign(window.GX,{witsml:{WML,CFG,loadWell,resetAll,covCompute,covRender,svStart,svStop,svPoll,svParse,open:()=>toggle(true),start,stop,poll,listWells,listWellbores,listLogs,setLiveMode,startReplay,stopReplay,replaySet,setCred:(u,p)=>{CRED={user:u,pass:p};saveCred()},HOSTED_PROXY}})}
+ Object.assign(window.GX,{witsml:{WML,CFG,loadWell,resetAll,covCompute,covRender,svStart,svStop,svPoll,svParse,open:()=>toggle(true),start,stop,poll,listWells,listWellbores,listLogs,setLiveMode,startReplay,stopReplay,replaySet,setCred:(u,p)=>{CRED={user:u,pass:p};saveCred()},HOSTED_PROXY,SUPABASE_PROXY}})}

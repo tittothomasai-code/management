@@ -1,0 +1,20 @@
+// v4.0 hosted-proxy client test. Hosted URL is INTERCEPTED by puppeteer (no network, NO Adaga calls).
+import puppeteer from 'puppeteer-core';
+const BASE=process.argv[2]||'http://localhost:8777';
+const b=await puppeteer.launch({executablePath:'/usr/bin/google-chrome',args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--no-sandbox']});
+const w=ms=>new Promise(r=>setTimeout(r,ms));let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++};
+const p=await b.newPage();await p.setRequestInterception(true);const seen=[];let mode='401';
+p.on('request',r=>{if(/functions\/v1\/witsml-proxy|netlify\.app\/witsml-proxy/.test(r.url())){if(r.method()=='OPTIONS')return r.respond({status:204,headers:{'access-control-allow-origin':'*','access-control-allow-headers':'*'}});seen.push({h:r.headers()['x-witsml-authorization']||'',b:r.postData()||''});return r.respond({status:mode=='401'?401:200,contentType:'application/json',headers:{'access-control-allow-origin':'*'},body:mode=='401'?'{"result":-1,"error":"Authentication failed (401)"}':'{"result":1,"version":"1.4.1.1"}'})}r.continue()});
+await p.goto(BASE+'/index.html?'+Date.now());await w(2000);await p.evaluate(()=>{localStorage.clear();sessionStorage.clear()});await p.reload();await w(7000);
+const d=await p.evaluate(()=>({px:GX.witsml.cfg?GX.witsml.cfg.proxy:null,H:GX.witsml.HOSTED_PROXY}));console.log(JSON.stringify(d));ok(d.H&&d.H.startsWith('https://tryfecta-witsml-proxy.netlify.app/witsml-proxy'),'hosted proxy URL exported');
+await p.evaluate(()=>GX.witsml.open());await w(500);
+ok(await p.evaluate(()=>document.getElementById('wproxy')?.value||GX.witsml.cfg?.proxy||''),'proxy field populated');
+console.log('proxy field:',await p.evaluate(()=>document.getElementById('wproxy')?.value));
+await p.evaluate(()=>{document.getElementById('wuser').value='tuser';document.getElementById('wpass').value='tpass-not-real'});
+await p.evaluate(()=>document.getElementById('wcon').click());await w(2500);
+const s=seen[0]||{h:'',b:''};ok(seen.length>=1,'request went to hosted proxy');ok(s.h=='Basic '+Buffer.from('tuser:tpass-not-real').toString('base64'),'Basic auth sent in X-Witsml-Authorization header');ok(!/tpass|tuser/.test(s.b),'no credentials in request body');
+const st=await p.evaluate(()=>({dead:GX.witsml.state?GX.witsml.state.authDead:undefined,sim:document.getElementById('sim')?.textContent,ss:sessionStorage.getItem('dw-witsml-cred')!=null,ls:JSON.stringify(localStorage).includes('tpass')}));console.log(JSON.stringify(st));
+ok(/Auth failed/.test(st.sim||''),'401 -> hard stop banner');const n=seen.length;await w(6000);ok(seen.length==n,'no retry after 401 ('+seen.length+' requests)');
+ok(st.ss,'creds in sessionStorage');ok(!st.ls,'creds NOT in localStorage');
+await p.evaluate(()=>document.getElementById('wstop').click());ok(await p.evaluate(()=>sessionStorage.getItem('dw-witsml-cred')==null||!sessionStorage.getItem('dw-witsml-cred').includes('tpass')),'Disconnect clears creds');
+await b.close();console.log(fails?'FAILURES '+fails:'ALL PASS');process.exit(fails?1:0);

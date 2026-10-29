@@ -116,3 +116,10 @@ New files: `geo.js` (pure maths/parsers, node-testable) and `ext5.js` (UI/3D). H
 - Connect with an empty login asks for username/password. Connect, survey feed and load-well show clear messages for errors, network failures, and empty results.
 - On phones, the username/password inputs are 46 px touch targets. Test: `node v41_conn_test.mjs`.
 - Cert note: a scoped TLS skip (node:https / node:tls with rejectUnauthorized:false for one host) does NOT work on Supabase Edge. The runtime still enforces verification. witsml-proxy stays at v1 with verification on. The Adaga cert must be renewed, or a different host is needed.
+
+## v4.2 — Netlify proxy (default)
+- Default proxy: `https://tryfecta-witsml-proxy.netlify.app/witsml-proxy`. This is a Netlify Function on the new site `tryfecta-witsml-proxy` in the Tryfecta capital team. Source: `netlify-proxy/`.
+- Upstream uses Node `https.request`. A per-request `https.Agent({rejectUnauthorized:false})` is used ONLY when the hostname === `australia.adagasolutions.com`. Every other host is verified.
+- Same rules as before: only the Adaga /WMLS URL, read ops only, SOAP built server-side, CORS for tittothomasai-code.github.io only, credentials only in X-Witsml-Authorization and never stored, 401/403 passed back, no logging. Rate limit: 60 requests/min per IP (best effort).
+- Supabase `witsml-proxy` is still available as a fallback in the Proxy field's dropdown. Its cert is always verified, so it fails while the Adaga cert is expired.
+- Live log poll default is 15 s (minimum 10 s).
