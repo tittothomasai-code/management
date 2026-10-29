@@ -62,3 +62,11 @@ Test: `node witsml_proxy.mjs & LNA_OFF=1 node witsml_test.mjs <url> <outdir>`.
 - **Replay from data:** code present but **hidden** (`REPLAY_ENABLED=false` in ext4.js) after an upstream 401 during testing. Labelled `REPLAY · real data` when enabled, never LIVE.
 - **Known data issue — hookload:** during the Adaga test HKL swung from **+17.8 to −18.6 klbf** within minutes. Mapping left unchanged; needs a check of the HKL zero/offset or tare on the source before relying on hookload.
 - **Caveat:** the public GitHub Pages site cannot reach WITSML directly — it needs a local `witsml_proxy.mjs` on 127.0.0.1:8796. No credentials are stored in the site; the user enters them in the panel at runtime (not persisted).
+
+## v3.6 — Units switch (2026-10-29)
+- HUD button **Units: Metric / Imperial**; default **Metric**; choice saved in browser localStorage (`dw-units`).
+- Metric: depth **m**, ROP **m/h**, flow **L/min**, pressure **kPa** (used everywhere, no bar), hookload/WOB **kN**, torque **kN·m**, power **kW**. Imperial: ft, ft/h, gpm, psi, klbf, ft·lbf, hp.
+- Game physics stays imperial internally; `units.js` converts for display only: traces + values/axes, HUD clock line, entity panels (the floating 3D labels), pump/sensor trees, rig-designer results/warnings, CSV export headers and values. Switching rescales existing trace history.
+- WITSML: each channel is converted from its own `uom` in the log header (e.g. lpm, m3/min, bar, kPa, MPa, kN, klbs, t, m, m/hr, N.m, kN.m, ftlb) to the game's internal units via one conversion table; unknown uoms pass through unchanged.
+- Not converted (by design / caveat): rig-designer **input** fields stay imperial (results are converted); CSV **import** column names (spp_psi, flow_gpm, hookload_klbf, md_ft…) stay imperial; raw `wml:` channel traces display in the selected system; user formula traces keep the unit you typed.
+- **Open question — depth datum:** time-log BDE ≈ 8768 ft (2672.5 m) vs the depth log ≈ 2656.9 m (~15.6 m apart). Check each log's uom and depth datum (RKB vs MSL, or rig floor vs ground) once the Adaga account is confirmed.

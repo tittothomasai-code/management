@@ -190,7 +190,7 @@ function designerInit(){let d=DEF;try{const s=JSON.parse(localStorage.getItem(DK
  setInterval(()=>{if(C.pumpsArr.length!=DES.pumps.length){const d=JSON.parse(JSON.stringify(DES));while(d.pumps.length<C.pumpsArr.length)d.pumps.push({type:DEF.pumps[0].type,liner_in:6});d.pumps.length=C.pumpsArr.length;applyDesign(d,true)}},1000)}
 function renderDesigner(){const d=DES,r=derive(d);const opt=(o,v)=>Object.keys(o).map(k=>`<option ${k==v?'selected':''}>${k}</option>`).join('');
  const num=(k,lab,step=1)=>`<label>${lab} <input data-d="${k}" type=number step=${step} value="${d[k]}" style="width:70px"></label> `;
- dEl.innerHTML=`<b style="color:#8fd">Rig designer</b> <span style="color:#fc6">engineering estimates, SIMULATED physics</span> <button id="dx" style="${BTN};float:right">×</button><br>
+ dEl.innerHTML=U.txt(`<b style="color:#8fd">Rig designer</b> <span style="color:#fc6">engineering estimates, SIMULATED physics</span> <button id="dx" style="${BTN};float:right">×</button><br>
  Name <input data-ds="name" value="${d.name}" style="width:250px"><br>
  <b>Hoisting</b><br>${num('derrick_klbf','Derrick rating klbf',50)}${num('dw_hp','Drawworks HP',100)}<label>Lines <select data-dn="lines">${[6,8,10,12,14].map(v=>`<option ${v==d.lines?'selected':''}>${v}</option>`).join('')}</select></label> <label>Wire in <select data-dn="wire_in">${Object.keys(WIRE).map(v=>`<option ${+v==d.wire_in?'selected':''}>${v}</option>`).join('')}</select></label><br>
  <b>Rotation</b><br>${num('td_torque','Top drive torque ft-lbf',1000)}${num('td_rpm','Max RPM',10)}<br>
@@ -206,7 +206,7 @@ function renderDesigner(){const d=DES,r=derive(d);const opt=(o,v)=>Object.keys(o
  <span>Est. SPP at ${r.qop.toFixed(0)} gpm</span><b>${r.spp_op.toFixed(0)} psi</b><span>Bit TFA</span><b>${r.tfa.toFixed(3)} in²</b></div>
  <div style="color:${r.W.length?'#f96':'#8f8'};margin-top:3px">${r.W.length?r.W.map(w=>'⚠ '+w).join('<br>'):'✓ No validation warnings'}</div>
  <button id="dsave" style="${BTN}">Save design JSON</button><button id="dload" style="${BTN}">Load design JSON</button><button id="ddef" style="${BTN}">Reset default</button><button id="dlight" style="${BTN}">Example: light 750 HP rig</button>
- <div style="color:#9ab;margin-top:2px"><small>Changes apply live to the physics: hookload interlock, hoist speed, TD torque/RPM limits, pump flow and pop-off, string losses, motor, MWD, bit.</small></div>`;
+ <div style="color:#9ab;margin-top:2px"><small>Changes apply live to the physics: hookload interlock, hoist speed, TD torque/RPM limits, pump flow and pop-off, string losses, motor, MWD, bit.</small></div>`);
  const up=f=>{const n=JSON.parse(JSON.stringify(DES));f(n);applyDesign(n);renderDesigner()};
  dEl.querySelector('#dx').onclick=()=>dEl.style.display='none';
  dEl.querySelectorAll('[data-d]').forEach(i=>i.onchange=()=>up(n=>n[i.dataset.d]=+i.value));

@@ -48,14 +48,9 @@ async function poll(){const L=WML.log;if(!L)return;if(WML.inflight){WML.miss++;c
  catch(e){WML.errors++;WML.miss++;S.events.push([S.t,'WITSML poll error: '+e.message])}
  finally{WML.inflight=false}check();renderMap()}
 // unit conversion to game units (psi, gpm, klbf, ft, ft/h, ft.lbf)
-const conv=(s,v,u)=>{u=(u||'').toLowerCase().replace(/[\s.]/g,'');
- if(s=='Q'){if(/^(lpm|l\/min)$/.test(u))return v/3.78541;if(/^(m3\/min)$/.test(u))return v*264.172;return v}
- if(s=='spp'){if(u=='kpa')return v*0.145038;if(u=='bar')return v*14.5038;if(u=='mpa')return v*145.038;return v}
- if(s=='hook'||s=='wob'){if(u=='kn')return v*0.224809;if(u=='t'||u=='tonne')return v*2.20462;if(u=='kkgf')return v*2.20462;return v}
- if(s=='md'||s=='holedepth'||s=='bitdepth'){return u=='m'?v*3.28084:v}
- if(s=='rop'){return /^m\/h/.test(u)?v*3.28084:v}
- if(s=='tq'){return u=='knm'?v*737.562:u=='nm'?v*0.737562:v}
- return v};
+// v3.6: convert each channel by its own uom (log header) via units.js table -> game internal (imperial) units
+const GAMEU={Q:'gpm',spp:'psi',hook:'klbf',wob:'klbf',md:'ft',holedepth:'ft',bitdepth:'ft',rop:'ft/h',tq:'ft.lbf',quill:'m'};
+const conv=(s,v,u)=>{const g=GAMEU[s];if(!g||v==null||!u)return v;return U.x(v,u,g)};
 const FEEDSIG=['spp','Q','hook','wob','rpm','md','quill'];const ALIAS={holedepth:'md'};
 function apply(){const vals={};for(const [mn,s0] of Object.entries(CFG.map)){const ch=WML.channels[mn];const v=ch?.v;if(!s0||v==null)continue;const s=ALIAS[s0]||s0;if(FEEDSIG.includes(s))vals[s]=conv(s0,v,ch.unit)}
  if(Object.keys(vals).length){GX.feedPush(vals,WML.simulated?'SIMULATED WITSML test store':'WITSML '+WML.log.name);for(const k in vals)if(C.SRC[k]!='live'){C.SRC[k]='live'}C.sigRender()}}

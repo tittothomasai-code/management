@@ -6,7 +6,7 @@ const simFeed=()=>/SIMULATED/i.test((GX.feedState||{}).src||'');
 const sigSrc=k=>{const m={spp:'spp',Q:'Q',hook:'hook',wob:'wob',rpm:'rpm',md:'md',quill:'quill'};if(window.WML&&m[k]&&WML.mode=='replay')return 'replay';if(window.WML&&m[k]&&WML.liveMode&&WML.healthy())return 'live';const v=m[k]&&C.SRC?C.SRC[m[k]]:'sim';if(v=='live'&&window.WML&&WML.mode=='replay')return 'replay';if(v=='live'&&(GX.feedState||{}).status!='live')return 'sim';return v=='live'&&simFeed()?'live-sim':v};
 const liveTag=(id,d)=>(window.WML&&WML.drives&&WML.drives(id))||d||'sim';// LIVE when a WITSML channel drives this signal
 // ---- signal catalogue ----
-function catalogue(){const L=[];const add=(id,label,unit,get,src)=>L.push({id,label,unit,get,src:src||(()=>'sim'),group:label.split(' · ')[0]});
+function catalogue(){const L=[];const add=(id,label,unit,get,src)=>{const w=!String(id).startsWith('f:')&&!!U.dim(unit);L.push({id,label,u0:unit,get unit(){return w?U.u(unit):unit},get:w?()=>{const v=get();return v==null?v:U.v(unit,v)}:get,src:src||(()=>'sim'),group:label.split(' · ')[0]})};
  add('spp','Rig · Standpipe pressure','psi',()=>S.spp,()=>sigSrc('spp'));add('Q','Rig · Flow in','gpm',()=>S.Q,()=>sigSrc('Q'));
  add('hook','Rig · Hookload','klbf',()=>S.hook,()=>sigSrc('hook'));add('wob','Rig · WOB','klbf',()=>S.wob,()=>sigSrc('wob'));
  add('rpm','Rig · Top drive RPM','rpm',()=>S.td.rpm,()=>sigSrc('rpm'));add('tq','Rig · Top drive torque','ft-lbf',()=>S.td.tq||S.td.torque||0,()=>liveTag('tq'));
@@ -55,7 +55,7 @@ function catalogue(){const L=[];const add=(id,label,unit,get,src)=>L.push({id,la
  return L}
 let CAT=[];const byId=id=>CAT.find(c=>c.id==id);
 function refreshCat(){CAT=catalogue();for(const tr of TR.tracks){const c=byId(tr.id);if(c){tr.get=c.get;tr.src=c.src}}}
-function addTrack(id){refreshCat();if(TR.tracks.find(t=>t.id==id))return;const c=byId(id);if(!c)return;TR.tracks.push({id,label:c.label,unit:c.unit,color:COLORS[TR.tracks.length%COLORS.length],get:c.get,src:c.src});TR.data[id]=new Array(TR.t.length).fill(null);save();open(true);build()}
+function addTrack(id){refreshCat();if(TR.tracks.find(t=>t.id==id))return;const c=byId(id);if(!c)return;TR.tracks.push({id,label:c.label,u0:c.u0??c.unit,get unit(){return String(this.id).startsWith('f:')?this.u0:U.u(this.u0)},color:COLORS[TR.tracks.length%COLORS.length],get:c.get,src:c.src});TR.data[id]=new Array(TR.t.length).fill(null);save();open(true);build()}
 function rmTrack(id){TR.tracks=TR.tracks.filter(t=>t.id!=id);delete TR.data[id];save();build()}
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify({ids:TR.tracks.map(t=>t.id),win:TR.win,formulas:TR.formulas.map(f=>({name:f.name,unit:f.unit,expr:f.expr}))}))}catch{}};
 // ---- formula traces: [id] = any signal, base[id] = its value when the formula was added (baseline) ----
@@ -152,7 +152,7 @@ function entSignals(e){if(!e)return[];refreshCat();const p=e.st&&S.pumps.include
  if(/Drawworks|mast|Mast/.test(e.name))return CAT.filter(c=>['hook','quill','wob'].includes(c.id));if(/Well/.test(e.name))return CAT.filter(c=>['md','rop','wob','Qb'].includes(c.id)||c.id.startsWith('cir'));
  const lm=[...(GX.ext.lib||[]),...(GX.ext.bha||[])].find(it=>it.uid&&e.name.endsWith(String(it.uid).slice(-3)));if(lm)return CAT.filter(c=>c.id.startsWith('lm'+lm.uid)||c.id.startsWith('eq.'+lm.uid+'.'));
  // generic: numeric panel rows of any entity
- try{return e.panel().rows.filter(r=>typeof r[1]=='function'&&isFinite(parseFloat(r[1]()))).map(r=>{const id='ent:'+e.name+':'+r[0];if(!byId(id))CAT.push({id,label:e.name+' · '+r[0],unit:(r[0].match(/(psi|gpm|klbf|rpm|ft|spm|hp|%|m|s)\b/)||[''])[0],get:()=>parseFloat(r[1]()),src:()=>'sim',group:e.name});return byId(id)})}catch{return[]}}
+ try{return e.panel().rows.filter(r=>typeof r[1]=='function'&&isFinite(parseFloat(r[1]()))).map(r=>{const id='ent:'+e.name+':'+r[0];{const tk=(r[0].match(/(psi|gpm|klbf|rpm|ft|spm|hp|%|m|s)\b/)||[''])[0];if(!byId(id))CAT.push({id,label:e.name+' · '+r[0],u0:tk,get unit(){return U.u(tk)},get:()=>U.v(tk,parseFloat(r[1]())),src:()=>'sim',group:e.name})}return byId(id)})}catch{return[]}}
 function panelHook(){const pn=document.querySelector('#panels .panel');const e=C.sel&&C.sel();if(!pn||!e)return;const sig0=pn.querySelector('.tradd')?null:entSignals(e);
  {let b=pn.querySelector('.srcb');const ks=[...new Set((pn._sig||sig0||[]).map(c=>c.src()))];if(sig0)pn._sig=sig0;if(ks.length){if(!b){b=el('div','margin-top:4px');b.className='srcb';pn.insertBefore(b,pn.firstChild.nextSibling)}const h='Source: '+ks.map(pill).join(' ');if(b.innerHTML!=h)b.innerHTML=h}}
  if(pn.querySelector('.tradd'))return;const sig=sig0;if(!sig||!sig.length)return;
@@ -165,5 +165,6 @@ export async function init(ctx){C=ctx;S=C.S;PH=C.PH;el=C.el;PANEL=C.PANEL;ui();
  try{const d=JSON.parse(localStorage.getItem(KEY)||'null');if(d){TR.win=d.win||120;(d.formulas||[]).forEach(f=>{try{makeFormula(f.name,f.unit,f.expr)}catch{}});W.querySelector('#trwin').value=TR.win;refreshCat();d.ids.forEach(id=>{if(byId(id))addTrack(id)});open(false)}}catch{}
  const E=window.EXT,o=E.afterStep.bind(E);E.afterStep=()=>{o();sample()};const of=E.frame.bind(E);E.frame=(...a)=>{of(...a);draw()};
  setInterval(panelHook,300);setInterval(sigBadges,500);setInterval(()=>{if(TR.on){const n=catalogue().length;if(n!=CAT.length&&document.activeElement!==picker)renderTree();refreshCat()}},2000);
+ U.on((o,n)=>{for(const tr of TR.tracks){if(String(tr.id).startsWith('f:'))continue;const k=U.f(tr.u0,n)/U.f(tr.u0,o);if(k!=1&&TR.data[tr.id])TR.data[tr.id]=TR.data[tr.id].map(v=>v==null?v:v*k)}try{build()}catch{}});
  Object.assign(window.GX,{traces:{TR,addTrack,rmTrack,open,toCSV,catalogue:()=>(refreshCat(),CAT.map(c=>({id:c.id,label:c.label,unit:c.unit}))),entSignals:n=>entSignals(C.ents.find(e=>e.name==n)).map(c=>c.id),addFormula,renderTree}});
  try{(await import('./ext4.js?v=35')).init(C)}catch(err){console.error('ext4',err)}}

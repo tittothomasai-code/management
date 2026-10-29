@@ -110,7 +110,7 @@ function rebuildLines(){pumpLineMeshes.forEach(m=>{scene.remove(m);m.geometry.di
  if(pMesh){scene.remove(pMesh);pGeom.dispose()}pPos=new Float32Array(n*3);pCol=new Float32Array(n*3);pGeom=new THREE.BufferGeometry();pGeom.setAttribute('position',new THREE.BufferAttribute(pPos,3));pGeom.setAttribute('color',new THREE.BufferAttribute(pCol,3));
  pMesh=new THREE.Points(pGeom,new THREE.PointsMaterial({size:0.45,vertexColors:true,depthTest:false,transparent:true}));pMesh.renderOrder=5;scene.add(pMesh);pu=Array.from({length:n},()=>Math.random())}
 const col=new THREE.Color();function pcol(psi){col.setHSL(0.66-0.66*Math.min(1,psi/4000),1,0.55);return col}
-const lineEnt={name:'Standpipe + hose',obj:new THREE.Group(),update(){},anchor:lp(-3,FLOOR+22,3),panel:()=>({title:'Standpipe + rotary hose',rows:[['SPP psi',()=>S.spp.toFixed(0)],['Flow in gpm',()=>S.Q.toFixed(0)],['Manifold loss',()=>S.prof.man.toFixed(0)],['Surface line loss',()=>S.prof.surf.toFixed(0)]],html:'<small>particle speed = flow; colour = pressure (blue low, red high)</small>'})};
+const lineEnt={name:'Standpipe + hose',obj:new THREE.Group(),update(){},anchor:lp(-3,FLOOR+22,3),panel:()=>({title:'Standpipe + rotary hose',rows:[['SPP psi',()=>S.spp.toFixed(0)],['Flow in gpm',()=>S.Q.toFixed(0)],['Manifold loss psi',()=>S.prof.man.toFixed(0)],['Surface line loss psi',()=>S.prof.surf.toFixed(0)]],html:'<small>particle speed = flow; colour = pressure (blue low, red high)</small>'})};
 lineSegs.forEach(m=>m.userData.ent=lineEnt);lineEnt.obj.position.set(0,0,0);ents.push(lineEnt);lineEnt.noModel=true;linesReady=true;rebuildLines();
 // ---------- underground: strata, well, string, BHA ----------
 const UG=new THREE.Group();scene.add(UG);const WS=0.03;// m per ft (well geometry scale)
@@ -133,7 +133,7 @@ bha.traverse(o=>o.userData.ent=wellEnt);ents.push(wellEnt);
 // ---------- selection + panels ----------
 const panelsEl=document.getElementById('panels');let sel=null,panelEl=null,panelRows=[];
 function select(e){sel=e;panelsEl.innerHTML='';panelEl=null;if(!e||!e.panel)return;const d=e.panel();panelEl=document.createElement('div');panelEl.className='panel';
- panelEl.innerHTML=`<h4>${d.title} <span style="color:#fc6;font-weight:400">SIM</span></h4>`+d.rows.map((r,i)=>`<div class=r><span>${r[0]}</span><b id=pv${i}></b></div>`).join('')+(d.html?'<div style="margin-top:4px">'+d.html+'</div>':'')+panelFooter(e);panelsEl.appendChild(panelEl);panelRows=d.rows;
+ panelEl.innerHTML=`<h4>${d.title} <span style="color:#fc6;font-weight:400">SIM</span></h4>`+d.rows.map((r,i)=>`<div class=r><span id=pl${i}>${U.lab(r[0])}</span><b id=pv${i}></b></div>`).join('')+(d.html?'<div style="margin-top:4px">'+d.html+'</div>':'')+panelFooter(e);panelsEl.appendChild(panelEl);panelRows=d.rows;
  panelEl.querySelectorAll('input[data-e]').forEach(inp=>{const k=inp.dataset.e;inp.value=e.st[k];inp.oninput=()=>{e.st[k]=+inp.value;saveLayout()}});
  panelEl.querySelectorAll('[data-x]').forEach(b=>{b.onclick=()=>actX(e,b.dataset.x,b)});
  panelEl.querySelectorAll('input[data-k]').forEach(inp=>{const k=inp.dataset.k.split('.');const get=()=>k.reduce((o,x)=>o[x],S);inp.value=get();inp.oninput=()=>{let o=S;for(const x of k.slice(0,-1))o=o[x];o[k.at(-1)]=+inp.value;if(k[0]=='tf'){S.autoSteer=false}}});
@@ -303,8 +303,8 @@ function frame(now){const dtR=Math.min(0.1,(now-last)/1000);last=now;spd=+$('spd
  sync(dtR);EXT.frame(dtR);ctl.update();ren.render(scene,cam);
  if(sel&&panelEl){sel.obj.updateMatrixWorld();v3.copy(sel.anchor).applyMatrix4(sel.obj.matrixWorld);if(sel===lineEnt)v3.copy(sel.anchor);v3.project(cam);panelEl.style.display=v3.z<1?'':'none';panelEl.style.left=((v3.x+1)/2*innerWidth)+'px';panelEl.style.top=((1-v3.y)/2*innerHeight)+'px'}
  for(const t of tagEls){t.o.getWorldPosition(v3);v3.project(cam);t.el.style.left=((v3.x+1)/2*innerWidth)+'px';t.el.style.top=((1-v3.y)/2*innerHeight)+'px'}
- if(now-uiT>200){uiT=now;panelRows.forEach((r,i)=>{const el=document.getElementById('pv'+i);if(el)el.textContent=r[1]()});
-  const h=Math.floor(S.t/3600),mi=Math.floor(S.t/60)%60;$('clock').textContent=`SIM time ${h}h${String(mi).padStart(2,'0')}m  ×${spd}  |  MD ${S.md.toFixed(0)} ft  SPP ${S.spp.toFixed(0)} psi  Q ${S.Q.toFixed(0)} gpm  ROP ${S.rop.toFixed(0)} ft/h`+(S.seq?'  |  CONNECTION: '+S.seq.steps[S.seq.i][0]:'');
+ if(now-uiT>200){uiT=now;panelRows.forEach((r,i)=>{const el=document.getElementById('pv'+i);if(el)el.textContent=U.val(r[0],r[1]());const lb=document.getElementById('pl'+i);if(lb)lb.textContent=U.lab(r[0])});
+  const h=Math.floor(S.t/3600),mi=Math.floor(S.t/60)%60;$('clock').textContent=U.txt(`SIM time ${h}h${String(mi).padStart(2,'0')}m  ×${spd}  |  MD ${S.md.toFixed(0)} ft  SPP ${S.spp.toFixed(0)} psi  Q ${S.Q.toFixed(0)} gpm  ROP ${S.rop.toFixed(0)} ft/h`)+(S.seq?'  |  CONNECTION: '+S.seq.steps[S.seq.i][0]:'');
   $('log').innerHTML=S.events.slice(-6).reverse().map(e=>`${(e[0]/60).toFixed(1)}m ${e[1]}`).join('<br>')}
  requestAnimationFrame(frame)}
 requestAnimationFrame(frame);

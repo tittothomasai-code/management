@@ -148,7 +148,7 @@ function showTree(e){treeEl&&treeEl.remove();const root=e.type=='mudpump'?PUMP_T
  treeEl.innerHTML=`<b>Parts tree</b> <button id="trx" style="${BTN}">close</button><br>`+rec(root,0);document.body.appendChild(treeEl);
  treeEl.querySelector('#trx').onclick=()=>{treeEl.remove();treeEl=null;hi([])};
  treeEl.querySelectorAll('[data-n]').forEach(a=>a.onclick=ev=>{ev.preventDefault();const n=rs[+a.dataset.n];if(e.parts&&n.part&&e.parts[n.part]){if(e.type=='mudpump'&&!e.explode)e.dbl();hi([e.parts[n.part]])}});
- treeEl._upd=()=>rs.forEach((n,i)=>{if(n.r){const x=document.getElementById('tr'+i);if(x){const [k,v]=n.r();x.textContent=k+': '+v}}})}
+ treeEl._upd=()=>rs.forEach((n,i)=>{if(n.r){const x=document.getElementById('tr'+i);if(x){const [k,v]=n.r();x.textContent=U.lab(k)+': '+U.val(k,v)}}})}
 function partSelect(pumpIdx,part){const e=C.pumps[pumpIdx];showTree(e);if(!e.explode)e.dbl();hi([e.parts[part]])}
 function hi(objs){hiMesh.forEach(([m,c])=>m.material=c);hiMesh=[];for(const o of objs)o&&o.traverse(m=>{if(m.isMesh){hiMesh.push([m,m.material]);m.material=m.material.clone();m.material.emissive=new THREE.Color(0x00aaff);m.material.emissiveIntensity=0.8}})}
 
