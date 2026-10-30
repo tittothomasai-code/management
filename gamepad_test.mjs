@@ -23,7 +23,8 @@ for(const [nm,vp] of [['desk',{width:1440,height:900}],['phone',{width:390,heigh
  await press(15);await w(400);const op=await p.evaluate(()=>__input.ST.lastTab);ok(op=='data',nm+': D-pad → next panel tab ('+op+')');
  await press(1);await w(300);ok(true,nm+': B closes panels (no error)');
  await press(9);ok(await p.evaluate(()=>getComputedStyle(document.getElementById('inpLegend')).display=='block'&&/Left stick/.test(inpLegend.textContent)&&/WOB/.test(inpLegend.textContent)),nm+': Start shows legend');
- await p.screenshot({path:SH+'1_legend_'+nm+'.png'});await press(9);ok(await p.evaluate(()=>getComputedStyle(inpLegend).display=='none'),nm+': Start hides legend');
+ await p.screenshot({path:SH+'1_legend_'+nm+'.png'});
+ ok(await p.evaluate(()=>{const e=inpLegend,r=e.getBoundingClientRect(),h=document.elementFromPoint(r.left+r.width/2,r.top+30);return e.contains(h)&&+getComputedStyle(e).zIndex>100000}),nm+': legend sits above the dock, on-screen controls and subsurface view');await press(9);ok(await p.evaluate(()=>getComputedStyle(inpLegend).display=='none'),nm+': Start hides legend');
  // keyboard
  await p.evaluate(()=>document.activeElement?.blur());a=await st();await p.keyboard.press('ArrowRight');await p.keyboard.press('ArrowRight');c=await st();ok(Math.abs(c.az-a.az)>0.1,nm+': arrows orbit');
  a=c;await p.keyboard.press('Equal');c=await st();ok(c.r<a.r,nm+': + zooms in');a=c;await p.keyboard.press('Minus');c=await st();ok(c.r>a.r,nm+': − zooms out');
