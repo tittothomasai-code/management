@@ -1,0 +1,31 @@
+// v5.9.5 on-screen controls test: default OFF (also on touch), toggle + Tools▸Settings entry, persisted across reload, joystick drags move camera,
+// WOB/RPM buttons change setpoints, grip drag moves + persists a group. Phone (touch) + desk (mouse). No network writes.
+import puppeteer from 'puppeteer-core';const BASE=(process.argv[2]||'http://localhost:8777').replace(/\/$/,''),SH='shots_live/150_vpad_';
+const w=ms=>new Promise(r=>setTimeout(r,ms));let fails=0,pass=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);c?pass++:fails++};
+const b=await puppeteer.launch({executablePath:'/usr/bin/google-chrome',args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--no-sandbox']});const errs=[];
+const go=async p=>{await p.goto(BASE+'/?nosplash=1',{waitUntil:'load',timeout:120000});await p.waitForFunction(()=>window.GX?.vpad&&window.G?.cam&&window.G?.S,{timeout:120000});await w(800)};
+const st=p=>p.evaluate(()=>({az:Math.atan2(G.cam.position.x-G.ctl.target.x,G.cam.position.z-G.ctl.target.z),r:G.cam.position.distanceTo(G.ctl.target),tx:G.ctl.target.x,tz:G.ctl.target.z,wob:G.S.dw.wobSet,rpm:G.S.td.cmd}));
+const ctr=(p,s)=>p.$eval(s,e=>{const r=e.getBoundingClientRect();return [r.left+r.width/2,r.top+r.height/2]});
+async function tapEl(p,nm,sel){const [x,y]=await ctr(p,sel);if(nm=='phone')await p.touchscreen.tap(x,y);else await p.mouse.click(x,y);await w(120)}
+async function drag(p,nm,[x,y],dx,dy,ms=900){if(nm=='phone'){const c=await p.target().createCDPSession();const T=(type,pts)=>c.send('Input.dispatchTouchEvent',{type,touchPoints:pts});await T('touchStart',[{x,y}]);for(let i=1;i<=10;i++){await T('touchMove',[{x:x+dx*i/10,y:y+dy*i/10}]);await w(ms/10)}await T('touchEnd',[])}
+ else{await p.mouse.move(x,y);await p.mouse.down();for(let i=1;i<=10;i++){await p.mouse.move(x+dx*i/10,y+dy*i/10);await w(ms/10)}await p.mouse.up()}}
+for(const [nm,vp] of [['phone',{width:390,height:844,deviceScaleFactor:2,isMobile:true,hasTouch:true}],['desk',{width:1440,height:900}]]){
+ const ctx=await b.createBrowserContext();const p=await ctx.newPage();await p.setViewport(vp);p.on('pageerror',e=>errs.push(nm+': '+e.message));
+ await p.setRequestInterception(true);p.on('request',r=>{if(!['GET','HEAD','OPTIONS'].includes(r.method()))return r.abort();if(/supabase\.co|adaga|witsml/i.test(r.url())&&!/\.js(\?|$)/.test(r.url()))return r.abort();r.continue()});
+ await go(p);const s0=await p.evaluate(()=>({on:GX.vpad.on(),pad:!!document.getElementById('vpad')&&document.getElementById('vpad').style.display!='none',tg:(()=>{const e=document.getElementById('vpToggle'),r=e?.getBoundingClientRect();return !!r&&r.width>0&&getComputedStyle(e).display!='none'})()}));
+ ok(!s0.on&&!s0.pad&&s0.tg,`${nm}: default OFF${nm=='phone'?' on touch':''}, toggle visible (${JSON.stringify(s0)})`);await p.screenshot({path:SH+nm+'_0_off.png'});
+ await p.click('#vpToggle');await w(400);ok(await p.evaluate(()=>GX.vpad.on()&&!!document.querySelector('#vpL')?.offsetParent&&!!document.querySelector('#vpB')?.offsetParent&&localStorage.dw_vpad=='1'),`${nm}: toggle shows joysticks + buttons, saved`);await p.screenshot({path:SH+nm+'_1_on.png'});
+ const a=await st(p);await drag(p,nm,await ctr(p,'#vpL .thumb'),45,0);await w(200);const b1=await st(p);ok(Math.abs(b1.az-a.az)>0.05,`${nm}: left stick drag orbits camera (Δaz ${(b1.az-a.az).toFixed(3)})`);
+ await drag(p,nm,await ctr(p,'#vpR .thumb'),0,45);await w(200);const c1=await st(p);ok(c1.r>b1.r*1.05,`${nm}: right stick down zooms out (${b1.r.toFixed(1)}→${c1.r.toFixed(1)})`);
+ await p.evaluate(()=>{G.S.dw.wobSet=10;G.S.td.cmd=60});await tapEl(p,nm,'#vpB [data-a="wob+"]');await p.evaluate(()=>{window.__ev=[];['pointerdown','pointerup','pointercancel','click','touchstart','touchend'].forEach(t=>document.addEventListener(t,e=>__ev.push(t+':'+(e.target.dataset?.a||e.target.id||e.target.tagName)),true))});console.log(nm,await p.$eval('#vpB [data-a="rpm+"]',e=>{const r=e.getBoundingClientRect(),h=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);return (h.id||h.className||h.tagName)+' '+(h.parentElement?.id)}));await tapEl(p,nm,'#vpB [data-a="rpm+"]');await tapEl(p,nm,'#vpB [data-a="rpm-"]');await tapEl(p,nm,'#vpB [data-a="rpm-"]');const d1=await st(p);console.log(nm,await p.evaluate(()=>JSON.stringify([visualViewport.scale,visualViewport.offsetLeft,visualViewport.offsetTop,scrollX,scrollY])));
+ ok(d1.wob>10&&d1.rpm<60,`${nm}: WOB+/RPM± buttons change setpoints (WOB ${d1.wob}, RPM ${d1.rpm})`);
+ await tapEl(p,nm,'#vpB [data-a="fly"]');await tapEl(p,nm,'#vpB [data-a="reset"]');ok(await p.evaluate(()=>GX.vpad.ST.lastAct=='reset'),`${nm}: fly-to-bit and reset buttons fire`);
+ const g0=await ctr(p,'#vpB .grip');await drag(p,nm,g0,-60,-80,400);await w(200);const g1=await ctr(p,'#vpB .grip');const sp=await p.evaluate(()=>JSON.parse(localStorage.dw_vpad_pos||'{}').B);
+ ok(Math.abs(g1[0]-g0[0]+60)<4&&Math.abs(g1[1]-g0[1]+80)<4&&!!sp,`${nm}: grip drag moves button group and saves position`);
+ const op=await p.$eval('#vpL',e=>+getComputedStyle(e).backgroundColor.match(/[\d.]+\)$/)?.[0].replace(')','')||1);ok(op<0.6,`${nm}: semi-transparent (alpha ${op})`);await p.screenshot({path:SH+nm+'_2_moved.png'});
+ await go(p);const r1=await p.evaluate(()=>({on:GX.vpad.on(),vis:!!document.querySelector('#vpB')?.offsetParent,top:document.querySelector('#vpB').style.top}));ok(r1.on&&r1.vis,`${nm}: ON persists after reload`);
+ ok(Math.abs(parseFloat(r1.top)-(g1[1]-(g0[1]-parseFloat(r1.top))))<200,`${nm}: moved position restored`);
+ await p.evaluate(()=>GX.ui?.show?.(document.getElementById('uiTools'))||document.getElementById('uiTab_tools')?.click());await w(400);const mi=await p.evaluate(()=>document.getElementById('vpSet')?.textContent);ok(/ON/.test(mi||''),`${nm}: Tools ▸ Settings entry "${mi}"`);
+ await p.evaluate(()=>document.getElementById('vpSet').click());await w(300);ok(await p.evaluate(()=>!GX.vpad.on()&&document.getElementById('vpad').style.display=='none'&&localStorage.dw_vpad=='0'),`${nm}: menu entry turns it OFF`);
+ await go(p);ok(await p.evaluate(()=>!GX.vpad.on()&&!(document.getElementById('vpad')?.offsetParent)),`${nm}: OFF persists after reload`);await ctx.close()}
+ok(!errs.length,'no page errors '+errs.slice(0,3));await b.close();console.log(`vpad ${pass} pass, ${fails} fail`);process.exit(fails?1:0);
