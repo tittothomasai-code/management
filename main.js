@@ -301,7 +301,7 @@ function actX(e,x,b){if(EXT.actX(e,x,b))return;const st=e.st,all=()=>!!document.
  m.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{const e=addEquip(b.dataset.add);m.style.display='none';select(e)});
  m.querySelector('#eqreset').onclick=()=>{if(confirm('Reset equipment layout and 3D models to default?')){localStorage.removeItem(LKEY);localStorage.removeItem(MKEY);try{indexedDB.deleteDatabase('dw3')}catch{}location.reload()}}}
 
-import('./ext.js?v=b4').then(x=>x.init({THREE,S,PH,scene,cam,ctl,ents,pumps,select,entity,box,cyl,beam,mat,M,lp,curves,FLOOR,MH,td,tdAll,blk,dwG,slG,rnG,rnArm,cwG,UG,W,allCurves:()=>allCurves(),getWell:()=>wellCurve,act,EXT,removeEnt,saveLayout,addEquip,EQ,eqList,pumpsArr:pumps,setUnder,ren,groundMat,pad,sun,bha,rigG,dwG,ctl,makePump,rebuildLines,sel:()=>sel})).then(()=>import('./visual.js?v=596').then(v=>v.init({THREE,scene,ren,sun,cam,mat,M,box,cyl,beam,FLOOR,MH,td,pumps}))).catch(e=>console.error('ext',e));
+import('./ext.js?v=h1').then(x=>x.init({THREE,S,PH,scene,cam,ctl,ents,pumps,select,entity,box,cyl,beam,mat,M,lp,curves,FLOOR,MH,td,tdAll,blk,dwG,slG,rnG,rnArm,cwG,UG,W,allCurves:()=>allCurves(),getWell:()=>wellCurve,act,EXT,removeEnt,saveLayout,addEquip,EQ,eqList,pumpsArr:pumps,setUnder,ren,groundMat,pad,sun,bha,rigG,dwG,ctl,makePump,rebuildLines,sel:()=>sel})).then(()=>import('./visual.js?v=596').then(v=>v.init({THREE,scene,ren,sun,cam,mat,M,box,cyl,beam,FLOOR,MH,td,pumps}))).catch(e=>console.error('ext',e));
 import('./subsurface.js').catch(e=>console.warn('subsurface',e));
 // ---------- loop (fixed step) ----------
 const DT=0.05;let acc=0,last=performance.now(),spd=20,uiT=0;
