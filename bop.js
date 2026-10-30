@@ -77,11 +77,25 @@ function camBack(){const g=CG();if(!CAM||!g?.cam)return;const c=CAM;CAM={goal:nu
 // gamepad: B closes the BOP panel (own poll, so no change to input.js)
 let padPrev=false;function padPoll(){const p=document.getElementById('bopP');if(!p||p.style.display=='none')return;const g=[...(navigator.getGamepads?.()||[])].find(Boolean),b=!!g?.buttons[1]?.pressed;if(b&&!padPrev)close();padPrev=b;setTimeout(padPoll,50)}
 // ---- cut-away / ghost view: stack body meshes go see-through so the ram blocks, annular and plug show (visual only) ----
-export const GH={on:false,saved:new Map()};
-export function ghost(v=!GH.on){const G=window.GX?.bopG;GH.on=!!v;const b=document.getElementById('bopGhost');if(b){b.textContent=GH.on?'Solid view':'Cut-away view';b.setAttribute('aria-pressed',GH.on)}if(!G)return GH.on;hook3D();
- G.traverse(o=>{if(!o.isMesh)return;let q=o,own=false;while(q&&q!==G){if(/^bop_/.test(q.name)){own=true;break}q=q.parent}if(own)return;
-  if(GH.on){if(!GH.saved.has(o)){GH.saved.set(o,o.material);const m=o.material.clone();m.transparent=true;m.opacity=0.15;m.depthWrite=false;o.material=m;o.renderOrder=2}}
-  else if(GH.saved.has(o)){o.material.dispose?.();o.material=GH.saved.get(o);o.renderOrder=0}});if(!GH.on)GH.saved.clear();return GH.on}
+export const GH={on:false,saved:new Map(),opacity:0.28,own:new Map()};
+// fix (batch6): material arrays, shared materials (one clone per source material), original transparency kept (opacity x factor), own parts (rams/annular/plug) drawn after the ghost shell so they stay visible.
+const ghostMat=(m,cache)=>{if(cache.has(m))return cache.get(m);const c=m.clone();c.transparent=true;c.opacity=Math.min(1,(m.transparent?m.opacity:1))*GH.opacity;c.depthWrite=false;cache.set(m,c);return c};
+export function ghost(v=!GH.on){const G=window.GX?.bopG;GH.on=!!v;const b=document.getElementById('bopGhost');if(b){b.textContent=GH.on?'Solid view':'Cut-away view';b.setAttribute('aria-pressed',GH.on)}if(!G)return GH.on;hook3D();const cache=new Map();
+ G.traverse(o=>{if(!o.isMesh)return;let q=o,own=false;while(q&&q!==G){if(/^bop_/.test(q.name)){own=true;break}q=q.parent}
+  if(own){if(GH.on){if(!GH.own.has(o))GH.own.set(o,o.renderOrder);o.renderOrder=3}else if(GH.own.has(o))o.renderOrder=GH.own.get(o);return}
+  if(GH.on){if(!GH.saved.has(o)){GH.saved.set(o,{m:o.material,r:o.renderOrder});o.material=Array.isArray(o.material)?o.material.map(m=>ghostMat(m,cache)):ghostMat(o.material,cache);o.renderOrder=2}}
+  else if(GH.saved.has(o)){const sv=GH.saved.get(o);const d=new Set([o.material].flat());d.forEach(m=>m.dispose?.());o.material=sv.m;o.renderOrder=sv.r}});if(!GH.on){GH.saved.clear();GH.own.clear()}return GH.on}
+export function ghostStats(){const G=window.GX?.bopG;let n=0,t=0,bad=0,own=0;G?.traverse(o=>{if(!o.isMesh)return;n++;const ms=[o.material].flat();if(ms.every(m=>m.transparent&&m.opacity<1))t++;if(ms.some(m=>m.transparent&&(m.opacity<=0.05||m.opacity>=1)))bad++;if(/^bop_/.test(o.name)||/^bop_/.test(o.parent?.name||''))own+=o.renderOrder>=3?1:0});return {on:GH.on,meshes:n,ghost:t,bad,ownTop:own}}
+// accumulator drawdown chart: pressure after each function vs cumulative volume, with precharge + 200 psi line and minimum operating line (SIM)
+export function drawDD(c,dd,A=ACC){if(!c||!dd)return;const g=c.getContext('2d'),W=c.width,H=c.height,s=W/560;g.clearRect(0,0,W,H);g.fillStyle='#081018';g.fillRect(0,0,W,H);
+ const pts=[{v:0,p:pAfter(A,0),fn:'Start'}];let v=0;for(const r of dd.rows){v+=r.gal;pts.push({v,p:r.p,fn:r.fn})}const vm=Math.max(v*1.15,1),pm=A.op*1.08,X=x=>50*s+x/vm*(W-70*s),Y=p=>H-30*s-p/pm*(H-50*s);
+ g.strokeStyle='#345';g.lineWidth=1;g.font=`${10*s}px system-ui`;g.fillStyle='#9ab';for(let p=0;p<=A.op;p+=500){g.beginPath();g.moveTo(X(0),Y(p));g.lineTo(W-20*s,Y(p));g.stroke();g.fillText(p+'',6*s,Y(p)+3*s)}
+ const ln=(p,col,t)=>{g.strokeStyle=col;g.setLineDash([6*s,4*s]);g.beginPath();g.moveTo(X(0),Y(p));g.lineTo(W-20*s,Y(p));g.stroke();g.setLineDash([]);g.fillStyle=col;g.fillText(t,X(0)+4*s,Y(p)-3*s)};
+ ln(dd.need,'#ffd54a',`Minimum after drawdown: precharge + 200 = ${dd.need} psi`);ln(A.pre,'#f84',`Precharge ${A.pre} psi`);
+ g.strokeStyle=dd.pass?'#5f5':'#f55';g.lineWidth=3*s;g.beginPath();pts.forEach((q,i)=>i?g.lineTo(X(q.v),Y(q.p)):g.moveTo(X(q.v),Y(q.p)));g.stroke();
+ g.fillStyle='#fff';pts.forEach((q,i)=>{g.beginPath();g.arc(X(q.v),Y(q.p),3.5*s,0,7);g.fill();if(i)g.fillText(String(i),X(q.v)-3*s,Y(q.p)-7*s)});
+ g.fillStyle='#ddd';g.fillText(`Accumulator drawdown (pumps off) · ${A.bottles} × ${A.galEach} gal · SIM · final ${Math.round(dd.final)} psi ${dd.pass?'PASS':'FAIL'}`,50*s,14*s);g.fillText('Usable fluid used, gal →',W-150*s,H-8*s);
+ return pts}
 export function close(){const p=document.getElementById('bopP');if(p)p.style.display='none';ghost(false);camBack()}
 // ---- panel ----
 const $=id=>document.getElementById(id);const RES={};
@@ -96,13 +110,13 @@ function render(){const B=$('bopBody');if(!B)return;const du=dueStatus(),dl=(s,n
  B.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>setClosed(b.dataset.c,!ST.closed[b.dataset.c]));
  $('bopPlugSt').textContent=ST.plug==2?'Test plug landed in the wellhead (SIM). Casing is isolated below the plug.':'Test plug not run.';
  $('bopRes').innerHTML=Object.values(RES.tests||{}).map(r=>`<div style="margin:4px 0"><b>${r.name}</b>: low ${r.lo.pass?'<b style=color:#5f5>PASS</b>':'<b style=color:#f55>FAIL</b>'} · high ${r.hi.pass?'<b style=color:#5f5>PASS</b>':'<b style=color:#f55>FAIL</b>'}${[...r.lo.why,...r.hi.why].map(w=>'<br>⚠ '+w).join('')}</div>`).join('');
- $('bopDD').innerHTML=dd?`<table style="width:100%;font-size:12px"><tr><th align=left>Function</th><th>gal</th><th>s</th><th>Pressure after</th></tr>${dd.rows.map(r=>`<tr><td>${r.fn}</td><td>${r.gal.toFixed(1)}</td><td>${r.sec.toFixed(1)} ${r.ok?'✅':'❌'}</td><td>${fmt(r.p)}</td></tr>`).join('')}</table><div>Final ${fmt(dd.final)} · need ≥ ${fmt(dd.need)} (precharge + 200 psi) → <b id=bopDDres style="color:${dd.pass?'#5f5':'#f55'}">${dd.pass?'PASS':'FAIL'}</b></div>`:''}
+ $('bopDD').innerHTML=dd?`<canvas id=bopDDc width=1120 height=520 style="width:100%;height:auto;border-radius:6px"></canvas><table style="width:100%;font-size:12px"><tr><th align=left>Function</th><th>gal</th><th>s</th><th>Pressure after</th></tr>${dd.rows.map(r=>`<tr><td>${r.fn}</td><td>${r.gal.toFixed(1)}</td><td>${r.sec.toFixed(1)} ${r.ok?'✅':'❌'}</td><td>${fmt(r.p)}</td></tr>`).join('')}</table><div>Final ${fmt(dd.final)} · need ≥ ${fmt(dd.need)} (precharge + 200 psi) → <b id=bopDDres style="color:${dd.pass?'#5f5':'#f55'}">${dd.pass?'PASS':'FAIL'}</b></div>`:'';if(dd)drawDD($('bopDDc'),dd,RES.ddA||ACC)}
 export const DIR={kchk:'wellbore'};// kill line check valve: test direction. API 53: test the check valve from the wellbore side (the direction it must hold).
 export function runTest(id,{leak=0,initial=false,dir}={}){const it=STACK.items.find(i=>i.id==id);if(it.kind=='check'){dir=dir||DIR.kchk;if(dir!='wellbore')leak=Math.max(leak,4000)}const lo=pressureTest({target:300,leak:leak*0.3,seed:3}),hiT=highTarget(it,initial),hi=pressureTest({target:hiT,leak,seed:7});
  const r={id,name:it.name,lo:evaluate(lo,'low'),hi:evaluate(hi,'high'),loT:lo,hiT:hi};if(it.kind=='check'&&dir!='wellbore'){const m='a check valve opens to pressure from the pump side: test it from the wellbore side';r.lo.pass=r.hi.pass=false;r.lo.why=[m];r.hi.why=[]}
  if(r.lo.pass&&r.hi.pass)recordTest(id);flyTo(it.kind);(RES.tests=RES.tests||{})[id]=r;if(it.kind=='annular'||it.kind=='ram')setClosed(id,true);
  if($('bopLo')){chart($('bopLo'),lo,r.lo,it.name+' low test');chart($('bopHi'),hi,r.hi,it.name+' high test')}render();return r}
-export function runDrawdown(A){RES.dd=drawdown(A);render();return RES.dd}
+export function runDrawdown(A){RES.ddA=A||ACC;RES.dd=drawdown(A);render();return RES.dd}
 export function open(){let p=$('bopP');if(!p){p=document.createElement('div');p.id='bopP';p.style.cssText='position:fixed;inset:0;z-index:9800;background:#0d1117f2;color:#ddd;overflow:auto;padding:calc(env(safe-area-inset-top,0px) + 8px) 8px 40px;font:13px system-ui';if(innerWidth>=1024)p.style.cssText+=';inset:0 0 0 auto;width:480px;border-left:1px solid #2a3a50';// desktop: side panel, so the 3D BOP stays in view
  const opts=STACK.items.map(i=>`<option value=${i.id}>${i.name}</option>`).join('');
  p.innerHTML=`<div style="display:flex;gap:6px;align-items:center"><b style="font-size:15px">BOP test</b><span id=bopSim style="background:#8a8f98;color:#fff;border-radius:6px;padding:1px 6px;font-size:11px">SIM</span><span style="flex:1"></span><button id=bopGhost aria-pressed=false>Cut-away view</button><button id=bopX>✕</button></div>
@@ -117,5 +131,5 @@ export function open(){let p=$('bopP');if(!p){p=document.createElement('div');p.
  document.body.appendChild(p);$('bopX').onclick=close;$('bopGhost').onclick=()=>ghost();$('bopDay').onclick=()=>addDays(7);$('bopRst').onclick=()=>{TR.save({});render()};$('bopSel').onchange=()=>{$('bopDirL').style.display=$('bopSel').value=='kchk'?'':'none'};$('bopPlug').onclick=()=>runPlug(true);$('bopPull').onclick=()=>runPlug(false);
  $('bopRun').onclick=()=>{if(ST.plug!=2)runPlug(true);runTest($('bopSel').value,{leak:$('bopLeak').checked?25:0,dir:$('bopDir').value})};$('bopAll').onclick=()=>{runPlug(true);for(const i of STACK.items)runTest(i.id,{leak:$('bopLeak').checked&&i.id=='upr'?25:0})};
  $('bopDDrun').onclick=()=>runDrawdown({...ACC,bottles:+$('bopNb').value||ACC.bottles,pre:+$('bopPre').value||ACC.pre})}
- p.style.display='block';hook3D();render();ghost(true);flyTo('ram');padPrev=true;setTimeout(padPoll,50);setTimeout(()=>$('bopX')?.focus(),0);window.BOPSIM={open,runTest,runDrawdown,runPlug,setClosed,ST,RES,STACK,CRIT,drawdown,pressureTest,evaluate,functionTest,hook3D:()=>hook3D(),dueStatus,addDays,TR,flyTo,close,highTarget,ghost,GH,CAM:()=>CAM};if(window.GX)GX.bop=window.BOPSIM;return p}
+ p.style.display='block';hook3D();render();ghost(true);flyTo('ram');padPrev=true;setTimeout(padPoll,50);setTimeout(()=>$('bopX')?.focus(),0);window.BOPSIM={open,ghostStats,drawDD,ACC,runTest,runDrawdown,runPlug,setClosed,ST,RES,STACK,CRIT,drawdown,pressureTest,evaluate,functionTest,hook3D:()=>hook3D(),dueStatus,addDays,TR,flyTo,close,highTarget,ghost,GH,CAM:()=>CAM};if(window.GX)GX.bop=window.BOPSIM;return p}
 if(typeof document!='undefined'){window.BOPSIM_open=open;if(new URLSearchParams(location.search).get('demo')=='bop'){const go=()=>document.getElementById('start')?setTimeout(go,300):open();setTimeout(go,500)}}
