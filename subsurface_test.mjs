@@ -26,8 +26,16 @@ for(const [vp,nm] of [[{width:1440,height:900},'desk'],[{width:390,height:844,de
  // follows the bit as MD grows
  const b0=s.bit;await p.evaluate(()=>{G.S.md+=300;});await w(3000);const b1=(await st(p)).bit;
  const tgt=await p.evaluate(()=>0);ok(b1[1]<b0[1]||b1[0]!=b0[0],nm+': bit position updates live ('+b0[1].toFixed(0)+' -> '+b1[1].toFixed(0)+')');
+ { const s2=await st(p);ok(s2.names.includes('subGamma')&&s2.gamma>0&&/Gamma \d+ API/.test(await p.evaluate(()=>subHud.innerText)),nm+': gamma trace along well ('+s2.gamma+' API)');
+   ok(s2.rulerTops>=2&&await p.evaluate(()=>document.querySelectorAll('#subRuler .t').length>=4&&!!document.querySelector('#subRuler .bitm')),nm+': formation-tops depth ruler ('+s2.rulerTops+' tops)');
+   if(nm=='phone')ok(await p.evaluate(()=>getComputedStyle(subSplit).display=='none'),'phone: split button hidden') }
  await p.screenshot({path:SH+nm+'_open.png'});
  if(nm=='desk'){await p.evaluate(()=>document.getElementById('subFit').click());await w(1500);await p.screenshot({path:SH+nm+'_fit.png'});ok(!(await st(p)).follow,'Fit turns follow off');
+  await p.evaluate(()=>document.getElementById('subSplit').click());await w(1500);const sp=await p.evaluate(()=>({s:GX.subsurface.state().split,l:document.getElementById('subsurf').getBoundingClientRect().left,cw:document.getElementById('subCv').width}));
+  ok(sp.s&&sp.l>=600&&sp.l<=800,'split view: subsurface on right half (left='+sp.l+')');await p.screenshot({path:SH+'desk_split.png'});
+  await p.evaluate(()=>document.getElementById('subSplit').click());await w(800);ok(!(await st(p)).split,'split view toggles back');
+  const gl=await p.evaluate(()=>({g:GX.subsurface.state().glow,want:GX.subsurface.glowOf((+S.rop||0)*0.3048),a:GX.subsurface.glowOf(0),b:GX.subsurface.glowOf(40),c:GX.subsurface.glowOf(20)}));
+  ok(Math.abs(gl.g-gl.want)<0.15&&gl.a==0&&gl.b==1&&gl.c==0.5,'bit glow follows live ROP (glow '+gl.g.toFixed(2)+' for '+gl.want.toFixed(2)+'; 0/20/40 m/h -> 0/0.5/1)');await p.evaluate(()=>GX.subsurface.open());await p.screenshot({path:SH+'desk_glow.png'});
   await p.evaluate(()=>GX.quality&&GX.quality.set('low'));await w(2000);ok((await st(p)).open,'quality change keeps view open');}
  await p.evaluate(()=>document.getElementById('subClose').click());await w(500);ok(!(await st(p)).open&&await p.evaluate(()=>getComputedStyle(document.getElementById('subsurf')).display=='none'),nm+': Close works');
  if(nm=='desk'){await p.keyboard.press('v');await w(1500);ok((await st(p)).open,'key V opens');await p.keyboard.press('Escape');await w(500);ok(!(await st(p)).open,'Esc closes');
