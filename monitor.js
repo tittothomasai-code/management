@@ -1,7 +1,7 @@
 // monitor.js v5.9.3: "Monitor a well" — phone-first progress view. SIM unless a saved WITSML connection exists.
 // Saved WITSML: uses ONLY the existing saved-connection behaviour (opens the existing WITSML panel to reconnect; reads window.WML/S once
 // that panel reports "connected"). This module makes NO network calls of its own. SIM data is always labelled SIM, never LIVE. Metric units.
-import * as WP from './wplan.js?v=592';
+import * as WP from './wplan.js?v=b6';
 const $=id=>document.getElementById(id),RKEY='dw-witsml-remember';
 const saved=()=>{try{const r=JSON.parse(localStorage.getItem(RKEY)||'null');return r&&(r.url||r.well||r.log)?r:null}catch{return null}};
 const M={el:null,src:'SIM',timer:0,t:0,hist:[],surv:[],plan:null,cas:[],speed:120,last:null};

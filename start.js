@@ -66,7 +66,7 @@ function back(){if(ST.menu!='main'){ST.menu='main';beep(300);render()}}
 function close(dest){ST.last=dest;const A=api();A.last=dest;if(dest!='join'&&dest!='continue'&&dest!='edm'&&dest!='monitor'&&dest!='workover')try{localStorage.setItem('dw_start_save',JSON.stringify({t:Date.now(),dest}))}catch(err){}removeEventListener('keydown',key,true);cancelAnimationFrame(ST.raf);clearInterval(ST.padT);const e=ST.el;ST.el=null;e.classList.add('out');setTimeout(()=>e.remove(),360);try{dispatchEvent(new CustomEvent('dw:start',{detail:dest}))}catch(err){}}
 async function choose(){const go=ST.items[ST.i]?.dataset.go;beep(880,.1);
  if(go=='sim'){ST.menu='sim';return render()}
- if(go=='monitor'){close('monitor');const m=await import('./monitor.js?v=593');m.open();return}
+ if(go=='monitor'){close('monitor');const m=await import('./monitor.js?v=b6');m.open();return}
  if(go=='workover'){close('workover');const m=await import('./workover.js?v=b5');m.open();return}
  if(go=='saved'){ST.menu='saved';return render()}
  if(go?.startsWith('open:')){close('edm');const m=await import('./edmui.js?v=5942');m.openSaved(go.slice(5)).catch(e=>alert('Could not open saved site: '+e.message));return}
