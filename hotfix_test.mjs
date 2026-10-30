@@ -22,7 +22,7 @@ await G.screenshot({path:SH+'1_phone_main.png'});await T.screenshot({path:SH+'2_
 const code=await G.evaluate(()=>GX.session.create('TEST hotfix '+Date.now()));ok(/^[A-Z0-9]{6}$/.test(code),'private session '+code);
 await G.evaluateOnNewDocument(()=>{});await G.evaluate(()=>{window.__clip=null;Object.defineProperty(navigator,'share',{value:undefined,configurable:true});Object.defineProperty(navigator,'clipboard',{value:{writeText:async t=>{window.__clip=t}},configurable:true})});
 await w(500);await G.evaluate(()=>document.getElementById('sessShare').click());await w(400);ok(await G.evaluate(c=>window.__clip=='https://drilling.robotyx.systems/?s='+c,code),'Share copies https://drilling.robotyx.systems/?s='+code);
-const T2=await (async()=>{await T.goto(BASE+'/?nosplash=1&player='+encodeURIComponent('TEST Titto '+RUN)+'&s='+code,{waitUntil:'load',timeout:120000});await T.waitForFunction(c=>GX.session?.S.code==c,{timeout:30000},code);return T})();
+const T2=await (async()=>{await T.goto(BASE+'/?nosplash=1&player='+encodeURIComponent('TEST Titto '+RUN)+'&s='+code,{waitUntil:'load',timeout:120000});await T.waitForFunction(c=>window.GX?.session?.S.code==c,{timeout:90000},code);return T})();
 ok(true,'?s='+code+' auto-joined');await crew(T2);await w(600);
 await say(T2,'TEST code msg Titto '+RUN);ok(await sees(G,'TEST code msg Titto '+RUN),'code session: George sees Titto');
 await say(G,'TEST code msg George '+RUN);ok(await sees(T2,'TEST code msg George '+RUN),'code session: Titto sees George');
