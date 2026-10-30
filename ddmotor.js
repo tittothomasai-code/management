@@ -7,7 +7,8 @@ const f1=v=>(+v).toFixed(1);
 const S={m:{...C.MOTORS.m675},bend:1.5,flow:1800,wob:10,rpm:0,rotating:false,tf:0,tvd:2000,inc:30,wear:C.newWear(),st:null,el:null,host:null,log:[]};
 function calc(){const t=C.temp(S.tvd,S.st?S.st.dP:0,S.m);S.st=C.state(S.m,{flow:S.flow,wob:S.wob,bend:S.bend,rpm:S.rpm,rotating:S.rotating,inc:S.inc,tfSet:S.tf,temp:t});S.st.temp=t;return S.st}
 export function step(o={}){Object.assign(S,Object.fromEntries(Object.entries(o).filter(([k])=>['flow','wob','rpm','rotating','tvd','inc','tf','bend'].includes(k))));const st=calc();
- C.wearStep(S.m,S.wear,st,o.hours??0.5,{temp:st.temp,wob:S.wob});if(st.stall)S.log.push('STALL at WOB '+S.wob+' t. Do the recovery steps.');render();return {...st,health:C.health(S.m,S.wear)}}
+ C.wearStep(S.m,S.wear,st,o.hours??0.5,{temp:st.temp,wob:S.wob});if(st.stall)S.log.push('STALL at WOB '+S.wob+' t. Do the recovery steps.');render();const out={...st,health:C.health(S.m,S.wear)};emit(out);return out}
+const LS=new Set();export function onStep(f){LS.add(f);return ()=>LS.delete(f)}function emit(o){LS.forEach(f=>{try{f(o,S)}catch(e){console.error('ddmotor listener',e)}})}
 const CSS=`#ddm{position:fixed;inset:8vh 0 0 0;overflow:auto;z-index:2147483000;background:#0e1620;color:#dde6ee;font:13px system-ui;padding:10px;box-sizing:border-box;border-top:2px solid #3a6}
 #ddm.inl{position:static;max-height:none;border:0;padding:0}#ddm h3{margin:6px 0;font-size:14px}#ddm .sim{background:#c80;color:#000;border-radius:3px;padding:0 4px;font-size:11px;margin-left:4px}
 #ddm .g{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:4px}#ddm .g div{background:#16222e;padding:4px;border-radius:4px}#ddm b{font-size:15px}
@@ -39,15 +40,16 @@ function draw(){const c=S.el?.querySelector('#ddmC');if(!c)return;const x=c.getC
  const px=w=>20+w/40*(W-30),py=d=>H-15-d/mx*(H-25);x.strokeStyle='#fc3';x.beginPath();x.moveTo(px(0),py(m.dPmax*0.8));x.lineTo(px(40),py(m.dPmax*0.8));x.stroke();x.strokeStyle='#f55';x.beginPath();x.moveTo(px(0),py(m.dPmax*m.stallF));x.lineTo(px(40),py(m.dPmax*m.stallF));x.stroke();
  x.strokeStyle='#5cf';x.beginPath();for(let w=0;w<=40;w++){const d=Math.min(C.dPfromWob(m,w).dP,m.dPmax*m.stallF);w?x.lineTo(px(w),py(d)):x.moveTo(px(w),py(d))}x.stroke();
  x.fillStyle='#fff';x.beginPath();x.arc(px(S.wob),py(S.st.dP),4,0,7);x.fill();x.fillStyle='#9ab';x.font='10px sans-serif';x.fillText('WOB t →',W-50,H-3);x.fillText('dP bar',2,10);x.fillText('80 % max',px(30),py(m.dPmax*0.8)-2);x.fillText('stall',px(34),py(m.dPmax*m.stallF)-2)}
-function render(){if(!S.el)return;calc();S.el.innerHTML=html();const $=i=>S.el.querySelector('#'+i);
+function render(){if(!S.el){emit({...calc(),health:C.health(S.m,S.wear)});return}calc();S.el.innerHTML=html();const $=i=>S.el.querySelector('#'+i);
  const on=(i,k,f=Number)=>$(i).oninput=e=>{S[k]=f(e.target.value);render()};on('ddmQ','flow');on('ddmW','wob');on('ddmT','tf');on('ddmS','rpm');
  $('ddmR').onchange=e=>{S.rotating=e.target.value=='1';render()};$('ddmB').onchange=e=>{S.bend=+e.target.value;render()};$('ddmM').onchange=e=>{S.m={...C.MOTORS[e.target.value]};S.flow=Math.round((S.m.flow[0]+S.m.flow[1])/2/50)*50;S.wear=C.newWear();render()};
- $('ddmRun').onclick=()=>step({hours:0.5});$('ddmPU').onclick=()=>{S.wob=0;render()};$('ddmNew').onclick=()=>{S.wear=C.newWear();render()};if($('ddmX'))$('ddmX').onclick=close;draw()}
+ $('ddmRun').onclick=()=>step({hours:0.5});$('ddmPU').onclick=()=>{S.wob=0;render()};$('ddmNew').onclick=()=>{S.wear=C.newWear();render()};if($('ddmX'))$('ddmX').onclick=close;draw();emit({...S.st,health:C.health(S.m,S.wear)})}
 function style(){if(!document.getElementById('ddmCss')){const s=document.createElement('style');s.id='ddmCss';s.textContent=CSS;document.head.appendChild(s)}}
 export function mount(host){style();close();S.host=host;S.el=document.createElement('div');S.el.id='ddm';S.el.className='inl';host.appendChild(S.el);render();return S.el}
 export function open(){style();close();S.host=null;S.el=document.createElement('div');S.el.id='ddm';document.body.appendChild(S.el);render();return S.el}
 export function close(){S.el?.remove();S.el=null;S.host=null}
 export function init(){}
-const API={C,open,close,mount,step,sess:S,get state(){return calc()},get health(){return C.health(S.m,S.wear)}};
+const API={C,open,close,mount,step,onStep,sess:S,get state(){return calc()},get health(){return C.health(S.m,S.wear)}};
 if(typeof window!='undefined'){window.GX=window.GX||{};window.GX.ddcab=window.GX.ddcab||{};window.GX.ddcab.motor=API;window.DDMOTOR=API;
  const q=new URLSearchParams(location.search);if(q.get('demo')=='ddmotor'){const go=()=>document.body?open():setTimeout(go,50);go()}}
+export {C};export const sess=S;
