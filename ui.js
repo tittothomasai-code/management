@@ -11,7 +11,7 @@ const MAP=[['addeq','equip','Add equipment'],['Equipment library ▾','equip','E
  ['btnSur','geo','Surveys'],['btnLay','geo','Subsurface layers'],['btnBit','geo','Bit depth'],['g8btn','geo','Geosteering'],['under','geo','Underground view'],
  ['conn','seq','Run connection'],['btnConn','seq','Connections'],['seqedbtn','seq','Sequence editor'],['pause','seq'],['spd','seq'],
  ['wbtn','set','WITSML connection'],['wlm','set'],['units','set'],['btnPlayer','set','Switch player']];
-const STAY=new Set(['pause','spd','units','wlm','clr','uiLog','uiFrm']);const FULL=new Set(['wshop','ss56','designer','seqeditor']);
+const TOOL_TGT={wbtn:'witsml',addeq:'eqmenu','Equipment library':'libmenu'};const STAY=new Set(['pause','spd','units','wlm','clr','uiLog','uiFrm']);const FULL=new Set(['wshop','ss56','designer','seqeditor']);
 const PANEL_SKIP=new Set(['uiTop','uiNav','uiTools','uiX','mdock','sim','clock','log','appVer','bithud','wtoast','panels','plJoin','g8btn','svhud','eqmenu','libmenu']);
 let cur=null,prevVis=new Set(),rop={md:null,t:0,v:0};
 function css(){const s=document.createElement('style');s.textContent=`
@@ -52,6 +52,9 @@ function buildTools(){const T=document.createElement('section');T.id='uiTools';T
  mk('seq','Sequence player',()=>show($('seqpanel')),'uiSeq');
  const sig=[...document.body.children].find(e=>/^Signal sources/.test(e.textContent.trim()));if(sig){sig.id=sig.id||'sigsrc';mk('set','Signal sources',()=>show(sig),'uiSig')}
  mk('adv','Events log',()=>{$('log')?.classList.toggle('uihide')},'uiLog');mk('adv','Formation at bit',()=>{$('geoRd')?.classList.toggle('uihide')},'uiFrm');
+ // v5.8 phone fix: toggle-style Tools buttons (WITSML connection, Add equipment) used to CLOSE their panel when it had been hidden by ✕/Rig
+ // (panel still existed, so the toggle removed it) => the tap looked like it just dismissed the sheet. A Tools tap must always OPEN its target.
+ T.addEventListener('click',ev=>{const b=ev.target.closest('button'),tg=b&&(TOOL_TGT[b.id]||TOOL_TGT[b.textContent.trim()]);if(tg)setTimeout(()=>{const e=$(tg);if(!e||!vis(e)){b.onclick?.call(b,ev);const e2=$(tg);if(e2&&!vis(e2))e2.style.display='block'}tick()},20)});
  T.addEventListener('click',ev=>{if(DK.on)return;const b=ev.target.closest('button');if(!b||STAY.has(b.id)||/Washout|Motor stall|Plugged nozzle|Brake fade/.test(b.textContent))return;setTimeout(()=>{T.style.display='none';tick()},0)},true);
  if($('wcov'))mk('adv','WITSML coverage',()=>show($('wcov')),'uiCov')}
 function panels(){const o=[...document.body.children].filter(e=>(e.tagName=='DIV'||e.id=='uiTools')&&!PANEL_SKIP.has(e.id)&&/fixed|absolute/.test(getComputedStyle(e).position));document.querySelectorAll('#panels>.panel').forEach(e=>o.push(e));const w=$('wshop');if(w&&!o.includes(w))o.push(w);return o}
