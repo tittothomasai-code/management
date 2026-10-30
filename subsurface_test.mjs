@@ -20,6 +20,8 @@ for(const [vp,nm] of [[{width:1440,height:900},'desk'],[{width:390,height:844,de
  ok(/ROP [\d.]+ m\/h/.test(hud)&&/WOB [\d.]+ t/.test(hud)&&/Rock at bit: \S/.test(hud),nm+': HUD ROP/WOB + rock at bit');
  ok(/SIM/.test(hud)&&!/LIVE/.test(hud),nm+': SIM label, never LIVE');
  const objs=await p.evaluate(()=>{const c=document.getElementById('subCv');return ['subActual','subPlan','subBit'].filter(n=>{let f=false;return true})});
+ ok(!!s.stratSrc,nm+': strat layers from helper D model ('+s.stratSrc+')');ok(/Rock at bit: [^\n]*\(/.test(hud)&&await p.evaluate(()=>{const l=GX.subsurface.lithAtBit();return !!(l&&l.strat&&l.name)}),nm+': bit lithology from strat model');
+ ok(s.names.includes('subCasing')&&s.names.includes('subCement')&&s.casing?.run>=1,nm+': casing + cement render ('+JSON.stringify(s.casing)+')');
  ok(s.bit[1]<0,nm+': bit is below ground (y='+s.bit[1].toFixed(0)+')');ok(s.layerSrc,nm+': layers source '+s.layerSrc);
  // follows the bit as MD grows
  const b0=s.bit;await p.evaluate(()=>{G.S.md+=300;});await w(3000);const b1=(await st(p)).bit;
