@@ -11,7 +11,7 @@ function css(){if(document.getElementById('emcss'))return;const s=document.creat
 #edmmap .bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 10px;background:#0d1620ee;border-bottom:1px solid #2a4a6a;z-index:3}
 #edmmap .bar b{font-size:14px}#edmmap button,#edmmap select{min-height:38px;padding:4px 10px;border-radius:8px;border:1px solid #58a;background:#123;color:#dde;font:inherit}
 #edmmap input{min-height:36px;border-radius:8px;border:1px solid #58a;background:#081420;color:#dde;padding:0 10px;font:inherit;width:min(260px,46vw)}
-#edmmap .tag{background:#7a4ad0;color:#fff;font-size:10px;padding:1px 5px;border-radius:3px}#edmmap .cnt{opacity:.85}#edmmap .sp{flex:1}
+#edmmap .tag{position:static!important;display:inline-block;margin-left:6px;vertical-align:middle;background:#7a4ad0;color:#fff;font-size:10px;padding:1px 5px;border-radius:3px}#edmmap .cnt{opacity:.85}#edmmap .sp{flex:1}
 #emwrap{position:relative;flex:1;min-height:0}#emc{position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:block}
 #emlab{position:absolute;inset:0;pointer-events:none;overflow:hidden}
 .eml{position:absolute;left:0;top:0;white-space:nowrap;font-size:11px;line-height:16px;padding:0 5px;border-radius:4px;background:#0a1a2acc;border:1px solid #3a6a9a;color:#e8f4ff;pointer-events:auto;cursor:pointer;transform-origin:0 0}
