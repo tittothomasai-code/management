@@ -183,6 +183,14 @@ export function lookAhead(dist=150,M,path){M=M||model();path=path||geoPath();con
  return topsAlongPath(M,path,1).filter(t=>t.md>md&&t.md<=Math.min(last,md+dist)).map(t=>({...t,dmd:+(t.md-md).toFixed(1)}))}
 // geologyFn: geosteer-compatible geology(x) -> {top,base,th} in TVD m for formation i, x = horizontal length along azimuth azi from (E0,N0).
 export function geologyFn(i,azi=45,E0=0,N0=0,M){M=M||model();const a=azi*R;return x=>{const E=E0+x*Math.sin(a),N=N0+x*Math.cos(a),top=topAt(M,i,E,N),base=i+1<M.formations.length?topAt(M,i+1,E,N):top+50;return {top,base,th:base-top,name:M.formations[i].name,lith:M.formations[i].lith}}}
+// strat-target (SIM): thin net-pay sub-layer inside a gross formation, for geosteering. Thin horizontal targets are
+// typically 2-8 m TVT (bed thickness below seismic resolution ~λ/4 ≈ 10-25 m). SIM parameters: thickness th0 ±var (smooth),
+// top at frac of gross below the gross top, low-amplitude undulation (amp, wave) and one sub-seismic throw at fx.
+export const TARGET={th0:4.5,thVar:1.2,frac:0.3,amp:1.2,wave:220,throw:1.5,fx:620,src:'SIM'};
+export function targetFn(i,azi=45,E0=0,N0=0,M,o={}){M=M||model();const T={...TARGET,...o},g=geologyFn(i,azi,E0,N0,M);
+ return x=>{const G0=g(x),gross=G0.base-G0.top,th=Math.max(1.5,Math.min(gross*0.8,T.th0+T.thVar*Math.sin(x/310+0.7))),
+  top=G0.top+Math.min(gross-th,Math.max(0,T.frac*gross))+T.amp*Math.sin(2*Math.PI*x/T.wave)+(x>T.fx?T.throw:0),t2=Math.max(G0.top,Math.min(G0.base-th,top));
+  return {top:t2,base:t2+th,th,name:G0.name+' target (SIM)',lith:G0.lith,gross:{top:G0.top,base:G0.base,th:gross},sim:true}}}
 export function formationIndex(name,M){M=M||model();const s=String(name).toLowerCase();return M.formations.findIndex(f=>f.name.toLowerCase().includes(s))}
 // wplan: rows {md,n,e,tvd} -> geology prognosis + mud window per formation.
 export function planPath(W){const R0=(W||window.GX?.wplan?.W)?.S?.rows;return R0?.length?R0.map(r=>({md:r.md,tvd:r.tvd,E:r.e||0,N:r.n||0})):null}
@@ -206,6 +214,6 @@ function hudTick(){try{const b=atBit();let el=document.getElementById('stratBit'
 function pressText(b){const w=b&&mudWindow(b);ST.warn=!!w&&/RISK/.test(w.state);if(!w||w.mw_sg==null)return '';return ` · PP ${w.pp_sg.toFixed(2)} FG ${w.fg_sg.toFixed(2)} MW ${w.mw_sg.toFixed(2)} SG · ${w.state}`}
 function hudStart(){if(_hudT)return;_hudT=setInterval(hudTick,1000);hudTick()}
 
-const API={LITH,SIM_STRAT,fromMarkers,fromEDM,resolve,model,setModel,topAt,formationIndexAt,lithAt,lithAtMD,pointOnPath,gammaAt,response,topsAlongPath,stripLog,surfaceGrid,toGeoLayers,applyToDrilling,atBit,hudText,lookAhead,geologyFn,formationIndex,planPath,prognosis,ROCK,pressureAt,mudWeight,mudWindow,pressureProfile,open,close,lithKey,path:()=>geoPath(),ST,ready:true};
+const API={LITH,SIM_STRAT,fromMarkers,fromEDM,resolve,model,setModel,topAt,formationIndexAt,lithAt,lithAtMD,pointOnPath,gammaAt,response,topsAlongPath,stripLog,surfaceGrid,toGeoLayers,applyToDrilling,atBit,hudText,lookAhead,geologyFn,targetFn,TARGET,formationIndex,planPath,prognosis,ROCK,pressureAt,mudWeight,mudWindow,pressureProfile,open,close,lithKey,path:()=>geoPath(),ST,ready:true};
 if(typeof window!='undefined'){window.GX=window.GX||{};window.GX.strat=API;init()}
 export default API;

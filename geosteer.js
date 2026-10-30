@@ -10,8 +10,8 @@ export const EM={on:false,src:'SIM',name:'Target sand',lith:'sand',azi:45,why:'E
 export function geology(x){return GEO(x)}
 export function useEarthModel(S=(typeof window!='undefined'?window.GX?.strat:null),{azi=EM.azi,E0=0,N0=0,name='reservoir'}={}){GEO=simGeology;Object.assign(EM,{on:false,src:'SIM',name:'Target sand',lith:'sand',why:'Earth model not loaded: SIM layer used'});
  try{if(!S?.geologyFn||!S?.formationIndex)return false;const i=S.formationIndex(name);if(i<0){EM.why=`Earth model has no "${name}" formation: SIM layer used`;return false}
-  const fn=S.geologyFn(i,azi,E0,N0);for(const x of [0,250,500,LEN]){const g=fn(x);if(!(isFinite(g.top)&&isFinite(g.base)&&g.base>g.top))throw new Error('bad layer at x='+x)}
-  const g0=fn(0),src=S.model?.()?.src||'SIM';GEO=x=>{const g=fn(x);return {top:g.top,base:g.base,th:g.th??g.base-g.top,name:g.name,lith:g.lith}};
+  const tgt=typeof S.targetFn=='function',fn=tgt?S.targetFn(i,azi,E0,N0):S.geologyFn(i,azi,E0,N0);EM.target=tgt;for(const x of [0,250,500,LEN]){const g=fn(x);if(!(isFinite(g.top)&&isFinite(g.base)&&g.base>g.top))throw new Error('bad layer at x='+x)}
+  const g0=fn(0),src=tgt?'SIM':(S.model?.()?.src||'SIM');GEO=x=>{const g=fn(x);return {top:g.top,base:g.base,th:g.th??g.base-g.top,name:g.name,lith:g.lith,gross:g.gross}};
   Object.assign(EM,{on:true,src,name:g0.name||name,lith:g0.lith||'',why:''});return true}catch(e){GEO=simGeology;EM.why='Earth model error: SIM layer used ('+e.message+')';return false}}
 export const isLiveSrc=s=>/witsml|edm|live/i.test(s||'')&&!/sim/i.test(s||'');// only a real data source removes the SIM label
 // gamma (gAPI): low in the sand, high in the shale above and below, smooth change near the boundaries; hot streak at the sand top.

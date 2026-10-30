@@ -16,3 +16,9 @@ API: window.GX.strat = {LITH, SIM_STRAT, fromMarkers, fromEDM, resolve, model, s
 - `geologyFn(i, azi, E0, N0)`: returns x → {top, base, th, name, lith}, the same shape as geosteer.js `geology(x)`, so helper B can swap the SIM target for a model formation. `formationIndex(name)` finds i.
 - `planPath(W)` / `prognosis(path)`: geology prognosis along the wplan planned trajectory (W.S.rows), with PP max, FG min and a mud weight recommendation per formation (PP + 0.06 SG trip margin, capped at FG − 0.06 SG; flag when window < 0.15 SG). These margins are SIM engineering choices for the game, not values taken from a standard.
 - Adds a "Geology" tab to Well planning by pushing into `GX.wplan.W.tabs` / `W.ext` (no edit to wplan.js).
+
+## Thin target sub-layer (feat/strat-target, SIM)
+- `strat.targetFn(i,azi,E0,N0,M,opts)` returns a thin net-pay bed inside formation i's gross interval: thickness 4.5 ± 1.2 m (min 1.5 m), top at 30 % of gross, 1.2 m undulation (220 m wave), one 1.5 m sub-seismic throw at x = 620 m. `TARGET` holds the defaults. Name ends "target (SIM)"; always SIM.
+- geosteer.js uses targetFn when strat provides it (else geologyFn, else simGeology). Source label is forced to SIM when the target is used.
+- Why: horizontal wells are commonly landed in 2–8 m beds below seismic vertical resolution (≈ λ/4, 10–25 m), so the bit leaves the bed at faults and undulations and the steerer must react to gamma/resistivity.
+- Sources: Widess, "How thin is a thin bed?", Geophysics 38(6) 1973 (λ/4 resolution); SPE 135082 / Stoner, "Geosteering in thin reservoirs"; Schlumberger Oilfield Glossary "geosteering"; Sheriff & Geldart, Exploration Seismology (2nd ed., 1995) §6.

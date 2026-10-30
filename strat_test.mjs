@@ -25,6 +25,9 @@ for(const [nm,vp] of [['phone',PH],['desk',DK]]){
    return {nt:tops.length,l1:l1?.lith,l2:l2?.lith,rs,rd,mk:mk.formations.map(f=>f.lith+':'+f.top.toFixed(0)).join(),ed:ed.formations[0].lith,g:S.gammaAt(M,1100,0,0)}});
   ok(api.nt>=8,'API: tops along path '+api.nt);ok(!!api.l1&&!!api.l2,'API: lithAt / lithAtMD '+api.l1+' / '+api.l2);ok(api.rd<api.rs,'API: dolomite slower than salt '+api.rd.toFixed(2)+'<'+api.rs.toFixed(2));
   ok(api.mk=='sandstone:914,shale:1219','API: fromMarkers ft→m + lithology '+api.mk);ok(api.ed=='coal','API: fromEDM lithology from name');ok(api.g>80,'API: shale gamma high '+api.g?.toFixed(0));
+  {const t=await p.evaluate(()=>{const S=GX.strat,i=S.formationIndex('reservoir'),f=S.targetFn(i,45),g=S.geologyFn(i,45),r=[];for(let x=0;x<=1000;x+=50){const a=f(x),b=g(x);r.push({th:a.th,in:a.top>=b.top-1e-9&&a.base<=b.base+1e-9,gt:b.base-b.top,top:a.top})}const a0=f(0);return {r,name:a0.name,sim:a0.sim,api:!!S.TARGET}});
+   ok(t.api&&t.r.every(q=>q.th>=1.5&&q.th<=8&&q.th<q.gt),'API: targetFn thin sub-layer 1.5–8 m, thinner than gross ('+Math.min(...t.r.map(q=>q.th)).toFixed(1)+'–'+Math.max(...t.r.map(q=>q.th)).toFixed(1)+' m)');ok(t.r.every(q=>q.in),'API: target stays inside the gross reservoir');
+   ok(t.sim&&/\(SIM\)/.test(t.name),'API: target tagged SIM '+t.name);ok(Math.max(...t.r.map(q=>q.top))-Math.min(...t.r.map(q=>q.top))>1,'API: target top undulates')}
   // stage 2b: pressures
   const pr=await p.evaluate(()=>{const S=GX.strat,M=S.model(),a=S.pressureAt(M,800),b=S.pressureAt(M,1600),w=S.mudWindow(),pf=S.pressureProfile();return {a,b,w,mw:S.mudWeight(),n:pf.length,mono:pf.every(q=>q.pp_sg<q.fg_sg&&q.fg_sg<=q.ob_sg+1e-6)}});
   ok(pr.a.pp_sg>=1.0&&pr.a.pp_sg<1.1&&pr.b.pp_sg>pr.a.pp_sg,'pressure: hydrostatic shallow, SIM overpressure deep '+pr.a.pp_sg+' / '+pr.b.pp_sg);
