@@ -34,14 +34,14 @@ for(const [nm,vp] of [['phone',{width:390,height:844,isMobile:true,hasTouch:true
  ok(t.sim>=6&&!t.live,`${nm}: SIM tags, no LIVE`);ok(t.cv&&t.rows>=2,`${nm}: data screens (toolface, section, gamma, TC, survey table)`);ok(!t.ov,`${nm}: no page side scroll`);
  await p.screenshot({path:SH+nm+'_1_cabin.png'});
  if(nm=='phone'){await p.click('[data-tab="steer"]');await w(200)}
- await p.type('#ddCmd','Slide 10 m');await p.click('#ddSend');await w(300);ok(await p.evaluate(()=>/driller module is not loaded/.test(document.getElementById('ddLog').innerText)&&DDCAB.sess.bit.md==DDCAB.sess.S.start.md),`${nm}: no driller plug-in: cabin says so, no drilling`);
+ await p.type('#ddCmd','Slide 10 m');await p.click('#ddSend');await w(300);ok(await p.evaluate(()=>{const t=document.getElementById('ddLog').innerText;return /Driller:/.test(t)&&!/driller module is not loaded/.test(t)}),`${nm}: dd-driller plugged in (batch8 ddglue): cabin gets driller readback`);
  await p.evaluate(()=>{GX.ddcab.onInstruction=(t,a)=>{const m=t.match(/slide (\d+)/i);if(m){a.drill(+m[1],{tf:0});a.survey();return {say:['TEST driller: '+t]}}};});
  await p.evaluate(()=>{document.getElementById('ddCmd').value=''});await p.type('#ddCmd','Slide 10 m');await p.click('#ddSend');await w(300);
  const a1=await p.evaluate(()=>({md:DDCAB.sess.bit.md,n:DDCAB.sess.surveys.length,log:document.getElementById('ddLog').innerText,rows:document.querySelectorAll('#ddSurv tr').length}));
  ok(a1.md>=309.9&&a1.n==2&&a1.rows==3&&/TEST driller: Slide 10 m/.test(a1.log),`${nm}: GX.ddcab.onInstruction hook drives drill + survey, screens update`);
  await p.click('#ddRec');await w(300);ok(await p.evaluate(()=>/TEST driller: Slide/.test(document.getElementById('ddLog').innerText.split('\n').slice(-1)[0])&&/Recommendation: slide/.test(document.getElementById('ddCalc').innerText)),`${nm}: calculator button sends its instruction to the hook`);
  await p.screenshot({path:SH+nm+'_2_screens_after.png'});
- ok(await p.evaluate(()=>!!document.getElementById('ddMotorSlot')&&GX.ddcab.motor===null),`${nm}: motor slot present, GX.ddcab.motor hook empty`);
+ ok(await p.evaluate(()=>!!document.getElementById('ddMotorSlot')&&!!(window.DDMOTOR&&GX.ddmotor?.state)),`${nm}: motor slot present, dd-motor loaded (DDMOTOR + GX.ddmotor alias)`);
  await p.evaluate(()=>DDCAB.scenario('land'));await w(300);ok(await p.evaluate(()=>/in zone/.test(document.getElementById('ddScoreP').innerText)),`${nm}: land scenario shows in-zone %`);await p.screenshot({path:SH+nm+'_4_land.png'});
  await p.evaluate(()=>DDCAB.scenario('collide'));await w(300);ok(await p.evaluate(()=>/OFFSET-A \(SIM\)/.test(document.getElementById('ddTCt').innerText)),`${nm}: collide scenario: offset in travelling cylinder`);await p.screenshot({path:SH+nm+'_5_collide.png'});
  if(nm=='desk'){const cols=await p.evaluate(()=>getComputedStyle(document.querySelector('#ddc .bd')).gridTemplateColumns.split(' ').length);ok(cols==3,'desk: docked 3-column layout');
