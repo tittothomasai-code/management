@@ -73,7 +73,7 @@ async function build(cv){THREE=THREE||await import('three');OC=OC||(await import
  G.woLbl=[lbl('SSSV '+E.WELL.sssv+' m',-E.WELL.sssv*K),lbl('Packer '+E.WELL.packer+' m',-E.WELL.packer*K,'#fc9'),lbl('Perfs '+E.WELL.perf.join('–')+' m',-E.WELL.perf[0]*K-.4,'#f97'),lbl('Shoe '+E.WELL.csg.shoe+' m',-E.WELL.csg.shoe*K-.5,'#ccc')];G.frLbl=G.FD.map(S=>lbl(S.name.split(' (')[0]+' '+S.zc+' m',-S.zc*K,'#7fe3ff'));
  for(let d=500;d<E.WELL.td;d+=500)lbl(d+' m',-d*K,'#678');
  addEventListener('resize',fit);fit()}
-async function earth(){let F=null;try{const S=await import('./strat.js');E.stratReady?.(S);const Mdl=S.SIM_STRAT?S.SIM_STRAT():null;F=(Mdl?.formations||[]).map(f=>({name:f.name,top:f.top,col:(S.LITH?.[f.lith]?.color)||null}))}catch(e){}
+async function earth(){let F=null;try{const S=await import('./strat.js?v=b4');E.stratReady?.(S);const Mdl=S.SIM_STRAT?S.SIM_STRAT():null;F=(Mdl?.formations||[]).map(f=>({name:f.name,top:f.top,col:(S.LITH?.[f.lith]?.color)||null}))}catch(e){}
  if(!F?.length)F=[{name:'Soil/clay',top:0,col:'#6b5a3a'},{name:'Sandstone',top:150,col:'#c9a96a'},{name:'Shale',top:700,col:'#5a6470'},{name:'Limestone',top:1250,col:'#9fa79a'},{name:'Shale',top:1900,col:'#4d5761'},{name:'Reservoir sand',top:2410,col:'#d8b26a'},{name:'Shale',top:2470,col:'#4d5761'}];
  for(let i=0;i<F.length;i++){const a=Math.max(0,F[i].top),b=Math.min(E.WELL.td+60,F[i+1]?.top??E.WELL.td+60);if(b<=a)continue;const m=box(40,(b-a)*K,.4,M(new THREE.Color(F[i].col||'#556'),{roughness:1,metalness:0}));m.position.set(0,-(a+b)/2*K,-6);G.earth.add(m)}}
 function fit(){if(!ren||!R.el)return;const c=ren.domElement;const w=c.clientWidth,h=c.clientHeight;ren.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix()}
