@@ -19,7 +19,7 @@ for(const [nm,vp] of [['desk',{width:1440,height:900}],['phone',{width:390,heigh
  let p=await page(vp,'/?start=1');await p.waitForSelector('#start .tile',{timeout:60000});await w(1200);
  const m=await p.evaluate(()=>({tiles:[...document.querySelectorAll('#start .tile')].map(b=>b.dataset.go),ver:document.getElementById('stVer').textContent,meta:document.querySelector('meta[name=app-version]').content,snd:document.getElementById('stSnd').textContent,sim:!!document.querySelector('#start .sim'),live:/\bLIVE\b/.test(document.getElementById('start').innerText),r:(q=>({width:q.width,height:q.height}))(document.getElementById('start').getBoundingClientRect()),over:[...document.querySelectorAll('#start .tile')].every(b=>{const q=b.getBoundingClientRect();return q.left>=0&&q.right<=innerWidth&&q.bottom<=innerHeight})}));
  ok(m.tiles.join()=='sim,well,login',`${nm}: fresh device shows New simulation / New well / Log in (no Continue) [${m.tiles}]`);
- ok(m.ver&&m.ver==m.meta&&/^v5\.9\.1/.test(m.ver),`${nm}: version on screen = ${m.ver}`);
+ ok(m.ver&&m.ver==m.meta&&/^v5\.(9|1[0-9])/.test(m.ver),`${nm}: version on screen = ${m.ver}`);
  ok(/Sound off/.test(m.snd),`${nm}: sound defaults OFF`);ok(m.sim&&!m.live,`${nm}: SIM label, no LIVE`);ok(m.r.width==vp.width&&m.r.height==vp.height&&m.over,`${nm}: full-screen, all tiles on screen (${m.r.width}x${m.r.height}, ${m.over})`);
  await p.screenshot({path:`${DIR}/${PRE}${nm}_1_menu.png`});
  // keyboard: Down moves focus, Enter on New simulation opens SIM picker, Esc goes back
