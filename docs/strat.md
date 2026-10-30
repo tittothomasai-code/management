@@ -14,5 +14,5 @@ API: window.GX.strat = {LITH, SIM_STRAT, fromMarkers, fromEDM, resolve, model, s
 ## Stage 2c: geosteer and well-planning hooks
 - `lookAhead(dist_m)`: formation tops the bit will cross in the next dist m (current path).
 - `geologyFn(i, azi, E0, N0)`: returns x → {top, base, th, name, lith}, the same shape as geosteer.js `geology(x)`, so helper B can swap the SIM target for a model formation. `formationIndex(name)` finds i.
-- `planPath(W)` / `prognosis(path)`: geology prognosis along the wplan planned trajectory (W.S.rows), with PP max, FG min and a mud weight recommendation per formation (PP + 0.06 SG trip margin, capped at FG − 0.06 SG; flag when window < 0.15 SG — common drilling-margin practice, see API RP 13D / IADC Drilling Manual mud-window guidance).
+- `planPath(W)` / `prognosis(path)`: geology prognosis along the wplan planned trajectory (W.S.rows), with PP max, FG min and a mud weight recommendation per formation (PP + 0.06 SG trip margin, capped at FG − 0.06 SG; flag when window < 0.15 SG). These margins are SIM engineering choices for the game, not values taken from a standard.
 - Adds a "Geology" tab to Well planning by pushing into `GX.wplan.W.tabs` / `W.ext` (no edit to wplan.js).
