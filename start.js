@@ -89,7 +89,7 @@ export function show(){api();if(ST.el)return;const st=document.createElement('st
  <div class=bar><button id=stSnd aria-pressed=false></button><span class=hint>←↑→↓ / 🎮 move · Enter / A select · Esc / B back</span><span id=stVer></span></div>`;
  document.body.appendChild(e);ST.el=e;backdrop(e.querySelector('canvas'));
  const sb=$('stSnd'),upd=()=>{sb.textContent=ST.snd?'🔊 Sound on':'🔇 Sound off';sb.setAttribute('aria-pressed',ST.snd)};upd();sb.onclick=ev=>{ev.stopPropagation();ST.snd=!ST.snd;try{localStorage.setItem(SK,ST.snd?'1':'0')}catch(err){}upd();beep(700)};
- const sv=()=>{$('stVer').textContent=ver()};sv();setTimeout(sv,500);
+ const sv=()=>{const e=$('stVer');if(e)e.textContent=ver()};sv();setTimeout(sv,500);
  addEventListener('keydown',key,true);ST.padT=setInterval(pad,50);ST.menu='main';render();
  import('./edmstore.js?v=5941').then(S=>S.list()).then(L=>{ST.saved=L;if(ST.el&&ST.menu=='main'&&L.length){const k=ST.i;render();focus(k)}}).catch(()=>{})}
 const API={ST,show,shouldShow,hasSave,last:null};function api(){window.dwStart=API;window.GX=window.GX||{};if(window.GX.start!==API)window.GX.start=API;return API}api();addEventListener('load',api);setTimeout(api,3000);

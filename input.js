@@ -1,5 +1,5 @@
 // input.js v5.9.4: gamepad + keyboard. Gamepad: left stick orbit, right stick look (x) / zoom (y), RT/LT WOB +/-, RB/LB RPM +/-,
-// D-pad left/right = previous/next panel tab, D-pad up/down = move focus, A = activate, B = close panels, Start/View = legend.
+// D-pad left/right = previous/next panel tab, D-pad up/down = move focus, A = activate, B = close panels, Start = legend, View (8) = Home (home.js).
 // Keyboard: arrows orbit, WASD/QE move (existing), +/- zoom, [ ] WOB, PageUp/PageDown RPM, Tab/Shift-Tab focus, Enter activate, Esc close, ? legend.
 // Values shown metric (WOB kN); the sim's internal WOB setpoint is klbf.
 const KN=4.44822,DZ=0.15,TABS=['rig','data','sheet','tools','crew','plan'];
@@ -22,7 +22,7 @@ export function legend(on=!ST.legend){ST.legend=on;let e=document.getElementById
  e.innerHTML=`<b>Controls</b> <small>${ST.pad?'🎮 '+ST.pad.replace(/[<>&]/g,''):'⌨ keyboard'}</small><table>
 <tr><th>Gamepad</th><th>Keyboard</th><th>Action</th></tr><tr><td>Left stick</td><td>← → ↑ ↓</td><td>Orbit camera</td></tr><tr><td>Right stick ↔</td><td>W A S D · Q E</td><td>Look / move</td></tr>
 <tr><td>Right stick ↕</td><td>+ / −</td><td>Zoom</td></tr><tr><td>RT / LT</td><td>] / [</td><td>WOB + / − (kN)</td></tr><tr><td>RB / LB</td><td>PgUp / PgDn</td><td>Top drive RPM + / −</td></tr>
-<tr><td>D-pad ← →</td><td>Tab / Shift-Tab</td><td>Next / previous panel or control</td></tr><tr><td>D-pad ↑ ↓</td><td>Tab</td><td>Move focus</td></tr><tr><td>A</td><td>Enter</td><td>Activate</td></tr><tr><td>B</td><td>Esc</td><td>Close panels</td></tr><tr><td>Start / View</td><td>?</td><td>Show / hide this legend</td></tr></table>`;e.style.display=on?'block':'none'}
+<tr><td>D-pad ← →</td><td>Tab / Shift-Tab</td><td>Next / previous panel or control</td></tr><tr><td>D-pad ↑ ↓</td><td>Tab</td><td>Move focus</td></tr><tr><td>A</td><td>Enter</td><td>Activate</td></tr><tr><td>B</td><td>Esc</td><td>Close panels</td></tr><tr><td>Start</td><td>?</td><td>Show / hide this legend</td></tr><tr><td>View</td><td>Esc</td><td>🏠 Home (start screen)</td></tr></table>`;e.style.display=on?'block':'none'}
 function css(){const s=document.createElement('style');s.textContent=`:focus-visible{outline:3px solid #ffd54f!important;outline-offset:2px!important;box-shadow:0 0 0 5px rgba(255,213,79,.35)!important}
 #inpToast{position:fixed;left:50%;top:70px;transform:translateX(-50%);z-index:90;background:#0d1620ee;color:#fff;border:1px solid #ffd54f;border-radius:8px;padding:6px 12px;font:14px system-ui;display:none;pointer-events:none}
 #inpLegend{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:95;background:#0d1620f4;color:#dde;border:2px solid #ffd54f;border-radius:12px;padding:12px 14px;font:13px system-ui;display:none;max-width:94vw;max-height:80vh;overflow:auto}
@@ -38,7 +38,7 @@ export function poll(now=performance.now()){const pads=navigator.getGamepads?.()
  const lx=ax(0),ly=ax(1),rx=ax(2),ry=ax(3);if(!document.getElementById('start')){if(lx||ly)orbit(lx*1.6*dt,ly*1.2*dt);if(rx)look(rx*1.2*dt);if(ry)zoom(1+ry*1.5*dt);
   const rt=bv(7),lt=bv(6);if(rt>0.1)wob(ST.wobStep*rt*10*dt);if(lt>0.1)wob(-ST.wobStep*lt*10*dt);if(edge(5))rpm(ST.rpmStep);if(edge(4))rpm(-ST.rpmStep);
   if(edge(14))tab(-1);if(edge(15))tab(1);if(edge(12))moveFocus(-1);if(edge(13))moveFocus(1);if(edge(0)){const a=document.activeElement;if(a&&a!==document.body)a.click()}if(edge(1)){closeAll();if(ST.legend)legend(false)}}
- if(edge(9)||edge(8))legend();ST.prev=p.buttons.map(b=>b.pressed)}
+ if(edge(9))legend();ST.prev=p.buttons.map(b=>b.pressed)}
 let raf;function loop(){poll();raf=requestAnimationFrame(loop)}
 export function stop(){cancelAnimationFrame(raf);raf=0}
 export function init(){if(typeof document=="undefined"||window.__input)return;css();addEventListener('keydown',key);addEventListener('gamepadconnected',e=>{ST.pad=e.gamepad.id;legend(true);setTimeout(()=>ST.legend&&legend(false),6000)});loop();window.GX=window.GX||{};window.__input=window.GX.input={ST,poll,key,legend,orbit,zoom,look,wob,rpm,tab,stop}}
