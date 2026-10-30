@@ -38,11 +38,11 @@ function scene3d(el){if(R3){R3.stop();R3=null}const A=ST.R.A,c=document.createEl
  let mx=0,mz=0,ext=10;const all=A.wbs.flatMap(b=>b.pts);for(const p of all){mx=Math.max(mx,Math.abs(p.E),Math.abs(p.N));mz=Math.max(mz,p.Z)}ext=Math.max(mx,mz,100);
  // three: x=E, y=-Z (up), z=-N
  const v=p=>new THREE.Vector3(p.E,-p.Z,-p.N);A.wbs.forEach((b,i)=>{const g=new THREE.BufferGeometry().setFromPoints(b.pts.map(v));s.add(new THREE.Line(g,new THREE.LineBasicMaterial({color:COL[i%COL.length]})));
-  const m=new THREE.Mesh(new THREE.SphereGeometry(ext/150),new THREE.MeshBasicMaterial({color:COL[i%COL.length]}));m.position.copy(v(b.pts[0]));s.add(m)});
+  const m=new THREE.Mesh(new THREE.SphereGeometry(ext/150),new THREE.MeshBasicMaterial({color:COL[i%COL.length]}));m.position.copy(v(b.pts[0]));m.userData.edmWb=i;s.add(m)});
  for(const f of A.ac.flags){const a=A.wbs[f.a],b=A.wbs[f.b],pa=a.pts.reduce((x,p)=>Math.abs(p.md-f.mdRef)<Math.abs(x.md-f.mdRef)?p:x),pb=b.pts.reduce((x,p)=>Math.abs(p.md-f.mdOff)<Math.abs(x.md-f.mdOff)?p:x);
   const g=new THREE.BufferGeometry().setFromPoints([v(pa),v(pb)]);s.add(new THREE.Line(g,new THREE.LineBasicMaterial({color:f.sf<1?0xff3030:0xffc040})));const m=new THREE.Mesh(new THREE.SphereGeometry(ext/80),new THREE.MeshBasicMaterial({color:f.sf<1?0xff3030:0xffc040,wireframe:true}));m.position.copy(v(pa));s.add(m)}
  const grid=new THREE.GridHelper(ext*2,20,0x335577,0x223344);s.add(grid);cam.position.set(ext*1.5,ext*0.1,ext*1.7);const ctl=new OrbitControls(cam,c);ctl.target.set(0,-mz*0.55,0);ctl.update();
- let on=true;const loop=()=>{if(!on)return;ctl.update();r.render(s,cam);requestAnimationFrame(loop)};loop();R3={stop(){on=false;r.dispose()},cam,ctl};}
+ let on=true;const loop=()=>{if(!on)return;ctl.update();r.render(s,cam);requestAnimationFrame(loop)};loop();R3={stop(){on=false;r.dispose();window.GX?.edmlabel?.detach?.()},cam,ctl};import('./edmlabel.js?v=1').then(m=>m.attach({c,s,cam,A})).catch(e=>console.warn('edmlabel',e))}// edm-labels hook
 export function render(){if(!P)return;nav();P.querySelectorAll('nav button').forEach(b=>b.classList.toggle('sel',b.dataset.t==ST.tab));const bd=$('#edmbd'),R=ST.R;
  if(R3&&ST.tab!='site'){R3.stop();R3=null}
  if(!R){bd.innerHTML=pickerHTML();bindPicker();refreshSaved();return}
