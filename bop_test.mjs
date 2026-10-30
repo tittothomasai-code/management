@@ -1,4 +1,4 @@
-// bop_test (helper B): BOP test SIM: API 53 criteria, drawdown (Boyle), closing times, panel + 3D hooks. Shots 132_bop_*.
+// bop_test (helper B): BOP test SIM (stage 1+2): API 53 criteria, drawdown (Boyle), closing times, panel + 3D hooks. Shots 132_bop_*.
 import puppeteer from 'puppeteer-core';import * as B from './bop.js';
 const BASE=(process.argv[2]||'http://localhost:8812').replace(/\/$/,''),SH='shots_live/'+(process.env.SHOT||'132_bop_');let pass=0,fail=0;const ok=(c,m)=>{c?pass++:fail++;console.log((c?'PASS ':'FAIL ')+m)};const w=ms=>new Promise(r=>setTimeout(r,ms));
 const lo=B.evaluate(B.pressureTest({target:300}),'low'),loL=B.evaluate(B.pressureTest({target:300,leak:8}),'low'),loBad=B.evaluate(B.pressureTest({target:400}),'low');
@@ -22,5 +22,20 @@ for(const [nm,vp] of [['phone',{width:390,height:844,isMobile:true,hasTouch:true
  await p.$eval('#bopDDrun',e=>e.click());await w(500);ok(await p.evaluate(()=>document.getElementById('bopDDres')?.textContent=='PASS'),`${nm}: drawdown PASS in panel`);
  await p.evaluate(()=>document.getElementById('bopDD').scrollIntoView());await p.screenshot({path:`${SH}${nm}_2_drawdown.png`});
  ok(await p.evaluate(()=>document.getElementById('bopLo').getBoundingClientRect().right<=innerWidth),`${nm}: charts fit`);
- await p.$eval('#bopX',e=>e.click());ok(await p.evaluate(()=>document.getElementById('bopP').style.display=='none'),`${nm}: ✕ closes`);await ctx.close()}
+
+ // ---- stage 2 ----
+ await p.evaluate(()=>{BOPSIM.TR.save({})});await p.$eval('#uiBop',e=>e.click()).catch(()=>{});await w(1500);ok(await p.evaluate(()=>document.getElementById('bopP')?.style.display=='block'&&!!document.getElementById('uiBop')),`${nm}: Tools → BOP tests button opens the panel`);
+ const cam=await p.evaluate(async()=>{const c0=G.cam.position.clone(),b=new (GX.THREE.Vector3)();GX.bopG.getWorldPosition(b);BOPSIM.flyTo('annular');await new Promise(r=>setTimeout(r,2500));return {d0:G.ctl.target.distanceTo(b),d1:G.cam.position.distanceTo(b)}});ok(cam.d0<6&&cam.d1<15,`${nm}: camera at the BOP stack (target ${cam.d0.toFixed(1)} m from stack, camera ${cam.d1.toFixed(1)} m)`);
+ const cms=await p.$$eval('#bopSel option',o=>o.filter(x=>/^cm\d/.test(x.value)).length);ok(cms==6,`${nm}: 6 choke manifold valves listed one by one`);
+ await p.$eval('#bopLeak',e=>e.checked=false);await p.$eval('#bopSel',e=>{e.value='cm5';e.onchange()});await p.$eval('#bopRun',e=>e.click());await w(400);ok(await p.evaluate(()=>/CM valve 5.*: low PASS · high PASS/.test(document.getElementById('bopRes').innerText)&&BOPSIM.RES.tests.cm5.hiT.target==5000),`${nm}: downstream CM valve 5 high test at 5000 psi PASS`);
+ await p.$eval('#bopSel',e=>{e.value='kchk';e.onchange()});ok(await p.evaluate(()=>document.getElementById('bopDirL').style.display==''),`${nm}: check valve shows the direction choice`);
+ await p.$eval('#bopDir',e=>e.value='pump');await p.$eval('#bopRun',e=>e.click());await w(400);ok(await p.evaluate(()=>/Kill line check valve: low FAIL[\s\S]*wellbore side/.test(document.getElementById('bopRes').innerText)),`${nm}: check valve from pump side → FAIL with reason`);
+ await p.$eval('#bopDir',e=>e.value='wellbore');await p.$eval('#bopRun',e=>e.click());await w(400);ok(await p.evaluate(()=>/Kill line check valve: low PASS · high PASS/.test(document.getElementById('bopRes').innerText)),`${nm}: check valve from wellbore side → PASS`);
+ await p.$eval('#bopAll',e=>e.click());await w(800);for(const id of ['ann','upr','bsr','lpr','hcr','kill'])await p.evaluate(i=>BOPSIM.setClosed(i,true),id);let du=await p.evaluate(()=>BOPSIM.dueStatus());ok(!du.p.overdue&&du.p.left>=20&&!du.f.overdue,`${nm}: after Run all, pressure test due in ${du.p.left} days`);
+ for(let k=0;k<3;k++)await p.$eval('#bopDay',e=>e.click());du=await p.evaluate(()=>({d:BOPSIM.dueStatus(),t:document.getElementById('bopDue').innerText}));ok(du.d.p.overdue&&du.d.f.overdue&&/OVERDUE/.test(du.t),`${nm}: +21 SIM days → OVERDUE shown`);
+ await p.evaluate(()=>document.getElementById('bopDue').scrollIntoView());await p.screenshot({path:`${SH}${nm}_3_due.png`});
+ await p.evaluate(()=>{let b=false;navigator.getGamepads=()=>[{id:'SIM pad',axes:[0,0,0,0],buttons:Array.from({length:17},(_,i)=>({pressed:i==1&&b,value:0}))}];window.__padB=v=>b=v});await w(200);await p.evaluate(()=>__padB(true));await w(600);await p.evaluate(()=>__padB(false));
+ ok(await p.evaluate(()=>document.getElementById('bopP').style.display=='none'),`${nm}: gamepad B closes the panel`);
+ await p.evaluate(()=>BOPSIM.TR.save({}));
+ await p.evaluate(()=>BOPSIM_open());await p.$eval('#bopX',e=>e.click());ok(await p.evaluate(()=>document.getElementById('bopP').style.display=='none'),`${nm}: ✕ closes`);await ctx.close()}
 ok(!EXT.length,'no Supabase/Adaga/WITSML requests');ok(!ERR.length,'no page errors '+ERR.slice(0,2));await br.close();console.log(`\n${pass} pass, ${fail} fail`);process.exit(fail?1:0)
