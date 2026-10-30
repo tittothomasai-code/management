@@ -219,13 +219,14 @@ export function stuckRisk(S,{win,lith=simLith,mw=1.2,annVel=0.8,staticH=0.5}){re
 // ================= 5. AFE TIME & COST (SIM rates) =================
 export const RATES={currency:'USD',spread:52000,dd:9500,mudM3:420,cementM3:600,bitPDC:38000,bitRC:16000,casingM:{'20':520,'13-3/8':260,'9-5/8':165,'7':95,'4-1/2':60},trip:350,conn:0.1,casRun:180,npt:0.12,mob:250000,wh:180000,logging:120000,flat:{bop:12,cement:8,woc:12,log:18}};
 export function rng(seed=1){let s=seed>>>0;return ()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296}}
-export function afe(sections,{R=RATES,n=400,seed=7}={}){const det=r=>{let days=R.mob?2:0,cost=R.mob+R.wh;const rows=[];let tdT=[[0,days]];
+// risks: [{name, sec, p (0-1), days, cost}] — added only when they occur in Monte Carlo runs; base case excludes them
+export function afe(sections,{R=RATES,n=400,seed=7,risks=[]}={}){const r2=rng(seed*31+5);const det=r=>{let days=R.mob?2:0,cost=R.mob+R.wh;const rows=[];let tdT=[[0,days]];
  for(const s of sections){const rop=s.rop*(r?Math.exp((r()-0.5)*0.6):1),onB=s.len/rop,conn=s.len/28.5*R.conn,bits=Math.max(1,Math.ceil(s.len/s.bitLife)),trips=bits*2*s.mdBot/R.trip,cas=s.mdBot/R.casRun+6,flat=R.flat.bop+R.flat.cement+R.flat.woc+(s.log?R.flat.log:0);
   let h=onB+conn+trips+cas+flat;const npt=h*R.npt*(r?(0.5+r()*1.5):1);h+=npt;const d=h/24,hv=Math.PI/4*(s.holeIn*IN)**2*s.len;
   const c=d*R.spread+(s.dir?d*R.dd:0)+bits*(s.bitType=='PDC'?R.bitPDC:R.bitRC)+(s.mdBot*(R.casingM[s.csg]||120))+hv*1.8*R.mudM3+hv*0.5*R.cementM3+(s.log?R.logging:0);
-  days+=d;cost+=c;rows.push({...s,rop,onB,trips,cas,flat,npt,days:d,cost:c,bits});tdT.push([s.mdBot,days])}return {days,cost,rows,tdT}};
+  days+=d;cost+=c;rows.push({...s,rop,onB,trips,cas,flat,npt,days:d,cost:c,bits});tdT.push([s.mdBot,days])}let hit=0;if(r)for(const k of risks)if(r2()<k.p){days+=k.days;cost+=k.days*R.spread+k.cost;hit++}return {days,cost,rows,tdT,hit}};
  const base=det(null),r=rng(seed),sims=[];for(let i=0;i<n;i++)sims.push(det(r));const q=(a,p)=>a.slice().sort((x,y)=>x-y)[Math.floor(p*(a.length-1))];
- return {...base,P10:{days:q(sims.map(s=>s.days),.1),cost:q(sims.map(s=>s.cost),.1)},P50:{days:q(sims.map(s=>s.days),.5),cost:q(sims.map(s=>s.cost),.5)},P90:{days:q(sims.map(s=>s.days),.9),cost:q(sims.map(s=>s.cost),.9)},tag:'SIM'}}
+ return {...base,P10:{days:q(sims.map(s=>s.days),.1),cost:q(sims.map(s=>s.cost),.1)},P50:{days:q(sims.map(s=>s.days),.5),cost:q(sims.map(s=>s.cost),.5)},P90:{days:q(sims.map(s=>s.days),.9),cost:q(sims.map(s=>s.cost),.9)},risks:risks.map(k=>({...k,emvDays:k.p*k.days,emv:k.p*(k.days*R.spread+k.cost)})),emv:risks.reduce((a,k)=>a+k.p*(k.days*R.spread+k.cost),0),tag:'SIM'}}
 // ---------- Hydraulics (API RP 13D power-law) ----------
 // mud {mw SG, pv cP, yp lbf/100ft2}; q L/min; geometry inches; returns pressure losses (bar), ECD (SG), bit HSI, jet impact.
 export function hydraulics(S,{td,str=STRING,mw=1.2,pv=20,yp=15,q=2200,holeIn=8.5,csgId=8.835,shoeMd=0,nozzles=[12,12,12,12,12],surfBar=8,mwd=15,rss=10}={}){

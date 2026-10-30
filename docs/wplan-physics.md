@@ -40,3 +40,6 @@ All outputs are planning aids and are tagged **SIM**. Nothing is written to Supa
 
 ## Survey tool choice (SIM)
 - C.TOOLS: MWD, MWD+IFR1 (declination sigma 0.15°, DBH x0.4), north-seeking gyro, continuous gyro. Each tool is a multiplier on each ISCWSA term sigma; gyro tools drop the magnetic terms and add simplified gyro azimuth terms (GYAZ reference, GYDR drift per 1000 m, GYRN random). Concept only; the full ISCWSA gyro model is Torkildsen et al. 2008 (SPE 112269). Error/SF tab: top-section tool to an MD, then a tool below. Offsets stay on MWD.
+
+## AFE risk and contingency (SIM)
+- Risk register built from the stuck pipe model (chance = 0.5 × peak risk, max 60%), losses and instability in the mud weight window, the lowest SF (alert/stop) and a weather allowance. Each line has chance, days and cost if hit. In the Monte Carlo runs each line is drawn on its own random stream and adds days × spread + cost when hit. Expected value = Σ chance × impact. Contingency = P90 − base case. Risk lines can be turned off.
