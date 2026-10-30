@@ -8,7 +8,7 @@ const S={m:{...C.MOTORS.m675},bend:1.5,flow:1800,wob:10,rpm:0,rotating:false,tf:
 function calc(){const t=C.temp(S.tvd,S.st?S.st.dP:0,S.m);S.st=C.state(S.m,{flow:S.flow,wob:S.wob,bend:S.bend,rpm:S.rpm,rotating:S.rotating,inc:S.inc,tfSet:S.tf,temp:t});S.st.temp=t;return S.st}
 export function step(o={}){Object.assign(S,Object.fromEntries(Object.entries(o).filter(([k])=>['flow','wob','rpm','rotating','tvd','inc','tf','bend'].includes(k))));const st=calc();
  C.wearStep(S.m,S.wear,st,o.hours??0.5,{temp:st.temp,wob:S.wob});if(st.stall)S.log.push('STALL at WOB '+S.wob+' t. Do the recovery steps.');render();return {...st,health:C.health(S.m,S.wear)}}
-const CSS=`#ddm{position:fixed;inset:auto 0 0 0;max-height:88vh;overflow:auto;z-index:9000;background:#0e1620;color:#dde6ee;font:13px system-ui;padding:10px;box-sizing:border-box;border-top:2px solid #3a6}
+const CSS=`#ddm{position:fixed;inset:8vh 0 0 0;overflow:auto;z-index:2147483000;background:#0e1620;color:#dde6ee;font:13px system-ui;padding:10px;box-sizing:border-box;border-top:2px solid #3a6}
 #ddm.inl{position:static;max-height:none;border:0;padding:0}#ddm h3{margin:6px 0;font-size:14px}#ddm .sim{background:#c80;color:#000;border-radius:3px;padding:0 4px;font-size:11px;margin-left:4px}
 #ddm .g{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:4px}#ddm .g div{background:#16222e;padding:4px;border-radius:4px}#ddm b{font-size:15px}
 #ddm .warn{color:#fc3}#ddm .bad{color:#f55}#ddm table{border-collapse:collapse;width:100%}#ddm td{border-bottom:1px solid #234;padding:2px 4px}
