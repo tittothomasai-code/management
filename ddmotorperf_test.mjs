@@ -17,6 +17,12 @@ for(const [nm,vp] of [['phone',{width:390,height:844,isMobile:true,hasTouch:true
  const r2=await p.evaluate(()=>{GX.ddcab.motor.step({wob:35,hours:0});const L=GX.ddcab.motorPerf.last;return {s:L.stall,m:L.margin,el:!!document.getElementById('ddmpStall')}});ok(r2.s&&r2.m==0&&r2.el,`${nm}: stall shows 0 % margin + warning`);
  await p.screenshot({path:SH+nm+'_2_stall.png'});
  const r3=await p.evaluate(()=>{GX.ddcab.motor.step({wob:5,flow:3000,hours:0});return document.getElementById('ddmpFlow').innerText});ok(/ABOVE RANGE/.test(r3),`${nm}: flow above rated range flagged`);
+ const d=async o=>p.evaluate(o=>{GX.ddcab.motor.step({...o,hours:0});return JSON.parse(document.getElementById('ddmpC').dataset.dot)},o);
+ const d1=await d({wob:5,flow:1800,rotating:false}),d2=await d({wob:20,flow:1800}),d3=await d({wob:20,flow:2200});
+ ok(d2.x>d1.x&&d2.yRpm>d1.yRpm&&d2.yTq<d1.yTq,`${nm}: dot moves right with WOB (more diff P), RPM falls, torque rises`);
+ ok(d3.yRpm<d2.yRpm&&Math.abs(d3.x-d2.x)<0.5,`${nm}: dot moves up with flow (more RPM at same diff P)`);
+ ok(await p.evaluate(()=>{const K=GX.ddcab.motorPerf.curves(GX.ddcab.motor.sess.m,2000);return K.rpmMin.length>10&&K.rpmMax[0][1]>K.rpmMin[0][1]&&K.dPstall>K.dPmax&&/rated flow/.test(document.getElementById('ddmpKey').innerText)}),`${nm}: curves at min/max rated flow, max diff P and stall marked`);
+ await p.screenshot({path:SH+nm+'_3_curves.png'});
  await p.click('#ddmpX');ok(await p.evaluate(()=>!document.getElementById('ddmp')),`${nm}: close`);await ctx.close()}
 ok(!ERR.length,'no page errors '+ERR.slice(0,2).join(' | '));ok(!EXT.length,'no external data calls');
 await br.close();console.log(`ddmotorperf_test: ${pass} pass, ${fail} fail`);process.exit(fail?1:0)
