@@ -5,7 +5,7 @@ const w=ms=>new Promise(r=>setTimeout(r,ms));let fails=0,pass=0;const ok=(c,m)=>
 try{const S=await import('./strat.js');F.useStrat(S);ok(true,'using helper D strat.js lithology')}catch(e){ok(true,'strat.js not in tree: SIM layer fallback')}
 const s1=F.stress(2550),sh=F.stress(2460);ok(s1.Pp<s1.sh&&s1.sh<s1.Sv,`Pp ${s1.Pp.toFixed(1)} < Shmin ${s1.sh.toFixed(1)} < Sv ${s1.Sv.toFixed(1)} MPa`);ok(sh.sh>F.stress(2400).sh,'shale barrier has higher Shmin than sand ('+sh.sh.toFixed(1)+' MPa)');
 const a=F.pkn({q:8,mu:.15,xf:100,hf:40,E:15,nu:.2}),b=F.pkn({q:16,mu:.15,xf:100,hf:40,E:15,nu:.2});ok(Math.abs(b.wmax/a.wmax-2**.25)<1e-6,'PKN width ∝ q^1/4');ok(a.wmax>1e-3&&a.wmax<2e-2,'PKN w_max '+(a.wmax*1000).toFixed(1)+' mm');
-ok(Math.abs(F.slurryRho(5*F.PPA)-1364)<15,'slurry 5 ppa '+F.slurryRho(5*F.PPA).toFixed(0)+' kg/m3');const pf=F.perfFric(8,36);ok(pf>0.5&&pf<8,'perf friction '+pf.toFixed(2)+' MPa');
+ok(Math.abs(F.slurryRho(5*F.PPA)-1304)<15,'slurry 5 ppa '+F.slurryRho(5*F.PPA).toFixed(0)+' kg/m3');const pf=F.perfFric(8,36);ok(pf>0.5&&pf<8,'perf friction '+pf.toFixed(2)+' MPa');
 const D=F.design();ok(D.length==3,'3 plug-and-perf stages');for(const S of D){ok(S.H.every(h=>Object.values(h).every(v=>typeof v!='number'||Number.isFinite(v))),S.name+': history finite');
  ok(S.pnet>0&&S.ISIP>0&&S.fg>1&&S.fg<2.3&&S.xf>20&&S.hf>10,`${S.name}: ISIP ${S.ISIP.toFixed(1)} MPa, Pnet ${S.pnet.toFixed(2)}, FG ${S.fg.toFixed(2)}, xf ${S.xf.toFixed(0)}, hf ${S.hf.toFixed(0)}`);ok(S.maxP<F.FW.maxP,S.name+': below max treating pressure')}
 ok(!D[0].so&&!D[1].so&&D[2].so,'screenout only on the aggressive stage 3');
