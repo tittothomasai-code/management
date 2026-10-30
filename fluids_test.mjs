@@ -21,6 +21,8 @@ ok(Math.abs(K.fcp-K.scrP*K.kmw/S.omw)<1,'FCP = SCR × KMW/OMW');ok(Math.abs(K.ic
 for(const meth of ['dm','ww']){const Z=W.newWC();for(let i=0;i<30;i++)W.step(Z,1);W.takeKick(Z,Z.omw+0.15);let k=0;while(!Z.flags.kick&&k<3600){W.step(Z,1);k++}W.shutIn(Z);for(let i=0;i<240;i++)W.step(Z,1);Z.auto=true;W.startKill(Z,meth);const PP=Z.pore*1000*9.81*Z.w.tvd;let mn=1e12;for(let i=0;i<6*3600&&!Z.done;i++){W.step(Z,1);if(i>300)mn=Math.min(mn,Z.BHP)}
  ok(Z.done,meth+': well killed in '+Math.round(Z.t/60)+' min');ok(mn>PP*0.985,meth+': BHP held near/above pore (min '+(mn/PP*100).toFixed(1)+' %)');ok(!Z.flags.fracExceeded,meth+': no shoe losses')}
 const L=W.newWC({shoeFracSG:1.30});L.spm=140;for(let i=0;i<120;i++)W.step(L,1);ok(L.flags.fracExceeded&&L.lossTot>0,'ECD over frac → lost circulation');
+{const run=a=>{const S=W.newWC();W.takeKick(S,S.omw+0.15);let k=0;while(!S.flags.kick&&k<3600){W.step(S,1);k++}W.shutIn(S);for(let j=0;j<240;j++)W.step(S,1);S.auto=a=='auto';W.startKill(S,'ww');if(a=='open')S.choke=1;let t=0;while(!S.done&&t<20000){W.step(S,1);t++}return W.score(S)};
+ const A=run('auto'),O=run('open');ok(A&&A.score>=90&&A.minMarginMPa>0,'choke score: auto choke holds BHP over pore → '+(A&&A.score));ok(O&&O.score<60&&O.underMPaMin>0,'choke score: open choke under-balanced → '+(O&&O.score)+' '+(O&&O.grade))}
 const T=W.newWC();for(let i=0;i<570;i++)W.tripStep(T,1,0.5,{swabSG:0.25});ok(T.flags.swab,'swabbed influx seen on trip tank');
 // UI
 const br=await puppeteer.launch({executablePath:'/usr/bin/google-chrome',args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--no-sandbox']});const errs=[],badr=[];
