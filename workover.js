@@ -163,7 +163,7 @@ function loop(){if(!R.el)return;apply(R.last,performance.now()/1000);ctl.update(
 export async function open(jobKey='workover'){if(R.el)close();const st=document.createElement('style');st.id='woCss';st.textContent=CSS;document.head.appendChild(st);
  const d=document.createElement('div');d.id='wo';R.el=d;const J=E.jobs(),cats=[...new Set(Object.values(J).map(j=>j.cat))];
  d.innerHTML=`<canvas></canvas><div class=wotop><b>🔧 Workover &amp; intervention</b><span class=wosim>SIM</span>
- <button data-v=auto class=on>Auto view</button><button data-v=surf>Surface</button><button data-v=well>Whole well</button><button class=wox id=woX aria-label="Close workover">✕ Close</button></div>
+ <button data-v=auto class=on>Auto view</button><button data-v=surf>Surface</button><button data-v=well>Whole well</button><button id=woMore aria-label="Coiled tubing, fishing and P&amp;A tools">📋 CT, fishing, P&amp;A</button><button class=wox id=woX aria-label="Close workover">✕ Close</button></div>
  <div class=wohud id=woHud></div>
  <div class=wopanel><b style="color:#8fd">Sequence</b> <span class=wosim>SIM</span>
  <select id=woJob style="width:100%;margin:4px 0">${cats.map(c=>`<optgroup label="${c}">${Object.entries(J).filter(([,j])=>j.cat==c).map(([k,j])=>`<option value=${k}>${esc(j.label)}</option>`).join('')}</optgroup>`).join('')}</select>
@@ -173,7 +173,7 @@ export async function open(jobKey='workover'){if(R.el)close();const st=document.
  <canvas class=wochart id=woChart width=700 height=300></canvas><div class=wocalc id=woCalc></div><div class=wochk id=woChk></div><div class=wosteps id=woSteps></div>
  <small style="opacity:.65">SIM teaching model. Simplified methods: see the guide. Not for real well design.</small></div>`;
  document.body.appendChild(d);await build(d.querySelector('canvas'));
- $('#woX').onclick=close;$('#woJob').onchange=e=>{R.play=false;setJob(e.target.value)};
+ $('#woX').onclick=close;$('#woMore').onclick=()=>import('./wo2.js?v=w2').then(m=>m.open({ct:'ct',fishing:'fish',pa:'pa'}[R.job]||'ct'));$('#woJob').onchange=e=>{R.play=false;setJob(e.target.value)};
  $('#woPlay').onclick=()=>{if(R.last?.done)R.t=0;R.play=true;if(R.hold&&checksDone(R.last.i)){step()}};
  $('#woPause').onclick=()=>{R.play=false};$('#woStop').onclick=()=>{R.play=false;R.hold=false;R.t=0;R.ticks={};R.lastI=-1;tick(0,true)};
  $('#woStep').onclick=step;$('#woSm').onchange=e=>{R.stepMode=e.target.checked;if(!R.stepMode)R.hold=false};$('#woSpd').onchange=e=>R.speed=+e.target.value;
@@ -182,7 +182,7 @@ export async function open(jobKey='workover'){if(R.el)close();const st=document.
  addEventListener('keydown',key,true);setJob(jobKey);lastT=0;R.raf=requestAnimationFrame(loop);R.clk=setInterval(clock,100);window.dwWO=api();return api()}
 function step(){const s=R.last;if(R.hold){if(!checksDone(s.i))return;R.hold=false;const nx=Math.min(s.i+1,R.TL.steps.length-1);R.lastI=nx;R.t=R.TL.steps[nx].t0+1e-6;R.play=true;tick(0,true);return}
  if(!R.stepMode){R.stepMode=true;$('#woSm').checked=true}R.lastI=s.i;R.play=true}
-function key(e){if(!R.el||/INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName))return;if(e.key=='Escape'){close();e.stopPropagation()}else if(e.key==' '){R.play=!R.play;e.preventDefault()}else if(e.key=='n'||e.key=='N')step()}
+function key(e){if(!R.el||document.getElementById('wo2')||/INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName))return;if(e.key=='Escape'){close();e.stopPropagation()}else if(e.key==' '){R.play=!R.play;e.preventDefault()}else if(e.key=='n'||e.key=='N')step()}
 export function close(){if(!R.el)return;cancelAnimationFrame(R.raf);clearInterval(R.clk);removeEventListener('keydown',key,true);removeEventListener('resize',fit);try{ren.dispose()}catch(e){}R.el.remove();document.getElementById('woCss')?.remove();R.el=null;ren=null}
 function api(){return {R,E,open,close,setJob,seek,step,tick:t=>{R.t=t;tick(0,true)},tickAll:()=>{for(const st of R.TL.steps)st.chk?.forEach((_,j)=>R.ticks[R.TL.steps.indexOf(st)+':'+j]=true);tick(0,true)},get last(){return R.last}}}
 if(typeof location!='undefined'){const q=new URLSearchParams(location.search);if(q.has('workover'))open(q.get('workover')||'workover')}

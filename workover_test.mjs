@@ -9,6 +9,9 @@ const ub=E.underbalance();ok(ub>2&&ub<7,'perf underbalance '+ub.toFixed(1)+' MPa
 ok(E.ctForces(0).light>200&&E.ctForces(0).light<1500,'CT pipe-light '+E.ctForces(0).light.toFixed(0)+' m');ok(E.lineTension(2400).sf>3,'slickline SF '+E.lineTension(2400).sf.toFixed(1));
 const J=E.jobs();const keys=Object.keys(J);ok(keys.length>=9,'jobs: '+keys.join());for(const k of keys){J[k].key=k;const TL=E.timeline(J[k]);let bad=0;for(let t=0;t<=TL.T;t+=TL.T/60){const s=E.stateAt(J[k],TL,t);if(![s.hook,s.whp,s.bhp,s.str,s.tdep].every(Number.isFinite))bad++}
  ok(!bad&&E.stateAt(J[k],TL,TL.T+1).done,k+': state finite over timeline, ends done ('+J[k].steps.length+' steps)');ok(!J[k].steps.some(s=>/NaN|undefined/.test((s.calc||'')+(s.chk||[]).join())),k+': no NaN in calcs')}
+// ---- workover2 engineering (woeng2) ----
+{const W2=await import('./woeng2.js');const L=W2.lockup();ok(!L.reachTD&&L.md>3000&&L.md<5200,'CT lock-up '+L.md.toFixed(0)+' m (mu 0.25)');ok(W2.lockup({...W2.CTWELL,mu:0.15}).reachTD,'CT reaches TD with mu 0.15');
+ ok(W2.ctFatigue2(1,0).Nreel>600&&W2.ctFatigue2(1,30).Nreel<W2.ctFatigue2(1,0).Nreel,'CT fatigue: pressure lowers life');ok(W2.paPlan().map(p=>W2.checkPlug(p)).every(p=>p.ok),'P&A plan meets D-010 lengths')}
 // ---- browser ----
 const b=await puppeteer.launch({executablePath:'/usr/bin/google-chrome',args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--no-sandbox']});const errs=[],bad=[];
 async function pg(url,vp){const ctx=await b.createBrowserContext();const p=await ctx.newPage();p.ctx=ctx;await p.setViewport(vp);p.on('pageerror',e=>errs.push(String(e)));
