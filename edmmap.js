@@ -12,7 +12,7 @@ function css(){if(document.getElementById('emcss'))return;const s=document.creat
 #edmmap .bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 10px;background:#0d1620ee;border-bottom:1px solid #2a4a6a;z-index:3}
 #edmmap .bar b{font-size:14px}#edmmap button,#edmmap select{min-height:38px;padding:4px 10px;border-radius:8px;border:1px solid #58a;background:#123;color:#dde;font:inherit}
 #edmmap input{min-height:36px;border-radius:8px;border:1px solid #58a;background:#081420;color:#dde;padding:0 10px;font:inherit;width:min(260px,46vw)}
-#edmmap .tag{position:static!important;display:inline-block;margin-left:6px;vertical-align:middle;background:#7a4ad0;color:#fff;font-size:10px;padding:1px 5px;border-radius:3px}#edmmap .cnt{opacity:.85}#edmmap .sp{flex:1}
+#edmmap .tag{position:static!important;transform:none!important;top:auto!important;left:auto!important;right:auto!important;display:inline-block;margin-left:6px;vertical-align:middle;background:#7a4ad0;color:#fff;font-size:10px;padding:1px 5px;border-radius:3px}#edmmap .cnt{opacity:.85}#edmmap .sp{flex:1}
 #emwrap{position:relative;flex:1;min-height:0}#emc{position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:block}
 #emlab{position:absolute;inset:0;pointer-events:none;overflow:hidden}
 .eml{position:absolute;left:0;top:0;white-space:nowrap;font-size:11px;line-height:16px;padding:0 5px;border-radius:4px;background:#0a1a2acc;border:1px solid #3a6a9a;color:#e8f4ff;pointer-events:auto;cursor:pointer;transform-origin:0 0}
@@ -145,7 +145,7 @@ export function open(W,{onClose,saved,fkey}={}){close();css();const el=document.
  function note(t){const n=$('#emnote');n.textContent=t;n.style.display='block';clearTimeout(note.t);note.t=setTimeout(()=>n.style.display='none',6000)}
  st.key=e=>{if(!M)return;if(e.key=='Escape'){if(det.style.display!='none'){det.style.display='none';st.sel=null;drawSel()}else close();e.preventDefault();e.stopPropagation()}};addEventListener('keydown',st.key,true);
  // ---- v5.9.4.2 filters + stats ----
- const wbOf=id=>W.wbs[wbBy.get(id)],FK='dw_edmf_'+(fkey||W.savedId||W.name||'x');let F=ES.emptyFilter();try{const j=JSON.parse(localStorage.getItem(FK)||'null');if(j)F={...F,...j,has:{...F.has,...(j.has||{})}}}catch{}
+ const wbOf=id=>W.wbs[wbBy.get(id)],FK=()=>'dw_edmf_'+(W.savedId||fkey||W.name||'x');let F=ES.emptyFilter();try{const j=JSON.parse(localStorage.getItem(FK())||localStorage.getItem('dw_edmf_'+(W.name||'x'))||'null');if(j)F={...F,...j,has:{...F.has,...(j.has||{})}}}catch{}
  st.F=F;st.m=new Uint8Array(nW).fill(1);st.sm=new Uint8Array(nS).fill(1);const pc0=pc.slice(),wc0=wc.slice(),vW=new Int32Array(nv);for(let j=0;j<nv;j++){vW[j]=wellBy.get(W.wbs[vwb[j]].well)??-1}
  const fon=()=>ES.active(st.F)>0,hidW=i=>fon()&&st.F.only&&!st.m[i],hidS=i=>fon()&&st.F.only&&!st.sm[i],outW=i=>fon()&&!st.m[i];
  function applyF(save=true){const on=fon();st.m=on?ES.mask(W,st.F,wbOf):new Uint8Array(nW).fill(1);st.sm=new Uint8Array(nS);const sIdx=new Map(W.sites.map((x,i)=>[x.id,i]));W.wells.forEach((w,i)=>{if(st.m[i]){const k=sIdx.get(w.site);if(k!=null)st.sm[k]=1}});
@@ -154,7 +154,7 @@ export function open(W,{onClose,saved,fkey}={}){close();css();const el=document.
   if(only){const pi=[];for(let j=0;j<nv;j+=2)if(vW[j]>=0&&st.m[vW[j]])pi.push(j,j+1);pg.setIndex(pi);const wi=[];for(let i=0;i<nW;i++)if(st.m[i])wi.push(i);wg.setIndex(wi);const si=[];for(let i=0;i<nS;i++)if(st.sm[i])si.push(i);sg.setIndex(si)}else{pg.setIndex(null);wg.setIndex(null);sg.setIndex(null)}
   const n=st.m.reduce((a,v)=>a+v,0),ns=st.sm.reduce((a,v)=>a+v,0),k=ES.active(st.F);$('#embdg').textContent=k?String(k):'';
   $('#emcnt').textContent=on?`${ns.toLocaleString('en-AU')} of ${nS.toLocaleString('en-AU')} sites · ${n.toLocaleString('en-AU')} of ${nW.toLocaleString('en-AU')} wells (filtered)`:`${nS.toLocaleString('en-AU')} sites · ${nW.toLocaleString('en-AU')} wells · ${nB.toLocaleString('en-AU')} wellbores`;
-  if(save)try{if(on||st.F.only===false)localStorage.setItem(FK,JSON.stringify(st.F));else localStorage.removeItem(FK)}catch{}st.nVis=n;st.dirty=true;if(fp.style.display!='none')fStats()}
+  if(save)try{if(on||st.F.only===false)localStorage.setItem(FK(),JSON.stringify(st.F));else localStorage.removeItem(FK())}catch{}st.nVis=n;st.dirty=true;if(fp.style.display!='none')fStats()}
  const fp=$('#emfp'),fb=$('#emfb2'),uniq=a=>[...new Set(a)].sort((x,y)=>String(x).localeCompare(String(y)));const WS=W.wells.map(w=>ES.wellStats(W,w,wbOf));
  const OPT={status:uniq(W.wells.map(w=>w.status)),field:uniq(WS.map(s=>s.field||'(none)')),op:uniq(WS.map(s=>s.operator||'(none)')),type:['Vertical','Directional','Horizontal','Unknown']};
  const chips=(k,lab)=>OPT[k].length?`<fieldset><legend>${lab}</legend><div class=chips>${OPT[k].map(v=>`<label><input type=checkbox data-f=${k} value="${esc(v)}" ${st.F[k].includes(v)?'checked':''}>${esc(v)}</label>`).join('')}</div></fieldset>`:'';

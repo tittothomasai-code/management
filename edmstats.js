@@ -4,7 +4,7 @@ const D=Math.PI/180,r1=v=>v==null||!Number.isFinite(v)?null:Math.round(v*10)/10;
 export const KOP_INC=3,LAND_INC=80,VERT_INC=10;
 // stats from full-resolution stations {md,inc,azi,tvd,ew,ns}
 export function trajStats(pts){if(!pts?.length)return null;let maxInc=0,maxIncMD=null,maxDls=0,maxDlsMD=null,kop=null,land=null,landTVD=null;
- for(let i=0;i<pts.length;i++){const p=pts[i],inc=+p.inc||0;if(inc>maxInc){maxInc=inc;maxIncMD=p.md}if(kop==null&&inc>=KOP_INC)kop=i?pts[i-1].md:p.md;if(land==null&&inc>=LAND_INC){land=p.md;landTVD=p.tvd}
+ for(let i=0;i<pts.length;i++){const p=pts[i],inc=+p.inc||0;if(inc>maxInc){maxInc=inc;maxIncMD=p.md}if(kop==null&&inc>=KOP_INC){let j=i;while(j>0&&(+pts[j-1].inc||0)>1)j--;kop=Math.max(0,j?pts[j-1].md:p.md)}if(land==null&&inc>=LAND_INC){land=p.md;landTVD=p.tvd}
   if(i){const a=pts[i-1],dmd=p.md-a.md;if(dmd>0.5){const i1=(+a.inc||0)*D,i2=inc*D,da=((+p.azi||0)-(+a.azi||0))*D;const c=Math.cos(i2-i1)-Math.sin(i1)*Math.sin(i2)*(1-Math.cos(da));const dl=Math.acos(Math.max(-1,Math.min(1,c)))/D*30/dmd;if(dl>maxDls){maxDls=dl;maxDlsMD=p.md}}}}
  const e=pts.at(-1),disp=Math.hypot(e.ew||0,e.ns||0),az=disp>0.5?((Math.atan2(e.ew,e.ns)/D)+360)%360:null;
  return {n:pts.length,md0:r1(pts[0].md),md1:r1(e.md),tvd:r1(e.tvd),maxInc:r1(maxInc),maxIncMD:r1(maxIncMD),maxDls:r1(maxDls),maxDlsMD:r1(maxDlsMD),kop:r1(kop),land:r1(land),landTVD:r1(landTVD),lat:land!=null?r1(e.md-land):null,disp:r1(disp),cAz:r1(az),approx:false}}
@@ -20,7 +20,7 @@ export function wellStats(W,w,wbOf){if(w._st)return w._st;const bs=w.wbs.map(wbO
  const cas=bs.flatMap(b=>b.casing||[]);const sizes=[...new Set(cas.map(a=>a.size).filter(v=>v!=null).map(Number))].sort((a,b)=>b-a);
  const dates=bs.flatMap(b=>(b.traj||[]).filter(t=>t.kind!='plan'&&t.date).map(t=>t.date)).sort();const mds=surveys.map(t=>t.mdMax).filter(v=>v!=null);
  const maxInc=max('maxInc');
- const pos=v=>v!=null&&v>0?v:null;return w._st={td:pos(w.td)??pos(M.md1),tvd:pos(w.tvd)??pos(M.tvd),maxInc,maxDls:max('maxDls'),lat:max('lat'),disp:max('disp'),cAz:M.cAz??null,kop:M.kop??null,land:M.land??null,landTVD:M.landTVD??null,
+ const pos=v=>v!=null&&v>0?v:null;return w._st={td:(a=>a.length?Math.max(...a):null)([pos(w.td),pos(M.md1)].filter(v=>v!=null)),tvd:pos(M.tvd)??pos(w.tvd),maxInc,maxDls:max('maxDls'),lat:max('lat'),disp:max('disp'),cAz:M.cAz??null,kop:M.kop??null,land:M.land??null,landTVD:M.landTVD??null,
   nWb:w.wbs.length,nCas:cas.length,casSizes:sizes,nSurv:surveys.length,nStations:surveys.reduce((a,t)=>a+(t.stations||0),0),mdRange:mds.length?[0,Math.max(...mds)]:null,nPlan:plans,
   spud:w.spud||dates[0]||null,spudSrc:w.spud?'record':dates[0]?'first survey':null,type:wellType(maxInc),approx:ss.some(([,s])=>s.approx),operator:w.operator||W.customer||null,field:w.project||null,status:w.status}}
 // ---- filters ----
