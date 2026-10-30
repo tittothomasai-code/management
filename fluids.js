@@ -92,3 +92,18 @@ export function windowProfile(maxTVD,step=50){const r=[];for(let z=step;z<=maxTV
    Barite per m³ of start mud, no volume limit: kg = 1000·ρw·SGb·(ρ2−ρ1)/(SGb−ρ2). */
 export function weightUp(sg1,sg2,vol,agentSG=4.2){if(sg2<=sg1)return{kg:0,vAdd:0,vNew:vol,sacks:0};const vA=vol*(sg2-sg1)/(agentSG-sg2),kg=vA*agentSG*1000;return{kg,vAdd:vA,vNew:vol+vA,sacks:Math.ceil(kg/25)}}
 export function dilute(sg1,sg2,vol,addSG=1.0){if(sg2>=sg1||sg2<=addSG)return{vAdd:0,vNew:vol};const vA=vol*(sg1-sg2)/(sg2-addSG);return{vAdd:vA,vNew:vol+vA}}
+
+/* Downhole density and rheology correction (SIM). Volume-fraction mass balance with liquid
+   compressibility and thermal expansion (Sorelle et al. 1982; Kutasov 1988 form ρ=ρ0·exp(γ·ΔP − α·ΔT)).
+   Solids taken as incompressible. Rheology factor from base-fluid viscosity vs T and P (API RP 13D
+   §on HTHP effects), referenced to 49 °C / 0.1 MPa (the 120 °F test temperature). Approximate coefficients. */
+export const PT={water:{g:4.5e-10,a:3.5e-4},oil:{g:7.5e-10,a:7.5e-4},Tsurf:20,Tref:49,gradT:0.03,
+ rhe:{wbm:{kT:0.008,kP:0},obm:{kT:0.013,kP:1.5e-9}}};
+export function mudAt(m,P,T){const so=(m.solids?.lgs||0)+(m.solids?.hgs||0),liq=1-so/100,[o,wv]=m.type=='OBM'?(m.oilWater||[80,20]).map(x=>x/100):[0,1];
+ const dP=Math.max(0,P-1e5),dT=T-PT.Tsurf,fw=Math.exp(PT.water.g*dP-PT.water.a*dT),fo=Math.exp(PT.oil.g*dP-PT.oil.a*dT);
+ const f=liq*(o*fo+wv*fw)+(1-liq);// volume-weighted (good to <1 % for these ranges)
+ const sg=m.sg*f,k=PT.rhe[m.type=='OBM'?'obm':'wbm'],fr=Math.exp(-k.kT*(T-PT.Tref)+k.kP*dP),fann={};
+ for(const r in m.fann)fann[r]=m.fann[r]*fr;return{...m,sg,fann,_f:f,_fr:fr}}
+export function hydroPT(m,tvd,o={}){const n=o.n||60,dz=tvd/n,gT=o.gradT??PT.gradT,Ts=o.Tsurf??PT.Tsurf;let P=1e5,prof=[];
+ for(let i=0;i<n;i++){const z=(i+0.5)*dz,T=Ts+gT*z,ma=mudAt(m,P,T);P+=ma.sg*1000*G*dz;if(i%Math.ceil(n/6)==0||i==n-1)prof.push({z:Math.round(z),T,sg:ma.sg,pv:ma.fann[600]-ma.fann[300]})}
+ const Pc=1e5+m.sg*1000*G*tvd,Tb=Ts+gT*tvd,b=mudAt(m,P,Tb);return{P,Pconst:Pc,dP:P-Pc,esd:(P-1e5)/(1000*G*tvd),Tb,sgBottom:b.sg,pvBottom:b.fann[600]-b.fann[300],prof}}

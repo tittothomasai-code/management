@@ -40,3 +40,9 @@ All values are simulated (SIM). Metric units. Modules: `fluids.js` (pure model),
 - Moore, P.L., Drilling Practices Manual (1974) – slip velocity.
 - Eaton, B.A., "Fracture Gradient Prediction and Its Application", JPT 1969.
 - IWCF Well Control kill sheet (surface BOP); Grace, Advanced Blowout & Well Control (1994).
+
+## Follow-up (feat/fluids-3d)
+- 3D: `fluid3d.js` adds SIM mud tanks (active pit, trip tank) beside the mud pumps; level = pit volume, colour = mud type/density, foam when gas vents.
+- Choke score: time-weighted BHP margin over pore pressure; penalty below 0 (influx) and above +2.5 MPa (shoe risk), shoe breakdown time, kill losses. Grades A ≥90, B ≥75, C ≥60.
+- Downhole density/rheology: ρ = ρ0·exp(γΔP − αΔT) per liquid phase (water γ 4.5e-10 /Pa, α 3.5e-4 /°C; oil γ 7.5e-10 /Pa, α 7.5e-4 /°C), solids incompressible, integrated over TVD with 0.03 °C/m gradient. Rheology factor exp(−kT(T−49 °C)+kP·ΔP).
+  Sources: Sorelle, Jardiolin, Buckley & Barrios, "Mathematical Field Model Predicts Downhole Density Changes in Static Drilling Fluids", SPE 11118 (1982); Kutasov, "Empirical Correlation Determines Downhole Mud Density", OGJ (1988); Hoberock et al., "Here's how compressibility and temperature affect bottom-hole mud pressure", OGJ (1982); API RP 13D HTHP section. Coefficients are approximate (SIM).
