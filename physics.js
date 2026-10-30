@@ -1,4 +1,5 @@
 // Drilling physics ported from v2 sandbox (first-pass, uncalibrated values). SIMULATED.
+import {ropMudFactor} from './ropmud.js';
 export const R=Math.PI/180, FT=0.3048;
 export function minCurv(p,m1,i1,a1,m2,i2,a2){i1*=R;a1*=R;i2*=R;a2*=R;const cb=Math.cos(i2-i1)-Math.sin(i1)*Math.sin(i2)*(1-Math.cos(a2-a1));const b=Math.acos(Math.max(-1,Math.min(1,cb)));const rf=b<1e-6?1:2/b*Math.tan(b/2),dm=m2-m1;
  return [p[0]+dm/2*(Math.sin(i1)*Math.cos(a1)+Math.sin(i2)*Math.cos(a2))*rf,p[1]+dm/2*(Math.sin(i1)*Math.sin(a1)+Math.sin(i2)*Math.sin(a2))*rf,p[2]+dm/2*(Math.cos(i1)+Math.cos(i2))*rf]}
@@ -67,7 +68,7 @@ export function step(S,dt){const t=S.t,F=S.faults,mw=P.mud.mw_ppg;
  S.motorRpm=mr;S.dpm=dpm;S.dpb=dpb;S.bitRpm=mr+S.td.rpm;S.bitTorque=bt;
  S.td.torque=S.td.rpm>2?1500+0.8*S.md+(S.mode=='rotate'?bt:0):0;
  // ROP + steering
- let rop=0;if(on&&!stall&&attached){rop=B.rop_k*S.wob**B.rop_a*Math.max(S.bitRpm,0)**B.rop_b;if(S.mode=='slide')rop*=B.slide_factor}
+ let rop=0;if(on&&!stall&&attached){rop=B.rop_k*S.wob**B.rop_a*Math.max(S.bitRpm,0)**B.rop_b;if(S.mode=='slide')rop*=B.slide_factor;S.ropMudF=ropMudFactor(S.mudPpg??mw,S.pos[2],S.mudType||P.mud.type||'WBM',undefined,mw);rop*=S.ropMudF}
  S.rop=rop;const dmd=rop/3600*dt;
  if(dmd>0){if(S.autoSteer)steer(S);
   if(S.mode=='slide'){const tf=S.tf*R;S.inc=Math.max(0,S.inc+M.bur*Math.cos(tf)*dmd/100);if(S.inc>0.5)S.azi=(S.azi+M.bur*Math.sin(tf)/Math.sin(S.inc*R)*dmd/100+360)%360}
