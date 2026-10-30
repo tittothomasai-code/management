@@ -1,5 +1,5 @@
 // v5.8 desktop dock test: 1440x900 + 1920x1080. Multi-open docked panels, no close on 3D click, resize, reload persistence. Offline SIM.
-import puppeteer from 'puppeteer-core';const BASE=process.argv[2]||'http://localhost:8777',SH='shots_live/112_desk_';const w=ms=>new Promise(r=>setTimeout(r,ms));let fails=0,pass=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);c?pass++:fails++};
+import puppeteer from 'puppeteer-core';const BASE=process.argv[2]||'http://localhost:8777',SH=process.env.SHOT||'shots_live/112_desk_';const w=ms=>new Promise(r=>setTimeout(r,ms));let fails=0,pass=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);c?pass++:fails++};
 const b=await puppeteer.launch({executablePath:'/usr/bin/google-chrome',args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--no-sandbox']});const errs=[],bad=[];
 for(const [W,H] of [[1440,900],[1920,1080]]){const ctx=await b.createBrowserContext();const p=await ctx.newPage();await p.setViewport({width:W,height:H});p.on('pageerror',e=>errs.push(W+': '+e.message));
  await p.setRequestInterception(true);p.on('request',r=>{if(/supabase|adaga|witsml|:8796|:8799/i.test(r.url())){bad.push(r.url());r.abort()}else r.continue()});

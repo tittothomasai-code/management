@@ -1,11 +1,11 @@
 // v5.8 phone test (390x844, touch): audits EVERY Tools button (tap -> its target is visible on screen, twice: open, close, reopen)
 // + LIVE labelling: with no real feed nothing says LIVE. SIM only; no network writes (Supabase session off under webdriver).
-import puppeteer from 'puppeteer-core';const BASE=process.argv[2]||'http://localhost:8777',SH='shots_live/113_phone_';const w=ms=>new Promise(r=>setTimeout(r,ms));let fails=0,pass=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);c?pass++:fails++};
+import puppeteer from 'puppeteer-core';const BASE=process.argv[2]||'http://localhost:8777',SH=process.env.SHOT||'shots_live/113_phone_';const EXT=[];const w=ms=>new Promise(r=>setTimeout(r,ms));let fails=0,pass=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);c?pass++:fails++};
 const br=await puppeteer.launch({executablePath:'/usr/bin/google-chrome',headless:'new',args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader','--ignore-gpu-blocklist']});
 // panel buttons: [button selector (id or text), target element id]
 const PANEL=[['#wbtn','witsml'],['#addeq','eqmenu'],['text=Equipment library','libmenu'],['#dsgbtn','designer'],['#btnExpl','wshop'],['#btnBhaB','wshop'],['#btnWP','wp'],['#btnSur','geoSur'],['#btnLay','geoLay'],['#btnBit','bitp'],['#g8btn','g8'],['#btnConn','connp'],['#seqedbtn','seqeditor'],['#uiSeq','seqpanel'],['#uiSig','sigsrc'],['#btnPlayer','plJoin'],];
 // Events log / Formation at bit are on/off toggles that keep Tools open (STAY) - checked separately below
-async function page(){const p=await br.newPage();await p.setViewport({width:390,height:844,isMobile:true,hasTouch:true,deviceScaleFactor:2});p.on('pageerror',e=>/WebGL/.test(e.message)||console.log('pageerror',e.message));
+async function page(){const p=await br.newPage();await p.setViewport({width:390,height:844,isMobile:true,hasTouch:true,deviceScaleFactor:2});p.on('request',r=>{if(/supabase|adaga|witsml|netlify\/functions/i.test(r.url()))EXT.push(r.method()+' '+r.url().slice(0,80))});p.on('pageerror',e=>/WebGL/.test(e.message)||console.log('pageerror',e.message));
  await p.goto(BASE+'/?nosplash=1&player=SIM%20Phone',{waitUntil:'load',timeout:180000});await p.waitForFunction(()=>document.getElementById('uiTools')&&document.getElementById('wbtn'),{timeout:180000});await w(2500);return p}
 const sel=s=>s.startsWith('#')?`document.getElementById(${JSON.stringify(s.slice(1))})`:`[...document.querySelectorAll('#uiTools button')].find(b=>b.textContent.trim()==${JSON.stringify(s.slice(5))})`;
 async function openTools(p){await p.evaluate(()=>{document.getElementById('plJoin')?.remove();document.getElementById('uiTab_rig').click()});await w(350);await p.evaluate(()=>document.getElementById('uiTab_tools').click());await w(350)}
@@ -31,4 +31,5 @@ for(const ch of chunks){const p=await page();for(const [s,id] of ch){for(const r
   if(s=='#wbtn'){const txt=await p.evaluate(()=>document.getElementById('witsml')?.innerText||'');ok(!/\bLIVE\b/.test(txt.replace(/not LIVE|no live feed|only with a live feed|shown as LIVE only then|never shown as LIVE|LIVE MODE[^\n]*live feed/gi,'')),'WITSML panel shows no LIVE claim while disconnected')}}
  await p.close()}
 {const p=await page();await openTools(p);await tap(p,'#uiLog');await w(600);ok(await onScreen(p,'log'),'Events log toggles on');await tap(p,'#uiLog');await w(600);ok(!(await onScreen(p,'log')),'Events log toggles off');ok(await onScreen(p,'uiTools'),'Tools stays open for toggles');await p.close()}
+ok(EXT.length==0,'no Supabase/Adaga/WITSML requests (no lobby join) '+EXT.slice(0,3).join(' | '));
 console.log(`\n${pass} passed, ${fails} failed`);await br.close();process.exit(fails?1:0)
