@@ -19,12 +19,12 @@ export function layers(){const m=ST.strat;try{const M=m?.model?.();if(M?.formati
  return {src:'SIM',list:SIM_LAYERS.map(([name,lith,top,c])=>({name,lith,top,c}))}}
 export function lithAtBit(tvd){const m=ST.strat;try{const r=m?.atBit?.();if(r)return {name:r.name||r.formation||r.F?.name||'',lith:r.lith||r.F?.lith||'',src:'model'}}catch(e){}
  const L=layers().list;let k=null;for(const l of L)if(l.top<=tvd)k=l;return k?{name:k.name,lith:k.lith,src:layers().src}:null}
-function css(){if($('subCss'))return;const s=document.createElement('style');s.id='subCss';s.textContent=`#subsurf{position:fixed;inset:0;z-index:60;background:#05090e;display:none}#subsurf canvas{display:block;width:100%;height:100%;touch-action:none}
+function css(){if($('subCss'))return;const s=document.createElement('style');s.id='subCss';s.textContent=`#subsurf{position:fixed;inset:0;z-index:100000;background:#05090e;display:none}#subsurf canvas{display:block;width:100%;height:100%;touch-action:none}
 #subHud{position:absolute;left:8px;top:calc(8px + env(safe-area-inset-top));background:#0d1620e8;color:#dde;font:13px system-ui;border:1px solid #3a5;border-radius:10px;padding:8px 10px;min-width:180px;pointer-events:none}
 #subHud b{color:#9fd}#subHud .sim{background:#a70;color:#fff;border-radius:4px;padding:0 4px;font-weight:bold}
 #subBar{position:absolute;right:8px;top:calc(8px + env(safe-area-inset-top));display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}#subBar button{background:#234;color:#def;border:1px solid #567;border-radius:8px;padding:8px 12px;font:14px system-ui;min-height:40px}
-#subLeg{position:absolute;left:8px;bottom:calc(8px + env(safe-area-inset-bottom));background:#0d1620d8;color:#cde;font:12px system-ui;border-radius:8px;padding:6px 8px;max-width:60vw}`;document.head.appendChild(s)}
-function ui(){css();const d=document.createElement('div');d.id='subsurf';d.innerHTML=`<canvas id="subCv"></canvas><div id="subHud"></div><div id="subBar"><button id="subFollow">Follow bit: on</button><button id="subFit">Fit well</button><button id="subClose">Close</button></div><div id="subLeg"></div>`;document.body.appendChild(d);
+@media (max-width:600px){#subHud{top:calc(56px + env(safe-area-inset-top))}}#subLeg{position:absolute;left:8px;bottom:calc(8px + env(safe-area-inset-bottom));background:#0d1620d8;color:#cde;font:12px system-ui;border-radius:8px;padding:6px 8px;max-width:60vw}`;document.head.appendChild(s)}
+function ui(){css();const d=document.createElement('section');d.id='subsurf';d.innerHTML=`<canvas id="subCv"></canvas><div id="subHud"></div><div id="subBar"><button id="subFollow">Follow bit: on</button><button id="subFit">Fit well</button><button id="subClose">Close</button></div><div id="subLeg"></div>`;document.body.appendChild(d);
  $('subClose').onclick=close;$('subFit').onclick=fit;$('subFollow').onclick=()=>{ST.follow=!ST.follow;$('subFollow').textContent='Follow bit: '+(ST.follow?'on':'off')}}
 function mesh(g,m){const o=new THREE.Mesh(g,m);ST.dyn.add(o);return o}
 function tubeAlong(pts,mdFrom,mdTo,r,mat,seg){// pts with cumulative length ~ MD (m)
@@ -71,5 +71,5 @@ export function init(){if(typeof document=='undefined'||window.__subInit)return;
  addEventListener('keydown',e=>{if(/INPUT|TEXTAREA|SELECT/.test(e.target?.tagName))return;if(e.key=='v'||e.key=='V')toggle();else if(e.key=='Escape'&&ST.open)close()});
  addEventListener('resize',size);addEventListener('dw-quality',()=>{if(ST.open){size();build()}});
  const poll=()=>{try{const p=[...(navigator.getGamepads?.()||[])].find(x=>x);const d=!!p?.buttons?.[3]?.pressed;if(d&&!ST.pad)toggle();ST.pad=d}catch(e){}setTimeout(poll,100)};poll();
- window.GX=window.GX||{};window.GX.subsurface={open,close,toggle,state:()=>({open:ST.open,layerSrc:ST.layerSrc,bit:ST.bit.toArray(),offsets:ST.offsets||0,follow:ST.follow}),layers,lithAtBit}}
+ const api={open,close,toggle,state:()=>({open:ST.open,layerSrc:ST.layerSrc,bit:ST.bit.toArray(),offsets:ST.offsets||0,follow:ST.follow}),layers,lithAtBit};const attach=()=>{window.GX=window.GX||{};if(window.GX.subsurface!==api)window.GX.subsurface=api};attach();setInterval(attach,500)}
 init();
