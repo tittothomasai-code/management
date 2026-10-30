@@ -5,7 +5,7 @@
 const q=new URLSearchParams(location.search);
 const SK='dw_start_snd',$=id=>document.getElementById(id);
 const ST={el:null,items:[],i:0,menu:'main',snd:false,ac:null,raf:0,gp:{t:0,prev:{}},last:null};
-export function shouldShow(){if(['nosplash','s','session','demo','join','player'].some(k=>q.has(k)))return false;if(navigator.webdriver&&!q.has('start'))return false;return true}
+export function shouldShow(){if(['nosplash','s','session','demo','join','player','edm'].some(k=>q.has(k)))return false;if(navigator.webdriver&&!q.has('start'))return false;return true}
 export function hasSave(){try{return ['dw_start_save','dw_sess_code'].some(k=>localStorage.getItem(k))}catch(e){return false}}
 const ver=()=>($('appVer')?.textContent||document.querySelector('meta[name=app-version]')?.content||'').trim();
 const wait=(f,ms=15000)=>new Promise((ok,no)=>{const t0=Date.now();(function p(){let v;try{v=f()}catch(e){}if(v)return ok(v);if(Date.now()-t0>ms)return no(new Error('timeout'));setTimeout(p,60)})()});
@@ -52,16 +52,17 @@ function backdrop(cv){const x=cv.getContext('2d');let w,h,dpr;const stars=[...Ar
   ST.raf=requestAnimationFrame(frame)}ST.raf=requestAnimationFrame(frame)}
 function tile(id,ic,t,s){return `<button class=tile data-go="${id}" id="st_${id}"><span class=ic>${ic}</span><span><b>${t}</b><small>${s}</small></span></button>`}
 function render(){const T=ST.el.querySelector('.tiles');
- if(ST.menu=='main')T.innerHTML=(hasSave()?tile('continue','▶','Continue','Resume your saved SIM rig and well'):'')+tile('sim','🛢','New simulation','Pick a SIM well and start drilling')+tile('well','📐','New well','Well Planning with a blank proposal')+tile('login','👤','Log in as player','Name only, no password · lobby or join by code');
+ if(ST.menu=='main')T.innerHTML=(hasSave()?tile('continue','▶','Continue','Resume your saved SIM rig and well'):'')+tile('sim','🛢','New simulation','Pick a SIM well and start drilling')+tile('well','📐','New well','Well Planning with a blank proposal')+tile('login','👤','Log in as player','Name only, no password · lobby or join by code')+tile('edm','📂','Import EDM','Whole site/pad from an EDM file · stays on this device');
  else T.innerHTML=tile('simA','🎯','SIM proposal A','Directional J-curve to T1/T2 · 3 casing points')+tile('simFree','⛏','Free drilling','Vertical SIM well, no plan loaded')+tile('back','↩','Back','Main menu');
  ST.items=[...T.querySelectorAll('.tile')];ST.i=0;for(const [k,b] of ST.items.entries()){b.onmouseenter=()=>focus(k);b.onclick=e=>{e.preventDefault();focus(k);choose()}}focus(0)}
 function focus(k){if(!ST.items.length)return;k=(k+ST.items.length)%ST.items.length;if(k!=ST.i)beep(620);ST.i=k;ST.items.forEach((b,j)=>b.classList.toggle('on',j==k));ST.items[k].focus({preventScroll:true})}
 function cols(){return innerWidth>=820?2:1}
 function move(d){const c=cols();if(d=='l')focus(ST.i-1);else if(d=='r')focus(ST.i+1);else if(d=='u')focus(ST.i-c);else focus(ST.i+c)}
 function back(){if(ST.menu!='main'){ST.menu='main';beep(300);render()}}
-function close(dest){ST.last=dest;const A=api();A.last=dest;if(dest!='join'&&dest!='continue')try{localStorage.setItem('dw_start_save',JSON.stringify({t:Date.now(),dest}))}catch(err){}removeEventListener('keydown',key,true);cancelAnimationFrame(ST.raf);clearInterval(ST.padT);const e=ST.el;ST.el=null;e.classList.add('out');setTimeout(()=>e.remove(),360);try{dispatchEvent(new CustomEvent('dw:start',{detail:dest}))}catch(err){}}
+function close(dest){ST.last=dest;const A=api();A.last=dest;if(dest!='join'&&dest!='continue'&&dest!='edm')try{localStorage.setItem('dw_start_save',JSON.stringify({t:Date.now(),dest}))}catch(err){}removeEventListener('keydown',key,true);cancelAnimationFrame(ST.raf);clearInterval(ST.padT);const e=ST.el;ST.el=null;e.classList.add('out');setTimeout(()=>e.remove(),360);try{dispatchEvent(new CustomEvent('dw:start',{detail:dest}))}catch(err){}}
 async function choose(){const go=ST.items[ST.i]?.dataset.go;beep(880,.1);
- if(go=='sim'){ST.menu='sim';return render()}if(go=='back')return back();
+ if(go=='sim'){ST.menu='sim';return render()}
+ if(go=='edm'){close('edm');const m=await import('./edmui.js?v=5924');m.open();return}if(go=='back')return back();
  if(go=='continue'||go=='simFree')return close(go);
  if(go=='simA'){close('simA');const P=await wait(()=>window.GX?.wplan);P.calc(JSON.parse(JSON.stringify(P.DEFAULT)));return}
  if(go=='well'){close('wplan');const P=await wait(()=>window.GX?.wplan);P.calc({...JSON.parse(JSON.stringify(P.DEFAULT)),name:'New well (SIM)',targets:[{name:'TD',tvd:1000,n:100,e:0,tol:30,dls:3}],casing:[],steps:[],assumed:['targets','surface','kop','dls']});P.open('inputs');return}
