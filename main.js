@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {OrbitControls} from './vendor/OrbitControls.js';
 import * as PH from './physics.js?v=equip10290907';
+import * as AN from './anim.js?v=5923';
 const {FT,R}=PH;
 const EXT={afterStep(){},frame(){},actX(){return false},layout(){return null},restore(){}};window.EXT=EXT;
 const S=PH.newState();window.S=S;
@@ -86,7 +87,7 @@ function makePump(st,x,z){const g=new THREE.Group();g.position.set(x,0.3,z);
  P('Suction manifold',cyl(0.25,0.25,3.4,mat.steel,3.6,0.7,0,g)).rotation.x=Math.PI/2;
  const tags=[];
  const e=entity('Mud pump '+st.id,g,{anchor:new THREE.Vector3(0,4.5,0),
-  update(){const th=st.theta;crank.rotation.z=-th;pist.forEach((r,k)=>{r.position.x=r.userData.home.x+0.55*Math.cos(th-2*Math.PI*k/3)+(e.explode||0)*0});
+  update(){const th=st.vth||0;crank.rotation.z=-th;pist.forEach((r,k)=>{r.position.x=r.userData.home.x+0.55*Math.cos(th-2*Math.PI*k/3)+(e.explode||0)*0});
    const ex=e.ex=(e.ex||0)+(((e.explode?1:0)-(e.ex||0))*0.1);let j=0;for(const [n,o] of Object.entries(parts)){const h=o.userData.home;const dir=new THREE.Vector3(h.x*0.5,h.y-1.2,h.z*1.3+((j++%3)-1)*0.6);o.position.set(h.x+dir.x*ex*1.2+(n.startsWith('Piston')?0.55*Math.cos(th-2*Math.PI*(+n.slice(-1)-1)/3):0),h.y+dir.y*ex*1.5,h.z+dir.z*ex*1.5)}},
   panel:()=>({title:'Mud pump '+st.id+(st.tripped?' TRIPPED':''),rows:[['Type',()=>st.ptype||'Triplex 1600 HP'],['Manifold valve',()=>st.valve===false?'CLOSED':'open'],['SPM',()=>st.spm.toFixed(0)+' / max '+(st.max_spm||PH.P.pump.max_spm)],['Flow gpm',()=>st.flow.toFixed(0)],['Strokes',()=>st.strokes.toFixed(0)],['Discharge psi',()=>S.spp.toFixed(0)]],
    html:`<button data-a="pon:${st.id}">On</button><button data-a="poff:${st.id}">Off</button><button data-a="preset:${st.id}">Reset pop-off</button><br>SPM cmd <input type=range min=0 max=140 data-k="pumps.${S.pumps.indexOf(st)}.cmd"><br>Liner in <input type=range min=4.5 max=7.5 step=0.25 data-e="liner_in"> Stroke in <input type=range min=8 max=14 step=1 data-e="stroke_in"><br><button data-x="tree">Parts tree (drill down)</button><button data-x="pvalve">Manifold valve</button><br><small>Double-click pump: exploded view</small>`}),
@@ -170,14 +171,14 @@ const keys={};addEventListener('keydown',e=>keys[e.key.toLowerCase()]=1);addEven
 addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();ren.setSize(innerWidth,innerHeight)});
 // ---------- visual sync from state ----------
 const v3=new THREE.Vector3();
-function sync(dtR){
- const q=S.dw.quill,tdY=FLOOR+q+2.6;tdAll.position.set(0,tdY,0);td.rotation.y=0;quill.rotation.y=S.td.theta;
+function sync(dtR){const dS=paused?0:dtR*spd,LV=realMode()=='LIVE',PA=AN.pumpAnim(S,LV),RA=AN.rotAnim(S,LV);S._anim={pumps:PA,rpm:RA};pumps.forEach((e,i)=>{e.st.vth=AN.adv(e.st.vth||0,PA.per[i]||0,dS)});S.vtd=AN.adv(S.vtd||0,RA,dS);
+ const q=S.dw.quill,tdY=FLOOR+q+2.6;tdAll.position.set(0,tdY,0);td.rotation.y=0;quill.rotation.y=S.vtd;
  const crownY=FLOOR+MH+1.3,bY=tdY+3.3+2.2;dlines.forEach((l,i)=>{const p=l.geometry.attributes.position;p.setXYZ(0,-0.5+i*0.33,crownY,0);p.setXYZ(1,-0.5+i*0.33,bY,0);p.needsUpdate=true});
- drum.rotation.x=S.dw.drum;rotary.rotation.y=S.td.rpm>0?S.td.theta:rotary.rotation.y;
+ drum.rotation.x=S.dw.drum;rotary.rotation.y=S.vtd;
  slipParts.forEach(b=>{b.position.z+=((S.slips?0.25:0.6)-b.position.z)*0.15;b.position.y=S.slips?-0.15:0.2});
  rnG.position.x+=((S.rough?1.0:3.5)-rnG.position.x)*0.08;rnG.position.z+=((S.rough?1.0:3.5)-rnG.position.z)*0.08;rnHead.rotation.y=S.rough&&(S.rnOp||S.seq&&S.seq.tdOverride)?S.t*4:0;
  // string above floor: from floor to stringTop
- const top=S.connected&&!S.slips?q:S.stickup;strTop.scale.y=Math.max(0.01,top);strTop.position.set(0,FLOOR+top/2,0);
+ const top=S.connected&&!S.slips?q:S.stickup;strTop.scale.y=Math.max(0.01,top);strTop.rotation.y=S.vtd||0;strTop.position.set(0,FLOOR+top/2,0);
  if(S.connected&&!S.slips&&q<0.05)strTop.visible=false;else strTop.visible=true;
  // catwalk joint
  joint.visible=!!S.catwalk;if(S.catwalk){const ph=Math.min(1,(S.t-S.seq.t0)/10);joint.position.set(14-ph*9,1.6+ph*7,0);joint.rotation.z=Math.PI/2-ph*1.1}
@@ -185,9 +186,9 @@ function sync(dtR){
  // hose rebuild
  hoseC=hoseCurve();hoseMesh&&(scene.remove(hoseMesh),hoseMesh.geometry.dispose());hoseMesh=new THREE.Mesh(new THREE.TubeGeometry(hoseC,30,0.16,6),mat.hose);hoseMesh.castShadow=true;hoseMesh.userData.ent=lineEnt;scene.add(hoseMesh);
  // particles
- const cs=allCurves();const flows=[...pumps.map(e=>e.st.flow),S.Q,S.Q,S.Q];const pres=[...pumps.map(()=>S.spp+(S.prof?.man||0)),S.spp,S.spp-(S.prof?.surf||0)*0.5,S.spp-(S.prof?.surf||0)];
- for(let c=0;c<cs.length;c++){const len=cs[c].getLength(),sp=flows[c]/1000*6/len;for(let k=0;k<NP;k++){const j=c*NP+k;pu[j]=(pu[j]+sp*dtR*(spd/20)**0.3)%1;cs[c].getPoint(pu[j],v3);pPos.set([v3.x,v3.y,v3.z],j*3);const cc=pcol(pres[c]);pCol.set([cc.r,cc.g,cc.b],j*3)}}
- pMesh.visible=S.Q>5;pGeom.attributes.position.needsUpdate=true;pGeom.attributes.color.needsUpdate=true;
+ const cs=allCurves();const flows=PA.run?[...pumps.map((e,i)=>PA.per[i]>0?(e.st.flow||PA.q/Math.max(1,pumps.length)):0),PA.q,PA.q,PA.q]:[...pumps.map(()=>0),0,0,0];const pres=[...pumps.map(()=>S.spp+(S.prof?.man||0)),S.spp,S.spp-(S.prof?.surf||0)*0.5,S.spp-(S.prof?.surf||0)];
+ for(let c=0;c<cs.length;c++){const len=cs[c].getLength(),sp=flows[c]/1000*6/len;for(let k=0;k<NP;k++){const j=c*NP+k;if(sp>0&&dS>0)pu[j]=(pu[j]+sp*dtR*(spd/20)**0.3)%1;cs[c].getPoint(pu[j],v3);pPos.set([v3.x,v3.y,v3.z],j*3);const cc=pcol(pres[c]);pCol.set([cc.r,cc.g,cc.b],j*3)}}
+ pMesh.visible=PA.run&&PA.q>0;pGeom.attributes.position.needsUpdate=true;pGeom.attributes.color.needsUpdate=true;
  trimSurveys();const _pk=(realMode()||'')+'|'+(window.GEO?.calc?.length||0)+'|'+(window.GEO?.surv?.src||'');if(Math.abs(S.md-lastBuild)>2||S._lastBD!==Math.round(PH.bitDepth(S))||S._pk!==_pk){S._pk=_pk;buildWell();lastBuild=S.md;S._lastBD=Math.round(PH.bitDepth(S))}
  motorMesh.material.emissive.setHex(S.stalled?0xff2200:0x000000);
  ents.forEach(e=>e.update());_upd0();
@@ -299,7 +300,7 @@ function actX(e,x,b){if(EXT.actX(e,x,b))return;const st=e.st,all=()=>!!document.
  m.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{const e=addEquip(b.dataset.add);m.style.display='none';select(e)});
  m.querySelector('#eqreset').onclick=()=>{if(confirm('Reset equipment layout and 3D models to default?')){localStorage.removeItem(LKEY);localStorage.removeItem(MKEY);try{indexedDB.deleteDatabase('dw3')}catch{}location.reload()}}}
 
-import('./ext.js?v=593').then(x=>x.init({THREE,S,PH,scene,cam,ctl,ents,pumps,select,entity,box,cyl,beam,mat,M,lp,curves,FLOOR,MH,td,tdAll,blk,dwG,slG,rnG,rnArm,cwG,UG,W,allCurves:()=>allCurves(),getWell:()=>wellCurve,act,EXT,removeEnt,saveLayout,addEquip,EQ,eqList,pumpsArr:pumps,setUnder,ren,groundMat,pad,sun,bha,rigG,dwG,ctl,makePump,rebuildLines,sel:()=>sel})).catch(e=>console.error('ext',e));
+import('./ext.js?v=5923').then(x=>x.init({THREE,S,PH,scene,cam,ctl,ents,pumps,select,entity,box,cyl,beam,mat,M,lp,curves,FLOOR,MH,td,tdAll,blk,dwG,slG,rnG,rnArm,cwG,UG,W,allCurves:()=>allCurves(),getWell:()=>wellCurve,act,EXT,removeEnt,saveLayout,addEquip,EQ,eqList,pumpsArr:pumps,setUnder,ren,groundMat,pad,sun,bha,rigG,dwG,ctl,makePump,rebuildLines,sel:()=>sel})).catch(e=>console.error('ext',e));
 // ---------- loop (fixed step) ----------
 const DT=0.05;let acc=0,last=performance.now(),spd=20,uiT=0;
 function frame(now){const dtR=Math.min(0.1,(now-last)/1000);last=now;spd=+$('spd').value;
@@ -321,5 +322,6 @@ function frame(now){const dtR=Math.min(0.1,(now-last)/1000);last=now;spd=+$('spd
 requestAnimationFrame(frame);
 // test hooks
 window.G={EXT,S,PH,ents,_scene:scene,select:n=>select(ents.find(e=>e.name==n)),view:(p,t)=>{cam.position.set(...p);ctl.target.set(...t)},setUnder,startConn,explode:i=>pumps[i].dbl(),addEquip,removeEnt:n=>removeEnt(ents.find(e=>e.name==n)),replaceModelURL:(n,u)=>replaceFromURL(ents.find(e=>e.name==n),u),resetModel:n=>resetModel(ents.find(e=>e.name==n)),pumps,EQ,run:sec=>{for(let i=0;i<sec/DT;i++){PH.seqTick(S);PH.step(S,DT);EXT.afterStep()}}};
+window.G.animProbe=()=>({vth:pumps.map(e=>e.st.vth||0),spm:pumps.map(e=>e.st.spm||0),pp:pPos?Array.from(pPos.slice(0,90)):[],vtd:S.vtd||0,quill:quill.rotation.y,rot:rotary.rotation.y,vis:!!pMesh?.visible,t:S.t,anim:S._anim});
 
 restoreLayout().catch(e=>console.warn('layout restore',e));

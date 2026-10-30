@@ -1,4 +1,4 @@
-// WITSML + any-signal traces test. Needs: node witsml_proxy.mjs (port 8796). Usage: LNA_OFF=1 node witsml_test.mjs [url] [outdir]
+// WITSML + any-signal traces test. v5.9.2.3: pins the local mock proxy (the app defaults to the hosted proxy since v4.x, which was why this test failed). Needs: node witsml_proxy.mjs (port 8796). Usage: LNA_OFF=1 node witsml_test.mjs [url] [outdir]
 import puppeteer from 'puppeteer-core';
 const URL=process.argv[2]||'http://localhost:8777/index.html';const OUT=process.argv[3]||'shots';
 const args=['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--no-sandbox'];if(process.env.LNA_OFF)args.push('--disable-features=LocalNetworkAccessChecks,BlockInsecurePrivateNetworkRequests');
@@ -9,7 +9,7 @@ const r1=await p.evaluate(()=>{GX.addPumpType('Triplex 2200 HP (14in)');GX.addPu
  G.S.pumps.forEach(p=>{p.on=true;p.cmd=50});G.run(10);const c=GX.traces.catalogue();return{pumps:G.S.pumps.length,cat:c.length,eq:c.filter(x=>x.id.startsWith('eq.')).length,parts:c.filter(x=>x.label.split(' › ').length>2).length,state:c.filter(x=>x.id.startsWith('st.')).length,seq:c.filter(x=>x.id.startsWith('seq')).length}});
 await p.evaluate(()=>{GX.traces.addTrack('spp');GX.traces.addTrack('p1.spm');for(let i=0;i<40;i++)G.run(0.25)});
 // WITSML connect to SIMULATED store
-await p.evaluate(()=>document.getElementById('wbtn').click());await w(500);await p.evaluate(()=>document.getElementById('wsim').click());await w(3000);
+await p.evaluate(()=>document.getElementById('wbtn').click());await w(500);await p.evaluate(px=>{document.getElementById('wproxy').value=px;GX.witsml.CFG.proxy=px;GX.witsml.CFG.proxyPinned=true;document.getElementById('wsim').click()},process.env.WITSML_PROXY||'http://localhost:8796/soap');await w(3000);
 const lists=await p.evaluate(()=>({st:document.getElementById('wst').textContent,wells:[...document.querySelectorAll('#wwell option')].map(o=>o.textContent),logs:[...document.querySelectorAll('#wlog option')].map(o=>o.value)}));
 await p.evaluate(()=>{document.getElementById('wlog').value='SIM-TIME';document.getElementById('wlog').dispatchEvent(new Event('change'));document.getElementById('wgo').click()});
 await w(7000);await p.evaluate(()=>{G.run(3)});await w(2500);
