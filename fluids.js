@@ -87,3 +87,8 @@ export function window_(tvd){const D=globalThis.GX?.strat;if(D?.pressureAt){try{
  // SIM fallback: normal 1.03 SG to 1500 m, ramp to 1.30 by 3200 m; Eaton-style frac with ν≈0.38 and overburden ~2.3 SG
  const pore=tvd<1500?1.03:Math.min(1.45,1.03+(tvd-1500)/1700*0.27),ob=1.9+0.4*Math.min(1,tvd/3000),k=0.38/0.62,frac=pore+k*(ob-pore);return{pore,frac,ob,src:'SIM'}}
 export function windowProfile(maxTVD,step=50){const r=[];for(let z=step;z<=maxTVD;z+=step)r.push({tvd:z,...window_(z)});return r}
+
+/* Weight-up / dilution (SIM). Mass balance, SG units. Barite SG 4.2 (API 13A), water 1.0.
+   Barite per m³ of start mud, no volume limit: kg = 1000·ρw·SGb·(ρ2−ρ1)/(SGb−ρ2). */
+export function weightUp(sg1,sg2,vol,agentSG=4.2){if(sg2<=sg1)return{kg:0,vAdd:0,vNew:vol,sacks:0};const vA=vol*(sg2-sg1)/(agentSG-sg2),kg=vA*agentSG*1000;return{kg,vAdd:vA,vNew:vol+vA,sacks:Math.ceil(kg/25)}}
+export function dilute(sg1,sg2,vol,addSG=1.0){if(sg2>=sg1||sg2<=addSG)return{vAdd:0,vNew:vol};const vA=vol*(sg1-sg2)/(sg2-addSG);return{vAdd:vA,vNew:vol+vA}}
