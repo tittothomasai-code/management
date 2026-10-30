@@ -76,7 +76,7 @@ export function surfaceGrid(M,i,h=1500,n=16,cE=0,cN=0){const z=new Float32Array(
 // GEO.layers (ft) built from beds along the path, so the existing drilling hook (ROP/torque via UCS + porosity) uses lithology.
 export function toGeoLayers(M,path,{minBed=6}={}){const L=[];const lg=stripLog(M,path,{step:1});let cur=null;
  for(const s of lg){const key=s.formation+'|'+s.lith;if(!cur||cur.key!=key){const sameF=cur&&cur.f==s.formation;if(sameF&&cur.b-cur.a<minBed&&L.length>1&&L.at(-2).f==s.formation&&L.at(-2).lith==s.lith){L.pop();cur=L.at(-1)}else{cur={key,a:s.md,ta:s.tvd,b:s.md,tb:s.tvd,lith:s.lith,f:s.formation};L.push(cur)}}cur.b=s.md+1;cur.tb=s.tvd+1}
- return L.map(x=>{const P=LITH[x.lith]||LITH.shale;return {name:x.f+' · '+P.label,top_md:x.a/FT,base_md:x.b/FT,top_tvd:x.ta/FT,base_tvd:x.tb/FT,color:P.c,lith:x.lith,ucs_psi:P.ucs*145.0377,porosity:P.phi,pp_ppg:8.8,fp_ppg:15,src:M.src=='SIM'?'SIMULATED':M.src,strat:true}})}
+ return L.map(x=>{const P=LITH[x.lith]||LITH.shale;return {name:x.f+' · '+P.label,top_md:x.a/FT,base_md:x.b/FT,top_tvd:x.ta/FT,base_tvd:x.tb/FT,color:P.c,lith:x.lith,ucs_psi:P.ucs*145.0377,porosity:P.phi,...(()=>{const q=pressureAt(M,(x.ta+x.tb)/2);return {pp_ppg:q.pp_ppg,fp_ppg:q.fg_ppg}})(),src:M.src=='SIM'?'SIMULATED':M.src,strat:true}})}
 // ---- patterns (canvas) ----
 const PC={};export function pattern(g,lith,s=16){const k=lith+s;if(PC[k])return g.createPattern(PC[k],'repeat');const P=LITH[lith]||LITH.shale;const c=document.createElement('canvas');c.width=c.height=s;const x=c.getContext('2d');x.fillStyle=P.c;x.fillRect(0,0,s,s);
  x.strokeStyle=x.fillStyle=lith=='coal'?'#555':'#0008';x.lineWidth=1;const h=s/2;
@@ -160,6 +160,23 @@ export function init(){if(typeof document=='undefined'||window.__stratInit)retur
  const add=()=>{const a=$('btnLay');if(!a){setTimeout(add,500);return}window.GX=window.GX||{};window.GX.strat=API;setTimeout(()=>{window.GX=window.GX||{};window.GX.strat=API},3000);if(!$('btnStrat')){const b=document.createElement('button');b.id='btnStrat';b.textContent='Earth model';b.className=a.className||'';a.after(b);b.onclick=()=>ST.el&&ST.el.style.display!='none'?close():open()}
   if(ST.use&&window.GEO)applyToDrilling(true);hudStart();if(new URLSearchParams(location.search).has('strat'))open()};add()}
 
+// ---- stage 2b: pore / frac / overburden per lithology (SIM), linked to mud weight ----
+// Overburden: integrate bulk density (Gardner-style values per lithology). Pore: hydrostatic 1.03 SG; SIM overpressure
+// below the first shale seal (disequilibrium compaction ramp). Frac: Eaton FG = PP + nu/(1-nu)*(OB-PP). Units SG (g/cc EMW).
+export const ROCK={sandstone:{rho:2.32,nu:.25},siltstone:{rho:2.40,nu:.27},shale:{rho:2.45,nu:.30},claystone:{rho:2.20,nu:.32},marl:{rho:2.38,nu:.29},limestone:{rho:2.60,nu:.28},chalk:{rho:2.15,nu:.24},dolomite:{rho:2.70,nu:.29},anhydrite:{rho:2.90,nu:.32},salt:{rho:2.16,nu:.45},coal:{rho:1.40,nu:.35},conglomerate:{rho:2.45,nu:.26},basement:{rho:2.75,nu:.25}};
+export const PPG=8.345,HYD=1.03;
+export function pressureAt(M,tvd,E=0,N=0){tvd=Math.max(1,tvd);const st=10;let ob=0;
+ for(let z=0;z<tvd;z+=st){const h=Math.min(st,tvd-z),r=z<30?1.9:(ROCK[lithAt(M,z+h/2,E,N)?.lith]?.rho||2.3);ob+=r*h}
+ const ob_sg=ob/tvd;const i=M.formations.findIndex(f=>f.lith=='shale');let pp=HYD;
+ if(i>=0){const t=topAt(M,i,E,N);if(tvd>t)pp=HYD+Math.min(.30,(tvd-t)/300*.30)}
+ const L=lithAt(M,tvd,E,N),k=L?.lith||'shale';if(k=='salt')pp=Math.min(pp,ob_sg);const nu=(ROCK[k]||ROCK.shale).nu;
+ const fg=k=='salt'?ob_sg:pp+nu/(1-nu)*(ob_sg-pp);
+ return {tvd,lith:k,ob_sg:+ob_sg.toFixed(3),pp_sg:+pp.toFixed(3),fg_sg:+fg.toFixed(3),pp_ppg:+(pp*PPG).toFixed(2),fg_ppg:+(fg*PPG).toFixed(2),src:M.src}}
+export function mudWeight(){const v=window.G?.PH?.P?.mud?.mw_ppg;return typeof v=='number'?v:null}
+export function mudWindow(b){b=b||atBit();if(!b)return null;const p=pressureAt(model(),b.tvd,b.E,b.N),mw=mudWeight();if(mw==null)return {...p,mw_sg:null,state:'NO MUD DATA'};
+ const sg=mw/PPG;const state=sg<p.pp_sg?'KICK RISK':sg>p.fg_sg?'LOSS RISK':(sg-p.pp_sg<.03||p.fg_sg-sg<.05)?'NARROW':'OK';return {...p,mw_sg:+sg.toFixed(3),state}}
+export function pressureProfile(M,path,step=25){M=M||model();path=path||geoPath();const out=[];const md1=path.at(-1)?.md||0;for(let md=path[0]?.md||0;md<=md1;md+=step){const q=pointOnPath(path,md);out.push({md,...pressureAt(M,q.tvd,q.E,q.N)})}return out}
+
 // ---- stage 2a: lithology at bit on the HUD (chip) + event for the monitor ----
 let _hudT=0,_lastF=null;
 export function hudText(b){if(!b)return 'Bit: above model';const src=b.src=='SIM'?'SIM':b.src;return `Bit: ${b.props.label} · ${b.formation} · ${b.tvd.toFixed(0)} m TVD · ${src}`}
@@ -167,9 +184,9 @@ function hudTick(){try{const b=atBit();let el=document.getElementById('stratBit'
  if(!el){el=document.createElement('aside');el.id='stratBit';el.style.cssText='position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 104px);z-index:40;font:12px system-ui;color:#fff;background:rgba(0,0,0,.6);border-radius:12px;padding:3px 10px;pointer-events:auto;max-width:92vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer';el.onclick=()=>open();document.body.appendChild(el)}
  const t=hudText(b)+pressText(b);if(el.textContent!=t)el.textContent=t;el.style.top=`calc(env(safe-area-inset-top,0px) + ${innerWidth<600?104:40}px)`;el.style.borderLeft='8px solid '+(b?b.props.c:'#888');el.style.outline=ST.warn?'2px solid #ff5050':'none';
  const f=b?b.formation+'|'+b.lith:null;if(f!==_lastF){_lastF=f;if(b)window.dispatchEvent(new CustomEvent('strat:bit',{detail:b}))}}catch(e){}}
-function pressText(b){return ''}
+function pressText(b){const w=b&&mudWindow(b);ST.warn=!!w&&/RISK/.test(w.state);if(!w||w.mw_sg==null)return '';return ` · PP ${w.pp_sg.toFixed(2)} FG ${w.fg_sg.toFixed(2)} MW ${w.mw_sg.toFixed(2)} SG · ${w.state}`}
 function hudStart(){if(_hudT)return;_hudT=setInterval(hudTick,1000);hudTick()}
 
-const API={LITH,SIM_STRAT,fromMarkers,fromEDM,resolve,model,setModel,topAt,formationIndexAt,lithAt,lithAtMD,pointOnPath,gammaAt,response,topsAlongPath,stripLog,surfaceGrid,toGeoLayers,applyToDrilling,atBit,hudText,open,close,lithKey,path:()=>geoPath(),ST,ready:true};
+const API={LITH,SIM_STRAT,fromMarkers,fromEDM,resolve,model,setModel,topAt,formationIndexAt,lithAt,lithAtMD,pointOnPath,gammaAt,response,topsAlongPath,stripLog,surfaceGrid,toGeoLayers,applyToDrilling,atBit,hudText,ROCK,pressureAt,mudWeight,mudWindow,pressureProfile,open,close,lithKey,path:()=>geoPath(),ST,ready:true};
 if(typeof window!='undefined'){window.GX=window.GX||{};window.GX.strat=API;init()}
 export default API;

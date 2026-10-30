@@ -25,6 +25,10 @@ for(const [nm,vp] of [['phone',PH],['desk',DK]]){
    return {nt:tops.length,l1:l1?.lith,l2:l2?.lith,rs,rd,mk:mk.formations.map(f=>f.lith+':'+f.top.toFixed(0)).join(),ed:ed.formations[0].lith,g:S.gammaAt(M,1100,0,0)}});
   ok(api.nt>=8,'API: tops along path '+api.nt);ok(!!api.l1&&!!api.l2,'API: lithAt / lithAtMD '+api.l1+' / '+api.l2);ok(api.rd<api.rs,'API: dolomite slower than salt '+api.rd.toFixed(2)+'<'+api.rs.toFixed(2));
   ok(api.mk=='sandstone:914,shale:1219','API: fromMarkers ft→m + lithology '+api.mk);ok(api.ed=='coal','API: fromEDM lithology from name');ok(api.g>80,'API: shale gamma high '+api.g?.toFixed(0));
+  // stage 2b: pressures
+  const pr=await p.evaluate(()=>{const S=GX.strat,M=S.model(),a=S.pressureAt(M,800),b=S.pressureAt(M,1600),w=S.mudWindow(),pf=S.pressureProfile();return {a,b,w,mw:S.mudWeight(),n:pf.length,mono:pf.every(q=>q.pp_sg<q.fg_sg&&q.fg_sg<=q.ob_sg+1e-6)}});
+  ok(pr.a.pp_sg>=1.0&&pr.a.pp_sg<1.1&&pr.b.pp_sg>pr.a.pp_sg,'pressure: hydrostatic shallow, SIM overpressure deep '+pr.a.pp_sg+' / '+pr.b.pp_sg);
+  ok(pr.n>10&&pr.mono,'pressure: PP < FG <= OB along well ('+pr.n+' pts)');ok(typeof pr.mw=='number'&&pr.w&&/OK|NARROW|RISK/.test(pr.w.state),'pressure: mud window from mud weight '+pr.mw+' ppg → '+(pr.w&&pr.w.state));
   // drilling uses the model
   const d=await p.evaluate(async()=>{document.getElementById('stratUse').click();await new Promise(r=>setTimeout(r,300));const L=GEO.layers;const s=L.filter(l=>l.strat);const lith=new Set(s.map(l=>l.lith));const r=window.S.env;GX.strat.applyToDrilling(false);return {n:s.length,lith:lith.size,back:GEO.layers.every(l=>!l.strat),sim:s.every(l=>/SIMULATED/.test(l.src))}});
   ok(d.n>20&&d.lith>=8,'drilling: GEO layers from model ('+d.n+' beds, '+d.lith+' lithologies)');ok(d.sim,'drilling: layers marked SIMULATED');ok(d.back,'drilling: switch off restores layers')}
