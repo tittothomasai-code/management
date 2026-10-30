@@ -1,7 +1,7 @@
 // v5.11 Ops 3D (SIM): casing run along the planned survey path, joint by joint. Pure timeline (stateAt) + Three.js view.
 const LIM=1.36;
 // Everything here is a SIM teaching animation: SIM proposal A trajectory, API-style SIM pipe, simplified hydraulics. Never LIVE.
-import * as WP from './wplan.js?v=b8';import * as C from './casing.js';
+import * as WP from './wplan.js?v=b11';import * as C from './casing.js';
 import {casingTD} from './casingtd.js';
 export const G=9.80665,JL=12.2,SHOE=0.6;
 // ---- well & string ----

@@ -2,7 +2,7 @@
 // Tabs: Design (profiles + section editor + multilateral), Error/SF (ISCWSA-style ellipses + separation factor vs EDM wells),
 // Physics (T&D, broomstick, buckling, string/BHA, bits + ROP, vibration), Environment (MW window, temperature, hookload, stuck pipe), AFE.
 // All results are planning aids, tagged SIM. No network calls. Registers through wplan W.tabs / W.ext / W.on3d.
-import * as C from './wpg_core.js?v=g1';import * as WPM from './wplan.js?v=b8';
+import * as C from './wpg_core.js?v=g1';import * as WPM from './wplan.js?v=b11';
 const $=id=>document.getElementById(id),es=t=>String(t??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'),f1=x=>Number.isFinite(x)?x.toFixed(1):'–',f2=x=>Number.isFinite(x)?x.toFixed(2):'–',f0=x=>Number.isFinite(x)?Math.round(x).toLocaleString('en-AU'):'–';
 const SIMB='<span class=wpS>SIM</span>';
 export const G={mode:'hz',p:{kop:800,bur:4,dor:2,lateral:1000,landInc:90,tN:900,tE:400,tTVD:2200,tol:30,tolV:5},maxDls:6,secs:null,lats:[],latsOn:false,
