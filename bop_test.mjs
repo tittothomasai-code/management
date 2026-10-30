@@ -13,6 +13,11 @@ for(const [nm,vp] of [['phone',{width:390,height:844,isMobile:true,hasTouch:true
  await p.goto(BASE+'/?demo=bop&nosplash=1',{waitUntil:'load',timeout:180000});
  ok(await p.waitForFunction(()=>document.getElementById('bopP')?.style.display=='block'&&window.BOPSIM,{timeout:150000}).then(()=>true,()=>false),`${nm}: ?demo=bop opens the panel`);
  await p.waitForFunction(()=>window.GX?.bopG,{timeout:60000}).catch(()=>{});const h=await p.evaluate(()=>{BOPSIM.hook3D();return {g:!!GX.bopG,n:['bop_upr','bop_bsr','bop_lpr','bop_ann','bop_plug'].filter(n=>GX.bopG?.getObjectByName(n)).length}});ok(h.g&&h.n==5,`${nm}: 3D hooks (${h.n}/5)`);
+ {const st=()=>p.evaluate(()=>{const G=GX.bopG,own=o=>{for(let q=o;q&&q!==G;q=q.parent)if(/^bop_/.test(q.name))return true;return false},b=[],r=[];G.traverse(o=>{if(o.isMesh)(own(o)?r:b).push(o.material)});return {on:BOPSIM.GH.on,nb:b.length,bodyGhost:b.filter(m=>m.transparent&&m.opacity<0.3).length,ramSolid:r.filter(m=>!m.transparent||m.opacity==1).length,nr:r.length,btn:document.getElementById('bopGhost')?.textContent}});
+  let g=await st();ok(g.on&&g.nb>5&&g.bodyGhost==g.nb&&g.ramSolid==g.nr,`${nm}: cut-away on at open: ${g.bodyGhost}/${g.nb} body parts see-through, ${g.ramSolid}/${g.nr} rams/annular solid`);
+  await p.evaluate(()=>{const G=GX.bopG,c=new GX.THREE.Vector3();G.getWorldPosition(c);G.updateMatrixWorld()});await p.screenshot({path:`${SH}${nm}_0_cutaway.png`});
+  await p.$eval('#bopGhost',e=>e.click());g=await st();ok(!g.on&&g.bodyGhost==0&&/Cut-away/.test(g.btn),`${nm}: toggle → solid view restored (${g.btn})`);
+  await p.$eval('#bopGhost',e=>e.click());g=await st();ok(g.on&&g.bodyGhost==g.nb&&/Solid/.test(g.btn),`${nm}: toggle → cut-away again`)}
  await p.$eval('#bopPlug',e=>e.click());await w(500);ok(await p.evaluate(()=>BOPSIM.ST.plug==2&&/landed/.test(document.getElementById('bopPlugSt').textContent)),`${nm}: test plug lands`);
  await p.$eval('#bopRun',e=>e.click());await w(800);let r=await p.evaluate(()=>({res:document.getElementById('bopRes').innerText,closed:BOPSIM.ST.closed.ann,sim:document.getElementById('bopSim').textContent,live:/\bLIVE\b/.test(document.getElementById('bopP').innerText)}));
  ok(/Annular preventer: low PASS · high PASS/.test(r.res)&&r.closed,`${nm}: annular low+high PASS, shown closed`);ok(r.sim=='SIM'&&!r.live,`${nm}: SIM label, no LIVE`);
@@ -37,5 +42,5 @@ for(const [nm,vp] of [['phone',{width:390,height:844,isMobile:true,hasTouch:true
  await p.evaluate(()=>{let b=false;navigator.getGamepads=()=>[{id:'SIM pad',axes:[0,0,0,0],buttons:Array.from({length:17},(_,i)=>({pressed:i==1&&b,value:0}))}];window.__padB=v=>b=v});await w(200);await p.evaluate(()=>__padB(true));await w(600);await p.evaluate(()=>__padB(false));
  ok(await p.evaluate(()=>document.getElementById('bopP').style.display=='none'),`${nm}: gamepad B closes the panel`);
  await p.evaluate(()=>BOPSIM.TR.save({}));
- await p.evaluate(()=>BOPSIM_open());await p.$eval('#bopX',e=>e.click());ok(await p.evaluate(()=>document.getElementById('bopP').style.display=='none'),`${nm}: ✕ closes`);await ctx.close()}
+ await p.evaluate(()=>BOPSIM_open());await p.$eval('#bopX',e=>e.click());ok(await p.evaluate(()=>document.getElementById('bopP').style.display=='none'),`${nm}: ✕ closes`);ok(await p.evaluate(()=>{let t=0;GX.bopG.traverse(o=>{if(o.isMesh&&o.material.transparent&&o.material.opacity<0.3)t++});return !BOPSIM.GH.on&&t==0}),`${nm}: close restores solid stack`);await ctx.close()}
 ok(!EXT.length,'no Supabase/Adaga/WITSML requests');ok(!ERR.length,'no page errors '+ERR.slice(0,2));await br.close();console.log(`\n${pass} pass, ${fail} fail`);process.exit(fail?1:0)

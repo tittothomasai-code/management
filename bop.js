@@ -76,7 +76,13 @@ function animCam(pos,tgt){const g=CG(),a=g.cam.position.clone(),b=g.ctl.target.c
 function camBack(){const g=CG();if(!CAM||!g?.cam)return;const c=CAM;CAM={goal:null};animCam(c.p0,c.t0);CAM=null}
 // gamepad: B closes the BOP panel (own poll, so no change to input.js)
 let padPrev=false;function padPoll(){const p=document.getElementById('bopP');if(!p||p.style.display=='none')return;const g=[...(navigator.getGamepads?.()||[])].find(Boolean),b=!!g?.buttons[1]?.pressed;if(b&&!padPrev)close();padPrev=b;setTimeout(padPoll,50)}
-export function close(){const p=document.getElementById('bopP');if(p)p.style.display='none';camBack()}
+// ---- cut-away / ghost view: stack body meshes go see-through so the ram blocks, annular and plug show (visual only) ----
+export const GH={on:false,saved:new Map()};
+export function ghost(v=!GH.on){const G=window.GX?.bopG;GH.on=!!v;const b=document.getElementById('bopGhost');if(b){b.textContent=GH.on?'Solid view':'Cut-away view';b.setAttribute('aria-pressed',GH.on)}if(!G)return GH.on;hook3D();
+ G.traverse(o=>{if(!o.isMesh)return;let q=o,own=false;while(q&&q!==G){if(/^bop_/.test(q.name)){own=true;break}q=q.parent}if(own)return;
+  if(GH.on){if(!GH.saved.has(o)){GH.saved.set(o,o.material);const m=o.material.clone();m.transparent=true;m.opacity=0.15;m.depthWrite=false;o.material=m;o.renderOrder=2}}
+  else if(GH.saved.has(o)){o.material.dispose?.();o.material=GH.saved.get(o);o.renderOrder=0}});if(!GH.on)GH.saved.clear();return GH.on}
+export function close(){const p=document.getElementById('bopP');if(p)p.style.display='none';ghost(false);camBack()}
 // ---- panel ----
 const $=id=>document.getElementById(id);const RES={};
 function chart(cv,T,ev,label){const r=cv.getBoundingClientRect(),s=devicePixelRatio;cv.width=r.width*s;cv.height=r.height*s;const g=cv.getContext('2d'),W=cv.width,H=cv.height,tm=T.P.at(-1).t,pm=T.target*1.15;
@@ -99,7 +105,7 @@ export function runTest(id,{leak=0,initial=false,dir}={}){const it=STACK.items.f
 export function runDrawdown(A){RES.dd=drawdown(A);render();return RES.dd}
 export function open(){let p=$('bopP');if(!p){p=document.createElement('div');p.id='bopP';p.style.cssText='position:fixed;inset:0;z-index:9800;background:#0d1117f2;color:#ddd;overflow:auto;padding:calc(env(safe-area-inset-top,0px) + 8px) 8px 40px;font:13px system-ui';if(innerWidth>=1024)p.style.cssText+=';inset:0 0 0 auto;width:480px;border-left:1px solid #2a3a50';// desktop: side panel, so the 3D BOP stays in view
  const opts=STACK.items.map(i=>`<option value=${i.id}>${i.name}</option>`).join('');
- p.innerHTML=`<div style="display:flex;gap:6px;align-items:center"><b style="font-size:15px">BOP test</b><span id=bopSim style="background:#8a8f98;color:#fff;border-radius:6px;padding:1px 6px;font-size:11px">SIM</span><span style="flex:1"></span><button id=bopX>✕</button></div>
+ p.innerHTML=`<div style="display:flex;gap:6px;align-items:center"><b style="font-size:15px">BOP test</b><span id=bopSim style="background:#8a8f98;color:#fff;border-radius:6px;padding:1px 6px;font-size:11px">SIM</span><span style="flex:1"></span><button id=bopGhost aria-pressed=false>Cut-away view</button><button id=bopX>✕</button></div>
  <div style="opacity:.75;margin:4px 0">Training only. Stack: ${STACK.bore}" ${STACK.rwp} psi surface BOP (SIM). Rules from API Std 53. Pressures in bar (psi).</div><div id=bopBody>
  <h4 style="margin:8px 0 4px">Test due (SIM)</h4><div id=bopDue></div><button id=bopDay>+7 SIM days</button> <button id=bopRst>Reset dates</button>
  <h4 style="margin:8px 0 4px">1. Test plug</h4><button id=bopPlug>⬇ Run test plug</button> <button id=bopPull>⬆ Pull test plug</button> <span id=bopPlugSt></span>
@@ -108,8 +114,8 @@ export function open(){let p=$('bopP');if(!p){p=document.createElement('div');p.
  <canvas id=bopLo style="width:100%;height:150px;display:block;margin-top:4px"></canvas><canvas id=bopHi style="width:100%;height:150px;display:block;margin-top:4px"></canvas><div id=bopRes></div>
  <h4 style="margin:8px 0 4px">4. Accumulator drawdown (pumps off)</h4><label>Bottles <input id=bopNb type=number value=${ACC.bottles} style="width:50px"></label> <label>Precharge psi <input id=bopPre type=number value=${ACC.pre} style="width:60px"></label> <button id=bopDDrun>▶ Run drawdown</button><div id=bopDD></div>
  <div style="opacity:.7;font-size:11px;margin-top:8px">Rules: low test 250–350 psi; above 500 psi, bleed to zero and start again. Hold each test 5 min or more with a stable pressure and no visible leak. Rams close in 30 s or less. Annular closes in 30 s or less (45 s if the bore is 18-3/4" or more). After the drawdown, accumulator pressure must be 200 psi or more above precharge. Pressure test every 21 days or less. Function test every 7 days. Test the kill line check valve from the wellbore side. Test choke manifold valves one at a time, in the direction of flow: upstream of the chokes to the ram rating, downstream to the lower rating.</div></div>`;
- document.body.appendChild(p);$('bopX').onclick=close;$('bopDay').onclick=()=>addDays(7);$('bopRst').onclick=()=>{TR.save({});render()};$('bopSel').onchange=()=>{$('bopDirL').style.display=$('bopSel').value=='kchk'?'':'none'};$('bopPlug').onclick=()=>runPlug(true);$('bopPull').onclick=()=>runPlug(false);
+ document.body.appendChild(p);$('bopX').onclick=close;$('bopGhost').onclick=()=>ghost();$('bopDay').onclick=()=>addDays(7);$('bopRst').onclick=()=>{TR.save({});render()};$('bopSel').onchange=()=>{$('bopDirL').style.display=$('bopSel').value=='kchk'?'':'none'};$('bopPlug').onclick=()=>runPlug(true);$('bopPull').onclick=()=>runPlug(false);
  $('bopRun').onclick=()=>{if(ST.plug!=2)runPlug(true);runTest($('bopSel').value,{leak:$('bopLeak').checked?25:0,dir:$('bopDir').value})};$('bopAll').onclick=()=>{runPlug(true);for(const i of STACK.items)runTest(i.id,{leak:$('bopLeak').checked&&i.id=='upr'?25:0})};
  $('bopDDrun').onclick=()=>runDrawdown({...ACC,bottles:+$('bopNb').value||ACC.bottles,pre:+$('bopPre').value||ACC.pre})}
- p.style.display='block';hook3D();render();flyTo('ram');padPrev=true;setTimeout(padPoll,50);setTimeout(()=>$('bopX')?.focus(),0);window.BOPSIM={open,runTest,runDrawdown,runPlug,setClosed,ST,RES,STACK,CRIT,drawdown,pressureTest,evaluate,functionTest,hook3D:()=>hook3D(),dueStatus,addDays,TR,flyTo,close,highTarget,CAM:()=>CAM};if(window.GX)GX.bop=window.BOPSIM;return p}
+ p.style.display='block';hook3D();render();ghost(true);flyTo('ram');padPrev=true;setTimeout(padPoll,50);setTimeout(()=>$('bopX')?.focus(),0);window.BOPSIM={open,runTest,runDrawdown,runPlug,setClosed,ST,RES,STACK,CRIT,drawdown,pressureTest,evaluate,functionTest,hook3D:()=>hook3D(),dueStatus,addDays,TR,flyTo,close,highTarget,ghost,GH,CAM:()=>CAM};if(window.GX)GX.bop=window.BOPSIM;return p}
 if(typeof document!='undefined'){window.BOPSIM_open=open;if(new URLSearchParams(location.search).get('demo')=='bop'){const go=()=>document.getElementById('start')?setTimeout(go,300):open();setTimeout(go,500)}}

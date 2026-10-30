@@ -26,3 +26,8 @@ All numbers are SIM unless stated otherwise. The rules follow API Std 53 (Blowou
 - Kill line check valve: test it from the wellbore side. Pressure from the pump side opens a check valve, so the game shows FAIL with that reason (API Std 53 / BSEE TCP 5010).
 - Test-due tracker: the pressure test is due 21 days after the oldest part's last pass. The function test is due 7 days after the oldest function. Dates are kept on the device only (localStorage `bopsim_v1`). The "+7 SIM days" button moves the SIM clock forward.
 - Camera: flies to the stack while the panel is open (annular level for the annular, mud cross for the valves), and returns on close. On desktop the panel is a 480 px side panel.
+
+## Cut-away / ghost view (feat/bop-cutaway)
+- Panel button "Cut-away view" / "Solid view" (bopGhost). On by default when the BOP test panel opens; off (stack restored) when it closes. API: `BOPSIM.ghost(v)`, `BOPSIM.GH`.
+- Stack body meshes (ext2.js bopG children) get cloned see-through materials (opacity 0.15, no depth write); bop_upr/bsr/lpr ram blocks, bop_ann packer and bop_plug stay solid, so ram closing and the plug show during tests. Visual only.
+- Layout follows a standard surface stack top to bottom: annular, upper pipe ram, blind shear ram, lower pipe ram (API Spec 16A and API Std 53, 5th ed. 2018, stack arrangement); cut-away is the usual training/cross-section view used in IADC WellSharp material.
