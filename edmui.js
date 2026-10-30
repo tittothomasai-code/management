@@ -1,7 +1,8 @@
-// edmui.js v5.9.2.4: "Import EDM" — local file (.xml/.edm.xml/.zip) parsed in a Web Worker on this device (no upload).
+// edmui.js v5.9.4.1 (was v5.9.2.4): "Import EDM" — local file (.xml/.edm.xml/.zip) parsed in a Web Worker on this device (no upload).
 // Default view: whole site/pad in 3D on a common site datum, with simplified anti-collision (SF, centre-to-centre). Tag IMPORT, never LIVE.
 import * as THREE from 'three';import {OrbitControls} from './vendor/OrbitControls.js';
-const ST={R:null,tab:'site',pick:null,busy:false};let P,R3=null;const $=s=>P.querySelector(s);
+import * as store from './edmstore.js?v=5941';
+const ST={R:null,tab:'site',pick:null,busy:false,saved:null,saveErr:null,list:[]};let P,R3=null;const $=s=>P.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));const f1=v=>v==null||!Number.isFinite(v)?'–':v.toFixed(1);
 const COL=['#4fc3f7','#ffb74d','#81c784','#e57373','#ba68c8','#fff176','#4db6ac','#f06292'];
 function css(){const s=document.createElement('style');s.textContent=`#edm{position:fixed;inset:auto 0 52px 0;max-height:78vh;z-index:40;background:#0d1620f2;color:#dde;font:13px system-ui;border-top:2px solid #58a;border-radius:14px 14px 0 0;display:none;flex-direction:column;overflow:hidden}
@@ -10,18 +11,28 @@ function css(){const s=document.createElement('style');s.textContent=`#edm{posit
 #edm table{border-collapse:collapse;width:100%;font-size:12px}#edm td,#edm th{padding:4px 5px;border-bottom:1px solid #2a3a4a;text-align:left}#edm .edmtag{background:#7a4ad0;color:#fff;font-size:10px;padding:1px 5px;border-radius:3px}
 #edm .stop{color:#ff6b6b;font-weight:700}#edm .warn{color:#ffc04d;font-weight:700}#edm .bar{height:8px;background:#234;border-radius:4px;overflow:hidden;margin:8px 0}#edm .bar i{display:block;height:100%;background:#4fc3f7;width:0}
 #edm canvas{width:100%;height:34vh;display:block;border-radius:8px;background:#06101a;touch-action:none}#edm .drop{border:2px dashed #58a;border-radius:10px;padding:18px;text-align:center}
+#edm .svd{margin:4px 0;color:#9fe0a0}#edm .warn{color:#ffc04d}
 @media(min-width:900px){#edm{inset:60px 8px auto auto;width:640px;border:2px solid #58a;border-radius:8px}}`;document.head.appendChild(s)}
 function ui(){if(P)return;css();P=document.createElement('div');P.id='edm';P.innerHTML=`<header><b>EDM import <span class=edmtag>IMPORT</span></b><button id=edmx aria-label=Close>✕</button></header>
-<nav>${[['site','Site 3D'],['ac','Anti-collision'],['wells','Wells'],['well','Single well']].map(([k,l])=>`<button data-t=${k}>${l}</button>`).join('')}</nav><div class=bd id=edmbd></div>`;document.body.appendChild(P);
- $('#edmx').onclick=close;P.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{ST.tab=b.dataset.t;render()})}
-function pickerHTML(){return `<div class=drop><p>Choose an EDM export (.xml, .edm.xml or .zip). It is read on this device only — nothing is uploaded.</p>
+<nav></nav><div class=bd id=edmbd></div>`;document.body.appendChild(P);
+ $('#edmx').onclick=close}
+function nav(){const R=ST.R,T=!R?[]:R.A?[['map','All sites 3D'],['site','Site 3D'],['ac','Anti-collision'],['wells','Wells'],['well','Single well']]:[['map','All sites 3D'],['sum','Summary']];const n=P.querySelector('nav');n.innerHTML=T.map(([k,l])=>`<button data-t=${k}>${l}</button>`).join('');n.style.display=T.length?'flex':'none';
+ n.querySelectorAll('button').forEach(b=>b.onclick=()=>{if(b.dataset.t=='map')return openMap();ST.tab=b.dataset.t;render()})}
+function pickerHTML(){return `<div class=drop><p>Choose an EDM export (.xml, .edm.xml or .zip, any size, many sites). It is streamed on this device only — nothing is uploaded. The parsed sites are saved on this device so you can reopen them without importing again.</p>
 <input type=file id=edmf accept=".xml,.zip,application/xml,application/zip"> <label>Units in file <select id=edmu><option value=ft>ft (EDM default)</option><option value=m>m</option></select></label>
-<div class=bar><i id=edmbar></i></div><div id=edmst>No file loaded.</div></div>`}
-export function load(name,buf,units='ft'){return new Promise((res,rej)=>{let wk;try{wk=new Worker(new URL('./edmworker.js?v=5924',import.meta.url),{type:'module'})}catch(e){return rej(e)}ST.busy=true;
+<div class=bar><i id=edmbar></i></div><div id=edmst>No file loaded.</div></div><div id=edmsaved></div>`}
+function savedHTML(){const L=ST.list;return L.length?`<h4>Saved sites on this device</h4><table><tr><th>Name</th><th>Sites</th><th>Wells</th><th>Imported</th><th>Size</th><th></th></tr>${L.map(m=>`<tr><td>${esc(m.name)} <span class=edmtag>IMPORT</span></td><td>${m.sites}</td><td>${m.wells}</td><td>${new Date(m.date).toLocaleDateString('en-AU')}</td><td>${store.fmtMB(m.size)}</td><td><button data-open="${esc(m.id)}">Open</button> <button data-rm="${esc(m.id)}">Remove</button></td></tr>`).join('')}</table>`:''}
+async function refreshSaved(){ST.list=await store.list();const el=P&&P.querySelector('#edmsaved');if(!el)return;el.innerHTML=savedHTML();el.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>openSaved(b.dataset.open));el.querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>removeSaved(b.dataset.rm))}
+export async function removeSaved(id){const m=ST.list.find(x=>x.id==id);if(!confirm('Remove saved site "'+(m?.name||id)+'" from this device?'))return false;await store.remove(id);if(ST.R?.W?.savedId==id)ST.R.W.savedId=null;await refreshSaved();return true}
+export async function openSaved(id){init();ui();const s=P.querySelector('#edmst');if(s)s.textContent='Opening saved site …';const W=await store.get(id);const m=(await store.list()).find(x=>x.id==id);ST.R={W,M:null,A:null,name:W.name,files:W.files,saved:m};ST.saved=m;ST.saveErr=null;ST.tab='sum';ST.pick=null;
+ if(P.style.display=='none'||!P.style.display)open();render();openMap();return W}
+function openMap(){const W=ST.R?.W;if(!W)return;import('./edmmap.js?v=5941').then(m=>m.open(W,{saved:ST.saved?'Saved on device · '+store.fmtMB(ST.saved.size):ST.saveErr?'Not saved: '+ST.saveErr:''}))}
+async function autoSave(){const W=ST.R?.W;if(!W)return;ST.saveErr=null;ST.saved=null;try{ST.saved=await store.save(W);W.savedId=ST.saved.id}catch(e){ST.saveErr=e.message}render()}
+export function load(name,src,units='ft'){const isBlob=typeof Blob!='undefined'&&src instanceof Blob;return new Promise((res,rej)=>{let wk;try{wk=new Worker(new URL('./edmworker.js?v=5941',import.meta.url),{type:'module'})}catch(e){return rej(e)}ST.busy=true;
  wk.onmessage=e=>{const d=e.data;if(d.prog!=null){const b=P&&$('#edmbar'),s=P&&$('#edmst');if(b)b.style.width=Math.round(d.prog*100)+'%';if(s)s.textContent=d.msg+' · '+Math.round(d.prog*100)+'%'}
   if(d.error){ST.busy=false;wk.terminate();const s=P&&$('#edmst');if(s)s.textContent='Could not read file: '+d.error;rej(new Error(d.error))}
-  if(d.done){ST.busy=false;wk.terminate();ST.R=d.done;ST.R.name=name;ST.tab='site';ST.pick=null;render();res(d.done)}};
- wk.postMessage({name,buf,units},[buf])})}
+  if(d.done){ST.busy=false;wk.terminate();ST.R=d.done;ST.R.name=name;ST.tab=d.done.A?'site':'sum';ST.pick=null;render();if(!d.done.A)openMap();autoSave().then(()=>res(d.done))}};
+ if(isBlob)wk.postMessage({name,file:src,units});else wk.postMessage({name,buf:src,units},[src])})}
 function scene3d(el){if(R3){R3.stop();R3=null}const A=ST.R.A,c=document.createElement('canvas');el.appendChild(c);const w=c.clientWidth||360,h=c.clientHeight||300;
  const r=new THREE.WebGLRenderer({canvas:c,antialias:true});r.setPixelRatio(Math.min(2,devicePixelRatio));r.setSize(w,h,false);const s=new THREE.Scene(),cam=new THREE.PerspectiveCamera(45,w/h,1,1e6);
  let mx=0,mz=0,ext=10;const all=A.wbs.flatMap(b=>b.pts);for(const p of all){mx=Math.max(mx,Math.abs(p.E),Math.abs(p.N));mz=Math.max(mz,p.Z)}ext=Math.max(mx,mz,100);
@@ -32,10 +43,16 @@ function scene3d(el){if(R3){R3.stop();R3=null}const A=ST.R.A,c=document.createEl
   const g=new THREE.BufferGeometry().setFromPoints([v(pa),v(pb)]);s.add(new THREE.Line(g,new THREE.LineBasicMaterial({color:f.sf<1?0xff3030:0xffc040})));const m=new THREE.Mesh(new THREE.SphereGeometry(ext/80),new THREE.MeshBasicMaterial({color:f.sf<1?0xff3030:0xffc040,wireframe:true}));m.position.copy(v(pa));s.add(m)}
  const grid=new THREE.GridHelper(ext*2,20,0x335577,0x223344);s.add(grid);cam.position.set(ext*1.5,ext*0.1,ext*1.7);const ctl=new OrbitControls(cam,c);ctl.target.set(0,-mz*0.55,0);ctl.update();
  let on=true;const loop=()=>{if(!on)return;ctl.update();r.render(s,cam);requestAnimationFrame(loop)};loop();R3={stop(){on=false;r.dispose()},cam,ctl};}
-export function render(){if(!P)return;P.querySelectorAll('nav button').forEach(b=>b.classList.toggle('sel',b.dataset.t==ST.tab));const bd=$('#edmbd'),R=ST.R;
+export function render(){if(!P)return;nav();P.querySelectorAll('nav button').forEach(b=>b.classList.toggle('sel',b.dataset.t==ST.tab));const bd=$('#edmbd'),R=ST.R;
  if(R3&&ST.tab!='site'){R3.stop();R3=null}
- if(!R){bd.innerHTML=pickerHTML();bindPicker();return}
- const A=R.A,M=R.M,head=`<div>File <b>${esc(R.name)}</b> · ${M.sites.length} site(s) · ${M.wells.length} wells · ${A.wbs.length} wellbores with trajectories · site datum ${f1(A.datum)} m · <span class=edmtag>IMPORT</span> <button id=edmnew>Other file</button></div>`;
+ if(!R){bd.innerHTML=pickerHTML();bindPicker();refreshSaved();return}
+ const sv=ST.saved?`<div class=svd>Saved on this device · ${store.fmtMB(ST.saved.size)} · <button id=edmrm>Remove saved</button></div>`:ST.saveErr?`<div class=warn>Not saved: ${esc(ST.saveErr)}</div>`:'';
+ if(!R.A){const W=R.W;const st=W.wells.reduce((a,w)=>(a[w.status]=(a[w.status]||0)+1,a),{});bd.innerHTML=`<div>File <b>${esc(R.name)}</b> <span class=edmtag>IMPORT</span> <button id=edmnew>Other file</button></div>${sv}
+  <table><tr><th>Sites</th><td>${W.sites.length.toLocaleString('en-AU')}</td></tr><tr><th>Wells</th><td>${W.wells.length.toLocaleString('en-AU')} (${Object.entries(st).map(([k,v])=>esc(k)+' '+v).join(', ')})</td></tr><tr><th>Wellbores</th><td>${W.wbs.length.toLocaleString('en-AU')} (${W.wbs.filter(b=>b.path).length.toLocaleString('en-AU')} with a trajectory)</td></tr>
+  <tr><th>Projects</th><td>${W.projects.map(p=>esc(p.name)).join(', ')||'–'}</td></tr>${W.outliers?`<tr><th>Position check</th><td class=warn>${W.outliers} well(s) far from the rest</td></tr>`:''}<tr><th>Read time</th><td>${(W.ms/1000).toFixed(1)} s</td></tr></table>
+  <p><button id=edmmapb>Open all sites in 3D</button></p><p><small>Per-site anti-collision is in each site's detail panel. Lengths converted to metres.</small></p>`;
+  $('#edmmapb').onclick=openMap;const nb=$('#edmnew');if(nb)nb.onclick=()=>{ST.R=null;ST.saved=null;ST.saveErr=null;render()};const rm=$('#edmrm');if(rm)rm.onclick=async()=>{ST.list=await store.list();if(await removeSaved(ST.saved.id)){ST.saved=null;render()}};return}
+ const A=R.A,M=R.M,head=sv+`<div>File <b>${esc(R.name)}</b> · ${M.sites.length} site(s) · ${M.wells.length} wells · ${A.wbs.length} wellbores with trajectories · site datum ${f1(A.datum)} m · <span class=edmtag>IMPORT</span> <button id=edmnew>Other file</button></div>`;
  if(ST.tab=='site'){bd.innerHTML=head+`<p>Whole pad on a common site datum (site centre + slot offsets; TVD shifted to the highest well datum). Drag to orbit, pinch/scroll to zoom. Red = SF &lt; 1.0, amber = SF &lt; 1.5.</p><div id=edm3d></div>`+legend();try{scene3d($('#edm3d'))}catch(e){$('#edm3d').textContent='3D unavailable: '+e.message}}
  else if(ST.tab=='ac'){const n=A.wbs.length,C=A.ac.M;bd.innerHTML=head+`<p>${esc(A.ac.model)}. Planning aid only — not an approved anti-collision scan.</p>
   <h4>Closest approaches flagged</h4>${A.ac.flags.length?`<table><tr><th>Reference</th><th>Offset</th><th>SF</th><th>C-C m</th><th>MD ref m</th><th>TVD m</th><th></th></tr>${A.ac.flags.map(f=>`<tr><td>${esc(A.wbs[f.a].name)}</td><td>${esc(A.wbs[f.b].name)}</td><td class=${f.sf<1?'stop':'warn'}>${f.sf.toFixed(2)}</td><td>${f1(f.ctc)}</td><td>${f1(f.mdRef)}</td><td>${f1(f.tvd)}</td><td class=${f.sf<1?'stop':'warn'}>${f.flag}</td></tr>`).join('')}</table>`:'<p>No pair below SF 1.5.</p>'}
@@ -49,10 +66,10 @@ export function render(){if(!P)return;P.querySelectorAll('nav button').forEach(b
   <h4>Targets</h4>${tg.length?`<table><tr><th>Name</th><th>TVD m</th><th>N m</th><th>E m</th><th>Radius m</th></tr>${tg.map(t=>`<tr><td>${esc(t.name)}</td><td>${f1(t.tvd)}</td><td>${f1(t.dN)}</td><td>${f1(t.dE)}</td><td>${f1(t.r)}</td></tr>`).join('')}</table>`:'<p>none</p>'}
   <h4>Stations (${b.kind}, site frame)</h4><table><tr><th>MD m</th><th>E m</th><th>N m</th><th>TVD m</th></tr>${b.pts.filter((p,k)=>k%Math.ceil(b.pts.length/40)==0||k==b.pts.length-1).map(p=>`<tr><td>${f1(p.md)}</td><td>${f1(p.E)}</td><td>${f1(p.N)}</td><td>${f1(p.Z)}</td></tr>`).join('')}</table>`;
   $('#edmsel').onchange=e=>{ST.pick=+e.target.value;render()}}}
- const nb=$('#edmnew');if(nb)nb.onclick=()=>{ST.R=null;render()}}
+ const nb=$('#edmnew');if(nb)nb.onclick=()=>{ST.R=null;ST.saved=null;ST.saveErr=null;render()};const rm=$('#edmrm');if(rm)rm.onclick=async()=>{ST.list=await store.list();if(await removeSaved(ST.saved.id)){ST.saved=null;render()}}}
 const legend=()=>`<div>${ST.R.A.wbs.map((b,i)=>`<span style="color:${COL[i%COL.length]}">● ${esc(b.name)}</span>`).join(' &nbsp; ')}</div>`;
-function bindPicker(){const f=$('#edmf');f.onchange=async()=>{const x=f.files[0];if(!x)return;$('#edmst').textContent='Reading '+x.name+' ('+(x.size/1e6).toFixed(1)+' MB) …';try{await load(x.name,await x.arrayBuffer(),$('#edmu').value)}catch(e){}}}
+function bindPicker(){const f=$('#edmf');f.onchange=async()=>{const x=f.files[0];if(!x)return;$('#edmst').textContent='Reading '+x.name+' ('+(x.size/1e6).toFixed(1)+' MB) …';try{await load(x.name,x,$('#edmu').value)}catch(e){}}}
 export function open(){init();ui();render();P.dataset.uidisp='flex';if(window.GX?.ui?.show)window.GX.ui.show(P);else P.style.display='flex'}
 export function close(){if(R3){R3.stop();R3=null}if(P)P.style.display='none'}
-export function init(){window.GX=window.GX||{};window.GX.edm={ST,open,close,load,render}}
+export function init(){window.GX=window.GX||{};window.GX.edm={ST,open,close,load,render,openSaved,removeSaved,openMap,store}}
 init();
