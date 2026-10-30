@@ -32,8 +32,10 @@ for(const [vp,nm] of [[{width:1440,height:900},'desk'],[{width:390,height:844,de
  await p.screenshot({path:SH+nm+'_open.png'});
  if(nm=='desk'){await p.evaluate(()=>document.getElementById('subFit').click());await w(1500);await p.screenshot({path:SH+nm+'_fit.png'});ok(!(await st(p)).follow,'Fit turns follow off');
   await p.evaluate(()=>document.getElementById('subSplit').click());await w(1500);const sp=await p.evaluate(()=>({s:GX.subsurface.state().split,l:document.getElementById('subsurf').getBoundingClientRect().left,cw:document.getElementById('subCv').width}));
+  const mc=await p.evaluate(()=>{const c=G._scene&&[...document.querySelectorAll('canvas')].find(c=>c.id!='subCv'&&c.getBoundingClientRect().width>300);return c?{w:Math.round(c.getBoundingClientRect().width),split:window.__dwSplitW}:null});ok(mc&&mc.w==720&&mc.split==720,'split: main rig renderer uses left half ('+JSON.stringify(mc)+')');
   ok(sp.s&&sp.l>=600&&sp.l<=800,'split view: subsurface on right half (left='+sp.l+')');await p.screenshot({path:SH+'desk_split.png'});
-  await p.evaluate(()=>document.getElementById('subSplit').click());await w(800);ok(!(await st(p)).split,'split view toggles back');
+  await p.evaluate(()=>document.getElementById('subSplit').click());await w(800);ok(!(await st(p)).split,'split view toggles back');ok(await p.evaluate(()=>!window.__dwSplitW&&[...document.querySelectorAll('canvas')].some(c=>c.id!='subCv'&&Math.round(c.getBoundingClientRect().width)==innerWidth)),'split off: main renderer back to full width');
+  await p.evaluate(()=>subSplit.click());await w(500);await p.evaluate(()=>GX.subsurface.close());await w(500);ok(await p.evaluate(()=>!window.__dwSplitW),'closing in split restores main view');await p.evaluate(()=>GX.subsurface.open());await w(1500);
   const gl=await p.evaluate(()=>({g:GX.subsurface.state().glow,want:GX.subsurface.glowOf((+S.rop||0)*0.3048),a:GX.subsurface.glowOf(0),b:GX.subsurface.glowOf(40),c:GX.subsurface.glowOf(20)}));
   ok(Math.abs(gl.g-gl.want)<0.15&&gl.a==0&&gl.b==1&&gl.c==0.5,'bit glow follows live ROP (glow '+gl.g.toFixed(2)+' for '+gl.want.toFixed(2)+'; 0/20/40 m/h -> 0/0.5/1)');await p.evaluate(()=>GX.subsurface.open());await p.screenshot({path:SH+'desk_glow.png'});
   await p.evaluate(()=>GX.quality&&GX.quality.set('low'));await w(2000);ok((await st(p)).open,'quality change keeps view open');}

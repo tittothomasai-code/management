@@ -72,7 +72,7 @@ function ruler(ly){const el=$('subRuler');if(!el)return;const bt=-ST.bit.y,max=M
  ly.list.filter(l=>l.top<=max).forEach(l=>{h+=`<div class="t" style="top:${y(l.top)};border-top:1px solid ${l.c}"><i style="color:${l.c}">${l.top.toFixed(0)}</i>${l.name.replace(/^SIM /,'')}</div>`});
  h+=`<div class="bitm" style="top:${y(bt)}" title="bit"></div>`;el.innerHTML=h;ST.rulerTops=ly.list.filter(l=>l.top<=max).length}
 // split view: rig (main 3D) on the left, subsurface on the right (desktop)
-export function split(on){const d=$('subsurf');if(!d)return;ST.split=on??!ST.split;if(innerWidth<900)ST.split=false;d.classList.toggle('split',ST.split);$('subSplit').textContent=ST.split?'Full view':'Split view';size()}
+export function split(on){const d=$('subsurf');if(!d)return;ST.split=on??!ST.split;if(innerWidth<900)ST.split=false;d.classList.toggle('split',ST.split);window.dwSplitView?.(ST.split?Math.floor(innerWidth/2):0);$('subSplit').textContent=ST.split?'Full view':'Split view';size()}
 function fit(){const a=[...actualPts(),...planPts()];if(!a.length)return;const b=new THREE.Box3().setFromPoints(a),c=b.getCenter(new THREE.Vector3()),r=b.getSize(new THREE.Vector3()).length();ST.ctl.target.copy(c);ST.cam.position.copy(c).add(new THREE.Vector3(r*0.8,r*0.3,r*0.8));ST.follow=false;$('subFollow').textContent='Follow bit: off'}
 function hud(){const S=window.S||{},md=(S.md||0)*FT,tvd=-ST.bit.y,li=lithAtBit(tvd),src=window.realMode?.()||'';
  $('subHud').innerHTML=`<b>Subsurface view</b> ${src?'<span style="background:#063;padding:0 4px;border-radius:4px">'+src+'</span>':'<span class="sim">SIM</span>'}<br>
@@ -87,12 +87,12 @@ export async function open(){if(ST.open)return;if(!$('subsurf'))ui();await loadS
   ST.cam=new THREE.PerspectiveCamera(50,1,1,50000);ST.ctl=new OrbitControls(ST.cam,$('subCv'));ST.ctl.enableDamping=true;ST.ctl.addEventListener('start',()=>{})}
  size();build();ST.cam.position.copy(ST.bit).add(new THREE.Vector3(250,120,250));ST.ctl.target.copy(ST.bit);hud();ST.last=performance.now();ST.raf=requestAnimationFrame(loop);
  $('subBtn')?.classList.add('on')}
-export function close(){ST.open=false;cancelAnimationFrame(ST.raf);if($('subsurf'))$('subsurf').style.display='none';$('subBtn')?.classList.remove('on')}
+export function close(){if(ST.split)split(false);ST.open=false;cancelAnimationFrame(ST.raf);if($('subsurf'))$('subsurf').style.display='none';$('subBtn')?.classList.remove('on')}
 export const toggle=()=>ST.open?close():open();
 export function init(){if(typeof document=='undefined'||window.__subInit)return;window.__subInit=1;
  const b=document.createElement('button');b.id='subBtn';b.textContent='Subsurface';b.title='Live subsurface view (key V, gamepad Y)';b.onclick=toggle;(document.getElementById('hud')||document.body).appendChild(b);
  addEventListener('keydown',e=>{if(/INPUT|TEXTAREA|SELECT/.test(e.target?.tagName))return;if(e.key=='v'||e.key=='V')toggle();else if(e.key=='Escape'&&ST.open)close()});
- addEventListener('resize',()=>{if(ST.split&&innerWidth<900)split(false);size()});addEventListener('dw-quality',()=>{if(ST.open){size();build()}});
+ addEventListener('resize',()=>{if(ST.split)split(innerWidth>=900);size()});addEventListener('dw-quality',()=>{if(ST.open){size();build()}});
  const poll=()=>{try{const p=[...(navigator.getGamepads?.()||[])].find(x=>x);const d=!!p?.buttons?.[3]?.pressed;if(d&&!ST.pad)toggle();ST.pad=d}catch(e){}setTimeout(poll,100)};poll();
  const api={open,close,toggle,state:()=>({open:ST.open,layerSrc:ST.layerSrc,bit:ST.bit.toArray(),offsets:ST.offsets||0,follow:ST.follow,split:!!ST.split,glow:ST.glow||0,gamma:ST.gamma??null,rulerTops:ST.rulerTops||0,stratSrc:layers().strat?layers().src:null,casing:ST.casing||null,names:ST.dyn?[...new Set(ST.dyn.children.map(o=>o.name).filter(Boolean))]:[]}),layers,lithAtBit,split,glowOf,casingProgram};const attach=()=>{window.GX=window.GX||{};if(window.GX.subsurface!==api)window.GX.subsurface=api};attach();setInterval(attach,500)}
 init();

@@ -168,7 +168,8 @@ function setUnder(v){under=v;$('under').classList.toggle('on',v);groundMat.opaci
 let paused=false;$('pause').onclick=()=>{paused=!paused;$('pause').textContent=paused?'Play':'Pause'};
 // WASD
 const keys={};addEventListener('keydown',e=>keys[e.key.toLowerCase()]=1);addEventListener('keyup',e=>keys[e.key.toLowerCase()]=0);
-addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();ren.setSize(innerWidth,innerHeight)});
+// split-view hook (subsurface.js): window.dwSplitView(px) renders the rig in the left px only; dwSplitView(0) restores full width.
+const fitMain=()=>{const w=window.__dwSplitW||innerWidth;cam.aspect=w/innerHeight;cam.updateProjectionMatrix();ren.setSize(w,innerHeight)};addEventListener('resize',fitMain);window.dwSplitView=px=>{window.__dwSplitW=px>0?Math.round(px):0;fitMain()};
 // ---------- visual sync from state ----------
 const v3=new THREE.Vector3();
 function sync(dtR){const dS=paused?0:dtR*spd,LV=realMode()=='LIVE',PA=AN.pumpAnim(S,LV),RA=AN.rotAnim(S,LV);S._anim={pumps:PA,rpm:RA};pumps.forEach((e,i)=>{e.st.vth=AN.adv(e.st.vth||0,PA.per[i]||0,dS)});S.vtd=AN.adv(S.vtd||0,RA,dS);
