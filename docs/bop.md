@@ -20,3 +20,9 @@ All numbers are SIM unless stated otherwise. The rules follow API Std 53 (Blowou
 - API RP/Std 53 summary: https://pdfcoffee.com/download/api-rp53-recommendations-pdf-free.html
 - Function and drawdown test worksheet (Koomey): https://pdfcoffee.com/function-amp-draw-down-test-koomey-pdf-free.html
 - BSEE, Status of Standard 53: https://www.bsee.gov/sites/bsee.gov/files/technical-presentations/safety/panel2-gallander.pdf
+
+## Stage 2
+- Choke manifold: 6 valves, each tested on its own in the direction of flow. Valves upstream of the chokes are tested like the rams (MASP + 500 psi, RWP on the initial test). Valves downstream of the chokes are tested to their lower rating (SIM 5000 psi). (API Std 53: test choke manifold parts to the rated pressure of each part; test valves in the direction of flow.)
+- Kill line check valve: test it from the wellbore side. Pressure from the pump side opens a check valve, so the game shows FAIL with that reason (API Std 53 / BSEE TCP 5010).
+- Test-due tracker: the pressure test is due 21 days after the oldest part's last pass. The function test is due 7 days after the oldest function. Dates are kept on the device only (localStorage `bopsim_v1`). The "+7 SIM days" button moves the SIM clock forward.
+- Camera: flies to the stack while the panel is open (annular level for the annular, mud cross for the valves), and returns on close. On desktop the panel is a 480 px side panel.
