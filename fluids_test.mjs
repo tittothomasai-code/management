@@ -13,6 +13,9 @@ const H2=F.hydraulics(m,wl,Q*1.3);ok(H2.spp>H.spp&&H2.ecd>H.ecd,'more flow → m
 const C=F.cuttings(m,wl,H,25),Cl=F.cuttings(m,wl,F.hydraulics(m,wl,0.008),25);ok(C.Ft>Cl.Ft&&C.Ca<Cl.Ca,'lower flow → worse transport');
 const s1=F.surgeSwab(m,wl,0.3),s2=F.surgeSwab(m,wl,1);ok(s2.emwSurge>s1.emwSurge&&s2.emwSwab<s1.emwSwab,'faster trip → more surge/swab');ok(F.tripLimits(m,wl,1.2,1.6)>0,'max trip speed found');
 const wu=F.weightUp(1.2,1.4,100);ok(Math.abs((1.2*100+wu.kg/1000)/wu.vNew-1.4)<1e-9,'weight-up mass balance '+Math.round(wu.kg)+' kg barite');{const o=F.hydroPT(F.MUDS.obm,2800),wb=F.hydroPT(F.MUDS.wbm,2800);ok(o.esd<F.MUDS.obm.sg&&o.esd>F.MUDS.obm.sg-0.06,'OBM ESD drops with temperature '+o.esd.toFixed(3));ok((F.MUDS.obm.sg-o.esd)>(F.MUDS.wbm.sg-wb.esd),'OBM more T/P sensitive than WBM');const cold=F.mudAt(F.MUDS.obm,40e6,20);ok(cold.sg>F.MUDS.obm.sg,'pressure compresses OBM at low T');ok(o.pvBottom<F.bingham(F.MUDS.obm).PV,'hot OBM PV lower')}const dl=F.dilute(1.4,1.2,100);ok(Math.abs((140+dl.vAdd)/dl.vNew-1.2)<1e-9,'dilution mass balance');
+// window_ must pass the strat model to GX.strat.pressureAt(M,tvd) (integrator fix)
+{const g=globalThis,save=g.GX;let got=null;const M={src:'TESTMODEL'};g.GX={strat:{model:()=>M,pressureAt:(m,z)=>{got=[m,z];return{pp_sg:1.11,fg_sg:1.77,ob_sg:2.2,lith:'shale',src:m.src}}}};
+ const r=F.window_(2000);ok(got&&got[0]===M&&got[1]===2000&&r.src=='strat'&&r.pore==1.11&&r.frac==1.77,'window_ uses strat model ('+r.src+')');g.GX=save;ok(F.window_(2000).src=='SIM','window_ SIM fallback without strat')}
 // Stage 3/4 well control
 const S=W.newWC();for(let i=0;i<60;i++)W.step(S,1);ok(Math.abs(S.pits.active-60)<0.05&&S.qInf==0,'drilling overbalanced: pit stable');
 W.takeKick(S,S.omw+0.15);let t=0;while(!S.flags.kick&&t<3600){W.step(S,1);t++}ok(S.flags.kick&&t<1200,'kick detected by pit gain in '+t+' s');

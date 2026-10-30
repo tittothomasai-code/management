@@ -83,7 +83,7 @@ export function tripLimits(m,w,pore,frac,margin=0.02){let lo=0.01,hi=3;const f=v
 // ROP effect of overbalance (chip hold-down, Bourgoyne-Young x4 style): ROP × exp(−k·Δρ·TVD)
 export const ropFactor=(ecdSG,poreSG,tvd)=>Math.exp(-0.000105*Math.max(0,(ecdSG-poreSG)*1000)*tvd/100*0.1);
 // ---------- Stage 4 helper: pore/frac window (uses helper D strat API when present) ----------
-export function window_(tvd){const D=globalThis.GX?.strat;if(D?.pressureAt){try{const r=D.pressureAt(tvd);if(r&&isFinite(r.pore)&&isFinite(r.frac))return{...r,src:'strat'}}catch(e){}}
+export function window_(tvd){const D=globalThis.GX?.strat;if(D?.pressureAt){try{const M=D.model?.();if(M){const q=D.pressureAt(M,tvd);if(q&&isFinite(q.pp_sg)&&isFinite(q.fg_sg))return{pore:q.pp_sg,frac:q.fg_sg,ob:q.ob_sg,lith:q.lith,src:'strat',model:q.src}}}catch(e){}}
  // SIM fallback: normal 1.03 SG to 1500 m, ramp to 1.30 by 3200 m; Eaton-style frac with ν≈0.38 and overburden ~2.3 SG
  const pore=tvd<1500?1.03:Math.min(1.45,1.03+(tvd-1500)/1700*0.27),ob=1.9+0.4*Math.min(1,tvd/3000),k=0.38/0.62,frac=pore+k*(ob-pore);return{pore,frac,ob,src:'SIM'}}
 export function windowProfile(maxTVD,step=50){const r=[];for(let z=step;z<=maxTVD;z+=step)r.push({tvd:z,...window_(z)});return r}
