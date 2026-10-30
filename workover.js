@@ -6,7 +6,7 @@ const R={el:null,J:null,job:null,TL:null,t:0,play:false,speed:1,stepMode:false,h
 const $=s=>R.el?.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const CSS=`#wo{position:fixed;inset:0;z-index:100000;background:#0b1422;color:#e8f2ff;font:14px system-ui,-apple-system,Segoe UI,sans-serif}
-#wo canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+#wo>canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
 #wo .wotop{position:absolute;left:0;right:0;top:0;display:flex;gap:6px;align-items:center;padding:calc(6px + env(safe-area-inset-top)) 8px 6px;background:linear-gradient(#0b1422ee,#0b142200);flex-wrap:wrap}
 #wo .wotop b{font-size:16px}#wo .wosim{background:#8a8f98;color:#fff;border-radius:6px;padding:1px 7px;font-size:12px;font-weight:700;letter-spacing:.1em}
 #wo button,#wo select{background:#17304f;color:#e8f2ff;border:1px solid #3a6a9a;border-radius:8px;padding:6px 10px;font:13px system-ui;min-height:34px;cursor:pointer}
@@ -17,7 +17,7 @@ const CSS=`#wo{position:fixed;inset:0;z-index:100000;background:#0b1422;color:#e
 #wo .wocalc{margin:6px 0;padding:6px;border-radius:8px;background:#11283f;color:#ffd98a;font-size:12.5px}
 #wo .wochk label{display:block;font-size:13px;padding:3px 0}#wo .wochk input{width:18px;height:18px;vertical-align:middle;margin-right:6px}
 #wo .wobar{height:6px;background:#203a58;border-radius:4px;overflow:hidden;margin:4px 0}#wo .wobar i{display:block;height:100%;background:#4fc3ff}
-#wo .woctl{display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin:4px 0}
+#wo .wochart{width:100%;height:150px;display:none;background:#08111d;border-radius:8px;margin:4px 0}#wo .woctl{display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin:4px 0}
 @media (max-width:700px){#wo .wopanel{left:0;right:0;bottom:0;width:auto;max-height:44%;border-radius:12px 12px 0 0;padding-bottom:calc(8px + env(safe-area-inset-bottom))}#wo .wohud{top:auto;bottom:calc(44% + 6px);right:6px;font-size:11px;min-width:0}#wo .wotop b{font-size:14px}}`;
 // ---------- scene ----------
 let ren,scene,cam,ctl,G={};
@@ -68,11 +68,12 @@ async function build(cv){THREE=THREE||await import('three');OC=OC||(await import
   G.crane=new THREE.Group();for(const z of [-.9,.9]){const l=box(.25,14,.25,sm);l.position.set(-2,7,z+.0);l.rotation.z=-.08;G.crane.add(l)}const sh=new THREE.Mesh(new THREE.TorusGeometry(.6,.1,8,20),sm);sh.position.set(-1.2,13.8,0);G.crane.add(sh);G.truck.add(G.crane);
   G.inj=box(1.8,2.4,1.8,M(0xd94f2b));G.inj.position.y=14.2;G.truck.add(G.inj);G.goose=new THREE.Mesh(new THREE.TorusGeometry(2.4,.12,8,24,Math.PI),sm);G.goose.position.set(0,15.5,0);G.goose.rotation.y=Math.PI/2;G.truck.add(G.goose);
   G.wire=box(.04,1,.04,M(0xeeeeee));G.truck.add(G.wire)}
+ buildFrac();
  const lbl=(t,y,c='#9fd')=>{const cv=document.createElement('canvas');cv.width=256;cv.height=48;const x=cv.getContext('2d');x.fillStyle=c;x.font='bold 26px system-ui';x.fillText(t,4,34);const s=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),depthTest:false}));s.scale.set(8,1.5,1);s.position.set(6.5,y,0);scene.add(s);return s};
- lbl('SSSV '+E.WELL.sssv+' m',-E.WELL.sssv*K);lbl('Packer '+E.WELL.packer+' m',-E.WELL.packer*K,'#fc9');lbl('Perfs '+E.WELL.perf.join('–')+' m',-E.WELL.perf[0]*K-.4,'#f97');lbl('Shoe '+E.WELL.csg.shoe+' m',-E.WELL.csg.shoe*K-.5,'#ccc');
+ G.woLbl=[lbl('SSSV '+E.WELL.sssv+' m',-E.WELL.sssv*K),lbl('Packer '+E.WELL.packer+' m',-E.WELL.packer*K,'#fc9'),lbl('Perfs '+E.WELL.perf.join('–')+' m',-E.WELL.perf[0]*K-.4,'#f97'),lbl('Shoe '+E.WELL.csg.shoe+' m',-E.WELL.csg.shoe*K-.5,'#ccc')];G.frLbl=G.FD.map(S=>lbl(S.name.split(' (')[0]+' '+S.zc+' m',-S.zc*K,'#7fe3ff'));
  for(let d=500;d<E.WELL.td;d+=500)lbl(d+' m',-d*K,'#678');
  addEventListener('resize',fit);fit()}
-async function earth(){let F=null;try{const S=await import('./strat.js');const Mdl=S.SIM_STRAT?S.SIM_STRAT():null;F=(Mdl?.formations||[]).map(f=>({name:f.name,top:f.top,col:(S.LITH?.[f.lith]?.color)||null}))}catch(e){}
+async function earth(){let F=null;try{const S=await import('./strat.js');E.stratReady?.(S);const Mdl=S.SIM_STRAT?S.SIM_STRAT():null;F=(Mdl?.formations||[]).map(f=>({name:f.name,top:f.top,col:(S.LITH?.[f.lith]?.color)||null}))}catch(e){}
  if(!F?.length)F=[{name:'Soil/clay',top:0,col:'#6b5a3a'},{name:'Sandstone',top:150,col:'#c9a96a'},{name:'Shale',top:700,col:'#5a6470'},{name:'Limestone',top:1250,col:'#9fa79a'},{name:'Shale',top:1900,col:'#4d5761'},{name:'Reservoir sand',top:2410,col:'#d8b26a'},{name:'Shale',top:2470,col:'#4d5761'}];
  for(let i=0;i<F.length;i++){const a=Math.max(0,F[i].top),b=Math.min(E.WELL.td+60,F[i+1]?.top??E.WELL.td+60);if(b<=a)continue;const m=box(40,(b-a)*K,.4,M(new THREE.Color(F[i].col||'#556'),{roughness:1,metalness:0}));m.position.set(0,-(a+b)/2*K,-6);G.earth.add(m)}}
 function fit(){if(!ren||!R.el)return;const c=ren.domElement;const w=c.clientWidth,h=c.clientHeight;ren.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix()}
@@ -80,20 +81,20 @@ function mkTool(name){G.tool.clear();if(!name)return;const col={gun:0x3a3a3a,scr
  const t=cyl(name=='screen'?.6:.32,name=='screen'?(E.WELL.perf[1]-E.WELL.perf[0]+6)*K:1.4,M(col,{metalness:.6}));t.position.y=-(name=='screen'?t.geometry.parameters.height/2:.7);G.tool.add(t);
  if(name=='overshot'){const g=cyl(.52,.8,M(0x5a3a1a));g.position.y=-1.4;G.tool.add(g)}}
 // ---------- apply state ----------
-function apply(s,t){const W=E.WELL,rig=s.unit=='rig',truck=!rig;G.rig.visible=rig;G.truck.visible=truck;
+function apply(s,t){const W=E.WELL,rig=s.unit=='rig',frac=s.unit=='frac',truck=!rig&&(!frac||!!s.tool);applyFrac(s);G.woLbl?.forEach((l,k)=>l.visible=!frac||k==3);G.frLbl?.forEach(l=>l.visible=frac);G.rig.visible=rig;G.truck.visible=truck;
  G.mast.rotation.z=rig?(1-s.mast)*Math.PI/2*0.98:0;G.blk.visible=G.lines.visible=G.elev.visible=rig&&s.mast>.95;
  const by=2.6+3+s.blk*22;G.blk.position.set(-2.2+1.4,by,0);vbar(G.lines,by+.9,2.6+28);G.lines.position.x=-.8;G.elev.position.set(-.8,by-1.1,0);
  G.tree.visible=s.tree>.5;G.bop.visible=s.bop>.5&&!G.tree.visible;G.lub.visible=s.lub>.5;G.lub.position.y=(G.tree.visible?4.6:1.2)+4.5;
- G.reel.visible=G.inj.visible=G.goose.visible=s.unit=='ct';G.drum.visible=s.unit!='ct';G.inj.position.y=G.lub.position.y+5.6;G.goose.position.y=G.inj.position.y+1.2;
+ const ctv=s.unit=='ct'||frac&&s.tool=='nozzle';G.reel.visible=G.inj.visible=G.goose.visible=ctv;G.drum.visible=!ctv;G.inj.position.y=G.lub.position.y+5.6;G.goose.position.y=G.inj.position.y+1.2;
  G.drum.rotation.y=s.tdep*.05;G.reel.rotation.z=s.tdep*.004;
  // wire from drum/reel over crane sheave (simplified straight run)
  if(truck){const top=G.lub.visible?G.lub.position.y+4.5:5;vbar(G.wire,4,top+2.5);G.wire.position.set(-6,G.wire.position.y,0);G.wire.rotation.z=-0.5}
  // tubing / fish
- const fishTop=s.fishTop||0,str=rig?s.str:(s.str||W.packer);vbar(G.tbg,.6,-Math.max(0.001,str)*K);G.tbg.visible=str>1;
+ const fishTop=s.fishTop||0,str=rig?s.str:frac?0:(s.str||W.packer);vbar(G.tbg,.6,-Math.max(0.001,str)*K);G.tbg.visible=str>1;
  G.fish.visible=fishTop>0&&str<fishTop+1;if(G.fish.visible)vbar(G.fish,-fishTop*K,-W.packer*K);
- const pkrOn=G.tbg.visible&&Math.abs(str-W.packer)<15||G.fish.visible||(!rig&&true);G.pkr.visible=pkrOn||s.pkr>0;G.pkr.scale.set(s.pkr>0?1:.62,1,s.pkr>0?1:.62);G.pkr.position.y=-(G.tbg.visible&&!G.fish.visible&&rig?Math.min(str,W.packer):W.packer)*K;
+ const pkrOn=G.tbg.visible&&Math.abs(str-W.packer)<15||G.fish.visible||(!rig&&!frac);G.pkr.visible=pkrOn||s.pkr>0;G.pkr.scale.set(s.pkr>0?1:.62,1,s.pkr>0?1:.62);G.pkr.position.y=-(G.tbg.visible&&!G.fish.visible&&rig?Math.min(str,W.packer):W.packer)*K;
  if(rig&&G.tbg.visible&&str<W.packer-15&&!G.fish.visible)G.pkr.position.y=-str*K;
- G.sssv.visible=G.tbg.visible&&str>W.sssv;G.sssv.material.color.set(s.sssv>.5?0x2ecc71:0xe74c3c);
+ G.sssv.visible=G.tbg.visible&&str>W.sssv;G.pkr.visible=G.pkr.visible&&!frac;G.sssv.material.color.set(s.sssv>.5?0x2ecc71:0xe74c3c);
  G.perf.visible=s.perf>0.02;G.perfM.emissive.set(s.perf>0.02&&s.perf<0.98?0xff6a00:0x000000);G.perf.scale.set(1,1,1);
  vbar(G.kill,0,-Math.min(W.perf[0],s.kill*W.perf[0])*K);G.kill.visible=s.kill>0.01;
  G.sand.visible=s.sand>0.01;vbar(G.sand,-W.sandTop*K,-W.packer*K);G.gp.visible=s.gp>0.01;vbar(G.gp,-(W.perf[1]+3)*K,-(W.perf[1]+3-(W.perf[1]-W.perf[0]+12)*s.gp)*K);
@@ -101,15 +102,43 @@ function apply(s,t){const W=E.WELL,rig=s.unit=='rig',truck=!rig;G.rig.visible=ri
  if(G.toolName!=s.tool){G.toolName=s.tool;mkTool(s.tool)}G.tool.visible=!!s.tool;const td=rig&&s.tool&&s.tool!='cutter'?Math.max(s.tdep,str):s.tdep;G.tool.position.set(s.jar?Math.sin(t*40)*.08:0,-td*K,0);
  G.line.visible=!!s.tool&&(truck||s.tool=='cutter');if(G.line.visible){vbar(G.line,G.lub.visible?G.lub.position.y+4.5:1,-td*K);G.line.scale.x=G.line.scale.z=s.unit=='ct'?.2:.05}
  G.flow.visible=s.flow>0.05;if(G.flow.visible){const bot=Math.min(W.perf[0],str||W.packer)*K;for(const p of G.flow.children){const u=(p.userData.k+t*.15)%1;p.position.set(Math.sin(p.userData.k*40)*.2,-bot*(1-u),0)}}
- if(R.view=='auto'){const foc=s.tool?td:(rig&&s.str>40&&s.str<W.packer-40?s.str:0);const ty=foc>40?-foc*K:6;ctl.target.y+=(ty-ctl.target.y)*.05}}
-// ---------- UI ----------
-function hud(s){const W=E.WELL,f=(v,d=1)=>Number.isFinite(v)?v.toFixed(d):'–';const unit={rig:'Pulling unit',slick:'Slickline unit',wl:'E-line unit',ct:'Coiled tubing unit'}[s.unit];
+ if(R.view=='auto'){const foc=frac&&s.fr?(s.fr.top+s.fr.bot)/2:s.tool?td:(rig&&s.str>40&&s.str<W.packer-40?s.str:0);const ty=foc>40?-foc*K:6,dy=(ty-ctl.target.y)*.05;ctl.target.y+=dy;cam.position.y+=dy}}
+// ---------- frac (SIM): spread on surface, plug-and-perf stages, PKN fracture wings growing in 3D ----------
+function buildFrac(){const F=E.FR,J=E.jobs().frac;G.FD=J.D;G.spread=new THREE.Group();scene.add(G.spread);const sm=M(0x9aa5b0,{metalness:.7});
+ const truck=(x,z,col,len=9)=>{const g=new THREE.Group();const b=box(len,2.6,2.6,M(col));b.position.y=1.9;g.add(b);const c=box(2.4,2.4,2.6,M(0xd0d6dc));c.position.set(-len/2-1.3,1.8,0);g.add(c);for(const xx of [-len/2+1,len/2-1.5])for(const zz of [-1.3,1.3]){const w=cyl(.6,.4,M(0x222222));w.rotation.x=Math.PI/2;w.position.set(xx,.6,zz);g.add(w)}g.position.set(x,0,z);G.spread.add(g);return g};
+ for(let k=0;k<6;k++){const t=truck(18+(k%3)*0,0,0xc0392b);t.position.set(14+Math.floor(k/3)*0,0,(k%3)*4-4+(k>=3?0:0));t.position.x=k<3?16:30;t.rotation.y=k<3?0:Math.PI;const pe=box(2.2,1.6,1.8,sm);pe.position.set(k<3?3:-3,3.4,0);t.add(pe)}// 6 pump trucks (2 rows)
+ const bl=truck(23,-14,0xe67e22,8);const tub=cyl(1.1,1.6,sm);tub.position.set(2,3.6,0);bl.add(tub);// blender
+ const van=truck(8,-16,0x2c3e50,7);van.rotation.y=Math.PI/2;// data van
+ for(let k=0;k<3;k++){const si=cyl(1.6,9,M(0xd9c27a,{metalness:.2}));si.position.set(32+k*3.6,4.5,-15);G.spread.add(si)}// sand silos
+ const man=box(14,.8,1.2,M(0x5d6d7e));man.position.set(23,1.2,0);G.spread.add(man);// missile manifold
+ const iron=box(21,.35,.35,M(0x8e44ad));iron.position.set(11.5,1.2,0);G.spread.add(iron);const iu=box(.35,3.2,.35,M(0x8e44ad));iu.position.set(1,2.6,0);G.spread.add(iu);
+ G.wings=[];G.FD.forEach((S,k)=>{const g=new THREE.Group();const fm=M(0x4fc3ff,{transparent:true,opacity:.55,side:THREE.DoubleSide,depthWrite:false,emissive:0x1a6a9a});const pm=M(0xf5b041,{transparent:true,opacity:.8,side:THREE.DoubleSide,emissive:0x5a3a00});
+  const a=new THREE.Mesh(new THREE.CircleGeometry(1,40),fm);const b=new THREE.Mesh(new THREE.CircleGeometry(1,40),pm);b.position.z=.01;g.add(a,b);g.userData={a,b};g.rotation.y=Math.PI/2*0+0.6;scene.add(g);
+  const pr=new THREE.Group();for(let d=-6;d<=6;d+=3)for(let q=0;q<4;q++){const c=new THREE.Mesh(new THREE.ConeGeometry(.1,.9,6),M(0xff5a2a));const an=q*Math.PI/2+d;c.rotation.z=Math.PI/2;c.rotation.y=an;c.position.set(Math.cos(an)*1.5,-(S.zc+d)*K,-Math.sin(an)*1.5);pr.add(c)}scene.add(pr);
+  const pl=cyl(1.05,.25,M(0x2e86c1));pl.position.y=-(S.zc+12)*K;scene.add(pl);G.wings.push({g,pr,pl,S})})}
+function applyFrac(s){const on=s.unit=='frac';G.spread.visible=on&&s.spread>.5;G.wings.forEach((w,k)=>{const live=on&&k==(s.stg|0)&&s.fr,fin=on&&(k<(s.stg|0)||k==(s.stg|0)&&!s.fr&&s.ft>1);
+  w.pr.visible=on&&s.perfs>k;w.pl.visible=on&&k>0&&s.plug!==0&&k<=(s.stg|0)&&(k<(s.stg|0)||s.plug>=k);
+  const h=live?s.fr:fin?{xf:w.S.xf,hf:w.S.hf,top:w.S.top,bot:w.S.bot,Vp:w.S.prop,cf:1}:null;w.g.visible=!!h&&on;
+  if(h){const sx=Math.max(.05,h.xf*K),sy=Math.max(.05,h.hf/2*K);w.g.position.y=-((h.top+h.bot)/2)*K;w.g.userData.a.scale.set(sx,sy,1);const pf=Math.min(.95,Math.max(0,(h.Vp||0)/Math.max(1,w.S.prop)))*.85;w.g.userData.b.scale.set(sx*pf+.001,sy*pf*.8+.001,1);
+   w.g.userData.b.material.emissive.set(live&&s.fr.risk>.8?0x7a1a00:0x5a3a00)}})}
+
+function hud(s){const W=E.WELL,f=(v,d=1)=>Number.isFinite(v)?v.toFixed(d):'–';
+ if(s.unit=='frac'){const S=G.FD?.[s.stg|0],h=s.fr;const rk=h?h.risk:0,rc=rk>.8?'#ff6b6b':rk>.5?'#ffd166':'#7fe3a0';
+  return `<b>Frac spread</b> <span class=wosim>SIM</span><br>${esc(S?.name||'')}<br>${h?`${esc(h.seg)} · rate ${f(h.q)} m³/min<br>Treating P ${f(h.p)} MPa (max ${E.FR.FW.maxP})<br>Prop conc ${f(h.cb,0)} kg/m³ BH<br>BHP ${f(h.bhp)} · Pnet ${f(h.pnet,2)} MPa<br>xf ${f(h.xf,0)} m · hf ${f(h.hf,0)} m · w ${f(h.w*1000,1)} mm<br><span style="color:${rc}">Screenout risk ${f(rk*100,0)} %${h.so?' · SCREENOUT':''}</span>`:`Shmin ${f(S?.st.sh)} MPa at ${S?.zc} m<br>${s.ft>1?`ISIP ${f(S.ISIP)} MPa · Pnet ${f(S.pnet,2)} MPa<br>FG ${f(S.fg,3)} SG · xf ${f(S.xf,0)} m`:'Not pumping'}`}${s.tool?`<br>Tool ${f(s.tdep,0)} m · line ${f(s.hook)} kN`:''}`}
+const unit={rig:'Pulling unit',slick:'Slickline unit',wl:'E-line unit',ct:'Coiled tubing unit'}[s.unit];
  return `<b>${unit}</b> <span class=wosim>SIM</span><br>${s.unit=='rig'?'String '+f(s.str,0)+' m':'Tool '+f(s.tdep,0)+' m'}<br>${s.unit=='rig'?'Hookload':s.unit=='ct'?'CT weight':'Line tension'} ${f(s.hook)} kN<br>WHP ${f(s.whp)} MPa · BHP ${f(s.bhp)} MPa<br>Kill SG ${f(E.killSG(),3)}${s.kill>.5?' (in hole)':''}<br>Packer ${s.pkr>.5?'set':'free'} · SSSV ${s.sssv>.5?'open':'closed'}<br>${s.tree>.5?'Tree on':s.bop>.5?'BOP on':'Open wellhead'}${s.flow>.5?' · flowing':''}`}
 function renderList(){const J=R.J,TL=R.TL,s=R.last||{i:0};$('#woSteps').innerHTML=TL.steps.map((st,k)=>`<div data-k=${k} class="${k==s.i&&!s.done?'cur':k<s.i||s.done?'dn':''}">${k<s.i||s.done?'✓':k==s.i?'▶':'·'} ${k+1}. ${esc(st.t)}</div>`).join('');
  $('#woSteps').querySelectorAll('[data-k]').forEach(d=>d.onclick=()=>{seek(TL.steps[+d.dataset.k].t0+.001);R.hold=false});const cur=TL.steps[s.i];
  $('#woCalc').innerHTML=cur?.calc?esc(cur.calc):'<i>No calculation for this step</i>';
  $('#woChk').innerHTML=(cur?.chk||[]).map((c,j)=>`<label><input type=checkbox data-j=${j} ${R.ticks[s.i+':'+j]?'checked':''}>${esc(c)}</label>`).join('')||'<small>No checks for this step</small>';
  $('#woChk').querySelectorAll('input').forEach(b=>b.onchange=()=>{R.ticks[s.i+':'+b.dataset.j]=b.checked;status()})}
+function chart(s){const cv=$('#woChart');if(!cv)return;const on=s.unit=='frac';cv.style.display=on?'block':'none';if(!on)return;const S=G.FD?.[s.stg|0];if(!S)return;
+ const x=cv.getContext('2d'),W=cv.width,H=cv.height,T=S.H.at(-1).t,P=Math.max(20,Math.ceil(S.maxP/10)*10+10),pad=36;x.fillStyle='#08111d';x.fillRect(0,0,W,H);
+ x.strokeStyle='#1f3550';x.lineWidth=1;x.font='18px system-ui';x.fillStyle='#8aa';for(let k=0;k<=4;k++){const y=pad/2+(H-pad)*k/4;x.beginPath();x.moveTo(pad,y);x.lineTo(W-4,y);x.stroke();x.fillText((P*(1-k/4)).toFixed(0),2,y+6)}
+ const upto=s.fr?s.ft:(s.ft>1?T:0),X=t=>pad+(W-pad-4)*t/T,Y=(v,m)=>pad/2+(H-pad)*(1-v/m);
+ const line=(key,m,col)=>{x.strokeStyle=col;x.lineWidth=3;x.beginPath();let f=1;for(const h of S.H){if(h.t>upto)break;const y=Y(h[key],m);f?x.moveTo(X(h.t),y):x.lineTo(X(h.t),y);f=0}x.stroke()};
+ line('p',P,'#ff6b6b');line('q',12,'#4fc3ff');line('cb',1200,'#f5b041');x.font='bold 20px system-ui';[['Treating P (MPa)','#ff6b6b'],['Rate (0–12 m³/min)','#4fc3ff'],['Proppant (0–1200 kg/m³)','#f5b041'],['SIM','#aab']].reduce((xx,[t,c])=>{x.fillStyle=c;x.fillText(t,xx,H-4);return xx+x.measureText(t).width+16},pad);
+ if(s.ft>1&&!s.fr||s.fr?.q==0){x.fillStyle='#fff';x.fillText('ISIP '+S.ISIP.toFixed(1)+' MPa',W-170,30)}}
 function checksDone(i){return (R.TL.steps[i]?.chk||[]).every((_,j)=>R.ticks[i+':'+j])}
 function status(){const s=R.last;if(!s)return;const TL=R.TL;$('#woBar').style.width=(100*Math.min(1,R.t/TL.T))+'%';
  $('#woSt').textContent=s.done?'Job complete (SIM). Pick another job or press Play to repeat.':R.hold?(checksDone(s.i)?'Step done. Press Step to go on.':'Tick the checks, then press Step.'):R.play?'Running: step '+(s.i+1)+' of '+TL.steps.length:'Paused. Press Play or Step.';
@@ -121,7 +150,7 @@ let lastT=0;function tick(dt,force){const J=R.J[R.job],TL=R.TL;if(R.play&&!R.hol
  if(R.stepMode&&R.play&&!R.hold&&s.i!=R.lastI&&R.lastI>=0&&s.i>R.lastI){R.t=TL.steps[s.i].t0-1e-6;R.hold=true;s=E.stateAt(J,TL,R.t);s.i=R.lastI}
  if(!R.stepMode&&s.i!=R.lastI)for(let k=0;k<s.i;k++)(TL.steps[k].chk||[]).forEach((_,j)=>R.ticks[k+':'+j]=true);
  if(s.done)R.play=false;
- R.last=s;apply(s,performance.now()/1000);$('#woHud').innerHTML=hud(s);if(s.i!=R.lastI||force||s.done!=R.lastDone){R.lastI=R.hold?R.lastI:s.i;R.lastDone=s.done;renderList()}status();
+ R.last=s;apply(s,performance.now()/1000);$('#woHud').innerHTML=hud(s);chart(s);if(s.i!=R.lastI||force||s.done!=R.lastDone){R.lastI=R.hold?R.lastI:s.i;R.lastDone=s.done;renderList()}status();
  $('#woPlay').classList.toggle('on',R.play)}
 function clock(){if(!R.el)return;const now=performance.now(),dt=Math.min(.5,(now-(lastT||now))/1000);lastT=now;tick(dt)}// time runs on a timer so slow GPUs do not slow the job clock
 function loop(){if(!R.el)return;apply(R.last,performance.now()/1000);ctl.update();ren.render(scene,cam);R.raf=requestAnimationFrame(loop)}
@@ -135,7 +164,7 @@ export async function open(jobKey='workover'){if(R.el)close();const st=document.
  <div class=woctl><button id=woPlay>▶ Play</button><button id=woStep>⏭ Step</button><button id=woPause>⏸ Pause</button><button id=woStop>■ Stop</button>
  <label style="font-size:13px"><input type=checkbox id=woSm> step-by-step</label> Speed <select id=woSpd>${[.5,1,2,5].map(v=>`<option ${v==1?'selected':''}>${v}</option>`).join('')}</select></div>
  <div class=wobar><i id=woBar style="width:0"></i></div><div id=woSt style="color:#fd8;font-size:13px"></div>
- <div class=wocalc id=woCalc></div><div class=wochk id=woChk></div><div class=wosteps id=woSteps></div>
+ <canvas class=wochart id=woChart width=700 height=300></canvas><div class=wocalc id=woCalc></div><div class=wochk id=woChk></div><div class=wosteps id=woSteps></div>
  <small style="opacity:.65">SIM teaching model. Simplified methods: see the guide. Not for real well design.</small></div>`;
  document.body.appendChild(d);await build(d.querySelector('canvas'));
  $('#woX').onclick=close;$('#woJob').onchange=e=>{R.play=false;setJob(e.target.value)};
