@@ -3,6 +3,12 @@
 import * as E from './woeng.js';
 let THREE,OC;const K=0.02;// depth scale in the cut-away: 1 m downhole = 0.02 scene units (surface kit is 1:1 in metres)
 const R={el:null,J:null,job:null,TL:null,t:0,play:false,speed:1,stepMode:false,hold:false,ticks:{},raf:0,last:null,view:'auto'};
+// Job clock on wall time: R.t is read live, so time advances even when long main-thread tasks (shader compile in the main game,
+// strat.js init) delay the timer. Changing play/hold/speed first banks the elapsed time.
+{const C={t:0,play:false,hold:false,speed:1,w:0};const now=()=>performance.now();
+ const bank=()=>{const n=now();if(C.play&&!C.hold&&R.TL)C.t=Math.min(R.TL.T,C.t+(n-C.w)/1000*C.speed);C.w=n};
+ Object.defineProperty(R,'t',{get(){bank();return C.t},set(v){bank();C.t=v},enumerable:true});
+ for(const k of ['play','hold','speed'])Object.defineProperty(R,k,{get(){return C[k]},set(v){bank();C[k]=v},enumerable:true})}
 const $=s=>R.el?.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const CSS=`#wo{position:fixed;inset:0;z-index:100000;background:#0b1422;color:#e8f2ff;font:14px system-ui,-apple-system,Segoe UI,sans-serif}
@@ -73,7 +79,7 @@ async function build(cv){THREE=THREE||await import('three');OC=OC||(await import
  G.woLbl=[lbl('SSSV '+E.WELL.sssv+' m',-E.WELL.sssv*K),lbl('Packer '+E.WELL.packer+' m',-E.WELL.packer*K,'#fc9'),lbl('Perfs '+E.WELL.perf.join('–')+' m',-E.WELL.perf[0]*K-.4,'#f97'),lbl('Shoe '+E.WELL.csg.shoe+' m',-E.WELL.csg.shoe*K-.5,'#ccc')];G.frLbl=G.FD.map(S=>lbl(S.name.split(' (')[0]+' '+S.zc+' m',-S.zc*K,'#7fe3ff'));
  for(let d=500;d<E.WELL.td;d+=500)lbl(d+' m',-d*K,'#678');
  addEventListener('resize',fit);fit()}
-async function earth(){let F=null;try{const S=await import('./strat.js');E.stratReady?.(S);const Mdl=S.SIM_STRAT?S.SIM_STRAT():null;F=(Mdl?.formations||[]).map(f=>({name:f.name,top:f.top,col:(S.LITH?.[f.lith]?.color)||null}))}catch(e){}
+async function earth(){let F=null;try{const S=await import('./strat.js');E.stratReady?.(S);const Mdl=S.model?S.model():S.SIM_STRAT?S.SIM_STRAT():null;F=(Mdl?.formations||[]).map(f=>({name:f.name,top:f.top,col:(S.LITH?.[f.lith]?.color)||null}))}catch(e){}
  if(!F?.length)F=[{name:'Soil/clay',top:0,col:'#6b5a3a'},{name:'Sandstone',top:150,col:'#c9a96a'},{name:'Shale',top:700,col:'#5a6470'},{name:'Limestone',top:1250,col:'#9fa79a'},{name:'Shale',top:1900,col:'#4d5761'},{name:'Reservoir sand',top:2410,col:'#d8b26a'},{name:'Shale',top:2470,col:'#4d5761'}];
  for(let i=0;i<F.length;i++){const a=Math.max(0,F[i].top),b=Math.min(E.WELL.td+60,F[i+1]?.top??E.WELL.td+60);if(b<=a)continue;const m=box(40,(b-a)*K,.4,M(new THREE.Color(F[i].col||'#556'),{roughness:1,metalness:0}));m.position.set(0,-(a+b)/2*K,-6);G.earth.add(m)}}
 function fit(){if(!ren||!R.el)return;const c=ren.domElement;const w=c.clientWidth,h=c.clientHeight;ren.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix()}
@@ -145,14 +151,14 @@ function status(){const s=R.last;if(!s)return;const TL=R.TL;$('#woBar').style.wi
  $('#woStep').disabled=R.hold&&!checksDone(s.i)}
 function setJob(key){R.J=E.jobs();for(const k in R.J)R.J[k].key=k;R.job=R.J[key]?key:'workover';R.TL=E.timeline(R.J[R.job]);R.t=0;R.ticks={};R.hold=false;$('#woJob').value=R.job;R.lastI=-1;tick(0,true)}
 function seek(t){R.t=Math.max(0,Math.min(R.TL.T,t));tick(0,true)}
-let lastT=0;function tick(dt,force){const J=R.J[R.job],TL=R.TL;if(R.play&&!R.hold)R.t=Math.min(TL.T,R.t+dt*R.speed);
+let lastT=0;function tick(dt,force){const J=R.J[R.job],TL=R.TL;
  let s=E.stateAt(J,TL,R.t);
- if(R.stepMode&&R.play&&!R.hold&&s.i!=R.lastI&&R.lastI>=0&&s.i>R.lastI){R.t=TL.steps[s.i].t0-1e-6;R.hold=true;s=E.stateAt(J,TL,R.t);s.i=R.lastI}
+ if(R.stepMode&&R.play&&!R.hold&&s.i!=R.lastI&&R.lastI>=0&&s.i>R.lastI){R.t=TL.steps[R.lastI+1].t0-1e-6;R.hold=true;s=E.stateAt(J,TL,R.t);s.i=R.lastI}
  if(!R.stepMode&&s.i!=R.lastI)for(let k=0;k<s.i;k++)(TL.steps[k].chk||[]).forEach((_,j)=>R.ticks[k+':'+j]=true);
  if(s.done)R.play=false;
  R.last=s;apply(s,performance.now()/1000);$('#woHud').innerHTML=hud(s);chart(s);if(s.i!=R.lastI||force||s.done!=R.lastDone){R.lastI=R.hold?R.lastI:s.i;R.lastDone=s.done;renderList()}status();
  $('#woPlay').classList.toggle('on',R.play)}
-function clock(){if(!R.el)return;const now=performance.now(),dt=Math.min(.5,(now-(lastT||now))/1000);lastT=now;tick(dt)}// time runs on a timer so slow GPUs do not slow the job clock
+function clock(){if(!R.el)return;const now=performance.now(),dt=Math.min(3,(now-(lastT||now))/1000);lastT=now;try{tick(dt)}catch(e){console.warn('workover tick',e)}}// time runs on a wall-clock timer so slow GPUs or long main-thread tasks (strat.js, main game) do not stop the job clock
 function loop(){if(!R.el)return;apply(R.last,performance.now()/1000);ctl.update();ren.render(scene,cam);R.raf=requestAnimationFrame(loop)}
 export async function open(jobKey='workover'){if(R.el)close();const st=document.createElement('style');st.id='woCss';st.textContent=CSS;document.head.appendChild(st);
  const d=document.createElement('div');d.id='wo';R.el=d;const J=E.jobs(),cats=[...new Set(Object.values(J).map(j=>j.cat))];
