@@ -44,7 +44,7 @@ function draw(){const c=$('gsCur'),k=$('gsLog');if(!c)return;const n=Math.max(2,
  g.fillStyle='#3a3226';g.fillRect(0,0,W,H);g.fillStyle='#c9a646';g.beginPath();for(let x=x0;x<=x1;x+=5)g.lineTo(X(x),Y(geology(x).top));for(let x=x1;x>=x0;x-=5)g.lineTo(X(x),Y(geology(x).base));g.fill();
  g.lineWidth=2*s;for(const [k2,col] of [['top','#ffe066'],['base','#ff6b6b']]){g.strokeStyle=col;g.beginPath();for(let x=x0;x<=x1;x+=5)g.lineTo(X(x),Y(geology(x)[k2]));g.stroke()}
  g.strokeStyle='#fff';g.setLineDash([4*s,4*s]);g.beginPath();g.moveTo(X(520),0);g.lineTo(X(520),H-18*s);g.stroke();g.setLineDash([]);
- g.font=`${11*s}px system-ui`;g.fillStyle='#ffe066';const tl=EM.on?`TOP ${EM.name} (${isLiveSrc(EM.src)?EM.src:'SIM'} earth model)`:'TARGET TOP (SIM)';g.fillText(tl,4*s,Y(geology(x0).top)-4*s);g.fillStyle='#ff6b6b';g.fillText(EM.on?'BASE '+EM.name:'TARGET BASE (SIM)',4*s,Y(geology(x0).base)+13*s);g.fillStyle='#fff';if(X(520)>0&&X(520)<W)g.fillText('fault (SIM)',X(520)+3*s,12*s);
+ g.font=`${11*s}px system-ui`;g.fillStyle='#ffe066';const tl=EM.on?`TOP ${EM.name} (${isLiveSrc(EM.src)?EM.src:'SIM'} earth model)`:'TARGET TOP (SIM)';g.fillText(tl,4*s,Y(geology(x0).top)-4*s);g.fillStyle='#ff6b6b';g.fillText(EM.on?'BASE '+EM.name:'TARGET BASE (SIM)',4*s,Y(geology(x0).base)+13*s);g.fillStyle='#fff';if(!EM.on&&X(520)>0&&X(520)<W)g.fillText('fault (SIM)',X(520)+3*s,12*s);
  g.strokeStyle='#2f7cff';g.lineWidth=3*s;g.beginPath();S.forEach(p=>g.lineTo(X(p.x),Y(p.tvd)));g.stroke();
  for(const d of M.dec)if(d.x<=b.x){g.fillStyle=/up/.test(d.act)?'#7cf':/down/.test(d.act)?'#f9a':'#7f7';g.beginPath();g.arc(X(d.x),Y(d.tvd),4*s,0,7);g.fill()}
  g.fillStyle='#0f0';g.beginPath();g.arc(X(b.x),Y(b.tvd),6*s,0,7);g.fill();
