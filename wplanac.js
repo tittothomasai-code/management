@@ -24,7 +24,8 @@ const HOLE={'20':26,'13-3/8':17.5,'9-5/8':12.25,'7':8.5,'4-1/2':6};
 export function sectionsFromPlan(W){const CS=W.CS||[];let top=0;const td=W.L?.td??W.S.rows.at(-1).md,out=[];
  const pts=CS.length?CS:[{name:'TD',md:td}];for(const c of pts){const m=/(\d+(?:-\d+\/\d+)?)"/.exec(c.name),csg=m?m[1]:'7',len=Math.max(1,c.md-top),r=W.S.rows.filter(x=>x.md>top&&x.md<=c.md),maxInc=Math.max(0,...r.map(x=>x.inc));
   out.push({name:c.name,mdTop:top,mdBot:c.md,len,csg,holeIn:HOLE[csg]||8.5,rop:csg=='13-3/8'?30:csg=='9-5/8'?20:12,bitLife:csg=='13-3/8'?900:600,bitType:'PDC',dir:maxInc>5,log:csg!='13-3/8'});top=c.md}return out}
-export function afePlan(W,o={}){const R={...K.RATES,spread:o.rig??OPT.rig},secs=sectionsFromPlan(W),A=K.afe(secs,{R,n:o.n||300,seed:o.seed||7});
+export function sharedRates(){return globalThis.GX?.wpg?.G?.rates||null}
+export function afePlan(W,o={}){const sr=o.rates||sharedRates()||{},R={...K.RATES,...sr,spread:o.rig??sr.spread??OPT.rig},secs=sectionsFromPlan(W),A=K.afe(secs,{R,n:o.n||300,seed:o.seed||7});
  const cons=A.rows.map(s=>{const hv=Math.PI/4*(s.holeIn*0.0254)**2*s.len;return {name:s.name,mudM3:hv*1.8,cemM3:hv*0.5,bits:s.bits,casingM:s.mdBot}});
  return {...A,rig:R.spread,cons,tag:'SIM'}}
 // ---------------- UI ----------------
@@ -60,17 +61,17 @@ function tabAC(B){const W=W0();recalc(W);const has=S.offs.length;B.innerHTML=`<d
  <canvas id=acPlan style="width:100%;height:min(36vh,300px);display:block;border-radius:8px;margin-top:6px"></canvas>`;
  bindHead(B,W,tabAC);$('acEdm')?.addEventListener('click',()=>globalThis.GX?.edm?.open?.());planCanvas($('acPlan'),W)}
 const usd=v=>'$'+(v/1e6).toFixed(2)+' M';
-function tabAFE(B){const W=W0();S.afe=afePlan(W,{rig:OPT.rig});const A=S.afe;B.innerHTML=`<div style="margin:4px 0"><b>Cost and time (AFE)</b> ${tag} · all values are estimates for training</div>
- <div style="font-size:12px">Rig spread rate <input id=afeRig type=number value=${OPT.rig} style="width:90px"> USD/day <button id=afeGo>Apply</button></div>
+function tabAFE(B){const W=W0();S.afe=afePlan(W,sharedRates()?{}:{rig:OPT.rig});const A=S.afe;B.innerHTML=`<div style="margin:4px 0"><b>Cost and time (AFE)</b> ${tag} · all values are estimates for training</div><div id=afeNote style="font-size:11px;color:#9ab">Uses the same rates as the AFE tab. The AFE tab also adds risk lines, so its P50 is higher.</div>
+ <div style="font-size:12px">Rig spread rate <input id=afeRig type=number value=${A.rig} style="width:90px"> USD/day <button id=afeGo>Apply</button></div>
  <table class=wpT style="font-size:12px;width:100%" id=afeTbl><tr><th style="text-align:left">Section</th><th>Hole in</th><th>Length m</th><th>Days</th><th>Bits</th><th>Mud m³</th><th>Cement m³</th><th>Cost</th></tr>
  ${A.rows.map((s,i)=>`<tr><td style="text-align:left">${es(s.name)}</td><td>${s.holeIn}</td><td>${s.len.toFixed(0)}</td><td>${s.days.toFixed(1)}</td><td>${s.bits}</td><td>${A.cons[i].mudM3.toFixed(0)}</td><td>${A.cons[i].cemM3.toFixed(0)}</td><td>${usd(s.cost)}</td></tr>`).join('')}
  <tr style="font-weight:700"><td style="text-align:left">Total (with mob + wellhead)</td><td></td><td></td><td id=afeDays>${A.days.toFixed(1)}</td><td></td><td></td><td></td><td id=afeCost>${usd(A.cost)}</td></tr></table>
  <div style="font-size:12px;margin:4px 0">P10 / P50 / P90: ${A.P10.days.toFixed(1)} / ${A.P50.days.toFixed(1)} / ${A.P90.days.toFixed(1)} days · ${usd(A.P10.cost)} / ${usd(A.P50.cost)} / ${usd(A.P90.cost)} ${tag}</div>
  <canvas id=afeDvd style="width:100%;height:min(34vh,260px);display:block;border-radius:8px"></canvas>`;
- $('afeGo').onclick=()=>{OPT.rig=+$('afeRig').value||52000;tabAFE(B)};dvd($('afeDvd'),A)}
+ $('afeGo').onclick=()=>{OPT.rig=+$('afeRig').value||52000;const r=sharedRates();if(r)r.spread=OPT.rig;tabAFE(B)};dvd($('afeDvd'),A)}
 function dvd(cv,A){const c=cv.getContext('2d'),w=cv.width=cv.clientWidth*devicePixelRatio,h=cv.height=cv.clientHeight*devicePixelRatio,d=devicePixelRatio;c.fillStyle='#06101a';c.fillRect(0,0,w,h);
  const T=A.tdT,dm=Math.max(...T.map(x=>x[1]))*1.1,mm=Math.max(...T.map(x=>x[0]))*1.05,L=40*d,X=v=>L+v/dm*(w-L-10*d),Y=v=>12*d+v/mm*(h-30*d);
  c.strokeStyle='#2a4060';c.font=`${10*d}px system-ui`;c.fillStyle='#9ab';for(let i=0;i<=4;i++){const y=Y(mm*i/4);c.beginPath();c.moveTo(L,y);c.lineTo(w,y);c.stroke();c.fillText((mm*i/4).toFixed(0),2,y+3*d)}
  c.strokeStyle='#4fc3ff';c.lineWidth=2*d;c.beginPath();T.forEach(([m,t],i)=>c[i?'lineTo':'moveTo'](X(t),Y(m)));c.stroke();c.fillText('Days vs depth (m MD) · SIM',L+4*d,h-4*d)}
-export function register(W){W0=()=>W;W.tabs.push(['acell','Error ellipses'],['acedm','AC vs EDM'],['afe','Cost / AFE']);W.ext.acell=tabEll;W.ext.acedm=tabAC;W.ext.afe=tabAFE;
- W.on3d.push(T=>{if(!S.unc)recalc(W);on3d(T)});globalThis.GX=globalThis.GX||{};GX.wplanac={OPT,S,uncertainty,edmOffsets,antiCollision,afePlan,sfOne,light,recalc:()=>recalc(W)}}
+export function register(W){W0=()=>W;W.tabs.push(['acell','Error ellipses'],['acedm','AC vs EDM'],['afe','AFE by section']);W.ext.acell=tabEll;W.ext.acedm=tabAC;W.ext.afe=tabAFE;
+ W.on3d.push(T=>{if(!S.unc)recalc(W);on3d(T)});globalThis.GX=globalThis.GX||{};import('./wplanpol.js?v=G6').then(m=>m.register(W)).catch(e=>console.error('wplanpol',e));GX.wplanac={OPT,sharedRates,S,uncertainty,edmOffsets,antiCollision,afePlan,sfOne,light,recalc:()=>recalc(W)}}
