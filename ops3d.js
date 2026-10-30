@@ -51,6 +51,7 @@ let THREE;export async function open(mode='casing',{demo=false,speed=1}={}){THRE
  <div style="position:absolute;left:10px;top:10px;right:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;pointer-events:none"><b style="font-size:15px">Casing run · 9-5/8" intermediate</b><span id=o3sim style="background:#b58900;color:#000;border-radius:6px;padding:1px 7px;font-weight:700">SIM</span><small style="opacity:.75">SIM proposal A · radial scale ×${RX} · teaching animation, not an engineered run</small>${demo?'':'<button id=o3x style="margin-left:auto;pointer-events:auto">✕</button>'}</div>
  <div id=o3hud style="position:absolute;left:10px;bottom:calc(12px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(3,auto);gap:4px 14px;background:#0b1320cc;border:1px solid #2a3a50;border-radius:10px;padding:8px 10px;font-variant-numeric:tabular-nums;max-width:calc(100% - 20px)"></div>
  <div id=o3msg style="position:absolute;left:50%;top:48px;transform:translateX(-50%);max-width:min(560px,92vw);text-align:center;background:#0b1320dd;border:1px solid #2a3a50;border-radius:10px;padding:6px 10px;opacity:0;transition:opacity .3s"></div>
+ <button id=o3next style="display:none;position:absolute;right:10px;top:216px;background:#1b2636;color:#e6eef8;border:1px solid #ffd54f;border-radius:8px;padding:6px 10px;min-height:36px">Next: cement ▸</button>
  <canvas id=o3prof width=160 height=220 style="position:absolute;right:10px;top:44px;width:120px;height:165px;background:#0b1320cc;border:1px solid #2a3a50;border-radius:8px"></canvas>`;
  document.body.appendChild(S);const cv=S.querySelector('#o3c'),R=new THREE.WebGLRenderer({canvas:cv,antialias:true});R.setPixelRatio(Math.min(2,devicePixelRatio));
  const sc=new THREE.Scene();sc.background=new THREE.Color(0x05080d);sc.fog=new THREE.Fog(0x05080d,120,420);const cam=new THREE.PerspectiveCamera(50,1,0.5,3000);
@@ -80,7 +81,7 @@ let THREE;export async function open(mode='casing',{demo=false,speed=1}={}){THRE
  const resize=()=>{const W_=S.clientWidth,H=S.clientHeight;R.setSize(W_,H,false);cam.aspect=W_/H;cam.updateProjectionMatrix()};resize();addEventListener('resize',resize);
  let t0=performance.now(),seekT=null,alive=true,camP=new THREE.Vector3(30,20,30),camL=new THREE.Vector3();
  const api={P,w,mode,stateAt:t=>stateAt(P,w,t),get t(){return seekT??(performance.now()-t0)/1000*speed},seek(t){seekT=t},play(){if(seekT!=null){t0=performance.now()-seekT/speed*1000;seekT=null}},close(){alive=false;S.remove();removeEventListener('resize',resize)},last:null};
- window.dwOps=api;S.querySelector('#o3x')?.addEventListener('click',api.close);
+ window.dwOps=api;S.querySelector('#o3next').onclick=()=>{api.close();import('./cem3d.js?v=513').then(m=>m.open())};S.querySelector('#o3x')?.addEventListener('click',api.close);
  const frame=()=>{if(!alive)return;const t=Math.min(api.t,P.T),s=stateAt(P,w,t);api.last=s;
   const seg=Math.max(1,Math.round(s.shoeMD/2));cs.setDrawRange(0,seg*perSeg);shoe.position.copy(V(s.shoeMD));shoe.lookAt(V(s.shoeMD+1));shoe.rotateX(Math.PI/2);
   let n=0;for(let m=s.shoeMD-SHOE-JL;m>0&&n<160;m-=JL)place(collars,n++,m);collars.count=n;
@@ -94,6 +95,6 @@ let THREE;export async function open(mode='casing',{demo=false,speed=1}={}){THRE
   const tn=s.hl/G,ok=s.emw<=s.limit;hud.innerHTML=[['Joints',`${s.joints} / ${P.N}`],['Shoe MD',`${f0(s.shoeMD)} m`],['Shoe TVD',`${f0(s.shoeTVD)} m`],['Hookload',`${f0(s.hl)} kN · ${tn.toFixed(0)} t`],['Run speed',`${s.v.toFixed(2)} m/s`],['Phase',s.phase],
    ['Surge EMW',`<span style="color:${ok?'#3ddc84':'#ff6b6b'}">${s.emw.toFixed(2)}</span> / ${s.limit} SG`],['Swab EMW',s.swab==null?'–':`<span style="color:${s.swab<s.pore?'#ff6b6b':'#3ddc84'}">${s.swab.toFixed(2)}</span> / ${s.pore} SG`],['Unfilled',`${s.emptyM.toFixed(0)} m${s.fill?' · filling':''}`]]
    .map(([a,b])=>`<div><div style="opacity:.65;font-size:11px">${a}</div><b>${b}</b></div>`).join('');
-  msg.textContent=s.msg;msg.style.opacity=s.msg?1:0;prof(s);R.render(sc,cam);requestAnimationFrame(frame)};frame();return api}
+  S.querySelector('#o3next').style.display=s.phase=='landed'?'block':'none';msg.textContent=s.msg;msg.style.opacity=s.msg?1:0;prof(s);R.render(sc,cam);requestAnimationFrame(frame)};frame();return api}
 const RX=25;
 if(typeof location!='undefined'&&new URLSearchParams(location.search).get('demo')=='casing'){const q=new URLSearchParams(location.search);open('casing',{demo:true,speed:+q.get('speed')||1})}
