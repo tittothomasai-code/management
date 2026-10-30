@@ -120,7 +120,7 @@ function css(){if($('ss56css'))return;const s=document.createElement('style');s.
 #ss56 button,#ss56 select{background:#1b2430;color:#dde;border:1px solid #456;border-radius:6px;min-height:36px;padding:0 10px;font-size:14px}
 #ss56 .src{font-weight:600;padding:3px 8px;border-radius:5px}
 #ss56 .wrap{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;padding-bottom:env(safe-area-inset-bottom)}
-#ss56 .hdr{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:2px 10px;padding:6px 8px;border-bottom:1px solid #345}
+#ss56 .wrap>#ss56why,#ss56 .wrap>.leg,#ss56 .wrap>.hdr{position:sticky;left:0;box-sizing:border-box;width:100%}/* v5.8: header/legend stay in view when the wide table scrolls sideways (was an empty band) */#ss56 .hdr{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:2px 10px;padding:6px 8px;border-bottom:1px solid #345}
 #ss56 .hdr div{display:flex;justify-content:space-between;gap:6px;border-bottom:1px dotted #2a3642}
 #ss56 table{border-collapse:separate;border-spacing:0;white-space:nowrap}
 #ss56 th,#ss56 td{border-right:1px solid #233;border-bottom:1px solid #233;padding:3px 6px;text-align:right}
