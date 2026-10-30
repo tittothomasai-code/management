@@ -3,6 +3,7 @@
 // so the whole text is never held in memory. Only the tables/columns the viewer needs are kept; survey stations are packed
 // into numeric arrays and decimated. Nothing is uploaded. Output is tagged IMPORT (never LIVE). EDM lengths are feet → metres.
 import {minCurvM} from './ac.js?v=5924';
+import {trajStats} from './edmstats.js?v=5942';
 const FT=0.3048;
 const KEEP={CD_PROJECT:1,CD_SITE:1,CD_WELL:1,CD_WELLBORE:1,CD_DATUM:1,CD_SCENARIO:1,CD_DESIGN:1,CD_DEFINITIVE_SURVEY_HEADER:1,CD_SURVEY_HEADER:1,CD_PLAN_HEADER:1,CD_WELLPLAN:1,
  CD_ASSEMBLY:1,CD_ASSEMBLY_COMP:1,CD_CASE:1,CD_HOLE_SECT:1,DP_PROJECT_TARGET:1,CD_PROJ_TARG_WELL_LINK:1,CD_PROJECT_TARGET_WB_LINK:1,CD_TARGET:1,CD_WP_TARGET:1,
@@ -74,7 +75,7 @@ export function world(R,{units='ft',name='EDM'}={}){const L=units=='m'?1:FT,len=
   const dd=dl.find(d=>d.def)||dl[0]||null;let E,N;const la=num(w.geo_latitude),lo=num(w.geo_longitude);
   if(geo&&la!=null&&lo!=null&&Math.abs(la)>0.001)({E,N}=enu(la,lo));else if(geo&&s?.lat!=null)({E,N}=enu(s.lat,s.lon));else{E=((s?.mapE??0)-s0.mapE)+(len(num(pick(w,'offset_east','loc_offset_east')))??0)+(len(num(w.slot_ew))??0);N=((s?.mapN??0)-s0.mapN)+(len(num(pick(w,'offset_north','loc_offset_north')))??0)+(len(num(w.slot_ns))??0)}
   const W={id:w.well_id,site:w.site_id,siteName:s?.name||null,project:s?.project||null,name:pick(w,'well_common_name','well_legal_name','well_name')||w.well_id,lat:la,lon:lo,E:r1(E),N:r1(N),
-   mapE:r1(len(num(w.geo_offset_east))),mapN:r1(len(num(w.geo_offset_north))),datum:dd,datums:dl,waterDepth:r1(len(num(w.water_depth))),subsea:w.is_subsea=='Y',created:ts(w.create_date),updated:ts(w.update_date),wbs:[],
+   mapE:r1(len(num(w.geo_offset_east))),mapN:r1(len(num(w.geo_offset_north))),datum:dd,datums:dl,waterDepth:r1(len(num(w.water_depth))),subsea:w.is_subsea=='Y',spud:ts(pick(w,'spud_date','date_spud','spud_dt'))||null,operator:pick(w,'operator','operator_name','company_name')||customer||null,created:ts(w.create_date),updated:ts(w.update_date),wbs:[],
    targets:(tgW.get(w.well_id)||[]).map(x=>ptg.get(x.project_target_id)).filter(Boolean).map(tgt)};
   wells.push(W);s?.wells.push(W.id);const del=dd?.elev??0;
   for(const b of wbsBy.get(w.well_id)||[]){const id=b.wellbore_id;const traj=[];
@@ -87,7 +88,7 @@ export function world(R,{units='ft',name='EDM'}={}){const L=units=='m'?1:FT,len=
    const path=best?decimate(best.pts).map(p=>({md:r1(p.md),E:r1(E+p.ew),N:r1(N+p.ns),Z:r1(p.tvd-del),tvd:r1(p.tvd)})):null;
    wbs.push({id,well:w.well_id,site:w.site_id,name:pick(b,'wellbore_name','wellbore_common_name')||id,status:actual?'Drilled (actual surveys)':traj.length||sc.length?'Planned':'No trajectory',
     bhMD:r1(len(num(b.bh_md))??best?.mdMax??null),bhTVD:r1(len(num(b.bh_tvd))??best?.pts.at(-1).tvd??null),koMD:r1(len(num(b.ko_md))),deviated:b.is_deviated=='Y',bhLat:num(b.geo_latitude_bh),bhLon:num(b.geo_longitude_bh),
-    designs:sc,traj:traj.map(({pts,...t})=>t),kind:best?.kind||null,path,casing:asm.filter(a=>/casing|liner|conductor|tubing/i.test((a.type||'')+' '+(a.name||''))),assemblies:asm,
+    designs:sc,traj:traj.map(({pts,...t})=>t),kind:best?.kind||null,path,st:best?trajStats(best.pts):null,casing:asm.filter(a=>/casing|liner|conductor|tubing/i.test((a.type||'')+' '+(a.name||''))),assemblies:asm,
     cases:(caseBy.get(id)||[]).map(c=>c.case_name),holes:(holeBy.get(id)||[]).sort((x,y)=>(num(x.sequence_no)||0)-(num(y.sequence_no)||0)).map(h=>({type:h.sect_type_code,d:num(h.effective_diameter),len:r1(len(num(h.length)))})),
     formations:(fmBy.get(id)||[]).length,targets:(tgB.get(id)||[]).map(x=>ptg.get(x.project_target_id)).filter(Boolean).map(tgt).concat((tgOld.get(id)||[]).map(tgt))});W.wbs.push(id)}}
  const wbBy=new Map(wbs.map(b=>[b.id,b]));
