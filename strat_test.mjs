@@ -29,6 +29,13 @@ for(const [nm,vp] of [['phone',PH],['desk',DK]]){
   const pr=await p.evaluate(()=>{const S=GX.strat,M=S.model(),a=S.pressureAt(M,800),b=S.pressureAt(M,1600),w=S.mudWindow(),pf=S.pressureProfile();return {a,b,w,mw:S.mudWeight(),n:pf.length,mono:pf.every(q=>q.pp_sg<q.fg_sg&&q.fg_sg<=q.ob_sg+1e-6)}});
   ok(pr.a.pp_sg>=1.0&&pr.a.pp_sg<1.1&&pr.b.pp_sg>pr.a.pp_sg,'pressure: hydrostatic shallow, SIM overpressure deep '+pr.a.pp_sg+' / '+pr.b.pp_sg);
   ok(pr.n>10&&pr.mono,'pressure: PP < FG <= OB along well ('+pr.n+' pts)');ok(typeof pr.mw=='number'&&pr.w&&/OK|NARROW|RISK/.test(pr.w.state),'pressure: mud window from mud weight '+pr.mw+' ppg → '+(pr.w&&pr.w.state));
+  // stage 2c: geosteer + wplan hooks
+  const gh=await p.evaluate(async()=>{const S=GX.strat;const la=S.lookAhead(3000),g=S.geologyFn(S.formationIndex('reservoir'))(200),pr=S.prognosis();let tab='',rows=0;
+   for(let i=0;i<20&&!GX.wplan?.W?.tabs?.some(t=>t[0]=='geology');i++)await new Promise(r=>setTimeout(r,500));
+   if(GX.wplan){GX.wplan.open('geology');await new Promise(r=>setTimeout(r,500));tab=document.getElementById('wpBody')?.innerText||'';rows=document.querySelectorAll('#wpBody tbody tr').length}
+   return {la:la.length,g:g&&g.th>0&&g.top>0,pr:pr.length,tab,rows,pp:!!S.planPath()}});
+  ok(gh.la>=3,'geosteer: lookAhead tops '+gh.la);ok(gh.g,'geosteer: geologyFn top/base/th');ok(gh.pp&&gh.pr>=5,'wplan: prognosis on planned path '+gh.pr);
+  ok(gh.rows>=5&&/SIM/.test(gh.tab)&&!/\bLIVE\b/.test(gh.tab),'wplan: Geology tab '+gh.rows+' rows, SIM');await p.screenshot({path:'shots_live/141_strat2_desk_wplan.png'});await p.evaluate(()=>GX.wplan?.close());
   // drilling uses the model
   const d=await p.evaluate(async()=>{document.getElementById('stratUse').click();await new Promise(r=>setTimeout(r,300));const L=GEO.layers;const s=L.filter(l=>l.strat);const lith=new Set(s.map(l=>l.lith));const r=window.S.env;GX.strat.applyToDrilling(false);return {n:s.length,lith:lith.size,back:GEO.layers.every(l=>!l.strat),sim:s.every(l=>/SIMULATED/.test(l.src))}});
   ok(d.n>20&&d.lith>=8,'drilling: GEO layers from model ('+d.n+' beds, '+d.lith+' lithologies)');ok(d.sim,'drilling: layers marked SIMULATED');ok(d.back,'drilling: switch off restores layers')}

@@ -158,7 +158,7 @@ async function draw3D(V,M,path){const T=await import('three');const {c,w,h}={c:d
 export function atBit(){const md=(window.S?.md||0)*FT;return lithAtMD(model(),geoPath(),md)}
 export function init(){if(typeof document=='undefined'||window.__stratInit)return;window.__stratInit=1;try{ST.use=!!JSON.parse(localStorage.getItem('dw-strat')||'{}').use}catch(e){}
  const add=()=>{const a=$('btnLay');if(!a){setTimeout(add,500);return}window.GX=window.GX||{};window.GX.strat=API;setTimeout(()=>{window.GX=window.GX||{};window.GX.strat=API},3000);if(!$('btnStrat')){const b=document.createElement('button');b.id='btnStrat';b.textContent='Earth model';b.className=a.className||'';a.after(b);b.onclick=()=>ST.el&&ST.el.style.display!='none'?close():open()}
-  if(ST.use&&window.GEO)applyToDrilling(true);hudStart();if(new URLSearchParams(location.search).has('strat'))open()};add()}
+  if(ST.use&&window.GEO)applyToDrilling(true);hudStart();hookWplan();if(new URLSearchParams(location.search).has('strat'))open()};add()}
 
 // ---- stage 2b: pore / frac / overburden per lithology (SIM), linked to mud weight ----
 // Overburden: integrate bulk density (Gardner-style values per lithology). Pore: hydrostatic 1.03 SG; SIM overpressure
@@ -177,6 +177,25 @@ export function mudWindow(b){b=b||atBit();if(!b)return null;const p=pressureAt(m
  const sg=mw/PPG;const state=sg<p.pp_sg?'KICK RISK':sg>p.fg_sg?'LOSS RISK':(sg-p.pp_sg<.03||p.fg_sg-sg<.05)?'NARROW':'OK';return {...p,mw_sg:+sg.toFixed(3),state}}
 export function pressureProfile(M,path,step=25){M=M||model();path=path||geoPath();const out=[];const md1=path.at(-1)?.md||0;for(let md=path[0]?.md||0;md<=md1;md+=step){const q=pointOnPath(path,md);out.push({md,...pressureAt(M,q.tvd,q.E,q.N)})}return out}
 
+// ---- stage 2c: hooks for geosteer (helper B) and well planning (wplan) ----
+// lookAhead: formation tops the bit will cross in the next dist m of the current path (or plan).
+export function lookAhead(dist=150,M,path){M=M||model();path=path||geoPath();const md=(window.S?.md||0)*FT,last=path.at(-1)?.md||0;
+ return topsAlongPath(M,path,1).filter(t=>t.md>md&&t.md<=Math.min(last,md+dist)).map(t=>({...t,dmd:+(t.md-md).toFixed(1)}))}
+// geologyFn: geosteer-compatible geology(x) -> {top,base,th} in TVD m for formation i, x = horizontal length along azimuth azi from (E0,N0).
+export function geologyFn(i,azi=45,E0=0,N0=0,M){M=M||model();const a=azi*R;return x=>{const E=E0+x*Math.sin(a),N=N0+x*Math.cos(a),top=topAt(M,i,E,N),base=i+1<M.formations.length?topAt(M,i+1,E,N):top+50;return {top,base,th:base-top,name:M.formations[i].name,lith:M.formations[i].lith}}}
+export function formationIndex(name,M){M=M||model();const s=String(name).toLowerCase();return M.formations.findIndex(f=>f.name.toLowerCase().includes(s))}
+// wplan: rows {md,n,e,tvd} -> geology prognosis + mud window per formation.
+export function planPath(W){const R0=(W||window.GX?.wplan?.W)?.S?.rows;return R0?.length?R0.map(r=>({md:r.md,tvd:r.tvd,E:r.e||0,N:r.n||0})):null}
+export function prognosis(path,M){M=M||model();path=path||planPath()||geoPath();const tops=topsAlongPath(M,path,2),td=path.at(-1)?.md||0;
+ return tops.map((t,k)=>{const md1=k+1<tops.length?tops[k+1].md:td;let pp=0,fg=9;for(let md=t.md;md<=md1;md+=10){const q=pointOnPath(path,md),r=pressureAt(M,q.tvd,q.E,q.N);pp=Math.max(pp,r.pp_sg);fg=Math.min(fg,r.fg_sg)}
+  const mw=Math.min(pp+.06,fg-.06);return {name:t.name,lith:t.lith,top_md:t.md,top_tvd:t.tvd,base_md:md1,pp_max_sg:+pp.toFixed(2),fg_min_sg:+fg.toFixed(2),mw_rec_sg:+mw.toFixed(2),window_sg:+(fg-pp).toFixed(2),narrow:fg-pp<.15,src:M.src}})}
+function wplanTab(B){const P=prognosis(planPath()),src=model().src=='SIM'?'SIM':model().src;
+ B.innerHTML=`<div style="opacity:.75;margin:4px 0">Geology prognosis along the planned well. Source: ${src}. Pressures are ${src=='SIM'?'SIM (simulated, for training)':'from the model'}. Units: m, SG.</div>
+ <div style="overflow-x:auto"><table style="width:100%;font-size:12px;border-collapse:collapse"><thead><tr style="text-align:left"><th></th><th>Formation</th><th>Top MD</th><th>Top TVD</th><th>PP max</th><th>FG min</th><th>Mud rec.</th></tr></thead><tbody>${P.map(r=>`<tr${r.narrow?' style="color:#ff8a8a"':''}><td><span style="display:inline-block;width:10px;height:10px;background:${(LITH[r.lith]||LITH.shale).c}"></span></td><td>${r.name}</td><td>${r.top_md.toFixed(0)}</td><td>${r.top_tvd.toFixed(0)}</td><td>${r.pp_max_sg}</td><td>${r.fg_min_sg}</td><td>${r.mw_rec_sg}${r.narrow?' ⚠':''}</td></tr>`).join('')}</tbody></table></div>
+ <div style="opacity:.7;margin-top:6px;font-size:11px">Mud rec. = PP max + 0.06 SG, not more than FG min − 0.06 SG. ⚠ = window less than 0.15 SG. <button id=stratWpOpen>Open earth model</button></div>`;
+ const b=B.querySelector('#stratWpOpen');if(b)b.onclick=()=>open('section')}
+function hookWplan(n=0){const X=window.GX?.wplan?.W;if(!X){if(n<60)setTimeout(()=>hookWplan(n+1),1000);return}if(!X.tabs.some(t=>t[0]=='geology'))X.tabs.push(['geology','Geology']);X.ext=X.ext||{};X.ext.geology=wplanTab}
+
 // ---- stage 2a: lithology at bit on the HUD (chip) + event for the monitor ----
 let _hudT=0,_lastF=null;
 export function hudText(b){if(!b)return 'Bit: above model';const src=b.src=='SIM'?'SIM':b.src;return `Bit: ${b.props.label} · ${b.formation} · ${b.tvd.toFixed(0)} m TVD · ${src}`}
@@ -187,6 +206,6 @@ function hudTick(){try{const b=atBit();let el=document.getElementById('stratBit'
 function pressText(b){const w=b&&mudWindow(b);ST.warn=!!w&&/RISK/.test(w.state);if(!w||w.mw_sg==null)return '';return ` · PP ${w.pp_sg.toFixed(2)} FG ${w.fg_sg.toFixed(2)} MW ${w.mw_sg.toFixed(2)} SG · ${w.state}`}
 function hudStart(){if(_hudT)return;_hudT=setInterval(hudTick,1000);hudTick()}
 
-const API={LITH,SIM_STRAT,fromMarkers,fromEDM,resolve,model,setModel,topAt,formationIndexAt,lithAt,lithAtMD,pointOnPath,gammaAt,response,topsAlongPath,stripLog,surfaceGrid,toGeoLayers,applyToDrilling,atBit,hudText,ROCK,pressureAt,mudWeight,mudWindow,pressureProfile,open,close,lithKey,path:()=>geoPath(),ST,ready:true};
+const API={LITH,SIM_STRAT,fromMarkers,fromEDM,resolve,model,setModel,topAt,formationIndexAt,lithAt,lithAtMD,pointOnPath,gammaAt,response,topsAlongPath,stripLog,surfaceGrid,toGeoLayers,applyToDrilling,atBit,hudText,lookAhead,geologyFn,formationIndex,planPath,prognosis,ROCK,pressureAt,mudWeight,mudWindow,pressureProfile,open,close,lithKey,path:()=>geoPath(),ST,ready:true};
 if(typeof window!='undefined'){window.GX=window.GX||{};window.GX.strat=API;init()}
 export default API;
