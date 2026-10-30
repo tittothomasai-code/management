@@ -11,7 +11,7 @@ function css(){if($('dockCss'))return;const s=document.createElement('style');s.
 .dk.dkCol{overflow:hidden!important;padding:0!important}.dk.dkCol>*:not(.dkStrip){display:none!important}
 .dkStrip{display:none}.dk.dkCol>.dkStrip{display:flex!important;position:absolute;inset:0;flex-direction:column;align-items:center;gap:10px;padding-top:8px;background:none;border:0;color:#cde;cursor:pointer;font:600 13px system-ui}
 .dkStrip span{writing-mode:vertical-rl;white-space:nowrap}.dkStrip:hover{background:#16263a}
-body.desk #vpad{right:var(--dkR,0px)!important;left:104px!important;width:auto!important}
+body.desk #vpad{right:var(--dkR,0px)!important}
 body.desk #vpToggle{right:calc(var(--dkR,0px) + 14px)!important}
 body.desk #ss56.dk .bar,body.desk #chatSheet.dk #chatHead{padding-right:82px!important}`;document.head.appendChild(s)}
 export function collapse(k,on){const D=window.GX?.ui?.DK;if(!D)return;D.col=D.col||{};const v=on??!D.col[k];if(v)D.col[k]=1;else delete D.col[k];

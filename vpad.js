@@ -14,7 +14,7 @@ function css(){if(document.getElementById('vpcss'))return;const s=document.creat
 #vpad .btns button.dn,#vpad .btns button:active{background:#2a5d8acc}#vpad .lbl{position:absolute;bottom:-16px;left:0;right:0;text-align:center;font:10px system-ui;color:#9bd}`;document.head.appendChild(s)}
 const DEF={L:[16,-210],R:[-136,-210],B:[-150,-360]};// px from left/top (negative = from right/bottom)
 function pos(){let p={};try{p=JSON.parse(ls.get(KP)||'{}')}catch(e){}return {...DEF,...p}}
-function place(el,[x,y]){const W=innerWidth,H=innerHeight,w=el.offsetWidth||120,h=el.offsetHeight||120;let L=x<0?W+x:x,T=y<0?H+y:y;L=Math.max(0,Math.min(W-w,L));T=Math.max(16,Math.min(H-h,T));el.style.left=L+'px';el.style.top=T+'px'}
+function place(el,[x,y]){const W=el.parentElement?.clientWidth||innerWidth,H=innerHeight,w=el.offsetWidth||120,h=el.offsetHeight||120;let L=x<0?W+x:x,T=y<0?H+y:y;L=Math.max(0,Math.min(W-w,L));T=Math.max(16,Math.min(H-h,T));el.style.left=L+'px';el.style.top=T+'px'}
 function grip(g,key){const h=g.querySelector('.grip');h.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();h.setPointerCapture(e.pointerId);const r=g.getBoundingClientRect(),ox=e.clientX-r.left,oy=e.clientY-r.top;
  const mv=ev=>place(g,[ev.clientX-ox,ev.clientY-oy]);const up=()=>{h.removeEventListener('pointermove',mv);h.removeEventListener('pointerup',up);h.removeEventListener('pointercancel',up);const p=pos();p[key]=[parseFloat(g.style.left),parseFloat(g.style.top)];ls.set(KP,JSON.stringify(p))};
  h.addEventListener('pointermove',mv);h.addEventListener('pointerup',up);h.addEventListener('pointercancel',up)})}

@@ -132,7 +132,7 @@ export function init(){if(typeof document=='undefined')return;const q=new URLSea
  document.body.classList.add('ui57');css();buildNav();buildTools();
  for(const id of ['seqpanel','geoRd','log'])if($(id)){if(id=='seqpanel')$(id).style.display='none';else $(id).classList.add('uihide')}
  const sig=$('sigsrc');if(sig)sig.style.display='none';const ch=$('chatSheet');if(ch)ch.style.setProperty('display','none','important');
- dcss();dload();prevVis=new Set(panels().filter(vis));GX.ui={show,closeAll,status,tick,classic:false,DK,dockOpen,dockClose,layout};import('./dock.js?v=1').then(m=>m.init()).catch(e=>console.warn('dock',e));
+ dcss();dload();prevVis=new Set(panels().filter(vis));GX.ui={show,closeAll,status,tick,classic:false,DK,dockOpen,dockClose,layout};import('./dock.js?v=2').then(m=>m.init()).catch(e=>console.warn('dock',e));
  DK.restoring=true;deskMode();addEventListener('resize',()=>{deskMode();layout()});setTimeout(()=>{if(DK.on)for(const k of DK.open)if(!vis(del(k))){try{DK.busy=true;OPEN[k]()}catch(e){}DK.busy=false}layout();setTimeout(()=>{DK.restoring=false;tick()},1200)},1500);setInterval(tick,400);tick()}
 // v5.9.2: desktop left nav (104 px) used to cover left-anchored floating panels (Sequence player, Survey table hid the MD column).
 // Any visible fixed/absolute panel that starts under the nav is moved right of it and narrowed to fit.
