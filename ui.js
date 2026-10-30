@@ -51,7 +51,7 @@ function buildTools(){const T=document.createElement('section');T.id='uiTools';T
  const mk=(g,l,f,id)=>{const b=document.createElement('button');b.textContent=l;if(id)b.id=id;b.onclick=f;$('uig_'+g).appendChild(b)};
  mk('seq','Sequence player',()=>show($('seqpanel')),'uiSeq');
  const sig=[...document.body.children].find(e=>/^Signal sources/.test(e.textContent.trim()));if(sig){sig.id=sig.id||'sigsrc';mk('set','Signal sources',()=>show(sig),'uiSig')}
- mk('adv','Events log',()=>{$('log')?.classList.toggle('uihide')},'uiLog');mk('adv','Formation at bit',()=>{$('geoRd')?.classList.toggle('uihide')},'uiFrm');
+ mk('equip','BOP tests',()=>import('./bop.js?v=2').then(m=>m.open()),'uiBop');mk('adv','Events log',()=>{$('log')?.classList.toggle('uihide')},'uiLog');mk('adv','Formation at bit',()=>{$('geoRd')?.classList.toggle('uihide')},'uiFrm');
  // v5.8 phone fix: toggle-style Tools buttons (WITSML connection, Add equipment) used to CLOSE their panel when it had been hidden by ✕/Rig
  // (panel still existed, so the toggle removed it) => the tap looked like it just dismissed the sheet. A Tools tap must always OPEN its target.
  T.addEventListener('click',ev=>{const b=ev.target.closest('button'),tg=b&&(TOOL_TGT[b.id]||TOOL_TGT[b.textContent.trim()]);if(tg)setTimeout(()=>{const e=$(tg);if(!e||!vis(e)){b.onclick?.call(b,ev);const e2=$(tg);if(e2&&!vis(e2))e2.style.display='block'}tick()},20)});

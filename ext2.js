@@ -52,7 +52,7 @@ function visuals(){const {box,cyl,beam,mat,M,FLOOR,MH,scene}=C,lp=(...a)=>new TH
  for(const y of[2.2,3.3]){box(2.8,0.9,1.3,red,0,y,0,bopG);for(const s of[-1,1]){const r=cyl(0.35,0.35,0.6,red,s*1.65,y,0,bopG);r.rotation.z=Math.PI/2}}// double ram
  const ann=cyl(1.05,1.15,1.6,red,0,4.6,0,bopG,28);cyl(0.7,1.05,0.5,red,0,5.65,0,bopG,28);// annular
  cyl(0.4,0.4,1.6,M(0x888c90,0.85,0.35),0,6.7,0,bopG);// riser / bell nipple
- bopG.traverse(o=>o.userData&&(o.userData.ent=bopEnt));
+ bopG.traverse(o=>o.userData&&(o.userData.ent=bopEnt));window.GX=window.GX||{};GX.bopG=bopG;GX.THREE=GX.THREE||THREE;
  // cellar: concrete rim + dark floor
  for(const [w,d,x,z] of [[5,0.4,0,-2.4],[5,0.4,0,2.4],[0.4,5,-2.4,0],[0.4,5,2.4,0]])box(w,0.5,d,conc,x,0.25,z,G);box(4.4,0.05,4.4,black,0,0.27,0,G);
  // pipe rack (trestles + stacked joints) beside catwalk
