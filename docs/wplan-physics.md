@@ -30,3 +30,6 @@ All outputs are planning aids and are tagged **SIM**. Nothing is written to Supa
 - API RP 13D power-law model: n and K from PV/YP (Fann 600/300), pipe and annulus friction per string section, bit pressure drop from nozzle TFA, surface and tool (MWD/RSS) losses.
 - Outputs: SPP, ECD at TD, HSI, jet impact, % pressure at bit. Annular gaps < 0.25 in are skipped.
 - Check: 1500 L/min -> SPP ~129 bar, ECD 1.235 sg; 3000 L/min -> SPP ~368 bar, ECD 1.317 sg.
+
+## Traveling cylinder (SIM)
+- For each plan station, the vector to the closest offset point (from the SF scan) is projected onto the plane normal to the plan tangent. Angle is measured clockwise from high side (from north when inclination < 0.01°). Plotted on a square-root radius scale to 200 m. Method: standard traveling cylinder view (e.g. Thorogood & Sawaryn, SPE 19989).

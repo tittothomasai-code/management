@@ -106,7 +106,9 @@ export function sfScan(ref,off,o=SFOPT){const res=[];const O=off;for(const r of 
  let best={d:Math.sqrt(bd),j:bi,f:0};for(const j of [bi-1,bi]){if(j<0||j+1>=O.length)continue;const A=[O[j].n,O[j].e,O[j].tvd],B=[O[j+1].n,O[j+1].e,O[j+1].tvd],AB=add(B,A,-1),R=[r.n,r.e,r.tvd],q=clamp(dot(add(R,A,-1),AB)/Math.max(1e-9,dot(AB,AB)),0,1),d=len(add(R,add(A,AB,q),-1));if(d<best.d)best={d,j,f:q}}
  const oj=O[best.j],Co=oj.C,P=best.j+1<O.length?add([oj.n,oj.e,oj.tvd],add([O[best.j+1].n,O[best.j+1].e,O[best.j+1].tvd],[oj.n,oj.e,oj.tvd],-1),best.f):[oj.n,oj.e,oj.tvd];
  const dv=add(P,[r.n,r.e,r.tvd],-1),D=len(dv),nv=D>1e-6?mul(dv,1/D):[0,0,1],C=[0,1,2].map(a=>[0,1,2].map(b=>r.C[a][b]+Co[a][b])),s=sigAlong(C,nv);
- const sf=s>1e-9?(D-o.Rr-o.Ro-o.Sm)/(o.k*s):99;res.push({md:r.md,tvd:r.tvd,omd:oj.md+(best.f*((O[best.j+1]?.md??oj.md)-oj.md)),ctc:D,sig:s,sf,es:D-o.Rr-o.Ro-o.k*s})}return res}
+ const sf=s>1e-9?(D-o.Rr-o.Ro-o.Sm)/(o.k*s):99;res.push({md:r.md,tvd:r.tvd,omd:oj.md+(best.f*((O[best.j+1]?.md??oj.md)-oj.md)),ctc:D,dv,sig:s,sf,es:D-o.Rr-o.Ro-o.k*s})}return res}
+// Traveling cylinder: offset position in the plane normal to the plan, angle from high side (north when vertical), clockwise
+export function tcyl(ref,scan){return scan.map((s,i)=>{const r=ref[i]||ref.at(-1),F=frame(vec(r.inc,r.azi)),d=s.dv||[0,0,0],x=dot(d,F.r),y=dot(d,F.h);return {md:s.md,ang:(Math.atan2(x,y)*R2D+360)%360,dist:Math.hypot(x,y),ctc:s.ctc,sf:s.sf,tag:'SIM'}})}
 export function sfSummary(name,S,o=SFOPT){const m=S.reduce((a,b)=>b.sf<a.sf?b:a,S[0]),c=S.reduce((a,b)=>b.ctc<a.ctc?b:a,S[0]);const lvl=m.sf<o.stop?'STOP':m.sf<o.alert?'ALERT':'OK';return {name,minSF:m.sf,minSFmd:m.md,minCtc:c.ctc,minCtcMd:c.md,lvl}}
 // the old check (simple radius) for comparison
 export const simpleRadius=(S,r=30)=>S.filter(x=>x.ctc<r).length;
