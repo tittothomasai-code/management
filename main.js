@@ -303,6 +303,7 @@ function actX(e,x,b){if(EXT.actX(e,x,b))return;const st=e.st,all=()=>!!document.
 
 import('./ext.js?v=b4').then(x=>x.init({THREE,S,PH,scene,cam,ctl,ents,pumps,select,entity,box,cyl,beam,mat,M,lp,curves,FLOOR,MH,td,tdAll,blk,dwG,slG,rnG,rnArm,cwG,UG,W,allCurves:()=>allCurves(),getWell:()=>wellCurve,act,EXT,removeEnt,saveLayout,addEquip,EQ,eqList,pumpsArr:pumps,setUnder,ren,groundMat,pad,sun,bha,rigG,dwG,ctl,makePump,rebuildLines,sel:()=>sel})).then(()=>import('./visual.js?v=596').then(v=>v.init({THREE,scene,ren,sun,cam,mat,M,box,cyl,beam,FLOOR,MH,td,pumps}))).catch(e=>console.error('ext',e));
 import('./subsurface.js').catch(e=>console.warn('subsurface',e));
+import('./subtarget.js').catch(e=>console.warn('subtarget',e)); // hook (helper D): SIM target band in subsurface view
 // ---------- loop (fixed step) ----------
 const DT=0.05;let acc=0,last=performance.now(),spd=20,uiT=0;
 function frame(now){const dtR=Math.min(0.1,(now-last)/1000);last=now;spd=+$('spd').value;

@@ -36,6 +36,7 @@ function mesh(g,m){const o=new THREE.Mesh(g,m);ST.dyn.add(o);return o}
 function tubeAlong(pts,mdFrom,mdTo,r,mat,seg){// pts with cumulative length ~ MD (m)
  const out=[];let acc=0;for(let i=0;i<pts.length;i++){if(i)acc+=pts[i].distanceTo(pts[i-1]);if(acc>=mdFrom&&acc<=mdTo)out.push(pts[i])}if(out.length<2)return null;return mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(out),Math.min(400,out.length*3),r,seg),mat)}
 function build(){const L=Lv(),sc=ST.scene;if(ST.dyn){sc.remove(ST.dyn);ST.dyn.traverse(o=>{o.geometry?.dispose?.()})}ST.dyn=new THREE.Group();sc.add(ST.dyn);
+ window.dispatchEvent(new CustomEvent('dw-sub-build',{detail:{group:ST.dyn,THREE}})); // hook (helper D subtarget.js): add SIM target band
  const act=actualPts(),plan=planPts(),all=[...act,...plan];const span=Math.max(800,...all.map(p=>Math.hypot(p.x,p.z)+300));
  // ground (transparent) + strat layers
  mesh(new THREE.PlaneGeometry(span*2,span*2).rotateX(-Math.PI/2),new THREE.MeshBasicMaterial({color:0x6b8a4a,transparent:true,opacity:0.18,depthWrite:false,side:THREE.DoubleSide}));
