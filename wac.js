@@ -35,8 +35,9 @@ export function scan(ref,off,M=MODEL){const O=off.pts;return ref.pts.map(r=>{let
   const ref3=r.inc>=3,hs=ref3?[Math.cos(r.inc*D2R)*Math.cos(r.azi*D2R),Math.cos(r.inc*D2R)*Math.sin(r.azi*D2R),-Math.sin(r.inc*D2R)]:[1,0,0],rt=ref3?[-Math.sin(r.azi*D2R),Math.cos(r.azi*D2R),0]:[0,1,0];
   let ang=Math.atan2(dot(u,rt),dot(u,hs))*R2D;ang=(ang+360)%360;const st=sf<M.stop?'STOP':sf<M.alert?'ALERT':'OK';
   return {md:r.md,tvd:r.tvd,dist:D,sf:Math.min(sf,99),sig:ss,offMd:o.md+(o2.md-o.md)*best.f,tcAng:ang,tcRef:ref3?'HS':'N',status:st,ref:r.p,off:best.p}})}
-export function report(ref,offs,M=MODEL){return offs.map(o=>{const S=scan(ref,o,M),m=S.reduce((a,b)=>b.sf<a.sf?b:a,S[0]),c=S.reduce((a,b)=>b.dist<a.dist?b:a,S[0]);
- return {name:o.name,tag:o.tag,minSF:m.sf,mdAtMin:m.md,distAtMin:m.dist,offMdAtMin:m.offMd,minDist:c.dist,mdAtMinDist:c.md,firstAlert:S.find(x=>x.sf<M.alert)?.md??null,firstStop:S.find(x=>x.sf<M.stop)?.md??null,status:m.status,scan:S}})}
+export function report(ref,offs,M=MODEL){return offs.map(o=>summarize(o,scan(ref,o,M),M))}
+export function summarize(o,S,M=MODEL){{const m=S.reduce((a,b)=>b.sf<a.sf?b:a,S[0]),c=S.reduce((a,b)=>b.dist<a.dist?b:a,S[0]);
+ return {name:o.name,tag:o.tag,minSF:m.sf,mdAtMin:m.md,distAtMin:m.dist,offMdAtMin:m.offMd,minDist:c.dist,mdAtMinDist:c.md,firstAlert:S.find(x=>x.sf<M.alert)?.md??null,firstStop:S.find(x=>x.sf<M.stop)?.md??null,status:m.status,scan:S}}}
 // beam of light: cone ahead of the bit along its tangent; base radius = k * lateral sigma at the bit
 export function beam(ref,offs,bitMd,M=MODEL){const r=ref.pts.reduce((a,b)=>Math.abs(b.md-bitMd)<Math.abs(a.md-bitMd)?b:a,ref.pts[0]),[A,B]=ellipse(r.C,r.t),r0=M.k*Math.max(A,B),th=M.beam.half*D2R,L=M.beam.len;
  const [, , , ,hs,rt]=ellipse(r.C,r.t),hits=[];for(const o of offs){let best=null;for(const q of o.pts){const v=sub(q.p,r.p),a=dot(v,r.t);if(a<=0||a>L)continue;const pr=sub(v,sc(r.t,a)),rp=len(pr),cone=r0+a*Math.tan(th),clr=rp-cone-2*M.hole;
@@ -64,6 +65,14 @@ export const SIM_OFFSETS=[{name:'SIM Offset-1 (slot 10 m, vertical)',head:{n:8,e
 // ---- state + UI ----
 const A={offs:null,M:{...MODEL,beam:{...MODEL.beam}},bitMd:null};
 async function loadOffs(){if(A.offs)return A.offs;let a=[];try{a=await WP.dbAll('offsets')}catch{}if(!a.length){a=SIM_OFFSETS.map(x=>({...x}));for(const o of a)try{await WP.dbPut('offsets',o)}catch{}}A.offs=a;return a}
+// v5.9.2: chunked, cancellable compute with progress (was one blocking call for several seconds); cached until plan/offsets/model change
+const tick=()=>new Promise(r=>setTimeout(r,0));let JOB=0,KEY=null;
+export async function computeAsync(W,prog=()=>{}){const key=JSON.stringify([W.L?.td,W.S?.rows?.length,W.S?.rows?.at(-1),A.M,A.offs.map(o=>[o.name,o.rows?.length])]);if(KEY==key&&A.rep){A.beam=beam(A.ref,A.wells,A.bitMd,A.M);return A}const job=++JOB;
+ prog(0,'Reference well');await tick();const ref=planWell(W.L,A.M),offs=[],rep=[],n=A.offs.length,CH=150;
+ for(let i=0;i<n;i++){const o=A.offs[i];const w=well(o.name,o.head,o.rows,o.tag,A.M);offs.push(w);const S=[];
+  for(let a=0;a<ref.pts.length;a+=CH){S.push(...scan({...ref,pts:ref.pts.slice(a,a+CH)},w,A.M));prog((i+Math.min(a+CH,ref.pts.length)/ref.pts.length)/n,o.name);await tick();if(job!=JOB)return null}
+  rep.push(summarize(w,S,A.M))}
+ if(A.bitMd==null)A.bitMd=Math.round(W.L.td*0.45/10)*10;A.ref=ref;A.wells=offs;A.rep=rep;A.beam=beam(ref,offs,A.bitMd,A.M);KEY=key;prog(1,'done');return A}
 function compute(W){const ref=planWell(W.L,A.M),offs=A.offs.map(o=>well(o.name,o.head,o.rows,o.tag,A.M)),rep=report(ref,offs,A.M);if(A.bitMd==null)A.bitMd=Math.round(W.L.td*0.45/10)*10;A.ref=ref;A.wells=offs;A.rep=rep;A.beam=beam(ref,offs,A.bitMd,A.M);return A}
 const COL=['#ff9f43','#c56cf0','#2ecc71','#ff6b81','#48dbfb','#feca57'],tagB=t=>`<span class=wpS style="background:${t=='SIM'?'#8a8f98':'#3d6e9e'}">${es(t)}</span>`;
 const stC=s=>s=='STOP'?'#ff5252':s=='ALERT'?'#ffb142':'#2ecc71';
@@ -113,13 +122,14 @@ function offHTML(){return `${emL()}<div style="margin:4px 0"><b>Offset wells</b>
  ${A.offs.map((o,i)=>`<tr><td style="text-align:left;color:${COL[i%COL.length]}">${tagB(o.tag)} ${es(o.name)}</td><td>${o.head.n}/${o.head.e}</td><td>${o.rows.length}</td><td>${Math.max(...o.rows.map(r=>r.md)).toFixed(0)}</td><td><button data-del="${es(o.name)}">✕</button></td></tr>`).join('')}</table>
  <div id=wp3d style="height:min(38vh,300px);margin:6px 0;border-radius:8px;overflow:hidden;background:#08101c"></div>`}
 async function delOff(name){const d=await new Promise((ok,no)=>{const r=indexedDB.open('dw_wplan',1);r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)});await new Promise(ok=>{const x=d.transaction('offsets','readwrite');x.objectStore('offsets').delete(name);x.oncomplete=ok})}
-export function register(W){W0=()=>W;GX.wac={A,MODEL,scan,report,beam,well,planWell,parseCSV,parseEDM,covariance,ellipse,SIM_OFFSETS};W.tabs.push(['offsets','Offsets'],['ac','Anti-collision'],['beam','Beam']);
+export function register(W){W0=()=>W;GX.wac={A,MODEL,computeAsync,scan,report,beam,well,planWell,parseCSV,parseEDM,covariance,ellipse,SIM_OFFSETS};W.tabs.push(['offsets','Offsets'],['ac','Anti-collision'],['beam','Beam']);
  W.on3d.push(on3d);W.extraPts=()=>A.wells?A.wells.flatMap(o=>[o.pts[0],o.pts.at(-1)]):[];
- const prep=async B=>{B.innerHTML='Computing…';await loadOffs();compute(W)};
- W.ext.offsets=async B=>{await prep(B);B.innerHTML=offHTML();W.draw3d();
+ const prep=async B=>{B.innerHTML=`<div id=acProg style="padding:10px"><div>Computing anti-collision (SIM)… <b id=acPct>0%</b> <small id=acWho style="opacity:.7"></small></div><div style="height:8px;background:#1b2838;border-radius:4px;margin-top:6px;overflow:hidden"><div id=acBar style="height:100%;width:0;background:#5fa8ff;transition:width .1s"></div></div></div>`;await loadOffs();
+  const r=await computeAsync(W,(f,who)=>{const p=Math.round(Math.min(1,f)*100);const b=B.querySelector('#acBar');if(b){b.style.width=p+'%';B.querySelector('#acPct').textContent=p+'%';B.querySelector('#acWho').textContent=who||''}A.progress=p});return !!r};
+ W.ext.offsets=async B=>{if(!await prep(B))return;B.innerHTML=offHTML();W.draw3d();
   $('acFile').onchange=async e=>{let n=0,msg=[];for(const f of e.target.files){const t=await f.text(),ws=/<\w|^\s*<\?xml/.test(t)&&/SURVEY_STATION/i.test(t)?parseEDM(t):parseCSV(t,f.name.replace(/\.\w+$/,''));for(const w of ws){w.tag='IMPORT';await WP.dbPut('offsets',w);n++}msg.push(f.name+': '+ws.length+' well(s)')}A.offs=null;await W.ext.offsets(B);$('acMsg').textContent='Imported '+n+' · '+msg.join(' · ')};
   $('acSim').onclick=async()=>{for(const o of A.offs)await delOff(o.name);A.offs=null;await W.ext.offsets(B)};
   for(const b of B.querySelectorAll('[data-del]'))b.onclick=async()=>{await delOff(b.dataset.del);A.offs=null;await W.ext.offsets(B)}};
- W.ext.ac=async B=>{await prep(B);B.innerHTML=acHTML(W);ladder();sfPlot();tcPlot();const upd=()=>{A.M.alert=+$('acAl').value;A.M.stop=+$('acSt').value;A.M.sAzi=+$('acSa').value;A.M.tc=+$('acTCr').value;W.ext.ac(B)};for(const id of ['acAl','acSt','acSa','acTCr'])$(id).onchange=upd};
- W.ext.beam=async B=>{await prep(B);B.innerHTML=beamHTML(W);beamPlot();W.draw3d();$('acBit').oninput=e=>{$('acBitV').textContent=e.target.value};$('acBit').onchange=e=>{A.bitMd=+e.target.value;W.ext.beam(B)};
+ W.ext.ac=async B=>{if(!await prep(B))return;B.innerHTML=acHTML(W);ladder();sfPlot();tcPlot();const upd=()=>{A.M.alert=+$('acAl').value;A.M.stop=+$('acSt').value;A.M.sAzi=+$('acSa').value;A.M.tc=+$('acTCr').value;W.ext.ac(B)};for(const id of ['acAl','acSt','acSa','acTCr'])$(id).onchange=upd};
+ W.ext.beam=async B=>{if(!await prep(B))return;B.innerHTML=beamHTML(W);beamPlot();W.draw3d();$('acBit').oninput=e=>{$('acBitV').textContent=e.target.value};$('acBit').onchange=e=>{A.bitMd=+e.target.value;W.ext.beam(B)};
   $('acBL').onchange=()=>{A.M.beam.len=+$('acBL').value;W.ext.beam(B)};$('acBH').onchange=()=>{A.M.beam.half=+$('acBH').value;W.ext.beam(B)}}}

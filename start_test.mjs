@@ -50,7 +50,7 @@ for(const [nm,vp] of [['desk',{width:1440,height:900}],['phone',{width:390,heigh
  r=await p.evaluate(()=>({last:dwStart.last,join:!!document.getElementById('plJoin'),pw:!!document.querySelector('#plJoin input[type=password]')}));
  ok(g&&r.last=='join'&&r.join&&!r.pw,`${nm}: Log in as player → name join, no password field`);
  await p.screenshot({path:`${DIR}/${PRE}${nm}_5_login.png`});
- await p.$eval('#plName',e=>e.value='');await p.click('#plName');await p.type('#plName','Start Tester');await p.$eval('#plJoin form',f=>f.requestSubmit());await p.waitForFunction(()=>document.getElementById('sessPanel')?.style.display=='block',{timeout:20000}).catch(()=>{});
+ await p.$eval('#plName',e=>e.value='');await p.$eval('#plName',e=>e.focus());await p.keyboard.type('Start Tester');await p.$eval('#plJoin form',f=>f.requestSubmit());await p.waitForFunction(()=>document.getElementById('sessPanel')?.style.display=='block',{timeout:20000}).catch(()=>{});
  r=await p.evaluate(()=>({n:GX.player.name,sp:document.getElementById('sessPanel')?.style.display}));ok(r.n=='Start Tester'&&r.sp=='block',`${nm}: after name → session panel (lobby / join by code) opens (${JSON.stringify(r)})`);
  await p.ctx.close();
  // Continue only with saved state

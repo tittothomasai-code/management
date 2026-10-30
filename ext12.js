@@ -152,7 +152,7 @@ function build(){const d=document.createElement('div');d.id='wshop';d.innerHTML=
  ren=new THREE.WebGLRenderer({canvas,antialias:true});ren.setPixelRatio(Math.min(devicePixelRatio,2));scene=new THREE.Scene();scene.background=new THREE.Color('#141c24');
  cam=new THREE.PerspectiveCamera(40,1,0.01,2000);scene.add(new THREE.HemisphereLight('#dde','#223',1.1));const dl=new THREE.DirectionalLight('#fff',1.2);dl.position.set(4,8,6);scene.add(dl);
  ctl=new OC(cam,canvas);ctl.enableDamping=true;root=new THREE.Group();scene.add(root);
- $('wsExp').onclick=()=>setMode('exp');$('wsBha').onclick=()=>setMode('bha');$('wsClose').onclick=close;$('wsGrip').onclick=()=>{ST.coll=!ST.coll;layout()};
+ $('wsExp').onclick=()=>{if(ST.mode=='exp'&&ST.target>0.5)reassemble();else setMode('exp')};$('wsBha').onclick=()=>setMode('bha');$('wsClose').onclick=close;$('wsGrip').onclick=()=>{ST.coll=!ST.coll;layout()};
  let dn=null;canvas.addEventListener('pointerdown',e=>dn=[e.clientX,e.clientY]);canvas.addEventListener('pointerup',e=>{if(dn&&Math.hypot(e.clientX-dn[0],e.clientY-dn[1])<8)pick(e);dn=null});
  addEventListener('resize',()=>{if(ST.open)layout()})}
 function layout(){const ph=innerWidth<900;$('wshop').style.setProperty('--wsH',ph?(ST.coll?'64px':'46%'):'0px');$('wsGrip').textContent=ST.coll?'▴ show panel':'▾ hide panel';$('wsBody').style.display=ST.coll?'none':'';
@@ -173,6 +173,7 @@ function frame(force){if(!ST.open)return;const now=performance.now(),dt=Math.min
  ctl.update();ren.render(scene,cam);const v=$('wsView').getBoundingClientRect(),q=new THREE.Vector3();
  ST.labels.forEach((e,i)=>{const m=ST.meshes[+e.dataset.i];if(!m)return;m.getWorldPosition(q);if(ST.mode=='bha')q.x+=0;q.project(cam);const vis=q.z<1&&Math.abs(q.x)<1.05&&Math.abs(q.y)<1.05&&(ST.mode=='bha'||ST.t>0.6||e.classList.contains('on'));
   e.style.display=vis?'':'none';e.style.left=((q.x+1)/2*v.width+(ST.mode=='bha'?(e.classList.contains('R')?1:-1)*(e.offsetWidth/2+28):0))+'px';e.style.top=((1-q.y)/2*v.height+(ST.mode=='exp'?(i%2?10:-10):0))+'px'});
+ if(ST.mode=='exp'&&$('wsGo')&&(ST.target>0.5)!=$('wsGo').classList.contains('on'))goLab();
  if(!force)raf=requestAnimationFrame(()=>frame())}
 function pick(e){const r=canvas.getBoundingClientRect(),rc=new THREE.Raycaster();rc.setFromCamera(new THREE.Vector2((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1),cam);const h=rc.intersectObjects(ST.meshes,false)[0];if(h)showPart(h.object.userData.i);else{$('wsInfo').style.display='none';hi(-1)}}
 function hi(i){ST.sel=i;ST.meshes.forEach((m,j)=>m.material.emissive?.set(j==i?'#335577':'#000'));ST.labels.forEach(e=>e.classList.toggle('on',+e.dataset.i==i))}
@@ -199,9 +200,9 @@ function uiExp(){const E=CAT[ST.eq];$('wsBody').innerHTML=`<div class="row"><b>E
 <button id="wsGo">💥 Explode</button><button id="wsRe">🔧 Reassemble</button></div>
 <div style="color:#9ab;font-size:12px">Tap a part or its label for a description. Drag to orbit, pinch to zoom.</div>
 <div class="row" id="wsParts">${E.parts.map((p,i)=>`<button class="rb" data-i="${i}" style="font-size:13px">${es(p.n)}</button>`).join('')}</div>`;
- $('wsEq').onchange=e=>{ST.eq=e.target.value;ST.t=0;ST.target=1;buildExp();uiExp();layout()};$('wsGo').onclick=()=>explode();$('wsRe').onclick=()=>reassemble();
+ $('wsEq').onchange=e=>{ST.eq=e.target.value;ST.t=0;ST.target=1;buildExp();uiExp();layout()};$('wsGo').onclick=()=>{ST.target>0.5?reassemble():explode()};$('wsRe').onclick=()=>reassemble();goLab();
  $('wsParts').querySelectorAll('button').forEach(b=>b.onclick=()=>showPart(+b.dataset.i));if(!ST.meshes.length||ST.built!='exp:'+ST.eq){buildExp();ST.built='exp:'+ST.eq}}
-export function explode(){ST.target=1}export function reassemble(){ST.target=0;$('wsInfo').style.display='none';hi(-1)}
+export function explode(){ST.target=1;goLab()}export function reassemble(){ST.target=0;goLab();$('wsInfo').style.display='none';hi(-1)}
 function uiBha(){const T=totals(ST.bha);$('wsBody').innerHTML=`<div class="row"><b>BHA builder</b><span class="wsSim">SIM — library values, not from live feed</span></div>
 <div class="row">Preset <select id="wsPre"><option value="">—</option>${Object.entries(PRESETS).map(([k,v])=>`<option value="${k}"${k==ST.preset?' selected':''}>${v.label}</option>`).join('')}</select>
 Hole <input id="wsHole" type="number" value="${ST.holeMM}"> mm</div>
@@ -221,9 +222,11 @@ export function removeItem(i){ST.bha.splice(i,1);ST.preset='';saveBha();refresh(
 export function move(i,d){const j=i+d;if(j<0||j>=ST.bha.length)return;[ST.bha[i],ST.bha[j]]=[ST.bha[j],ST.bha[i]];ST.preset='';saveBha();refresh()}
 // map a selected scene entity → catalogue key
 export function keyFor(name){name=String(name||'');for(const [k,v] of Object.entries(CAT))if(v.keys.test(name))return k;return null}
-export function open(mode,eq){ST.open=true;$('wshop').style.display='block';if(eq&&CAT[eq])ST.eq=eq;else{const s=C.sel?.();const k=s&&keyFor(s.name);if(k)ST.eq=k}
+export function open(mode,eq){ST.open=true;if(document.body.classList.contains('desk')&&document.querySelector('#uiNav button.on:not(#uiTab_rig)'))setTimeout(()=>$('uiTab_rig')?.click(),0);// v5.9.2: don't leave the Tools dock covering the workshop controls
+$('wshop').style.display='block';if(eq&&CAT[eq])ST.eq=eq;else{const s=C.sel?.();const k=s&&keyFor(s.name);if(k)ST.eq=k}
  ST.built='';setMode(mode||ST.mode);if(ST.mode=='exp'){ST.t=0;ST.target=1}cancelAnimationFrame(raf);frame()}
-export function close(){ST.open=false;$('wshop').style.display='none';cancelAnimationFrame(raf)}
+function goLab(){const b=$('wsGo');if(b){b.textContent=ST.target>0.5?'🔧 Collapse (toggle off)':'💥 Explode';b.classList.toggle('on',ST.target>0.5);b.setAttribute('aria-pressed',ST.target>0.5)}}
+export function close(){ST.open=false;$('wshop').style.display='none';cancelAnimationFrame(raf);for(const id of ['btnExpl','btnBhaB'])$(id)?.classList.remove('on')}
 export async function init(c){C=c;THREE=c.THREE;OC=(await import('./vendor/OrbitControls.js')).OrbitControls;css();build();loadBha();
- const hud=$('hud');for(const [id,t,m] of [['btnExpl','🔩 Exploded view','exp'],['btnBhaB','🧰 BHA builder','bha']]){const b=document.createElement('button');b.id=id;b.textContent=t;b.onclick=()=>open(m);hud.appendChild(b)}
+ const hud=$('hud');for(const [id,t,m] of [['btnExpl','🔩 Exploded view','exp'],['btnBhaB','🧰 BHA builder','bha']]){const b=document.createElement('button');b.id=id;b.textContent=t;b.onclick=()=>{if(ST.open&&ST.mode==m)close();else open(m)};hud.appendChild(b)}
  window.GX=window.GX||{};GX.ws={ST,CAT,LIB,PRESETS,open,close,explode,reassemble,showPart,addItem,removeItem,move,preset,totals,kgOf,keyFor,itemFrom}}

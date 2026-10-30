@@ -65,7 +65,7 @@ async function choose(){const go=ST.items[ST.i]?.dataset.go;beep(880,.1);
  if(go=='continue'||go=='simFree')return close(go);
  if(go=='simA'){close('simA');const P=await wait(()=>window.GX?.wplan);P.calc(JSON.parse(JSON.stringify(P.DEFAULT)));return}
  if(go=='well'){close('wplan');const P=await wait(()=>window.GX?.wplan);P.calc({...JSON.parse(JSON.stringify(P.DEFAULT)),name:'New well (SIM)',targets:[{name:'TD',tvd:1000,n:100,e:0,tol:30,dls:3}],casing:[],steps:[],assumed:['targets','surface','kop','dls']});P.open('inputs');return}
- if(go=='login'){close('join');await wait(()=>window.GX?.player);const m=await import('./player.js?v=58');m.join(true);
+ if(go=='login'){close('join');await wait(()=>window.GX?.player);const m=await import('./player.js?v=592');m.join(true);
   addEventListener('dw:player',()=>{wait(()=>window.GX?.session).then(s=>s.open(true)).catch(()=>{})},{once:true})}}
 function key(e){if(!ST.el)return;const k=e.key;const m={ArrowLeft:'l',ArrowRight:'r',ArrowUp:'u',ArrowDown:'d',a:'l',d:'r',w:'u',s:'d'}[k];
  if(m){move(m)}else if(k=='Enter'||k==' '){choose()}else if(k=='Escape'||k=='Backspace'){back()}else return;e.preventDefault();e.stopPropagation()}

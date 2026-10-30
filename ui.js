@@ -85,6 +85,7 @@ function layout(){if(!DK.on)return;let right=0;const top=0,L=DK.open.filter(k=>v
   right+=w}
  document.body.style.setProperty('--dkR',right+'px')}
 function dcss(){const s=document.createElement('style');s.textContent=`
+body.desk #wshop{left:104px!important}
 body.desk #uiNav{top:0;bottom:0;right:auto;width:104px;height:auto;flex-direction:column;justify-content:flex-start;padding:8px 0;border-top:0;border-right:1px solid #2a3a50}
 body.desk #uiNav button{flex:0 0 74px;font:600 14px system-ui;gap:4px;border-left:3px solid transparent}
 body.desk #uiNav button b{font-size:22px}body.desk #uiNav button.on{border-left-color:#7cf}body.desk #uiNav button.act{background:#22406a;color:#fff}
@@ -132,3 +133,11 @@ export function init(){if(typeof document=='undefined')return;const q=new URLSea
  const sig=$('sigsrc');if(sig)sig.style.display='none';const ch=$('chatSheet');if(ch)ch.style.setProperty('display','none','important');
  dcss();dload();prevVis=new Set(panels().filter(vis));GX.ui={show,closeAll,status,tick,classic:false,DK,dockOpen,dockClose,layout};
  DK.restoring=true;deskMode();addEventListener('resize',()=>{deskMode();layout()});setTimeout(()=>{if(DK.on)for(const k of DK.open)if(!vis(del(k))){try{DK.busy=true;OPEN[k]()}catch(e){}DK.busy=false}layout();setTimeout(()=>{DK.restoring=false;tick()},1200)},1500);setInterval(tick,400);tick()}
+// v5.9.2: desktop left nav (104 px) used to cover left-anchored floating panels (Sequence player, Survey table hid the MD column).
+// Any visible fixed/absolute panel that starts under the nav is moved right of it and narrowed to fit.
+export function navGuard(){if(!document.body.classList.contains('desk'))return;const N=document.getElementById('uiNav');if(!N)return;const nr=N.getBoundingClientRect().right+8;
+ const skip=new Set(['uiNav','uiTop','start','ops3d','appVer','wshop','chatSheet']);
+ for(const e of [...document.body.children,...document.querySelectorAll('#panels>.panel')]){if(skip.has(e.id)||!(e instanceof HTMLElement))continue;const cs=getComputedStyle(e);if(cs.display=='none'||!/fixed|absolute/.test(cs.position))continue;
+  const r=e.getBoundingClientRect();if(r.width<4||r.height<4||r.left>=nr-1||r.right<=0)continue;if(r.width>=innerWidth-2)continue;// full-screen layers stay
+  e.style.setProperty('left',nr+'px','important');e.style.maxWidth=`calc(100vw - ${nr+8}px - var(--dkR,0px))`;e.dataset.navGuard='1'}}
+if(typeof window!='undefined'){setInterval(()=>{try{navGuard()}catch(e){}},400);addEventListener('resize',()=>navGuard())}

@@ -26,7 +26,7 @@ console.log('Tools buttons:',all.length);
 {const p=await page();for(const s of all){await openTools(p);const pt=await p.evaluate(`(()=>{const b=${sel(s)};if(!b)return null;b.scrollIntoView({block:'center'});const r=b.getBoundingClientRect();const h=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return r.top>=0&&r.bottom<=innerHeight&&r.width>20&&r.height>=30&&!!h&&(h===b||b.contains(h))})()`);ok(pt,'button visible + tappable in Tools: '+s)}await p.close()}
 // panel buttons: tap -> target visible on screen; close (✕/Rig) -> tap again -> visible again
 const chunks=[PANEL.slice(0,6),PANEL.slice(6,12),PANEL.slice(12)];let shot=1;
-for(const ch of chunks){const p=await page();for(const [s,id] of ch){for(const r of [1,2]){await openTools(p);const t=await tap(p,s);if(!t){ok(false,s+' missing');break}await w(1000);ok(await onScreen(p,id),`tap ${s} -> #${id} visible (round ${r})`);
+for(const ch of chunks){const p=await page();for(const [s,id] of ch){for(const r of [1,2]){await openTools(p);const t=await tap(p,s);if(!t){ok(false,s+' missing');break}await w(1000);if(r==2&&/btnExpl|btnBhaB/.test(s))ok(!(await onScreen(p,id)),`tap ${s} again -> #${id} toggles off (v5.9.2)`);else ok(await onScreen(p,id),`tap ${s} -> #${id} visible (round ${r})`);
   if(r==1&&['#wbtn','#btnWP','#uiSig','#btnBit'].includes(s))await p.screenshot({path:SH+(shot++)+'_'+id+'.png'})}
   if(s=='#wbtn'){const txt=await p.evaluate(()=>document.getElementById('witsml')?.innerText||'');ok(!/\bLIVE\b/.test(txt.replace(/not LIVE|no live feed|only with a live feed|shown as LIVE only then|never shown as LIVE|LIVE MODE[^\n]*live feed/gi,'')),'WITSML panel shows no LIVE claim while disconnected')}}
  await p.close()}
