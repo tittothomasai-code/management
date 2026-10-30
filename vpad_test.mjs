@@ -1,6 +1,6 @@
 // v5.9.5 on-screen controls test: default OFF (also on touch), toggle + Tools▸Settings entry, persisted across reload, joystick drags move camera,
 // WOB/RPM buttons change setpoints, grip drag moves + persists a group. Phone (touch) + desk (mouse). No network writes.
-import puppeteer from 'puppeteer-core';const BASE=(process.argv[2]||'http://localhost:8777').replace(/\/$/,''),SH='shots_live/127_vpad_';
+import puppeteer from 'puppeteer-core';const BASE=(process.argv[2]||'http://localhost:8777').replace(/\/$/,''),SH='shots_live/150_vpad_';
 const w=ms=>new Promise(r=>setTimeout(r,ms));let fails=0,pass=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);c?pass++:fails++};
 const b=await puppeteer.launch({executablePath:'/usr/bin/google-chrome',args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--no-sandbox']});const errs=[];
 const go=async p=>{await p.goto(BASE+'/?nosplash=1',{waitUntil:'load',timeout:120000});await p.waitForFunction(()=>window.GX?.vpad&&window.G?.cam&&window.G?.S,{timeout:120000});await w(800)};
