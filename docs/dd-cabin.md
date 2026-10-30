@@ -11,17 +11,11 @@ Files: `ddcab_core.js` (pure engine, Node-testable), `ddcab.js` (cabin UI), `dd_
 - Vertical section plan vs actual, with the target zone (land) and the offset well (collide). Gamma strip from `strat.gammaAt` on the strat model (fallback SIM curve).
 - Slide/rotate calculator: required DLS from projection-to-bit to the plan 30 m ahead, motor yield, slide length = dogleg / yield × 30, toolface from the dogleg plane.
 
-## Steering instructions (scripted driller, ASD-STE100 wording)
-`Slide 10 m at TF 30` (`30L` = 330°), `Rotate 30 m`, `Set WOB 8`, `Set flow 1800`, `Set RPM 40`, `Take a survey`, `Pick up off bottom`. The driller reads back, executes, and reports. Slides get SIM reactive-torque scatter (±8° TF) and ±10 % yield scatter. Rotating gives a small SIM drop/walk.
-Scenarios: build to target, hold tangent (formation walk), land in target zone (zone from `strat.targetFn` shape, rebased onto the plan landing point; SIM band fallback), avoid offset well (plan path crosses SF 1.5).
-Score: average distance from plan, DLS over scenario limit, time over allowance (8 m/h), in-zone % (land), SF < 1.5 penalty (collide).
+## Plug-in hooks (scope split)
+The cabin owns only the UI and the data screens. Two other helpers plug in:
 
-## Mud motor (SIM generic 6-3/4 in, 7:8 lobe, 4.0 stage, 1.5° bend)
-- Motor RPM = flow × rev/volume (0.28 rev/gal = 0.074 rev/L), with RPM droop under load. Bit RPM = motor RPM + surface RPM when rotating.
-- Diff pressure rises with WOB (scaled by formation torque response from strat.js). Torque ∝ diff pressure up to stall torque. SPP = off-bottom SPP + diff pressure.
-- Stall when diff pressure ≥ max: SPP spike, motor RPM and ROP go to zero; driller stops and refuses to drill until pick-up. Recovery steps shown (pick up, let SPP settle, check flow, tag bottom with half WOB, keep ΔP < 80 % max).
-- Motor yield from three-point bend geometry: DLS ≈ 2 × bend / (bit-to-bend + bend-to-stabiliser) per 30 m.
-- Rotate-with-bend warning above 1.83° bend or 60 RPM. Flow range warning. Stator hours weighted by load (1 + ΔP/ΔPmax); temperature = 20 °C + 3 °C/100 m TVD + motor heating.
+- **Steering instructions + driller script — feat/dd-driller.** `GX.ddcab.onInstruction = (text, api) => ({say:[lines]} | void)`. The input box and the calculator button send text to it. `api = {sess, core, drill(len,{rotate,tf}), survey(), log(line), render()}`. If no hook is set, the cabin shows "the driller module is not loaded" and does not drill. `ddcab_core.command/parse/ste` stay in the code as a reference only and are not connected.
+- **Mud motor management — feat/dd-motor.** `GX.ddcab.motor = {spec, state(motor,opts), panel(sess)->html, bind(slotEl,sess,render)}`. It renders into `#ddMotorSlot`. You can also pass `newSession(id,{motorFn})` to supply stall physics. By default the motor is a plain SIM motor and never stalls.
 
 ## Sources
 - Minimum curvature: Taylor & Mason (1972) SPE 3362; dogleg formula per API Bul. D20 / ISCWSA survey terminology.
