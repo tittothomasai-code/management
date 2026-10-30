@@ -2,6 +2,7 @@
 const LIM=1.36;
 // Everything here is a SIM teaching animation: SIM proposal A trajectory, API-style SIM pipe, simplified hydraulics. Never LIVE.
 import * as WP from './wplan.js';import * as C from './casing.js';
+import {casingTD} from './casingtd.js';
 export const G=9.80665,JL=12.2,SHOE=0.6;
 // ---- well & string ----
 export function well(){const W=WP.calc(JSON.parse(JSON.stringify(WP.DEFAULT)));const D=C.design(W,{});const at=md=>WP.pointAt(W.L,W.S,Math.max(0,md));
@@ -41,7 +42,7 @@ function st(P,w,k,u,ph,t,j){const s=P.s,M=0.35;// first 35% of a joint cycle: pi
  const sinceFill=(k-1)%P.fillEvery+run,fill=j.tag.includes('fill')&&u<0.4;const emptyM=fill?0:sinceFill*JL;if(fill)msg='Fill-up: float valves closed, top up the string with mud ('+(Math.PI/4*(P.Dp-2*P.e.p.t*0.0254)**2*P.fillEvery*JL).toFixed(1)+' m³ per 10 joints)';
  if(j.tag.includes('shoe13')&&!msg)msg='Passing 13-3/8" shoe at '+f0(P.prev.shoeMD)+' m MD: into 12-1/4" open hole';if(ph=='landed')msg='Casing landed: 9-5/8" shoe at '+f0(s.shoeMD)+' m MD / '+f0(s.shoeTVD)+' m TVD · ready to cement';
  if(!msg&&k<=4)msg=u<M?'Joint '+k+': pick up, stab and make up to torque':'Joint '+k+': run in, set slips';
- const hl=hookload(w,inFull,s.mudSG,{kgm:P.kgm})+over;return {t,k,u,phase:ph||phase,shoeMD:inFull,shoeTVD:tvd,joints:ph?P.N:k-1+(run>0.999?1:0),hl,over,v:realV,emw,swab,emptyM,fill,msg,limit:LIM,pore:1.20}}
+ const hl=hookload(w,inFull,s.mudSG,{kgm:P.kgm})+over,td=casingTD(w,inFull,{kgm:P.kgm,mudSG:s.mudSG,odM:P.Dp,prevShoeMD:P.prev.shoeMD});return {td,t,k,u,phase:ph||phase,shoeMD:inFull,shoeTVD:tvd,joints:ph?P.N:k-1+(run>0.999?1:0),hl,over,v:realV,emw,swab,emptyM,fill,msg,limit:LIM,pore:1.20}}
 const f0=x=>Math.round(x).toLocaleString('en-AU');
 // ---- view ----
 let THREE;export async function open(mode='casing',{demo=false,speed=1}={}){THREE=THREE||await import('three');const w=well(),P=casingPlan(w);
@@ -92,7 +93,7 @@ let THREE;export async function open(mode='casing',{demo=false,speed=1}={}){THRE
   const sp=V(s.shoeMD),tg=V(Math.max(0,s.shoeMD-8)),near=s.shoeMD<60;const side=new THREE.Vector3().subVectors(V(s.shoeMD+2),sp).cross(new THREE.Vector3(0,1,0));if(side.lengthSq()<1e-6)side.set(1,0,0);side.normalize();
   const want=near?new THREE.Vector3(34,22,40):tg.clone().add(side.multiplyScalar(30)).add(new THREE.Vector3(0,10,0)),look=near?new THREE.Vector3(0,-Math.min(20,s.shoeMD/2),0):sp;
   if(s.phase=='landed'){want.copy(sp).add(new THREE.Vector3(60,40,60))}camP.lerp(want,seekT!=null?1:0.06);camL.lerp(look,seekT!=null?1:0.08);cam.position.copy(camP);cam.lookAt(camL);
-  const tn=s.hl/G,ok=s.emw<=s.limit;hud.innerHTML=[['Joints',`${s.joints} / ${P.N}`],['Shoe MD',`${f0(s.shoeMD)} m`],['Shoe TVD',`${f0(s.shoeTVD)} m`],['Hookload',`${f0(s.hl)} kN · ${tn.toFixed(0)} t`],['Run speed',`${s.v.toFixed(2)} m/s`],['Phase',s.phase],
+  const tn=s.hl/G,ok=s.emw<=s.limit;hud.innerHTML=[['Joints',`${s.joints} / ${P.N}`],['Shoe MD',`${f0(s.shoeMD)} m`],['Shoe TVD',`${f0(s.shoeTVD)} m`],['Hookload',`${f0(s.hl)} kN · ${tn.toFixed(0)} t`],['T&D (SIM)',`PU ${f0(s.td.pu)} · SO ${f0(s.td.so)} · ROT ${f0(s.td.rot)} kN · ${(s.td.torque).toFixed(1)} kN·m`],['Run speed',`${s.v.toFixed(2)} m/s`],['Phase',s.phase],
    ['Surge EMW',`<span style="color:${ok?'#3ddc84':'#ff6b6b'}">${s.emw.toFixed(2)}</span> / ${s.limit} SG`],['Swab EMW',s.swab==null?'–':`<span style="color:${s.swab<s.pore?'#ff6b6b':'#3ddc84'}">${s.swab.toFixed(2)}</span> / ${s.pore} SG`],['Unfilled',`${s.emptyM.toFixed(0)} m${s.fill?' · filling':''}`]]
    .map(([a,b])=>`<div><div style="opacity:.65;font-size:11px">${a}</div><b>${b}</b></div>`).join('');
   S.querySelector('#o3next').style.display=s.phase=='landed'?'block':'none';msg.textContent=s.msg;msg.style.opacity=s.msg?1:0;prof(s);R.render(sc,cam);requestAnimationFrame(frame)};frame();return api}
