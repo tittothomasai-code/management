@@ -158,7 +158,18 @@ async function draw3D(V,M,path){const T=await import('three');const {c,w,h}={c:d
 export function atBit(){const md=(window.S?.md||0)*FT;return lithAtMD(model(),geoPath(),md)}
 export function init(){if(typeof document=='undefined'||window.__stratInit)return;window.__stratInit=1;try{ST.use=!!JSON.parse(localStorage.getItem('dw-strat')||'{}').use}catch(e){}
  const add=()=>{const a=$('btnLay');if(!a){setTimeout(add,500);return}window.GX=window.GX||{};window.GX.strat=API;setTimeout(()=>{window.GX=window.GX||{};window.GX.strat=API},3000);if(!$('btnStrat')){const b=document.createElement('button');b.id='btnStrat';b.textContent='Earth model';b.className=a.className||'';a.after(b);b.onclick=()=>ST.el&&ST.el.style.display!='none'?close():open()}
-  if(ST.use&&window.GEO)applyToDrilling(true);if(new URLSearchParams(location.search).has('strat'))open()};add()}
-const API={LITH,SIM_STRAT,fromMarkers,fromEDM,resolve,model,setModel,topAt,formationIndexAt,lithAt,lithAtMD,pointOnPath,gammaAt,response,topsAlongPath,stripLog,surfaceGrid,toGeoLayers,applyToDrilling,atBit,open,close,lithKey,path:()=>geoPath(),ST,ready:true};
+  if(ST.use&&window.GEO)applyToDrilling(true);hudStart();if(new URLSearchParams(location.search).has('strat'))open()};add()}
+
+// ---- stage 2a: lithology at bit on the HUD (chip) + event for the monitor ----
+let _hudT=0,_lastF=null;
+export function hudText(b){if(!b)return 'Bit: above model';const src=b.src=='SIM'?'SIM':b.src;return `Bit: ${b.props.label} · ${b.formation} · ${b.tvd.toFixed(0)} m TVD · ${src}`}
+function hudTick(){try{const b=atBit();let el=document.getElementById('stratBit');
+ if(!el){el=document.createElement('aside');el.id='stratBit';el.style.cssText='position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 104px);z-index:40;font:12px system-ui;color:#fff;background:rgba(0,0,0,.6);border-radius:12px;padding:3px 10px;pointer-events:auto;max-width:92vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer';el.onclick=()=>open();document.body.appendChild(el)}
+ const t=hudText(b)+pressText(b);if(el.textContent!=t)el.textContent=t;el.style.top=`calc(env(safe-area-inset-top,0px) + ${innerWidth<600?104:40}px)`;el.style.borderLeft='8px solid '+(b?b.props.c:'#888');el.style.outline=ST.warn?'2px solid #ff5050':'none';
+ const f=b?b.formation+'|'+b.lith:null;if(f!==_lastF){_lastF=f;if(b)window.dispatchEvent(new CustomEvent('strat:bit',{detail:b}))}}catch(e){}}
+function pressText(b){return ''}
+function hudStart(){if(_hudT)return;_hudT=setInterval(hudTick,1000);hudTick()}
+
+const API={LITH,SIM_STRAT,fromMarkers,fromEDM,resolve,model,setModel,topAt,formationIndexAt,lithAt,lithAtMD,pointOnPath,gammaAt,response,topsAlongPath,stripLog,surfaceGrid,toGeoLayers,applyToDrilling,atBit,hudText,open,close,lithKey,path:()=>geoPath(),ST,ready:true};
 if(typeof window!='undefined'){window.GX=window.GX||{};window.GX.strat=API;init()}
 export default API;

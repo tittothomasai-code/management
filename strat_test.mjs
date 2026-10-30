@@ -28,6 +28,9 @@ for(const [nm,vp] of [['phone',PH],['desk',DK]]){
   // drilling uses the model
   const d=await p.evaluate(async()=>{document.getElementById('stratUse').click();await new Promise(r=>setTimeout(r,300));const L=GEO.layers;const s=L.filter(l=>l.strat);const lith=new Set(s.map(l=>l.lith));const r=window.S.env;GX.strat.applyToDrilling(false);return {n:s.length,lith:lith.size,back:GEO.layers.every(l=>!l.strat),sim:s.every(l=>/SIMULATED/.test(l.src))}});
   ok(d.n>20&&d.lith>=8,'drilling: GEO layers from model ('+d.n+' beds, '+d.lith+' lithologies)');ok(d.sim,'drilling: layers marked SIMULATED');ok(d.back,'drilling: switch off restores layers')}
+ // stage 2a: bit lithology chip
+ await p.evaluate(()=>GX.strat.close());await w(1300);const hb=await p.evaluate(()=>{const e=document.getElementById('stratBit');if(!e)return null;if(e.closest('.msheet')||e.classList.contains('msheet'))return {t:e.textContent,in:false,api:''};const r=e.getBoundingClientRect();return {t:e.textContent,in:r.left>=0&&r.right<=innerWidth+1&&r.bottom<=innerHeight,api:GX.strat.hudText(GX.strat.atBit())}});
+ ok(!!hb&&/^Bit: /.test(hb.t)&&/\bSIM\b/.test(hb.t),nm+': bit lithology chip '+(hb&&hb.t));ok(!!hb&&hb.in,nm+': chip inside screen');await p.screenshot({path:`shots_live/141_strat2_${nm}_hud.png`});
  await p.evaluate(()=>GX.strat.close());await p.close()}
 const q=await pg(BASE+'/?nosplash&strat=1',PH);await q.waitForSelector('#strat',{timeout:60000}).catch(()=>{});ok(await q.evaluate(()=>!!document.getElementById('strat')),'?strat=1 opens panel');await q.close();
 ok(bad.length==0,'no WITSML/Adaga/Supabase or write requests ('+bad.slice(0,2).join(' ')+')');ok(errs.filter(e=>!/WebSocket|supabase|Failed to fetch/i.test(e)).length==0,'no page errors '+errs.slice(0,2).join(' | '));
