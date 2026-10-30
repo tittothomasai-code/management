@@ -25,3 +25,8 @@ All outputs are planning aids and are tagged **SIM**. Nothing is written to Supa
 - The Design tab's **Use this plan** writes W.L / W.S / W.CS. Pressing Calculate in the Proposal tab goes back to wplan's own target-based plan.
 - Error model is a teaching implementation; it is not certified for real anti-collision decisions.
 - Pore pressure, stresses and rates are SIM unless the user enters real values.
+
+## Hydraulics + ECD (SIM)
+- API RP 13D power-law model: n and K from PV/YP (Fann 600/300), pipe and annulus friction per string section, bit pressure drop from nozzle TFA, surface and tool (MWD/RSS) losses.
+- Outputs: SPP, ECD at TD, HSI, jet impact, % pressure at bit. Annular gaps < 0.25 in are skipped.
+- Check: 1500 L/min -> SPP ~129 bar, ECD 1.235 sg; 3000 L/min -> SPP ~368 bar, ECD 1.317 sg.

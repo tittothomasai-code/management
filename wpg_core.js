@@ -207,3 +207,14 @@ export function afe(sections,{R=RATES,n=400,seed=7}={}){const det=r=>{let days=R
   days+=d;cost+=c;rows.push({...s,rop,onB,trips,cas,flat,npt,days:d,cost:c,bits});tdT.push([s.mdBot,days])}return {days,cost,rows,tdT}};
  const base=det(null),r=rng(seed),sims=[];for(let i=0;i<n;i++)sims.push(det(r));const q=(a,p)=>a.slice().sort((x,y)=>x-y)[Math.floor(p*(a.length-1))];
  return {...base,P10:{days:q(sims.map(s=>s.days),.1),cost:q(sims.map(s=>s.cost),.1)},P50:{days:q(sims.map(s=>s.days),.5),cost:q(sims.map(s=>s.cost),.5)},P90:{days:q(sims.map(s=>s.days),.9),cost:q(sims.map(s=>s.cost),.9)},tag:'SIM'}}
+// ---------- Hydraulics (API RP 13D power-law) ----------
+// mud {mw SG, pv cP, yp lbf/100ft2}; q L/min; geometry inches; returns pressure losses (bar), ECD (SG), bit HSI, jet impact.
+export function hydraulics(S,{td,str=STRING,mw=1.2,pv=20,yp=15,q=2200,holeIn=8.5,csgId=8.835,shoeMd=0,nozzles=[12,12,12,12,12],surfBar=8,mwd=15,rss=10}={}){
+ const rho=mw*1000,Q=q/60000,th600=2*pv+yp,th300=pv+yp,np=3.32*Math.log10(th600/th300),Kp=0.4788*th300/511**np;
+ const loss=(dIn,dOut,L,pipe)=>{if(!pipe&&dOut-dIn<0.25)return {dp:0,v:0,Re:0};const Dh=pipe?dIn*IN:(dOut-dIn)*IN,A=pipe?Math.PI/4*(dIn*IN)**2:Math.PI/4*((dOut*IN)**2-(dIn*IN)**2);const v=Q/A,n=np,K=Kp,g=pipe?(3*n+1)/(4*n)*8*v/Dh:(2*n+1)/(3*n)*12*v/Dh,tw=K*g**n,Re=rho*v*v/tw*8;
+  const f=Re<2100?16/Re:0.0791/Re**0.25;return {dp:2*f*rho*v*v*L/Dh/1e5*(pipe?1:1),v,Re}};
+ const segs=stringAt(str,td);let pipe=0,ann=0;const rows=[];for(const s of segs){const L=s.L;if(L<=0)continue;pipe+=loss(s.id,0,L,1).dp;
+  const cased=Math.max(0,Math.min(s.mdBot,shoeMd)-s.mdTop),oh=L-cased;const a1=cased>0?loss(s.od,csgId,cased,0):{dp:0},a2=oh>0?loss(s.od,holeIn,oh,0):{dp:0,v:0};ann+=a1.dp+a2.dp;rows.push({name:s.name,md:s.mdTop,av:(a2.v||a1.v||0)*60})}
+ const At=nozzles.reduce((a,n)=>a+Math.PI/4*(n/32*IN)**2,0),vn=Q/At,bit=rho*vn*vn/(2*0.95**2)/1e5,tvd=survAt(S,td).tvd;
+ const ecd=mw+ann*1e5/(9.80665*tvd*1000),hhp=bit*1e5*Q,hsi=hhp/745.7/(Math.PI/4*holeIn**2),ji=rho*Q*vn;
+ return {pipe,ann,bit,surf:surfBar,tools:mwd+rss,spp:surfBar+pipe+ann+bit+mwd+rss,ecd,hsi,ji,vn,np,Kp,rows,pctBit:bit/(surfBar+pipe+ann+bit+mwd+rss),tag:'SIM'}}
