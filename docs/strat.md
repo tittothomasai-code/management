@@ -21,4 +21,4 @@ API: window.GX.strat = {LITH, SIM_STRAT, fromMarkers, fromEDM, resolve, model, s
 - `strat.targetFn(i,azi,E0,N0,M,opts)` returns a thin net-pay bed inside formation i's gross interval: thickness 4.5 ± 1.2 m (min 1.5 m), top at 30 % of gross, 1.2 m undulation (220 m wave), one 1.5 m sub-seismic throw at x = 620 m. `TARGET` holds the defaults. Name ends "target (SIM)"; always SIM.
 - geosteer.js uses targetFn when strat provides it (else geologyFn, else simGeology). Source label is forced to SIM when the target is used.
 - Why: horizontal wells are commonly landed in 2–8 m beds below seismic vertical resolution (≈ λ/4, 10–25 m), so the bit leaves the bed at faults and undulations and the steerer must react to gamma/resistivity.
-- Sources: Widess, "How thin is a thin bed?", Geophysics 38(6) 1973 (λ/4 resolution); SPE 135082 / Stoner, "Geosteering in thin reservoirs"; Schlumberger Oilfield Glossary "geosteering"; Sheriff & Geldart, Exploration Seismology (2nd ed., 1995) §6.
+- Sources: Widess, "How thin is a thin bed?", Geophysics 38(6) 1973 (λ/4 resolution); Schlumberger Oilfield Glossary "geosteering"; Sheriff & Geldart, Exploration Seismology (2nd ed., 1995) §6.
