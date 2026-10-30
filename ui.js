@@ -66,8 +66,8 @@ const DK={on:false,open:[],w:{},active:null},DLS='dw_desk',DEFW={data:520,sheet:
 const isDesk=()=>innerWidth>=1024;
 const del=k=>({data:$('traces'),sheet:$('ss56'),tools:$('uiTools'),crew:$('chatSheet'),plan:$('wp')}[k]);
 const keyOf=e=>['data','sheet','tools','plan','crew'].find(k=>del(k)===e&&e);
-function dsave(){try{localStorage.setItem(DLS,JSON.stringify({open:DK.open,w:DK.w,active:DK.active,col:DK.col||{}}))}catch(e){}}
-function dload(){try{const o=JSON.parse(localStorage.getItem(DLS)||'{}');DK.open=(o.open||[]).filter(k=>k in DEFW);DK.w=o.w||{};DK.active=o.active||null;DK.col=o.col||{}}catch(e){}}
+function dsave(){try{localStorage.setItem(DLS,JSON.stringify({open:DK.open,w:DK.w,active:DK.active,col:DK.col||{},split:DK.split}))}catch(e){}}
+function dload(){try{const o=JSON.parse(localStorage.getItem(DLS)||'{}');DK.open=(o.open||[]).filter(k=>k in DEFW);DK.w=o.w||{};DK.active=o.active||null;DK.col=o.col||{};DK.split=o.split}catch(e){}}
 const OPEN={data:()=>{let t=$('traces');if(!t){$('trbtn')?.click();t=$('traces')}if(t)t.style.display='block'},sheet:()=>window.GX?.ss56?.open?.(),
  tools:()=>{$('uiTools').style.display='block'},plan:()=>{window.GX?.wplan?.open?.()},crew:()=>{const c=$('chatSheet');if(!c)return;c.style.removeProperty('display');c.style.display='flex';window.GX?.chat?.toggle?.(true)}};
 const SP=(e,k,v)=>e.style.setProperty(k,v,'important');
