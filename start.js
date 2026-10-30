@@ -67,7 +67,7 @@ function close(dest){ST.last=dest;const A=api();A.last=dest;if(dest!='join'&&des
 async function choose(){const go=ST.items[ST.i]?.dataset.go;beep(880,.1);
  if(go=='sim'){ST.menu='sim';return render()}
  if(go=='monitor'){close('monitor');const m=await import('./monitor.js?v=593');m.open();return}
- if(go=='workover'){close('workover');const m=await import('./workover.js');m.open();return}
+ if(go=='workover'){close('workover');const m=await import('./workover.js?v=b5');m.open();return}
  if(go=='saved'){ST.menu='saved';return render()}
  if(go?.startsWith('open:')){close('edm');const m=await import('./edmui.js?v=5942');m.openSaved(go.slice(5)).catch(e=>alert('Could not open saved site: '+e.message));return}
  if(go=='edm'){close('edm');const m=await import('./edmui.js?v=5942');m.open();return}if(go=='back')return back();
@@ -94,4 +94,4 @@ export function show(){api();if(ST.el)return;const st=document.createElement('st
 const API={ST,show,shouldShow,hasSave,last:null};function api(){window.dwStart=API;window.GX=window.GX||{};if(window.GX.start!==API)window.GX.start=API;return API}api();addEventListener('load',api);setTimeout(api,3000);
 if(shouldShow()){if(document.body)show();else addEventListener('DOMContentLoaded',show)}
 
-if(new URLSearchParams(location.search).has('workover'))import('./workover.js');
+if(new URLSearchParams(location.search).has('workover'))import('./workover.js?v=b5');
