@@ -36,4 +36,11 @@ for(const [nm,vp] of [['desk',{width:1440,height:900}],['phone',{width:390,heigh
   if(nm=='phone')ok(await pg.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1&&flu.scrollWidth<=innerWidth+1),nm+' '+tab+': no horizontal overflow');
   await pg.screenshot({path:SH+i+'_'+tab+'_'+nm+'.png'})}
  await ctx.close()}
+{const ctx=await br.createBrowserContext();const pg=await ctx.newPage();await pg.setViewport({width:1440,height:900});pg.on('pageerror',e=>errs.push(String(e)));
+ await pg.evaluateOnNewDocument(()=>{window.WebSocket=class{constructor(){this.readyState=3}send(){}close(){}}});
+ await pg.goto(BASE+'/?nosplash=1&fluids',{waitUntil:'load',timeout:120000});await pg.waitForFunction(()=>window.dwFlu?.d3,{timeout:120000}).catch(()=>{});
+ const r=await pg.evaluate(async()=>{const d=dwFlu.d3;if(!d)return null;dwFlu.show('wc');await new Promise(r=>setTimeout(r,500));const a0=d.level.act;dwFlu.st.wc.pits.active=30;await new Promise(r=>setTimeout(r,500));const a1=d.level.act;
+  const c0=d.act.m.color.getHex();dwFlu.st.mudK='obm';dwFlu.st.mud=dwFlu.F.clone(dwFlu.F.MUDS.obm);dwFlu.st.wc.mud=dwFlu.st.mud;await new Promise(r=>setTimeout(r,500));return{a0,a1,c0,c1:d.act.m.color.getHex(),inScene:!!G._scene.getObjectByName('SIM mud tanks')}});
+ ok(r&&r.inScene,'rig: mud tanks in 3D scene');ok(r&&r.a1<r.a0,'rig: pit level follows active volume '+(r&&r.a0.toFixed(2))+'→'+(r&&r.a1.toFixed(2)));ok(r&&r.c0!=r.c1,'rig: mud colour follows type (WBM→OBM) '+JSON.stringify(r));
+ await pg.evaluate(()=>{const d=dwFlu.d3.root.position;G.cam?.position?.set(d.x+12,d.y+8,d.z+12);G.ctl?.target?.copy?.(d);G.ctl?.update?.();const f=document.getElementById('flu');if(f)f.style.display='none'});await w(1500);await pg.screenshot({path:SH+'5_3d_desk.png'});await ctx.close()}
 ok(!errs.length,'no page errors '+errs.slice(0,3).join(' | '));ok(!badr.length,'no writes / witsml / supabase');console.log(`\n${pass} pass, ${fails} fail`);await br.close();process.exit(fails?1:0)

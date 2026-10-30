@@ -14,7 +14,7 @@ export function open(){document.getElementById('flu')?.remove();if(!document.get
  R.innerHTML=`<div class=bar><b style="font-size:17px">Mud, hydraulics and well control</b> <span class=tag>SIM</span> <button id=flux style="float:right">✕</button>
  <div style="opacity:.7;font-size:12px">SIM teaching model · API RP 13D style hydraulics · not for well design</div>
  <div class=tabs>${[['mud','Mud check'],['hyd','Hydraulics'],['pit','Pits and trip'],['wc','Well control']].map(([k,n])=>`<button data-t=${k}>${n}</button>`).join('')}</div></div><div class=pg id=flupg></div>`;
- const api={st,F,W,close(){st.alive=false;R.remove()},show,get wc(){return st.wc}};window.dwFlu=api;$(R,'#flux').onclick=api.close;
+ const api={st,F,W,close(){st.alive=false;api.d3?.remove?.();R.remove()},show,get wc(){return st.wc}};window.dwFlu=api;if(window.G?._scene)import('./fluid3d.js?v=fl2').then(m=>{api.d3=m.mount(window.G,st)}).catch(()=>{});$(R,'#flux').onclick=api.close;
  R.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>show(b.dataset.t));
  const Q=()=>{const s=rig();if(s&&s.Q>0)return s.Q*F.GPM;return F.pumpOutput(st.w.pump,st.spm)*st.w.pump.n};
  const syncWell=()=>{const s=rig();if(s&&s.md>500){const r=s.md/st.w.md;st.w.md=s.md;st.w.tvd=Math.round(s.pos?.[2]>0?s.pos[2]:st.w.tvd*r);st.w.string[0].len=Math.max(100,s.md-210)}};
