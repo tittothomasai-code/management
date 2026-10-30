@@ -66,8 +66,8 @@ const DK={on:false,open:[],w:{},active:null},DLS='dw_desk',DEFW={data:520,sheet:
 const isDesk=()=>innerWidth>=1024;
 const del=k=>({data:$('traces'),sheet:$('ss56'),tools:$('uiTools'),crew:$('chatSheet'),plan:$('wp')}[k]);
 const keyOf=e=>['data','sheet','tools','plan','crew'].find(k=>del(k)===e&&e);
-function dsave(){try{localStorage.setItem(DLS,JSON.stringify({open:DK.open,w:DK.w,active:DK.active}))}catch(e){}}
-function dload(){try{const o=JSON.parse(localStorage.getItem(DLS)||'{}');DK.open=(o.open||[]).filter(k=>k in DEFW);DK.w=o.w||{};DK.active=o.active||null}catch(e){}}
+function dsave(){try{localStorage.setItem(DLS,JSON.stringify({open:DK.open,w:DK.w,active:DK.active,col:DK.col||{}}))}catch(e){}}
+function dload(){try{const o=JSON.parse(localStorage.getItem(DLS)||'{}');DK.open=(o.open||[]).filter(k=>k in DEFW);DK.w=o.w||{};DK.active=o.active||null;DK.col=o.col||{}}catch(e){}}
 const OPEN={data:()=>{let t=$('traces');if(!t){$('trbtn')?.click();t=$('traces')}if(t)t.style.display='block'},sheet:()=>window.GX?.ss56?.open?.(),
  tools:()=>{$('uiTools').style.display='block'},plan:()=>{window.GX?.wplan?.open?.()},crew:()=>{const c=$('chatSheet');if(!c)return;c.style.removeProperty('display');c.style.display='flex';window.GX?.chat?.toggle?.(true)}};
 const SP=(e,k,v)=>e.style.setProperty(k,v,'important');
@@ -75,7 +75,8 @@ function undock(e){if(!e)return;if(e.dataset.dkOrig!=null){const d=e.style.displ
 export function dockOpen(k,act=true){if(!DK.open.includes(k))DK.open.push(k);if(act)DK.active=k;DK.busy=true;try{OPEN[k]?.()}catch(e){console.warn('dock',k,e)}DK.busy=false;dsave();layout();tick()}
 export function dockClose(k){DK.open=DK.open.filter(x=>x!=k);if(DK.active==k)DK.active=DK.open.at(-1)||null;const e=del(k);if(e){undock(e);hide(e)}dsave();layout();tick()}
 function layout(){if(!DK.on)return;let right=0;const top=0,L=DK.open.filter(k=>vis(del(k))),want=L.map(k=>Math.max(280,Math.min(DK.w[k]||DEFW[k],innerWidth-420))),avail=innerWidth-104-240,sum=want.reduce((a,b)=>a+b,0),f=sum>avail?avail/sum:1;
- for(const k of L){const e=del(k);let w=Math.max(220,Math.round(want[L.indexOf(k)]*f));
+ for(const k of L){const e=del(k);let w=DK.col?.[k]?40:Math.max(220,Math.round(want[L.indexOf(k)]*f));// v5.10.1 dock hook: collapsed panel = 40 px strip (dock.js)
+
   if(e.dataset.dkOrig==null)e.dataset.dkOrig=e.style.cssText.replace(/display:[^;]*;?/g,'');e.classList.add('dk');SP(e,'position','fixed');SP(e,'inset','auto');SP(e,'top',top+'px');SP(e,'bottom','0px');SP(e,'right',(right)+'px');SP(e,'left','auto');SP(e,'width',w+'px');SP(e,'max-width','none');SP(e,'height','auto');SP(e,'max-height','none');SP(e,'border-radius','0');SP(e,'z-index',String(9400+(DK.active==k?50:0)));SP(e,'box-sizing','border-box');
   if(k=='crew'){const b=$('chatBody');if(b)b.style.display='flex'}
   if(!e.querySelector(':scope>.dkH')){const h=document.createElement('div');h.className='dkH';h.title='Drag to resize';h.dataset.k=k;e.appendChild(h);h.addEventListener('pointerdown',ev=>{ev.preventDefault();ev.stopPropagation();h.setPointerCapture(ev.pointerId);const x0=ev.clientX,w0=e.getBoundingClientRect().width;
@@ -83,7 +84,7 @@ function layout(){if(!DK.on)return;let right=0;const top=0,L=DK.open.filter(k=>v
    const x=document.createElement('button');x.className='dkX';x.textContent='✕';x.title='Close panel';x.setAttribute('aria-label','Close '+k);x.onclick=ev=>{ev.stopPropagation();dockClose(k)};e.appendChild(x);
    e.addEventListener('pointerdown',()=>{if(DK.active!=k){DK.active=k;dsave();layout();tick()}},true)}
   right+=w}
- document.body.style.setProperty('--dkR',right+'px')}
+ document.body.style.setProperty('--dkR',right+'px');try{window.GX?.dock?.after?.(right,L)}catch(e){}}// v5.10.1 dock hook
 function dcss(){const s=document.createElement('style');s.textContent=`
 body.desk #wshop{left:104px!important}
 body.desk #uiNav{top:0;bottom:0;right:auto;width:104px;height:auto;flex-direction:column;justify-content:flex-start;padding:8px 0;border-top:0;border-right:1px solid #2a3a50}
@@ -131,7 +132,7 @@ export function init(){if(typeof document=='undefined')return;const q=new URLSea
  document.body.classList.add('ui57');css();buildNav();buildTools();
  for(const id of ['seqpanel','geoRd','log'])if($(id)){if(id=='seqpanel')$(id).style.display='none';else $(id).classList.add('uihide')}
  const sig=$('sigsrc');if(sig)sig.style.display='none';const ch=$('chatSheet');if(ch)ch.style.setProperty('display','none','important');
- dcss();dload();prevVis=new Set(panels().filter(vis));GX.ui={show,closeAll,status,tick,classic:false,DK,dockOpen,dockClose,layout};
+ dcss();dload();prevVis=new Set(panels().filter(vis));GX.ui={show,closeAll,status,tick,classic:false,DK,dockOpen,dockClose,layout};import('./dock.js?v=1').then(m=>m.init()).catch(e=>console.warn('dock',e));
  DK.restoring=true;deskMode();addEventListener('resize',()=>{deskMode();layout()});setTimeout(()=>{if(DK.on)for(const k of DK.open)if(!vis(del(k))){try{DK.busy=true;OPEN[k]()}catch(e){}DK.busy=false}layout();setTimeout(()=>{DK.restoring=false;tick()},1200)},1500);setInterval(tick,400);tick()}
 // v5.9.2: desktop left nav (104 px) used to cover left-anchored floating panels (Sequence player, Survey table hid the MD column).
 // Any visible fixed/absolute panel that starts under the nav is moved right of it and narrowed to fit.
