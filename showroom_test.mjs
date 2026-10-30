@@ -42,7 +42,7 @@ for(const nm of ['desk','phone']){const vp=VP[nm];
  const pt=await p.evaluate(()=>{const S=GX.showroom.ST,m=S.parts.find(x=>x.userData.part=='drawworks');S.grp.updateMatrixWorld(true);const v=new (S.cam.position.constructor)();m.getWorldPosition(v);v.project(S.cam);return{x:(v.x+1)/2*innerWidth,y:(1-v.y)/2*innerHeight}});
  const hitKey=await p.evaluate(({x,y})=>GX.showroom.pick(x,y)?.userData.part||null,pt);ok(!!hitKey,nm+': raycast finds a part ('+hitKey+')');
  await p.evaluate(()=>{GX.showroom.ST.grp.rotation.y=GX.showroom.ST.grp.rotation.y});if(hitKey){await p.evaluate(k=>GX.showroom.tapPart(k),hitKey)}
- await w(800);ok(await p.evaluate(k=>!document.getElementById('showroom')&&getComputedStyle(document.getElementById('wshop')).display=='block'&&GX.ws.ST.eq==k&&GX.ws.ST.mode=='exp',hitKey),nm+': part tap opens exploded view of '+hitKey);
+ await w(800);ok(await p.evaluate(k=>!document.getElementById('showroom')&&getComputedStyle(document.getElementById('wshop')).display=='block'&&GX.ws.ST.eq==k&&GX.ws.ST.mode==(GX.bom?'bom':'exp'),hitKey),nm+': part tap opens BOM tab (feat/bom) of '+hitKey);
  await p.screenshot({path:SH+nm+'_3_part.png'});
  // tap via real pointer path
  await p.evaluate(()=>GX.ws.close());
@@ -67,23 +67,27 @@ for(const nm of ['desk','phone']){const vp=VP[nm];
  await p.screenshot({path:SH+nm+'_4_assets.png'});
  await p.evaluate(()=>GX.showroom.back());d=await D();ok(d.b==null&&d.rows>=8,nm+': back → rig level, '+d.rows+' asset rows');
  const hdr=await p.evaluate(()=>[...document.querySelectorAll('#srList th')].map(t=>t.textContent).join('|'));ok(hdr=='Asset|Type|Key spec|BOM',nm+': columns '+hdr);
- const names=await p.evaluate(()=>srList.textContent);for(const n of ['Top drive','Drawworks','Mud pumps','BOP stack','Mast / substructure','Pipe handling','Mud system','Generators','Accumulator','Choke manifold'])ok(names.includes(n),nm+': asset row '+n);
+ const names=await p.evaluate(()=>srList.textContent);for(const n of ['Top drive','Drawworks','Mud pumps','BOP stack','Mast / substructure','Pipe handling','Mud tanks / shakers','Generators','Accumulator','Choke manifold'])ok(names.includes(n),nm+': asset row '+n);
  ok(await p.evaluate(()=>[...document.querySelectorAll('#srList tr.b td:last-child')].every(t=>/^\d+$/.test(t.textContent))),nm+': BOM count per row');
  if(nm=='desk'){await p.hover('#srList tr.b[data-k="mudpump"]');await w(200);d=await D();ok(d.hi,nm+': hover row highlights asset on rig');}
  await p.evaluate(()=>document.querySelector('#srList tr.b[data-k="topdrive"]').click());await w(900);d=await D();
  ok(d.b=='topdrive'&&d.crows>=5&&d.zoom&&d.hi,nm+': top drive row expands to '+d.crows+' components, zooms + highlights');
- ok(await p.evaluate(()=>/AC drive motor/.test(srList.textContent)&&/Gearbox/.test(srList.textContent)&&/IBOP/.test(srList.textContent)),nm+': C rows motor, gearbox, IBOP');
+ ok(await p.evaluate(()=>/Drive motor/.test(srList.textContent)&&/Gearbox/.test(srList.textContent)&&/IBOP/.test(srList.textContent)),nm+': C rows motor, gearbox, IBOP');
  await p.evaluate(()=>document.querySelector('#srList tr.c[data-c="1"]').click());await w(500);d=await D();
- ok(d.c==1&&/Top drive.*›.*AC drive motor/.test(d.crumb),nm+': C level breadcrumb Rig › Top drive › AC drive motor');
- ok(await p.evaluate(()=>/Qty/.test(srDet.textContent)&&/Material \/ spec/.test(srDet.textContent)&&/SIM/.test(srDet.textContent)),nm+': C spec + BOM line shown');
+ ok(d.c==1&&/Top drive.*›.*Drive motor/.test(d.crumb),nm+': C level breadcrumb Rig › Top drive › Drive motor');
+ ok(await p.evaluate(()=>/Qty/.test(srDet.textContent)&&/Material \/ spec/.test(srDet.textContent)&&/1,150 hp/.test(srDet.textContent)&&/SIM/.test(srDet.textContent)),nm+': C spec + BOM line shown');
  await p.screenshot({path:SH+nm+'_5_component.png'});
  await p.evaluate(()=>GX.showroom.back());d=await D();ok(d.c==null&&d.b=='topdrive',nm+': back C → B');
- await p.evaluate(()=>document.querySelector('#srList tr.b[data-k="mudpump"]').click());await w(300);await p.evaluate(()=>document.querySelector('#srList tr.c[data-c="3"]').click());await w(300);
+ await p.evaluate(()=>document.querySelector('#srList tr.b[data-k="mudpump"]').click());await w(300);await p.evaluate(()=>document.querySelector('#srList tr.c[data-c="1"]').click());await w(300);
  ok(await p.evaluate(()=>/Fluid end/.test(srCrumb.textContent)),nm+': mud pump › fluid end');
+ ok(await p.evaluate(()=>{GX.showroom.drawer(true);GX.showroom.back();const R=GX.bom?.RIG;const n=R.assets.find(a=>a.id=='mudpumps').components.reduce((t,c)=>t+c.lines.length,0);return document.querySelector('#srList tr.b[data-k="mudpump"] td:last-child').textContent==String(n)}),nm+': BOM count matches feat/bom RIG');
+ await p.evaluate(()=>{GX.showroom.selB('mast');GX.showroom.selC(0)});await w(200);ok(await p.evaluate(()=>!document.getElementById('srExp')&&/no 3D model/.test(srDet.textContent)),nm+': part:null line → no exploded button');
  await p.evaluate(()=>srHdl.click());await w(500);d=await D();ok(!d.open&&!d.zoom,nm+': handle slides table closed');
  await p.evaluate(()=>srHdl.click());await w(400);d=await D();ok(d.open,nm+': handle opens it again');
  await p.evaluate(()=>{document.querySelector('#srList tr.b[data-k="drawworks"]').click()});await w(200);await p.evaluate(()=>document.querySelector('#srList tr.c[data-c="1"]').click());await w(200);
- await p.evaluate(()=>srExp.click());await w(800);ok(await p.evaluate(()=>!document.getElementById('showroom')&&getComputedStyle(wshop).display=='block'&&GX.ws.ST.eq=='drawworks'&&GX.ws.ST.sel==1),nm+': C → exploded view with that part selected');
+ await p.evaluate(()=>srExp.click());await w(800);ok(await p.evaluate(()=>!document.getElementById('showroom')&&getComputedStyle(wshop).display=='block'&&GX.ws.ST.eq=='drawworks'&&GX.ws.ST.mode=='exp'&&GX.ws.ST.sel==1),nm+': C → exploded view with that part selected');
+ await p.evaluate(()=>{GX.ws.close();GX.showroom.open();GX.showroom.drawer(true);GX.showroom.selB('topdrive');GX.showroom.selC(4)});await w(300);await p.evaluate(()=>srBom.click());await w(800);
+ ok(await p.evaluate(()=>GX.ws.ST.eq=='topdrive'&&GX.ws.ST.mode=='bom'&&GX.ws.ST.sel==5),nm+': C → BOM tab with IBOP line selected');
  await ctx.close()}
 // phone landscape: right-side drawer
 {const ctx=await b.createBrowserContext();const p=await ctx.newPage();await p.setViewport({width:844,height:390,deviceScaleFactor:2,isMobile:true,hasTouch:true});p.on('pageerror',e=>errs.push('land: '+e));await p.evaluateOnNewDocument(MOCK);

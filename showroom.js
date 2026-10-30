@@ -121,8 +121,11 @@ export function init(){if(typeof document=='undefined'||$('btnShow'))return;cons
  window.GX=window.GX||{};window.GX.showroom=api()}
 
 // ---------- A > B > C hierarchy: rig > child assets > components. C rows come from the ext12 catalogue (same order as the BOM). ----------
-let BOMD=null;import('./bom_data.js?v=1').then(m=>{BOMD=m.BOM||null;if(ST.dOpen)renderList()}).catch(()=>{BOMD=null});// guarded: feat/bom may not be merged
+// Built on feat/bom RIG (rig > assets > components > BOM lines). Guarded: falls back to the ext12 catalogue if bom_data.js is missing.
+let RIGD=null;import('./bom_data.js?v=1').then(m=>{RIGD=m.RIG||null;if(ST.dOpen)renderList()}).catch(()=>{RIGD=null});
 const C3=(...a)=>a.map(n=>({n}));
+const RID={mudpump:'mudpumps',pipe:'pipehandling',mudsys:'mudtanks',gen:'generators',accum:'accumulator'};
+const rigA=k=>{const R=window.GX?.bom?.RIG||RIGD;if(!R)return null;const id=RID[k]||k;return window.GX?.bom?.asset?.(id)||R.assets.find(a=>a.id==id&&a.group!='downhole')||null};
 export const ASSET={
  mast:{name:'Mast / substructure',type:'Structure',spec:r=>r.mast+' · '+r.hook,comp:C3('Mast legs and braces','Crown platform','Racking board','Drill floor','Substructure boxes')},
  block:{name:'Crown & travelling block',type:'Hoisting',spec:r=>'Rated '+r.hook,cat:'block'},
@@ -136,10 +139,14 @@ export const ASSET={
  accum:{name:'Accumulator (koomey)',type:'Well control',spec:()=>'3,000 psi, API 16D',comp:C3('Accumulator bottles','Electric pump','Air pumps','Control manifold','Remote panel')},
  choke:{name:'Choke manifold',type:'Well control',spec:r=>r.bop,comp:C3('Adjustable chokes','Gate valves','Pressure gauges','Mud-gas separator line')}};
 const keysOf=()=>{const seen=new Set();for(const m of ST.parts)seen.add(m.userData.part);return Object.keys(ASSET).filter(k=>seen.has(k))};
-export function comps(k){const A=ASSET[k];if(!A)return[];const cat=A.cat&&window.GX?.ws?.CAT?.[A.cat];
- if(cat)return cat.parts.map((p,i)=>{const b=BOMD?.[A.cat]?.[i];return{n:p.n,i,qty:b?.[0]??1,spec:b?.[1]??'Generic',fn:b?.[2]??p.ds}});
- return (A.comp||[]).map((c,i)=>({n:c.n,i,qty:1,spec:'Generic',fn:''}))}
-function bomCount(k){const A=ASSET[k];return A?.cat&&BOMD?.[A.cat]?BOMD[A.cat].length:comps(k).length}
+// C rows: {n, i, lines:[{no,qty,spec,fn,part,ws}]}. part:null = no workshop 3D model.
+export function comps(k){const A=ASSET[k];if(!A)return[];const R=rigA(k),CAT=window.GX?.ws?.CAT;
+ if(R)return R.components.map((c,i)=>({n:c.label||c.lines[0]?.name||(CAT?.[c.lines[0]?.ws]?.parts?.[c.lines[0]?.part]?.n)||c.id,i,id:c.id,lines:c.lines}));
+ const cat=A.cat&&CAT?.[A.cat];
+ if(cat)return cat.parts.map((p,i)=>({n:p.n,i,lines:[{no:1,qty:1,spec:'Generic',fn:p.ds,part:i,ws:A.cat}]}));
+ return (A.comp||[]).map((c,i)=>({n:c.n,i,lines:[{no:1,qty:1,spec:'Generic',fn:'',part:null}]}))}
+function bomCount(k){return comps(k).reduce((t,c)=>t+c.lines.length,0)}
+const nameOf=k=>rigA(k)?.label||ASSET[k].name;
 function hilite(k,on){for(const m of ST.parts){const x=m.userData.part==k&&on;if(x&&!m.userData.own){m.material=m.material.clone();m.userData.own=1}if(m.userData.own)m.material.emissive.setHex(x?0x2a6fff:0)}}
 function zoom(k){const ms=ST.parts.filter(m=>m.userData.part==k);if(!ms.length){ST.camT=null;frameCam();return}const bb=new THREE.Box3();ms.forEach(m=>bb.expandByObject(m));
  const c=bb.getCenter(new THREE.Vector3()),sz=Math.max(4,bb.getSize(new THREE.Vector3()).length());ST.look=ST.look||c.clone();ST.camT={p:c.clone().add(new THREE.Vector3(sz*.6,sz*.4,sz*1.3)),l:c}}
@@ -149,14 +156,15 @@ export function selB(k){if(ST.hk&&ST.hk!=k)hilite(ST.hk,0);ST.lvl={b:k,c:null};S
 export function selC(i){const L=ST.lvl;if(!L)return;L.c=i;hilite(L.b,1);zoom(L.b);renderList()}
 export function back(){const L=ST.lvl;if(L?.c!=null){L.c=null;renderList()}else if(L){hilite(L.b,0);ST.lvl=null;ST.hk=null;ST.camT=null;frameCam();renderList()}else drawer(false)}
 function renderList(){const r=RIGS[ST.i],L=ST.lvl,A=L&&ASSET[L.b],cs=L?comps(L.b):[],C=L&&L.c!=null?cs[L.c]:null;
- $('srCrumb').innerHTML=`<button id=srBack aria-label=Back>◀ Back</button><a data-l=0>${es(r.name)}</a>`+(A?` › <a data-l=1>${es(A.name)}</a>`:'')+(C?` › <b>${es(C.n)}</b>`:'');
+ $('srCrumb').innerHTML=`<button id=srBack aria-label=Back>◀ Back</button><a data-l=0>${es(r.name)}</a>`+(A?` › <a data-l=1>${es(nameOf(L.b))}</a>`:'')+(C?` › <b>${es(C.n)}</b>`:'');
  $('srBack').onclick=back;$('srCrumb').querySelectorAll('a').forEach(a=>a.onclick=()=>{if(a.dataset.l=='0'){ST.lvl&&hilite(ST.lvl.b,0);ST.lvl=null;ST.hk=null;ST.camT=null;frameCam();renderList()}else{ST.lvl.c=null;renderList()}});
- if(C){const cat=A.cat;$('srList').innerHTML=`<div id=srDet><h3 style="margin:0 0 4px">${es(C.n)} <span class=srSim>SIM</span></h3><div>Part of: ${es(A.name)}</div>
-<table><tr><th>BOM line</th><th></th></tr><tr><td>Item no.</td><td>${C.i+1}</td></tr><tr><td>Qty</td><td>${es(C.qty)}</td></tr><tr><td>Material / spec</td><td>${es(C.spec)}</td></tr><tr><td>Function</td><td>${es(C.fn||'—')}</td></tr></table>
-<div class=row>${cat?`<button id=srExp>💥 Exploded view</button><button id=srBom>📋 BOM</button>`:'<span style="opacity:.7">No exploded model for this asset yet (generic SIM list).</span>'}</div></div>`;
-  if(cat){$('srExp').onclick=()=>{tapPart(cat,true);try{window.GX.ws.showPart(C.i)}catch(e){}};$('srBom').onclick=()=>{tapPart(cat);try{window.GX.ws.showPart(C.i)}catch(e){}}}return}
+ if(C){const L3=C.lines,m3=L3.find(l=>l.part!=null&&l.ws&&window.GX?.ws?.CAT?.[l.ws]);
+  $('srList').innerHTML=`<div id=srDet><h3 style="margin:0 0 4px">${es(C.n)} <span class=srSim>SIM</span></h3><div>Part of: ${es(nameOf(L.b))}</div>
+<table><tr><th>No.</th><th>Qty</th><th>Material / spec</th><th>Function</th></tr>${L3.map(l=>`<tr class=ln><td>${es(l.no??'')}</td><td>${es(l.qty)}</td><td>${es(l.spec||'—')}${l.part==null?' <i style="opacity:.6">(no 3D model)</i>':''}</td><td>${es(l.fn||'—')}</td></tr>`).join('')}</table>
+<div class=row>${m3?`<button id=srExp>💥 Exploded view</button><button id=srBom>📋 BOM</button>`:'<span style="opacity:.7">No workshop 3D model for this component.</span>'}</div></div>`;
+  if(m3){$('srExp').onclick=()=>{tapPart(m3.ws,true);try{window.GX.ws.showPart(m3.part)}catch(e){}};$('srBom').onclick=()=>{tapPart(m3.ws);try{window.GX.ws.showPart(m3.part)}catch(e){}}}return}
  const ks=keysOf();$('srList').innerHTML=`<table><tr><th>Asset</th><th>Type</th><th>Key spec</th><th>BOM</th></tr>`+ks.map(k=>{const a=ASSET[k],open=L?.b==k;
-  return `<tr class="b${open?' on':''}" data-k="${k}"><td>${open?'▾':'▸'} ${es(a.name)}</td><td>${es(a.type)}</td><td>${es(a.spec(r))}</td><td>${bomCount(k)}</td></tr>`+(open?comps(k).map(c=>`<tr class=c data-c="${c.i}"><td>${es(c.n)}</td><td colspan=2>${es(c.spec)}</td><td>${es(c.qty)}</td></tr>`).join(''):'')}).join('')+`</table><div style="font-size:11px;opacity:.6;padding:6px">Generic SIM values. Tap a row to zoom; tap again to close.</div>`;
+  return `<tr class="b${open?' on':''}" data-k="${k}"><td>${open?'▾':'▸'} ${es(nameOf(k))}</td><td>${es(a.type)}</td><td>${es(a.spec(r))}</td><td>${bomCount(k)}</td></tr>`+(open?comps(k).map(c=>`<tr class=c data-c="${c.i}"><td>${es(c.n)}</td><td colspan=2>${es(c.lines[0]?.spec||'')}</td><td>${c.lines.length}</td></tr>`).join(''):'')}).join('')+`</table><div style="font-size:11px;opacity:.6;padding:6px">Generic SIM values. Tap a row to zoom; tap again to close.</div>`;
  $('srList').querySelectorAll('tr.b').forEach(tr=>{const k=tr.dataset.k;tr.onmouseenter=()=>{if(!ST.lvl)hilite(k,1)};tr.onmouseleave=()=>{if(!ST.lvl)hilite(k,0)};tr.onclick=()=>{if(ST.lvl?.b==k)back();else selB(k)}});
  $('srList').querySelectorAll('tr.c').forEach(tr=>tr.onclick=()=>selC(+tr.dataset.c))}
 function api(){return {ST,RIGS,ASSET,open,close,go,show,use,tapPart,pick,isOpen:()=>!!ST.el,init,comps,drawer,selB,selC,back}}
