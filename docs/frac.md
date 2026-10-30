@@ -22,3 +22,9 @@ Open: Workover tile → job "Hydraulic fracturing: plug-and-perf, 3 stages", or 
 - Plug-and-perf practice: API RP 100-1/100-2 (well integrity and fracture containment), API RP 19C proppant.
 
 Simplified teaching model; not for real treatment design.
+
+## Stresses from strat.js (v5.10.0+)
+When helper D's strat.js is present, `useStrat(S)` takes `M=S.model()` and each depth calls `S.pressureAt(M,tvd)` (Eaton per bed).
+Sv, Pp and Shmin come from its `ob_sg`, `pp_sg`, `fg_sg` (SG) via p[MPa] = SG × 9.80665 × TVD / 1000, cached per metre.
+The stage "frac gradient" shown is the strat FG in SG at the perf depth; the ISIP gradient (ISIP_bh / TVD, SG) is shown separately,
+because after a screenout it includes the extra net pressure and is not the formation frac gradient. Without strat.js: SIM fallback (uniaxial-strain Shmin).
