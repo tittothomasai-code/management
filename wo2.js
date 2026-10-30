@@ -1,5 +1,5 @@
 // wo2 (helper F, workover2): panel for coiled tubing (fatigue, buckling, lock-up, circulation), fishing (tools, economics) and P&A (barriers, tests). SIM.
-import * as E from './woeng2.js';import * as E3 from './woeng3.js';
+import * as E from './woeng2.js';import * as E3 from './woeng3.js';import * as W4 from './wo4.js?v=sj1';
 const CSS=`#wo2{position:fixed;inset:0;z-index:2147483000;background:#07111bf2;color:#dfe;font:14px system-ui,sans-serif;overflow:auto;padding:10px;box-sizing:border-box}
 #wo2 .t{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px}#wo2 button{background:#16324a;color:#dfe;border:1px solid #3a6a8a;border-radius:6px;padding:7px 10px;font-size:14px;min-height:36px}
 #wo2 button.on{background:#2a6a9a}#wo2 .sim{background:#a60;color:#fff;border-radius:4px;padding:1px 6px;font-size:12px;font-weight:700}#wo2 .g{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:10px}
@@ -73,9 +73,10 @@ function plug(){const V=R.v,P=E3.balancedPlug({base:+V.pbase,len:+V.plen}),i=Mat
   g.fillStyle='#fff';g.font='22px system-ui';g.fillText(`Top ${f(P.top,0)} m`,10,Y(P.top)+6);g.fillText(`Base ${V.pbase} m`,10,Y(+V.pbase)+6);g.fillText('Pipe end '+f(Z.pipeEnd,0)+' m',465,Y(Z.pipeEnd)+6);
   g.fillStyle='#ffd54a';g.fillText(Z.set?'Cement set (SIM)':'Cement / spacer (SIM)',160,30);
   $('#wo3Prev').onclick=()=>{R.v.pstep=Math.max(0,i-1);render()};$('#wo3Next').onclick=()=>{R.v.pstep=Math.min(P.steps.length-1,i+1);render()}}}}
-function render(){const T={ct,fish,pa,ct2,fish2,plug}[R.tab](),b=$('#wo2B');b.innerHTML=T.html;T.draw?.();b.querySelectorAll('[data-k]').forEach(i=>i.onchange=()=>{R.v[i.dataset.k]=i.value;render()})}
+Object.assign(R.v,W4.DEF);const H4=()=>({inp,f,okc,$,chart}),sqz=()=>W4.sqz(R.v,H4()),jar=()=>W4.jar(R.v,H4()); // hook: wo4 tabs
+function render(){const T={ct,fish,pa,ct2,fish2,plug,sqz,jar}[R.tab](),b=$('#wo2B');b.innerHTML=T.html;T.draw?.();b.querySelectorAll('[data-k]').forEach(i=>i.onchange=()=>{R.v[i.dataset.k]=i.value;render()})}
 export function open(tab='ct'){if(R.el)close();const st=document.createElement('style');st.id='wo2Css';st.textContent=CSS;document.head.appendChild(st);const d=document.createElement('div');d.id='wo2';R.el=d;
- d.innerHTML=`<div class=t><b>🔧 Coiled tubing, fishing, P&amp;A</b><span class=sim>SIM</span>${[['ct','Coiled tubing'],['ct2','CT string life'],['fish','Fishing'],['fish2','Free point / tools'],['pa','Plug and abandon'],['plug','Cement plug']].map(([k,n])=>`<button data-t=${k}>${n}</button>`).join('')}<button id=wo2X style="margin-left:auto">✕ Close</button></div><div id=wo2B></div>
+ d.innerHTML=`<div class=t><b>🔧 Coiled tubing, fishing, P&amp;A</b><span class=sim>SIM</span>${[['ct','Coiled tubing'],['ct2','CT string life'],['fish','Fishing'],['fish2','Free point / tools'],['pa','Plug and abandon'],['plug','Cement plug'],['sqz','Squeeze'],['jar','Jar blow']].map(([k,n])=>`<button data-t=${k}>${n}</button>`).join('')}<button id=wo2X style="margin-left:auto">✕ Close</button></div><div id=wo2B></div>
  <small style="opacity:.7">SIM teaching model. Simplified methods: see docs/workover2.md. Not for real well design.</small>`;document.body.appendChild(d);
  d.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>setTab(b.dataset.t));$('#wo2X').onclick=close;addEventListener('keydown',key,true);setTab(tab);window.dwWO2=api();return api()}
 function setTab(t){R.tab=t;R.el.querySelectorAll('[data-t]').forEach(b=>b.classList.toggle('on',b.dataset.t==t));render()}
