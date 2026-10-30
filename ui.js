@@ -12,7 +12,7 @@ const MAP=[['addeq','equip','Add equipment'],['Equipment library ▾','equip','E
  ['conn','seq','Run connection'],['btnConn','seq','Connections'],['seqedbtn','seq','Sequence editor'],['pause','seq'],['spd','seq'],
  ['wbtn','set','WITSML connection'],['wlm','set'],['units','set'],['btnPlayer','set','Switch player']];
 const TOOL_TGT={wbtn:'witsml',addeq:'eqmenu','Equipment library':'libmenu'};const STAY=new Set(['pause','spd','units','wlm','clr','uiLog','uiFrm']);const FULL=new Set(['wshop','ss56','designer','seqeditor']);
-const PANEL_SKIP=new Set(['uiTop','uiNav','uiTools','uiX','mdock','sim','clock','log','appVer','bithud','wtoast','panels','plJoin','g8btn','svhud','eqmenu','libmenu','nosurv']);
+const PANEL_SKIP=new Set(['uiTop','uiNav','uiTools','uiX','mdock','sim','clock','log','appVer','bithud','wtoast','panels','plJoin','g8btn','svhud','eqmenu','libmenu','nosurv','vpad','edmmap']);
 let cur=null,prevVis=new Set(),rop={md:null,t:0,v:0};
 function css(){const s=document.createElement('style');s.textContent=`
 body.ui57.ui57 #hud,body.ui57.ui57 #hud.msheet,body.ui57 #mdock,body.ui57 #sim,body.ui57 #clock,body.ui57 #bithud,body.ui57 #chatHead{display:none!important}

@@ -26,7 +26,7 @@ async function refreshSaved(){ST.list=await store.list();const el=P&&P.querySele
 export async function removeSaved(id){const m=ST.list.find(x=>x.id==id);if(!confirm('Remove saved site "'+(m?.name||id)+'" from this device?'))return false;await store.remove(id);if(ST.R?.W?.savedId==id)ST.R.W.savedId=null;await refreshSaved();return true}
 export async function openSaved(id){init();ui();const s=P.querySelector('#edmst');if(s)s.textContent='Opening saved site …';const W=await store.get(id);const m=(await store.list()).find(x=>x.id==id);ST.R={W,M:null,A:null,name:W.name,files:W.files,saved:m};ST.saved=m;ST.saveErr=null;ST.tab='sum';ST.pick=null;
  if(P.style.display=='none'||!P.style.display)open();render();openMap();return W}
-function openMap(){const W=ST.R?.W;if(!W)return;import('./edmmap.js?v=59411').then(m=>m.open(W,{saved:ST.saved?'Saved on device · '+store.fmtMB(ST.saved.size):ST.saveErr?'Not saved: '+ST.saveErr:''}))}
+function openMap(){const W=ST.R?.W;if(!W)return;import('./edmmap.js?v=595').then(m=>m.open(W,{saved:ST.saved?'Saved on device · '+store.fmtMB(ST.saved.size):ST.saveErr?'Not saved: '+ST.saveErr:''}))}
 async function autoSave(){const W=ST.R?.W;if(!W)return;ST.saveErr=null;ST.saved=null;try{ST.saved=await store.save(W);W.savedId=ST.saved.id}catch(e){ST.saveErr=e.message}render()}
 export function load(name,src,units='ft'){const isBlob=typeof Blob!='undefined'&&src instanceof Blob;return new Promise((res,rej)=>{let wk;try{wk=new Worker(new URL('./edmworker.js?v=5941',import.meta.url),{type:'module'})}catch(e){return rej(e)}ST.busy=true;
  wk.onmessage=e=>{const d=e.data;if(d.prog!=null){const b=P&&$('#edmbar'),s=P&&$('#edmst');if(b)b.style.width=Math.round(d.prog*100)+'%';if(s)s.textContent=d.msg+' · '+Math.round(d.prog*100)+'%'}

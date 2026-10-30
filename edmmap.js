@@ -77,13 +77,13 @@ export function open(W,{onClose,saved}={}){close();css();const el=document.creat
   if(S.kind=='site'){const x=W.sites[S.i];pt(x.E,x.N,24,0xffffff);for(const id of x.wells){const w=W.wells[wellBy.get(id)];if(w)for(const b of w.wbs)add(W.wbs[wbBy.get(b)],0xffffff)}}
   else{const w=W.wells[S.i];pt(w.E,w.N,18,0xffffff);for(const b of w.wbs)add(W.wbs[wbBy.get(b)],S.wb===b?0xfff176:0xffffff)}st.dirty=true}
  // labels (greedy declutter, ≤80, throttled)
- const lab=$('#emlab'),pool=[];function labels(){const w=c.clientWidth,h=c.clientHeight,cand=[];let vis=0;const wv=[];
+ const lab=$('#emlab'),pool=[],mc=document.createElement('canvas').getContext('2d'),twc=new Map();const tw=(t,cls)=>{const b=/site/.test(cls),k=(b?'b':'n')+t;let v=twc.get(k);if(v==null){mc.font=(b?'700 12px ':'11px ')+getComputedStyle(el).fontFamily;v=mc.measureText(t).width;twc.set(k,v)}return v};function labels(){const w=c.clientWidth,h=c.clientHeight,cand=[];let vis=0;const wv=[];
   for(let i=0;i<nW;i++){const q=proj(wp[i*3],0,wp[i*3+2]);if(q&&q[0]>-20&&q[0]<w+20&&q[1]>-20&&q[1]<h+20){vis++;wv.push([i,q])}}
   st.mode=vis<=160?'wells':'sites';const sel=st.sel;
   if(st.mode=='wells'){for(const [i,q] of wv)cand.push({t:W.wells[i].name,q,cls:'',k:'well',i,pr:-Math.hypot(q[0]-w/2,q[1]-h/2)})}
   else for(let i=0;i<nS;i++){const q=proj(sp[i*3],0,sp[i*3+2]);if(q&&q[0]>-20&&q[0]<w+20&&q[1]>-20&&q[1]<h+20)cand.push({t:W.sites[i].name,q,cls:'site',k:'site',i,pr:W.sites[i].wells.length*50-Math.hypot(q[0]-w/2,q[1]-h/2)*0.2})}
   if(sel){const x=sel.kind=='site'?W.sites[sel.i]:W.wells[sel.i];const q=proj(X(x.E),0,Zc(x.N));if(q)cand.push({t:x.name,q,cls:(sel.kind=='site'?'site ':'')+'sel',k:sel.kind,i:sel.i,pr:1e9})}
-  cand.sort((a,b)=>b.pr-a.pr);const placed=[],out=[];for(const o of cand){if(out.length>=80)break;const lw=o.t.length*6.4+12,lh=18,x0=o.q[0]+7,y0=o.q[1]-9;if(placed.some(p=>x0<p[2]&&x0+lw>p[0]&&y0<p[3]&&y0+lh>p[1]))continue;if(out.some(z=>z.k==o.k&&z.i==o.i))continue;placed.push([x0,y0,x0+lw,y0+lh]);o.x=x0;o.y=y0;out.push(o)}
+  cand.sort((a,b)=>b.pr-a.pr);const placed=[],out=[];for(const o of cand){if(out.length>=80)break;const lw=tw(o.t,o.cls)+16,lh=20,x0=o.q[0]+7,y0=o.q[1]-9;if(placed.some(p=>x0<p[2]&&x0+lw>p[0]&&y0<p[3]&&y0+lh>p[1]))continue;if(out.some(z=>z.k==o.k&&z.i==o.i))continue;placed.push([x0,y0,x0+lw,y0+lh]);o.x=x0;o.y=y0;out.push(o)}
   while(pool.length<out.length){const d=document.createElement('div');d.className='eml';d.onclick=e=>{e.stopPropagation();select(d._k,d._i,true)};lab.appendChild(d);pool.push(d)}
   pool.forEach((d,j)=>{const o=out[j];if(!o){d.style.display='none';return}d.style.display='block';d.textContent=o.t;d.className='eml '+o.cls;d._k=o.k;d._i=o.i;d.dataset.k=o.k;d.dataset.i=o.i;d.style.transform=`translate(${o.x|0}px,${o.y|0}px)`});st.labels=out.map(o=>({k:o.k,i:o.i,t:o.t}))}
  // details
