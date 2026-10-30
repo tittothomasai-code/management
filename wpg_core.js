@@ -137,6 +137,9 @@ export function tnd(S,{bitMd,str=STRING,mw=1.20,ffCH=0.2,ffOH=0.3,shoeMd=0,op='p
   seg.push({md:a,mdB:b,T,M,Fn:Fn/L,e:e.name,type:e.type,od:e.od,id:e.id,tj:e.tj,kgm:e.kgm,inc:Ib*R2D,yieldK:e.yieldK,mtq:e.mtq,wb:e.kgm*G0*BF});b=a}}
  seg.reverse();return {seg,hook:seg[0]?.T??0,torque:seg[0]?.M??0,BF}}
 // fix: after reverse seg[0] is top. Expose helper
+// Back-calculate the open-hole friction factor that matches a measured hookload (N, string only) by bisection
+export function ffCalib(S,o,hookN,{lo=0.02,hi=0.8,it=30}={}){const f=ff=>tnd(S,{...o,ffOH:ff}).hook;const up=o.op!='rih'&&o.op!='slide';let a=lo,b=hi;const fa=f(a),fb=f(b);if((hookN-fa)*(hookN-fb)>0)return {ff:null,lo:fa,hi:fb,tag:'SIM'};
+ for(let i=0;i<it;i++){const m=(a+b)/2,v=f(m);if((v<hookN)==up)a=m;else b=m}return {ff:(a+b)/2,tag:'SIM'}}
 export function surface(R){return {T:R.seg[0]?.T??0,M:R.seg[0]?.M??0}}
 // buckling limits per element (N). Dawson-Paslay (inclined), Wu/Juvkam-Wold vertical, Chen helical = 2*sqrt(2)*Fsin
 export function bucklingLimits(e,holeIn,mw){const BF=1-mw*1000/STEEL.rho,I=Ipipe(e),w=e.kgm*G0*BF,r=Math.max(0.005,(holeIn-(e.tj||e.od))*IN/2),th=e.inc*D2R;

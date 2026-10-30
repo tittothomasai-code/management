@@ -189,6 +189,7 @@ function envTab(B){const S=traj(),td=W.L.td,tvd=S.at(-1).tvd,E=G.env;const head=
  const on=(id,f)=>{if($(id))$(id).onchange=()=>{f();G.cache={};envTab(B)}};on('wgEMW',()=>G.envMW=rd('wgEMW'));on('wgEop',()=>E.opMax=rd('wgEop'));on('wgEot',()=>E.opTop=rd('wgEot'));on('wgEsh',()=>E.sHr=rd('wgEsh'));on('wgEaz',()=>E.sHazi=rd('wgEaz'));on('wgEph',()=>E.phi=rd('wgEph'));
  on('wgTs',()=>E.tSurf=rd('wgTs'));on('wgTg',()=>E.grad=rd('wgTg'));if($('wgTq'))$('wgTq').onchange=()=>{const q=rd('wgTq');G.cache={q};envTab(B)};
  if($('wgHm'))$('wgHm').oninput=()=>{G.hk.md=rd('wgHm');envTab(B)};on('wgHo',()=>G.hk.op=$('wgHo').value)}
+export function ffCalib(md,hookKN,op='pooh'){if(!W?.S)return null;const p=G.ph;return C.ffCalib(traj(),{bitMd:Math.min(W.L.td,md),str:p.str,mw:p.mw,ffCH:p.ffCH,shoeMd:shoeMd(),op},hookKN*1000-p.block*1000*C.G0)}
 export function hookload(md,op='pooh'){if(!W?.S)return null;const p=G.ph;const R=C.tnd(traj(),{bitMd:Math.min(W.L.td,md),str:p.str,mw:p.mw,ffCH:p.ffCH,ffOH:p.ffOH,shoeMd:shoeMd(),op,wob:p.wob*1000,tob:p.tob*1000,rpm:p.rpm});return {hookKN:(R.hook+p.block*1000*C.G0)/1000,torqueKNm:R.torque/1000,tag:'SIM'}}
 // ---------- AFE ----------
 export function afeRun(){const rows=ropLog(),bp=bitPlan(rows),S=traj();return C.afe(bp.map(s=>({name:s.name,len:s.md1-s.md0,mdBot:s.md1,holeIn:holeIn(s.hole),csg:s.csg,rop:s.rop,bitLife:s.bit.life,bitType:s.bit.type,dir:S.some(r=>r.md>=s.md0&&r.md<=s.md1&&r.inc>5),log:s.md1>=W.L.td-1})),{R:G.rates})}
@@ -208,4 +209,4 @@ function on3d(T){const {sc,P,k,THREE}=T;if(!W?.S)return;try{const R=sfRun();cons
  for(const o of R.rep.slice(0,8)){if(o.minSF>G.sf.alert*2)continue;const col=o.lvl=='STOP'?0xff3030:o.lvl=='ALERT'?0xffb030:0x60d080;sc.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(o.oc.map(P)),new THREE.LineBasicMaterial({color:col})))}}catch(e){console.error('wpg3d',e)}}
 export function register(w){W=w;w.tabs.push(['wgd','Design'],['wge','Error/SF'],['wgp','Physics'],['wgv','Environment'],['wga','AFE']);w.ext.wgd=designTab;w.ext.wge=sfTab;w.ext.wgp=B=>{if(!W.S)return;physTab(B)};w.ext.wgv=envTab;w.ext.wga=afeTab;w.on3d.push(on3d);
  if(w.P?.wpg){Object.assign(G,{mode:w.P.wpg.mode,p:{...G.p,...w.P.wpg.p},secs:w.P.wpg.secs,lats:w.P.wpg.lats||[],maxDls:w.P.wpg.maxDls})}
- window.GX=window.GX||{};window.GX.wpg={G,C,hookload,applyDesign,computeDesign,sfRun,tndAll,ropLog,bitPlan,afeRun,offsetsFor,lith,register};}
+ window.GX=window.GX||{};window.GX.wpg={G,C,hookload,ffCalib,applyDesign,computeDesign,sfRun,tndAll,ropLog,bitPlan,afeRun,offsetsFor,lith,register};}

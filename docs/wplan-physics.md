@@ -33,3 +33,6 @@ All outputs are planning aids and are tagged **SIM**. Nothing is written to Supa
 
 ## Traveling cylinder (SIM)
 - For each plan station, the vector to the closest offset point (from the SF scan) is projected onto the plane normal to the plan tangent. Angle is measured clockwise from high side (from north when inclination < 0.01°). Plotted on a square-root radius scale to 200 m. Method: standard traveling cylinder view (e.g. Thorogood & Sawaryn, SPE 19989).
+
+## Friction factor calibration (SIM)
+- GX.wpg.ffCalib(md, hookKN, op) back-calculates the open-hole friction factor that matches a measured hookload (block weight removed), using bisection on the Johancsik soft-string model. Cased-hole FF is held fixed. Returns {ff:null} when the reading is outside the 0.02–0.8 range.
