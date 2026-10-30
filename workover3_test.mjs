@@ -19,7 +19,7 @@ for(const [nm,vp] of [['desk',{width:1440,height:900}],['phone',{width:390,heigh
  p.on('request',r=>{const u=r.url();if(r.method()!='GET'&&!/localhost/.test(u))bad.push(u);if(/supabase\.co|adaga|witsml/i.test(u)&&!/\.js(\?|$)/.test(u)){bad.push(u);return r.abort()}r.continue()});
  await p.goto(BASE+'/?workover=ct',{waitUntil:'load',timeout:120000});await p.waitForFunction(()=>window.dwWO?.last&&document.getElementById('woMore'),{timeout:90000}).catch(()=>{});
  await p.evaluate(()=>document.getElementById('woMore').click());await p.waitForFunction(()=>window.dwWO2,{timeout:30000}).catch(()=>{});
- const tabs=await p.$$eval('#wo2 [data-t]',b=>b.map(x=>x.dataset.t).join());ok(tabs=='ct,ct2,fish,fish2,pa,plug',nm+': 6 tabs');
+ const tabs=await p.$$eval('#wo2 [data-t]',b=>b.map(x=>x.dataset.t).join());ok(tabs.startsWith('ct,ct2,fish,fish2,pa,plug'),nm+': 6 base tabs (+squeeze, jar)');
  await p.evaluate(()=>dwWO2.setTab('ct2'));await w(300);let tx=await p.$eval('#wo2',e=>e.innerText);ok(/\bSIM\b/.test(tx)&&!/\bLIVE\b/.test(tx)&&!/NaN|undefined/.test(tx),nm+': CT life tab SIM, clean');ok(/RETIRE/.test(tx)&&/Lock-up 44\d\d m/.test(tx),nm+': fatigue retire + lock-up shown');
  await p.evaluate(()=>{dwWO2.set('jt',5);dwWO2.set('wpn',0)});ok(/OK/.test(await p.$eval('#wo3Fr',e=>e.textContent)),nm+': fewer trips → OK');await p.evaluate(()=>{dwWO2.set('jt',60);dwWO2.set('wpn',10)});await w(300);await p.screenshot({path:SH+nm+'_1_ctlife.png'});
  await p.evaluate(()=>dwWO2.setTab('fish2'));tx=await p.$eval('#wo2',e=>e.innerText);ok(/726 m/.test(await p.$eval('#wo3Fp',e=>e.textContent))&&/OS-/.test(tx)&&/WP-/.test(tx),nm+': free point + overshot + wash pipe');
