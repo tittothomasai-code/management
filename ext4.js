@@ -153,7 +153,7 @@ function svCurrency(){const V=WML.sv,g=window.GEO,st=g?.surv?.stations||[],S=win
  const tS=Date.parse(V.trajTime||'')||0,tL=WML.lastRowMs||0;res.trajTime=V.trajTime||'';if(tS&&tL){const h=(tL-tS)/3.6e6;res.ageH=h;if(h>CFG.svStaleH){res.flags.push('Survey stale: last survey change '+h.toFixed(1)+' h older than last log row (limit '+CFG.svStaleH+' h)');res.ok=false}}
  if(V.mismatch){res.flags.push('Wellbore mismatch: trajectory '+V.mismatch);res.ok=false}return res}
 function svHud(){let e=$('svhud');if(!e){e=el('div','position:fixed;left:6px;top:calc(env(safe-area-inset-top,0px) + 22px);z-index:30;max-width:70vw;background:#000b;color:#cfe;padding:2px 6px;border-radius:4px;font:11px system-ui;pointer-events:none');e.id='svhud';document.body.appendChild(e)}
- const V=WML.sv,c=V.cur;if(!c||!CFG.svTraj&&!V.mismatch){e.style.display='none';return}e.style.display='';const cr=svCurrency();const sim=svSimTest();
+ const V=WML.sv,c=V.cur;if(!c||!window.GEO?.surv||!CFG.svTraj&&!V.mismatch){e.style.display='none';return}e.style.display='';const cr=svCurrency();const sim=svSimTest();
  e.innerHTML=`${sim?'[SIM-TEST] ':''}Well ${es0(V.wellName||CFG.svWell)} / ${es0(c.wbName||c.wb)} / ${es0(c.name||c.uid)} · ${GEO.surv.stations.length} stn${V.dropped?' · '+V.dropped+' dropped':''}`+(cr.ok?' · <span style="color:#7f7">current</span>':cr.flags.map(f=>`<div style="color:#fb4">⚠ ${es0(f)}</div>`).join(''))}
 const es0=t=>String(t??'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
 const svTransport=d=>!!d.err&&(d.http===0||/non-JSON|upstream timeout|upstream connection failed|cannot reach|no answer from proxy|response too large/.test(d.err));
