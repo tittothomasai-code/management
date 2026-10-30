@@ -168,7 +168,8 @@ function setUnder(v){under=v;$('under').classList.toggle('on',v);groundMat.opaci
 let paused=false;$('pause').onclick=()=>{paused=!paused;$('pause').textContent=paused?'Play':'Pause'};
 // WASD
 const keys={};addEventListener('keydown',e=>keys[e.key.toLowerCase()]=1);addEventListener('keyup',e=>keys[e.key.toLowerCase()]=0);
-addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();ren.setSize(innerWidth,innerHeight)});
+// split-view hook (subsurface.js): window.dwSplitView(px) renders the rig in the left px only; dwSplitView(0) restores full width.
+const fitMain=()=>{const w=window.__dwSplitW||innerWidth;cam.aspect=w/innerHeight;cam.updateProjectionMatrix();ren.setSize(w,innerHeight)};addEventListener('resize',fitMain);window.dwSplitView=px=>{window.__dwSplitW=px>0?Math.round(px):0;fitMain()};
 // ---------- visual sync from state ----------
 const v3=new THREE.Vector3();
 function sync(dtR){const dS=paused?0:dtR*spd,LV=realMode()=='LIVE',PA=AN.pumpAnim(S,LV),RA=AN.rotAnim(S,LV);S._anim={pumps:PA,rpm:RA};pumps.forEach((e,i)=>{e.st.vth=AN.adv(e.st.vth||0,PA.per[i]||0,dS)});S.vtd=AN.adv(S.vtd||0,RA,dS);
@@ -301,6 +302,7 @@ function actX(e,x,b){if(EXT.actX(e,x,b))return;const st=e.st,all=()=>!!document.
  m.querySelector('#eqreset').onclick=()=>{if(confirm('Reset equipment layout and 3D models to default?')){localStorage.removeItem(LKEY);localStorage.removeItem(MKEY);try{indexedDB.deleteDatabase('dw3')}catch{}location.reload()}}}
 
 import('./ext.js?v=5942').then(x=>x.init({THREE,S,PH,scene,cam,ctl,ents,pumps,select,entity,box,cyl,beam,mat,M,lp,curves,FLOOR,MH,td,tdAll,blk,dwG,slG,rnG,rnArm,cwG,UG,W,allCurves:()=>allCurves(),getWell:()=>wellCurve,act,EXT,removeEnt,saveLayout,addEquip,EQ,eqList,pumpsArr:pumps,setUnder,ren,groundMat,pad,sun,bha,rigG,dwG,ctl,makePump,rebuildLines,sel:()=>sel})).then(()=>import('./visual.js?v=596').then(v=>v.init({THREE,scene,ren,sun,cam,mat,M,box,cyl,beam,FLOOR,MH,td,pumps}))).catch(e=>console.error('ext',e));
+import('./subsurface.js').catch(e=>console.warn('subsurface',e));
 // ---------- loop (fixed step) ----------
 const DT=0.05;let acc=0,last=performance.now(),spd=20,uiT=0;
 function frame(now){const dtR=Math.min(0.1,(now-last)/1000);last=now;spd=+$('spd').value;
