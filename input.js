@@ -41,4 +41,4 @@ export function poll(now=performance.now()){const pads=navigator.getGamepads?.()
  if(edge(9)||edge(8))legend();ST.prev=p.buttons.map(b=>b.pressed)}
 let raf;function loop(){poll();raf=requestAnimationFrame(loop)}
 export function stop(){cancelAnimationFrame(raf);raf=0}
-export function init(){if(typeof document=="undefined"||window.__input)return;css();addEventListener('keydown',key);addEventListener('gamepadconnected',e=>{ST.pad=e.gamepad.id;legend(true);setTimeout(()=>ST.legend&&legend(false),6000)});loop();window.GX=window.GX||{};window.__input=window.GX.input={ST,poll,key,legend,orbit,zoom,wob,rpm,tab,stop}}
+export function init(){if(typeof document=="undefined"||window.__input)return;css();addEventListener('keydown',key);addEventListener('gamepadconnected',e=>{ST.pad=e.gamepad.id;legend(true);setTimeout(()=>ST.legend&&legend(false),6000)});loop();window.GX=window.GX||{};window.__input=window.GX.input={ST,poll,key,legend,orbit,zoom,look,wob,rpm,tab,stop}}
