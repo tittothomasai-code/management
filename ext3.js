@@ -174,6 +174,7 @@ export async function init(ctx){C=ctx;S=C.S;PH=C.PH;el=C.el;PANEL=C.PANEL;ui();
  try{(await import('./ext6.js?v=592')).init(C)}catch(err){console.error('ext6',err)}
  try{(await import('./ext7.js?v=592')).init(C)}catch(err){console.error('ext7',err)}
  try{(await import('./wellcontrol.js?v=E1')).init(C)}catch(err){console.error('wellcontrol',err)}
+ try{(await import('./ddcab.js?v=b11')).init(C)}catch(err){console.error('ddcab',err)}
  try{(await import('./broomstick.js?v=I4')).init(C)}catch(err){console.error('broomstick',err)}
  try{(await import('./wbs.js?v=E6')).init(C)}catch(err){console.error('wbs',err)}
  try{(await import('./cemeval.js?v=I46')).init(C)}catch(err){console.error('cemeval',err)}
