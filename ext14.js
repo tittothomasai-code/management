@@ -93,7 +93,13 @@ function cols(){const D='DERIVED',dir=UI.tagSrc=='LIVE'?'LIVE':UI.tagSrc,der=UI.
  ['wob','WOB','Drilling',r=>[r.wob,der],'w',1],['rpm','Rotary RPM','Drilling',r=>[r.rpm,der],null,0],['flow','Flow','Drilling',r=>[r.flow,der],'q',0],['sppOn','SPP ON','Drilling',r=>[r.sppOn,der],'p',0],['sppOff','SPP OFF','Drilling',r=>[r.sppOff,der],'p',0],['diff','Diff','Drilling',r=>[r.diff,der],'p',0],
  ['rot','ROT','Drilling',r=>[r.rot,der],'w',0],['pu','Pick Up','Drilling',r=>[r.pu,der],'w',0],['so','Slack Off','Drilling',r=>[r.so,der],'w',0],['lith','Lith.','Survey',r=>man(r,'lith')||['',M,1]],
  ['mwdAzi','MWD Azi (deg)','Survey',r=>[r.mwdAzi,dir],null,2],['sMd','Survey MD','Survey',r=>[r.sv?.md,dir],null,2],['sInc','Inc (deg)','Survey',r=>[r.sv?.inc,dir],null,2],['sAzi','Azi (deg)','Survey',r=>[r.sv?.azi,dir],null,2],
+ // v5.8 W3 plan vs actual: plan from the Well planning proposal at the survey MD (else hole depth); plan is a proposal => SIM tag
+ ['pInc','Plan Inc','Plan vs actual',r=>[pv(r)?.inc,'SIM'],null,2],['pAzi','Plan Azi','Plan vs actual',r=>[pv(r)?.azi,'SIM'],null,2],
+ ['dInc','ΔInc (act−plan)','Plan vs actual',r=>{const p=pv(r);return [p&&fin(r.sv?.inc)?r.sv.inc-p.inc:null,der]},null,2],
+ ['dAzi','ΔAzi (act−plan)','Plan vs actual',r=>{const p=pv(r);return [p&&fin(r.sv?.azi)?((r.sv.azi-p.azi+540)%360)-180:null,der]},null,2],
+ ['pDD','Plan DD (stand)','Plan vs actual',r=>{const s=window.GX?.ddp?.standAt?.(r.hd);return [s?`#${s.stand} ${s.mode}${s.slide?` ${s.slide.toFixed(1)} m`:''}${s.tf!=null?` @TF ${s.tf.toFixed(0)}°`:''}${s.acLvl?' · '+s.acLvl:''}`:'','SIM']}],
  ['comment','Comments','Survey',r=>man(r,'comment')||[r.notes.join('; '),r.notes.length?der:M,1]]]}
+const pv=r=>{const md=fin(r.sv?.md)?r.sv.md:r.hd;return fin(md)?window.GX?.ddp?.planAt?.(md)||null:null};
 const TAGC={LIVE:'#1db954',DERIVED:'#2f7fd0',MANUAL:'#c08a00',SIM:'#8a8f98',TEST:'#b04ad0'};
 const fmt=(v,d)=>v==null||v===''?'':typeof v=='number'?(d!=null?v.toFixed(d):String(v)):String(v);
 export function table(){return {cols:cols(),rows:(UI.D?.rows||[])}}
