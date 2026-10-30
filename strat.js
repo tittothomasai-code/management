@@ -108,13 +108,13 @@ function css(){if($('stratCss'))return;const s=document.createElement('style');s
 export function open(tab){if(typeof document=='undefined')return;css();if(!ST.el){const d=document.createElement('div');d.id='strat';document.body.appendChild(d);ST.el=d}ST.el.style.display='flex';if(tab)ST.tab=tab;ST.M=resolve();render();return API}
 export function close(){if(ST.el){ST.el.style.display='none';if(ST.r3){ST.r3.dispose();ST.r3=null}}}
 function render(){const M=model(),d=ST.el;if(!d)return;const path=geoPath(),sim=M.src=='SIM',ps=path[0]?.sim;
- const tabs=[['section','Section'],['log','Strip log'],['3d','3D'],['legend','Legend']];
+ const tabs=[['section','Section'],['log','Strip log'],['target','Target'],['3d','3D'],['legend','Legend']];
  d.innerHTML=`<header><b>Earth model <span class="tag">${sim?'SIM':esc(M.src)}</span></b>${tabs.map(([k,t])=>`<button data-st="${k}" class="${ST.tab==k?'on':''}">${t}</button>`).join('')}<button id="stratX" aria-label="Close">✕</button></header>
  <div id="stratBody"><div id="stratSrc" style="color:#fc6;margin-bottom:6px">${sim?'SIM: synthetic layers. Not real formation data. Load WITSML formation markers or EDM formations to replace.':'Source: '+esc(M.src)+' formation tops ('+M.formations.length+').'+(M.formations.some(f=>f.lithGuess)?' Some lithology is estimated from the name.':'')}${ps?' Well path: SIM (no survey).':''}</div>
  <div id="stratView"></div><div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center"><button id="stratUse" class="${ST.use?'on':''}">${ST.use?'Drilling uses this model':'Use this model for drilling'}</button><span style="color:#9ab">ROP and torque change with the rock at the bit.</span></div></div>`;
  d.querySelectorAll('[data-st]').forEach(b=>b.onclick=()=>{ST.tab=b.dataset.st;render()});$('stratX').onclick=close;$('stratUse').onclick=()=>{applyToDrilling(!ST.use);render()};
  if(ST.r3&&ST.tab!='3d'){ST.r3.dispose();ST.r3=null}
- const V=$('stratView');if(ST.tab=='section')drawSection(V,M,path);else if(ST.tab=='log')drawLog(V,M,path);else if(ST.tab=='3d')draw3D(V,M,path);legend(V,M,ST.tab=='legend')}
+ const V=$('stratView');if(ST.tab=='section')drawSection(V,M,path);else if(ST.tab=='log')drawLog(V,M,path);else if(ST.tab=='target')drawTarget(V,M);else if(ST.tab=='3d')draw3D(V,M,path);legend(V,M,ST.tab=='legend')}
 function cv(V,h){const c=document.createElement('canvas');const w=Math.min(V.clientWidth||360,980),dpr=Math.min(2,devicePixelRatio||1);c.width=w*dpr;c.height=h*dpr;c.style.height=h+'px';V.appendChild(c);const g=c.getContext('2d');g.scale(dpr,dpr);return {c,g,w,h}}
 function drawSection(V,M,path){const {c,g,w,h}=cv(V,Math.min(420,innerHeight*.45));c.id='stratSec';const l=path.at(-1),az=Math.atan2(l.E,l.N)||45*R,ux=Math.sin(az),uy=Math.cos(az);
  const hd=p=>p.E*ux+p.N*uy,x0=-300,x1=Math.max(800,hd(l)+400),z1=Math.max(...path.map(p=>p.tvd))+300,nx=Math.round(w/4),nz=Math.round(h/4),sx=w/nx,sz=h/nz;
@@ -132,7 +132,27 @@ function drawLog(V,M,path){const lg=stripLog(M,path,{step:Math.max(1,path.at(-1)
  for(let k=0;k<lg.length;k++){const s=lg[k],n=lg[k+1]?.md??md1;g.fillStyle=pattern(g,s.lith,10);g.fillRect(.14*w,Y(s.md),.22*w-1,Math.max(1,Y(n)-Y(s.md)+.5))}
  const curve=(k,a,b,mx,col)=>{g.strokeStyle=col;g.lineWidth=1.2;g.beginPath();lg.forEach((s,i)=>{const x=a*w+Math.min(1,s[k]/mx)*(b-a)*w;i?g.lineTo(x,Y(s.md)):g.moveTo(x,Y(s.md))});g.stroke()};curve('gr',.36,.68,150,'#3d3');curve('rop',.68,1,60,'#fa3');
  g.strokeStyle='#f55';for(const t of topsAlongPath(M,path,2)){g.beginPath();g.moveTo(0,Y(t.md));g.lineTo(w,Y(t.md));g.stroke();g.fillStyle='#fdd';g.fillText(t.name,.37*w,Y(t.md)-2)}
- const bm=(window.S?.md||0)*FT;if(bm>0){g.fillStyle='#f80';g.fillRect(0,Y(bm)-1,w,2)}}
+ try{const ti=formationIndex('reservoir',M);if(ti>=0){const fn=targetFn(ti,45,0,0,M),a=45*R;g.fillStyle='#ffe06688';let on=0;
+  for(const q of lg){const x=(q.E||0)*Math.sin(a)+(q.N||0)*Math.cos(a),t=fn(x);if(q.tvd>=t.top&&q.tvd<=t.base){g.fillRect(.14*w,Y(q.md)-1,.54*w,3);on++}}
+  if(on){const q=lg.find(q=>{const t=fn((q.E||0)*Math.sin(a)+(q.N||0)*Math.cos(a));return q.tvd>=t.top&&q.tvd<=t.base});g.fillStyle='#ffe066';g.fillText('TARGET (SIM)',.37*w,Y(q.md)+12)}}}catch(e){}
+const bm=(window.S?.md||0)*FT;if(bm>0){g.fillStyle='#f80';g.fillRect(0,Y(bm)-1,w,2)}}
+function drawTarget(V,M){const ti=formationIndex('reservoir',M);if(ti<0){V.insertAdjacentHTML('beforeend','<p>No reservoir formation in this model.</p>');return}
+ const c0={...TARGET,...targetCfg()},fn=targetFn(ti,45,0,0,M),k=wellKey();let S=null,src='plan';try{const gm=window.GX?.geosteer?.model?.();if(gm?.st?.length)S=gm.st.map(q=>({x:q.x,tvd:q.tvd})),src='geosteer'}catch{}
+ if(!S){const a=fn(0),b=fn(1000),m0=(a.top+a.base)/2,m1=(b.top+b.base)/2;S=[];for(let x=0;x<=1000;x+=10)S.push({x,tvd:m0+(m1-m0)*x/1000})}// straight plan through target mid at 0 and 1000 m
+ const Z=zoneStats(S,fn),Cn=targetContrast(fn,300),d=document.createElement('div');d.id='stratTgt';
+ d.innerHTML=`<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:4px 0"><b>Target for well ${esc(k)}</b> <span class="tag">SIM</span>
+  <label>Thickness m <input id=tgTh type=number step=0.5 min=0.5 max=20 value=${(+c0.th0).toFixed(1)} style="width:70px"></label>
+  <label>Dip ° <input id=tgDip type=number step=0.1 min=-5 max=5 value=${(+(c0.dip||0)).toFixed(1)} style="width:70px"></label>
+  <label>Position in gross <input id=tgFr type=number step=0.05 min=0 max=0.9 value=${(+c0.frac).toFixed(2)} style="width:70px"></label><button id=tgSet>Set</button><button id=tgReset>Reset</button></div>
+  <div id=tgStat style="font-size:13px">Path (${src}, SIM): <b style="color:#7f7">in zone ${Z.inPct.toFixed(0)} %</b> · above top ${Z.abovePct.toFixed(0)} % · below base ${Z.belowPct.toFixed(0)} % · ${Z.len.toFixed(0)} m</div>
+  <div id=tgGr style="font-size:13px">Gamma contrast (SIM): pay ${Cn.mid.toFixed(0)} gAPI · top +${Cn.top.toFixed(0)} gAPI · base +${Cn.base.toFixed(0)} gAPI</div>`;V.appendChild(d);
+ const W=Math.min(V.clientWidth||360,980),H=Math.min(320,innerHeight*.4),c=document.createElement('canvas');c.id='stratTgtC';c.width=W*2;c.height=H*2;c.style.width=W+'px';c.style.height=H+'px';V.appendChild(c);const g=c.getContext('2d');g.scale(2,2);
+ let lo=1e9,hi=-1e9;for(let x=0;x<=1000;x+=20){const t=fn(x);lo=Math.min(lo,t.gross.top);hi=Math.max(hi,t.gross.base)}lo-=4;hi+=4;const gw=W*.8,X=x=>x/1000*gw,Y=v=>(v-lo)/(hi-lo)*(H-16)+12;
+ g.fillStyle='#0b1218';g.fillRect(0,0,W,H);for(let x=0;x<1000;x+=10){const t=fn(x);g.fillStyle='#d9b85c55';g.fillRect(X(x),Y(t.gross.top),X(10)+1,Y(t.gross.base)-Y(t.gross.top));g.fillStyle='#ffe066';g.fillRect(X(x),Y(t.top),X(10)+1,Math.max(1,Y(t.base)-Y(t.top)))}
+ g.strokeStyle='#4cf';g.lineWidth=2;g.beginPath();S.forEach((q,i)=>i?g.lineTo(X(q.x),Y(q.tvd)):g.moveTo(X(q.x),Y(q.tvd)));g.stroke();
+ const gx=gw+6,gW=W-gx-2,t3=fn(300);g.fillStyle='#0f1a22';g.fillRect(gx,0,gW,H);g.strokeStyle='#3d3';g.beginPath();for(let v=lo;v<=hi;v+=0.2){const r=targetGamma(300,v,fn),px=gx+r/150*gW;v==lo?g.moveTo(px,Y(v)):g.lineTo(px,Y(v))}g.stroke();
+ g.font='11px system-ui';g.fillStyle='#ffe066';g.fillText('TARGET (SIM) '+t3.th.toFixed(1)+' m',4,Y(fn(0).top)-3);g.fillStyle='#cde';g.fillText('Curtain: x 0–1000 m (SIM)',4,H-3);g.fillText('GR @300 m',gx+2,10);
+ const $=i=>document.getElementById(i);$('tgSet').onclick=()=>{setTarget({th0:$('tgTh').value,dip:$('tgDip').value,frac:$('tgFr').value});try{window.GX?.geosteer?.useEarthModel?.()}catch{}render()};$('tgReset').onclick=()=>{resetTarget();render()}}
 function legend(V,M,full){const used=new Set();for(const f of M.formations){used.add(f.lith);(f.beds||[]).forEach(b=>used.add(b.lith))}const d=document.createElement('div');d.id='stratLeg';
  for(const k of full?Object.keys(LITH):[...used]){const r=document.createElement('div');const c=document.createElement('canvas');c.width=28;c.height=18;const g=c.getContext('2d');g.fillStyle=pattern(g,k,9);g.fillRect(0,0,28,18);r.appendChild(c);const s=document.createElement('span');s.textContent=LITH[k].label+(full?' · GR '+LITH[k].gr:'');r.appendChild(s);d.appendChild(r)}V.appendChild(d);
  if(full){const t=document.createElement('div');t.style.marginTop='8px';t.innerHTML='<b>Formations</b><br>'+M.formations.map((f,i)=>`${i+1}. ${esc(f.name)} · top ${f.top.toFixed(0)} m TVD · ${LITH[f.lith]?.label||f.lith}${f.beds?' with '+f.beds.filter(b=>b.lith!=f.lith).map(b=>LITH[b.lith].label.toLowerCase()).join(', ')+' beds':''}`).join('<br>')+(M.fault?`<br>${esc(M.fault.name)}: throw ${M.fault.throw} m, dip ${M.fault.dipDeg}°`:'');V.appendChild(t)}}
@@ -187,10 +207,26 @@ export function geologyFn(i,azi=45,E0=0,N0=0,M){M=M||model();const a=azi*R;retur
 // typically 2-8 m TVT (bed thickness below seismic resolution ~λ/4 ≈ 10-25 m). SIM parameters: thickness th0 ±var (smooth),
 // top at frac of gross below the gross top, low-amplitude undulation (amp, wave) and one sub-seismic throw at fx.
 export const TARGET={th0:4.5,thVar:1.2,frac:0.3,amp:1.2,wave:220,throw:1.5,fx:620,src:'SIM'};
-export function targetFn(i,azi=45,E0=0,N0=0,M,o={}){M=M||model();const T={...TARGET,...o},g=geologyFn(i,azi,E0,N0,M);
- return x=>{const G0=g(x),gross=G0.base-G0.top,th=Math.max(1.5,Math.min(gross*0.8,T.th0+T.thVar*Math.sin(x/310+0.7))),
-  top=G0.top+Math.min(gross-th,Math.max(0,T.frac*gross))+T.amp*Math.sin(2*Math.PI*x/T.wave)+(x>T.fx?T.throw:0),t2=Math.max(G0.top,Math.min(G0.base-th,top));
+export function targetFn(i,azi=45,E0=0,N0=0,M,o={}){M=M||model();const T={...TARGET,...targetCfg(),...o},th0=T.th0,g=geologyFn(i,azi,E0,N0,M),tD=Math.tan((T.dip||0)*R);
+ return x=>{const G0=g(x),gross=G0.base-G0.top,th=Math.max(0.5,Math.min(gross*0.8,th0+T.thVar*Math.sin(x/310+0.7))),
+  top=G0.top+Math.min(gross-th,Math.max(0,T.frac*gross))+T.amp*Math.sin(2*Math.PI*x/T.wave)+(x>T.fx?T.throw:0)+x*tD,t2=Math.max(G0.top,Math.min(G0.base-th,top));
   return {top:t2,base:t2+th,th,name:G0.name+' target (SIM)',lith:G0.lith,gross:{top:G0.top,base:G0.base,th:gross},sim:true}}}
+// target2 (helper D): per-well editable target (thickness th0 m, relative dip deg, position frac in gross), zone stats and gamma contrast. All SIM.
+const TKEY='dw_target_v1',TLIM={th0:[0.5,20],dip:[-5,5],frac:[0,0.9]};let TCFG=null;
+export function wellKey(){try{return String(window.GX?.edm?.current?.id||window.GX?.edm?.well?.id||window.S?.wellName||'SIM')}catch{return 'SIM'}}
+function tLoad(){if(TCFG)return TCFG;try{TCFG=JSON.parse(localStorage.getItem(TKEY)||'{}')}catch{TCFG={}}return TCFG}
+export function targetCfg(k=(typeof window!='undefined'?wellKey():'SIM')){if(typeof localStorage=='undefined')return {};return {...(tLoad()[k]||{})}}
+export function setTarget(o={},k=wellKey()){const C=tLoad(),c={...(C[k]||{})};for(const [p,[a,b]] of Object.entries(TLIM))if(o[p]!=null&&isFinite(+o[p]))c[p]=Math.max(a,Math.min(b,+o[p]));C[k]=c;
+ try{localStorage.setItem(TKEY,JSON.stringify(C))}catch{}try{window.dispatchEvent(new CustomEvent('strat:target',{detail:{well:k,cfg:c}}))}catch{}return c}
+export function resetTarget(k=wellKey()){const C=tLoad();delete C[k];try{localStorage.setItem(TKEY,JSON.stringify(C))}catch{}return {}}
+// zoneStats: samples [{x,tvd}] against layer fn(x) -> % of length in zone, above top, below base
+export function zoneStats(S,fn){let a=0,b=0,i=0,L=0;for(let k=1;k<S.length;k++){const d=Math.hypot(S[k].x-S[k-1].x,S[k].tvd-S[k-1].tvd),g=fn(S[k].x);L+=d;if(S[k].tvd<g.top)a+=d;else if(S[k].tvd>g.base)b+=d;else i+=d}
+ L=L||1;return {inPct:100*i/L,abovePct:100*a/L,belowPct:100*b/L,len:L,sim:true}}
+// gamma with net-pay contrast (SIM): clean pay sand GR_pay, non-pay gross reservoir GR_gross, shoulder shale GR_sh; smooth over 0.3 m (tool resolution)
+export const TGR={pay:28,gross:70,sh:125};
+export function targetGamma(x,tvd,fn,G=TGR){const t=fn(x),g=t.gross||{top:t.top-5,base:t.base+5},sg=d=>1/(1+Math.exp(-d/0.3));
+ const inG=sg(Math.min(tvd-g.top,g.base-tvd)),inP=sg(Math.min(tvd-t.top,t.base-tvd));return G.sh+(G.gross-G.sh)*inG+(G.pay-G.gross)*inP}
+export function targetContrast(fn,x=0){const t=fn(x),gr=d=>targetGamma(x,d,fn),mid=gr((t.top+t.base)/2);return {mid,above:gr(t.top-1),below:gr(t.base+1),top:gr(t.top-1)-mid,base:gr(t.base+1)-mid,sim:true}}
 export function formationIndex(name,M){M=M||model();const s=String(name).toLowerCase();return M.formations.findIndex(f=>f.name.toLowerCase().includes(s))}
 // wplan: rows {md,n,e,tvd} -> geology prognosis + mud window per formation.
 export function planPath(W){const R0=(W||window.GX?.wplan?.W)?.S?.rows;return R0?.length?R0.map(r=>({md:r.md,tvd:r.tvd,E:r.e||0,N:r.n||0})):null}
@@ -214,6 +250,6 @@ function hudTick(){try{const b=atBit();let el=document.getElementById('stratBit'
 function pressText(b){const w=b&&mudWindow(b);ST.warn=!!w&&/RISK/.test(w.state);if(!w||w.mw_sg==null)return '';return ` · PP ${w.pp_sg.toFixed(2)} FG ${w.fg_sg.toFixed(2)} MW ${w.mw_sg.toFixed(2)} SG · ${w.state}`}
 function hudStart(){if(_hudT)return;_hudT=setInterval(hudTick,1000);hudTick()}
 
-const API={LITH,SIM_STRAT,fromMarkers,fromEDM,resolve,model,setModel,topAt,formationIndexAt,lithAt,lithAtMD,pointOnPath,gammaAt,response,topsAlongPath,stripLog,surfaceGrid,toGeoLayers,applyToDrilling,atBit,hudText,lookAhead,geologyFn,targetFn,TARGET,formationIndex,planPath,prognosis,ROCK,pressureAt,mudWeight,mudWindow,pressureProfile,open,close,lithKey,path:()=>geoPath(),ST,ready:true};
+const API={LITH,SIM_STRAT,fromMarkers,fromEDM,resolve,model,setModel,topAt,formationIndexAt,lithAt,lithAtMD,pointOnPath,gammaAt,response,topsAlongPath,stripLog,surfaceGrid,toGeoLayers,applyToDrilling,atBit,hudText,lookAhead,geologyFn,targetFn,TARGET,targetCfg,setTarget,resetTarget,wellKey,zoneStats,targetGamma,targetContrast,TGR,formationIndex,planPath,prognosis,ROCK,pressureAt,mudWeight,mudWindow,pressureProfile,open,close,lithKey,path:()=>geoPath(),ST,ready:true};
 if(typeof window!='undefined'){window.GX=window.GX||{};window.GX.strat=API;init()}
 export default API;
