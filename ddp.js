@@ -1,7 +1,7 @@
 // ddp.js v5.8 W3: survey program per hole section, DD instructions per section and per stand (slide/rotate, toolface, BHA from the
 // BHA builder, anti-collision watch points, contingency), CSV + PDF export, plan-at-MD for the slide sheet's plan-vs-actual columns.
 // Proposal / simulator data only: everything here is tagged SIM (concept planning aid, not an approved directional program). No network calls.
-import * as WP from './wplan.js';import * as AC from './wac.js';
+import * as WP from './wplan.js?v=b8';import * as AC from './wac.js';
 const R2D=180/Math.PI,fin=Number.isFinite,$=id=>typeof document!='undefined'?document.getElementById(id):null,es=t=>String(t??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
 export const OPT={stand:28.5,yield:6,rotDls:0.3,surveyHold:30,surveyCurve:10,tag:'SIM'};
 const HOLE={'13-3/8':'17-1/2"','9-5/8':'12-1/4"','7"':'8-1/2"','7 ':'8-1/2"'};
