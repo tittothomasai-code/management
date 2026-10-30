@@ -71,12 +71,12 @@ export function open(W,{onClose,saved,fkey}={}){close();css();const el=document.
  const selG=new THREE.Group();s.add(selG);
  const st=M={on:true,el,r,s,cam,ctl,W,ve:ve0,sel:null,dirty:true,labels:[],mode:'sites',onClose,lastLab:0,key:null,ro:null};
  function setVE(v){st.ve=v;pgrp.scale.y=v;$('#emve').value=String(v);$('#emvel').textContent=v;st.dirty=true;drawSel()}
- function fit(b=W.bounds,keepDir=false){const ccx=(b.e0+b.e1)/2,ccy=(b.n0+b.n1)/2,R=Math.max(b.e1-b.e0,b.n1-b.n0,300)/2;const asp=cam.aspect,fov=cam.fov*Math.PI/360;
+ function fit(b=W.bounds,keepDir=false){st.lastFit=[b,keepDir];const ccx=(b.e0+b.e1)/2,ccy=(b.n0+b.n1)/2,R=Math.max(b.e1-b.e0,b.n1-b.n0,300)/2;const asp=cam.aspect,fov=cam.fov*Math.PI/360;
   const d=R/Math.tan(fov)/Math.min(1,asp)*1.25;const t=new THREE.Vector3(X(ccx),0,Zc(ccy));const dir=keepDir?cam.position.clone().sub(ctl.target).normalize():new THREE.Vector3(0,Math.sin(1.05),Math.cos(1.05));
   fly(t,t.clone().add(dir.multiplyScalar(d)))}
  let anim=null;function fly(t,p,ms=650){const t0=ctl.target.clone(),p0=cam.position.clone(),a=performance.now();anim=()=>{const u=Math.min(1,(performance.now()-a)/ms),e=u<.5?2*u*u:1-Math.pow(-2*u+2,2)/2;ctl.target.lerpVectors(t0,t,e);cam.position.lerpVectors(p0,p,e);st.dirty=true;if(u>=1)anim=null};
   cam.near=Math.max(0.5,p.distanceTo(t)/2000);cam.far=Math.max(1e6,p.distanceTo(t)*50);cam.updateProjectionMatrix()}
- function size(){const w=c.clientWidth||innerWidth,h=c.clientHeight||innerHeight;r.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix();st.dirty=true}
+ function size(){const w=c.clientWidth||innerWidth,h=c.clientHeight||innerHeight;r.setSize(w,h,false);const oa=cam.aspect;cam.aspect=w/h;cam.updateProjectionMatrix();st.dirty=true;if(st.lastFit&&!st.userMoved&&Math.abs(oa-cam.aspect)>0.01)fit(...st.lastFit)}
  // projection helpers
  const v3=new THREE.Vector3();function proj(x,y,z){v3.set(x,y,z).project(cam);if(v3.z>1||v3.z<-1)return null;const w=c.clientWidth,h=c.clientHeight;return [(v3.x+1)/2*w,(1-v3.y)/2*h]}
  function nearest(px,py,rad){let best=null,bd=rad*rad;for(let i=0;i<nW;i++){if(hidW(i))continue;const q=proj(wp[i*3],0,wp[i*3+2]);if(!q)continue;const d=(q[0]-px)**2+(q[1]-py)**2;if(d<bd){bd=d;best={kind:'well',i}}}
@@ -126,7 +126,7 @@ export function open(W,{onClose,saved,fkey}={}){close();css();const el=document.
   if(flyTo){const x=kind=='site'?W.sites[i]:W.wells[i];let R=kind=='site'?400:250;const ids=kind=='site'?x.wells.flatMap(id=>W.wells[wellBy.get(id)]?.wbs||[]):x.wbs;for(const id of ids){const b=W.wbs[wbBy.get(id)];for(const p of b?.path||[])R=Math.max(R,Math.hypot(p.E-x.E,p.N-x.N)*1.3)}
    const t=new THREE.Vector3(X(x.E),0,Zc(x.N)),dir=cam.position.clone().sub(ctl.target).normalize();if(dir.y<0.35){dir.y=0.6;dir.normalize()}fly(t,t.clone().add(dir.multiplyScalar(R*2.6)))}st.dirty=true}
  // input
- let down=null;c.addEventListener('pointerdown',e=>{down={x:e.clientX,y:e.clientY,t:performance.now()};$('#emres').style.display='none'});
+ let down=null;c.addEventListener('wheel',()=>{st.userMoved=true},{passive:true});c.addEventListener('pointerdown',e=>{st.userMoved=true;down={x:e.clientX,y:e.clientY,t:performance.now()};$('#emres').style.display='none'});
  c.addEventListener('pointerup',e=>{if(!down)return;const d=Math.hypot(e.clientX-down.x,e.clientY-down.y),dt=performance.now()-down.t;down=null;if(d>8||dt>700)return;const rc=c.getBoundingClientRect();const h=nearest(e.clientX-rc.left,e.clientY-rc.top,e.pointerType=='mouse'?14:28);if(h)select(h.kind,h.i,false)});
  let hovT=0;const hov=$('#emhov');c.addEventListener('pointermove',e=>{if(e.pointerType!='mouse'||e.buttons){hov.style.display='none';return}const n=performance.now();if(n-hovT<60)return;hovT=n;const rc=c.getBoundingClientRect(),x=e.clientX-rc.left,y=e.clientY-rc.top;const h=nearest(x,y,12);
   if(!h||h.kind=='wb'&&false){hov.style.display='none';c.style.cursor='';return}c.style.cursor='pointer';hov.innerHTML=card(h);hov.style.display='block';hov.style.left=Math.min(x+14,rc.width-290)+'px';hov.style.top=Math.min(y+14,rc.height-150)+'px'});
@@ -167,7 +167,7 @@ export function open(W,{onClose,saved,fkey}={}){close();css();const el=document.
   ${chips('status','Status')}${chips('type','Well type (from max inclination: &lt;10° vertical, ≥80° horizontal)')}${chips('field','Field / project')}${OPT.op.length>1||OPT.op[0]!='(none)'?chips('op','Operator'):''}
   ${rng('td','TD (MD) m')}${rng('inc','Max inclination °')}${rng('spud','Spud date (or first survey)','date')}
   <fieldset><legend>Has</legend><div class=rg>${tri('survey','Survey')}${tri('plan','Plan')}${tri('casing','Casing')}</div></fieldset><div id=emfst></div>`;
-  let t=0;const go=()=>{clearTimeout(t);t=setTimeout(()=>applyF(),120)};
+  let t=0;const go=()=>{clearTimeout(t);st.fpend=true;t=setTimeout(()=>{st.fpend=false;applyF()},120)};
   fb.querySelectorAll('[data-f]').forEach(x=>x.onchange=()=>{const k=x.dataset.f;st.F[k]=[...fb.querySelectorAll(`[data-f=${k}]:checked`)].map(y=>y.value);go()});
   fb.querySelectorAll('[data-r]').forEach(x=>x.oninput=()=>{const v=x.value;st.F[x.dataset.r][+x.dataset.j]=v===''?null:x.type=='date'?v:+v;go()});
   fb.querySelectorAll('[data-h]').forEach(x=>x.onchange=()=>{st.F.has[x.dataset.h]=x.value===''?null:x.value=='1';go()});
@@ -188,6 +188,6 @@ export function open(W,{onClose,saved,fkey}={}){close();css();const el=document.
  if(!W.sites.length)note('No sites found in this file.');else if(W.outliers)note(`${W.outliers} well(s) have coordinates far from the rest — tap "Outliers" to see them.`);
  const loop=()=>{if(!st.on)return;if(anim)anim();if(st.dirty){st.dirty=false;ctl.update();r.render(s,cam);const n=performance.now();if(n-st.lastLab>110){st.lastLab=n;labels()}else st.labDue=true}else if(st.labDue&&performance.now()-st.lastLab>110){st.labDue=false;st.lastLab=performance.now();labels()}requestAnimationFrame(loop)};loop();
  const api={open:true,W,st,select:(k,i,f=true)=>select(k,i,f),fit:(all)=>fit(all?W.boundsAll:W.bounds),close,
-  screen:(k,i)=>{const x=k=='site'?W.sites[i]:W.wells[i];return proj(X(x.E),0,Zc(x.N))},pick:(x,y,r=20)=>nearest(x,y,r),idx:(k,id)=>k=='site'?siteBy.get(id):k=='well'?wellBy.get(id):wbBy.get(id),
+  settled:()=>!anim&&!st.dirty&&!st.fpend,screen:(k,i)=>{const x=k=='site'?W.sites[i]:W.wells[i];return proj(X(x.E),0,Zc(x.N))},pick:(x,y,r=20)=>nearest(x,y,r),idx:(k,id)=>k=='site'?siteBy.get(id):k=='well'?wellBy.get(id):wbBy.get(id),
   pathScreen:(i,j)=>{const p=W.wbs[i].path[j];return proj(X(p.E),-p.Z*st.ve,Zc(p.N))},labels:()=>st.labels,mode:()=>st.mode,cam,ctl,filter:(f)=>{if(f)st.F={...ES.emptyFilter(),...f,has:{...ES.emptyFilter().has,...(f.has||{})}};applyF();if(fp.style.display=='flex')fForm();return {n:st.nVis,active:ES.active(st.F)}},getF:()=>JSON.parse(JSON.stringify(st.F)),fstats:()=>ES.fieldStats(W,fon()?st.m:null,wbOf),wstats:i=>ES.wellStats(W,W.wells[i],wbOf),visible:i=>!hidW(i),openFilters:openF};
  window.GX=window.GX||{};window.GX.edmmap=api;return api}
