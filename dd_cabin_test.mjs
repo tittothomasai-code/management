@@ -32,7 +32,7 @@ for(const [nm,vp] of [['phone',{width:390,height:844,isMobile:true,hasTouch:true
  p.on('request',r=>{if(/supabase|adaga|witsml|netlify\/functions/i.test(r.url()))EXT.push(r.url())});p.on('pageerror',e=>/WebGL/.test(e.message)||ERR.push(e.message));
  await p.goto(BASE+'/?demo=ddcab&nosplash=1',{waitUntil:'load',timeout:180000});
  ok(await p.waitForFunction(()=>document.getElementById('ddSurv')&&window.DDCAB?.sess,{timeout:150000}).then(()=>true,()=>false),`${nm}: ?demo=ddcab opens the cabin`);await w(800);
- const t=await p.evaluate(()=>({sim:document.querySelectorAll('#ddc .sim').length,live:/\bLIVE\b/.test(document.getElementById('ddc').innerText),cv:['ddTF','ddVS','ddGR','ddTC'].every(i=>document.getElementById(i)),rows:document.querySelectorAll('#ddSurv tr').length,ov:document.documentElement.scrollWidth>innerWidth+2}));
+ const t=await p.evaluate(()=>({sim:document.querySelectorAll('#ddc .sim').length,live:/\bLIVE\b/.test(document.getElementById('ddc').innerText),cv:['ddTF','ddVS','ddGR','ddTC'].every(i=>document.getElementById(i)),rows:document.querySelectorAll('#ddSurv tr').length,ov:document.documentElement.scrollWidth>innerWidth+2,vis:getComputedStyle(document.getElementById('ddc')).display=='flex'&&!!document.elementFromPoint(innerWidth/2,innerHeight/2)?.closest('#ddc')}));ok(t.vis,`${nm}: cabin is visible on top`);
  ok(t.sim>=6&&!t.live,`${nm}: SIM tags, no LIVE`);ok(t.cv&&t.rows>=2,`${nm}: data screens (toolface, section, gamma, TC, survey table)`);ok(!t.ov,`${nm}: no page side scroll`);
  await p.screenshot({path:SH+nm+'_1_cabin.png'});
  if(nm=='phone'){await p.click('[data-tab="steer"]');await w(200)}

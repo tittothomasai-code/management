@@ -15,7 +15,7 @@ function css(){if($('ddcCss'))return;const s=document.createElement('style');s.i
 #ddc .pn{background:#121b25;border:1px solid #2c3d50;border-radius:8px;padding:8px;min-width:0;position:relative}
 #ddc .pn h3{margin:0 0 6px;font:600 13px system-ui;color:#9fc3e6}
 #ddc table{border-collapse:collapse;width:100%;font:12px ui-monospace,monospace}#ddc td,#ddc th{padding:2px 4px;text-align:right;border-bottom:1px solid #223}
-#ddc canvas{width:100%;display:block;background:#081018;border-radius:6px}
+#ddc canvas{width:100%;display:block;margin:0 auto;background:#081018;border-radius:6px}
 #ddc .g{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}#ddc .g div{background:#0d1620;border-radius:6px;padding:4px;text-align:center}#ddc .g small{display:block;color:#8aa}
 #ddc .g b{font:600 15px ui-monospace,monospace}#ddc .warn{color:#ffb347}#ddc .bad{color:#ff6b6b}#ddc .ok{color:#7ee08a}
 #ddLog{height:170px;overflow:auto;background:#081018;border-radius:6px;padding:6px;font:12px ui-monospace,monospace;white-space:pre-wrap}
@@ -33,7 +33,7 @@ export function scenario(key){ST.key=key;ST.sess=C.newSession(key,{zoneFn:C.SCEN
  const s=ST.sess;s.log.push('Driller: Good day. I am ready. Scenario: '+s.S.name+'. '+s.S.desc,'Driller: Give me an instruction. Example: "Slide 10 m at TF 30" or "Rotate 30 m".');render();return s}
 function grPush(){const s=ST.sess;s.gr.push({md:s.bit.md,g:gammaAt(s.bit)})}
 export function cmd(t){const s=ST.sess;const md0=s.bit.md;const r=C.command(s,t);if(s.bit.md>md0){for(let m=md0+1;m<=s.bit.md;m+=1){s.gr.push({md:m,g:gammaAt({...s.bit,tvd:s.bit.tvd-(s.bit.md-m)*Math.cos(s.bit.inc*Math.PI/180)})})}}render();return r}
-export function open(key){if(typeof document=='undefined')return;css();if(!ST.el){const d=document.createElement('div');d.id='ddc';document.body.appendChild(d);ST.el=d}ST.el.style.display='flex';
+export function open(key){if(typeof document=='undefined')return;css();if(!ST.el){const d=document.createElement('section');d.id='ddc';document.body.appendChild(d);ST.el=d}ST.el.style.display='flex';
  strat().then(()=>{if(!ST.sess||key)scenario(key||ST.key);else render()});if(!ST.sess)scenario(key||ST.key);return API}
 export function close(){if(ST.el)ST.el.style.display='none'}
 function setTab(t){ST.tab=t;render()}
@@ -48,13 +48,13 @@ function shell(){const s=ST.sess,sc=C.score(s);const opt=Object.entries(C.SCEN).
 function survey(){const s=ST.sess,rows=s.surveys.slice(-12).reverse().map(v=>{const p=C.closest(s.plan,v);return `<tr><td>${f1(v.md)}</td><td>${f2(v.inc)}</td><td>${f2(v.azi)}</td><td>${f1(v.tvd)}</td><td class="${(v.dls||0)>s.S.dlsMax?'bad':''}">${f2(v.dls||0)}</td><td>${f1(p.d)}</td></tr>`}).join('');
  const pb=C.projectToBit(s);return `<div class="pn"><h3>Survey table <span class="sim">SIM</span></h3><table id="ddSurv"><tr><th>MD m</th><th>Inc°</th><th>Azi°</th><th>TVD m</th><th>DLS°/30m</th><th>To plan m</th></tr>${rows}</table>
  <div id="ddProj" class="row">Projection to bit (+${f1(pb.L)} m): Inc ${f2(pb.inc)}° · Azi ${f2(pb.azi)}° · TVD ${f1(pb.tvd)} m</div></div>`}
-function tc(){const s=ST.sess;const t=s.offsets.map(o=>C.tcPoint(s.bit,o.P));return `<div class="pn"><h3>Travelling cylinder <span class="sim">SIM</span></h3><canvas id="ddTC" width="300" height="300"></canvas><div id="ddTCt">${t.length?t.map((x,i)=>`${s.offsets[i].name}: ${f1(x.d)} m at ${x.ang.toFixed(0)}° · SF <b class="${x.sf<1.5?'bad':x.sf<2?'warn':'ok'}">${x.sf}</b>`).join('<br>'):'No offset well in this scenario.'}</div></div>`}
+function tc(){const s=ST.sess;const t=s.offsets.map(o=>C.tcPoint(s.bit,o.P));return `<div class="pn"><h3>Travelling cylinder <span class="sim">SIM</span></h3><canvas id="ddTC" width="300" height="300" style="max-width:300px"></canvas><div id="ddTCt">${t.length?t.map((x,i)=>`${s.offsets[i].name}: ${f1(x.d)} m at ${x.ang.toFixed(0)}° · SF <b class="${x.sf<1.5?'bad':x.sf<2?'warn':'ok'}">${x.sf}</b>`).join('<br>'):'No offset well in this scenario.'}</div></div>`}
 function gauges(){const s=ST.sess,m=s.last||C.motorState(s.motor,{flow:s.set.flow,wob:0,offBottom:true});const g=(n,v,u,c='')=>`<div><small>${n}</small><b class="${c}">${v}</b> <small>${u}</small></div>`;
  return `<div class="pn"><h3>Rig data <span class="sim">SIM</span></h3><div class="g" id="ddG">${g('Bit MD',f1(s.bit.md),'m')}${g('ROP',s.stalled?'0.0':f1(s.lastRop||0),'m/h',s.stalled?'bad':'')}${g('WOB',f1(s.set.wob),'t')}${g('Diff P',f1(m.dP),'bar',m.dP>0.8*s.motor.dPmax?'warn':'')}
  ${g('SPP',f1(m.spp),'bar',s.stalled?'bad':'')}${g('Torque',f1(m.torque),'kN·m')}${g('Flow',s.set.flow,'L/min',m.warn.includes('FLOW OUT OF RANGE')?'warn':'')}${g('Motor RPM',m.motorRpm,'')}
  ${g('Surface RPM',s.set.rpm,'')}${g('Bit RPM',m.bitRpm,'')}${g('Bit temp',f1(s.temp||C.bitTemp(s.bit.tvd,0,1)),'°C',(s.temp||0)>s.motor.maxTemp?'bad':'')}${g('Stator h',f1(s.statorH),'h',s.statorH>0.8*s.motor.statorLife?'warn':'')}</div>
  ${s.stalled?`<div id="ddStall" class="pn bad"><b>MOTOR STALL</b>: SPP spike, ROP is zero. Recovery steps:<ol>${C.STALL_STEPS.map(x=>`<li>${x}</li>`).join('')}</ol></div>`:''}</div>`}
-function dial(){const s=ST.sess,inc=s.bit.inc;return `<div class="pn"><h3>Toolface (${inc<5?'magnetic, Inc < 5°':'gravity, high side'}) <span class="sim">SIM</span></h3><canvas id="ddTF" width="260" height="260"></canvas></div>`}
+function dial(){const s=ST.sess,inc=s.bit.inc;return `<div class="pn"><h3>Toolface (${inc<5?'magnetic, Inc < 5°':'gravity, high side'}) <span class="sim">SIM</span></h3><canvas id="ddTF" width="260" height="260" style="max-width:260px"></canvas></div>`}
 function section(){return `<div class="pn"><h3>Vertical section: plan vs actual <span class="sim">SIM</span></h3><canvas id="ddVS" width="600" height="260"></canvas></div>`}
 function gamma(){return `<div class="pn"><h3>MWD/LWD gamma <span class="sim">SIM</span></h3><canvas id="ddGR" width="600" height="110"></canvas></div>`}
 function steerP(){const s=ST.sess;return `<div class="pn"><h3>Instructions to the driller</h3><div class="row"><input id="ddCmd" placeholder="Slide 10 m at TF 30" style="flex:1;min-width:150px"><button id="ddSend">Send</button></div>
