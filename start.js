@@ -5,7 +5,7 @@
 const q=new URLSearchParams(location.search);
 const SK='dw_start_snd',$=id=>document.getElementById(id);
 const ST={el:null,items:[],i:0,menu:'main',snd:false,ac:null,raf:0,gp:{t:0,prev:{}},last:null};
-export function shouldShow(){if(['nosplash','s','session','demo','join','player','edm','monitor'].some(k=>q.has(k)))return false;if(navigator.webdriver&&!q.has('start'))return false;return true}
+export function shouldShow(){if(['nosplash','s','session','demo','join','player','edm','monitor','workover'].some(k=>q.has(k)))return false;if(navigator.webdriver&&!q.has('start'))return false;return true}
 export function hasSave(){try{return ['dw_start_save','dw_sess_code'].some(k=>localStorage.getItem(k))}catch(e){return false}}
 const ver=()=>($('appVer')?.textContent||document.querySelector('meta[name=app-version]')?.content||'').trim();
 const wait=(f,ms=15000)=>new Promise((ok,no)=>{const t0=Date.now();(function p(){let v;try{v=f()}catch(e){}if(v)return ok(v);if(Date.now()-t0>ms)return no(new Error('timeout'));setTimeout(p,60)})()});
@@ -54,7 +54,7 @@ function backdrop(cv){const x=cv.getContext('2d');let w,h,dpr;const stars=[...Ar
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function tile(id,ic,t,s){return `<button class=tile data-go="${id}" id="st_${id}"><span class=ic>${ic}</span><span><b>${t}</b><small>${s}</small></span></button>`}
 function render(){const T=ST.el.querySelector('.tiles');
- if(ST.menu=='main')T.innerHTML=(hasSave()?tile('continue','▶','Continue','Resume your saved SIM rig and well'):'')+tile('sim','🛢','New simulation','Pick a SIM well and start drilling')+tile('well','📐','New well','Well Planning with a blank proposal')+tile('login','👤','Log in as player','Name only, no password · lobby or join by code')+tile('edm','📂','Import EDM','All sites & wells from an EDM file · stays on this device')+(ST.saved?.length?tile('saved','💾','Saved sites',ST.saved.length+' saved on this device · open without importing'):'')+tile('monitor','📈','Monitor a well','Track progress · saved WITSML well or SIM');
+ if(ST.menu=='main')T.innerHTML=(hasSave()?tile('continue','▶','Continue','Resume your saved SIM rig and well'):'')+tile('sim','🛢','New simulation','Pick a SIM well and start drilling')+tile('well','📐','New well','Well Planning with a blank proposal')+tile('login','👤','Log in as player','Name only, no password · lobby or join by code')+tile('edm','📂','Import EDM','All sites & wells from an EDM file · stays on this device')+(ST.saved?.length?tile('saved','💾','Saved sites',ST.saved.length+' saved on this device · open without importing'):'')+tile('monitor','📈','Monitor a well','Track progress · saved WITSML well or SIM')+tile('workover','🔧','Workover & intervention','Completions, workover, fishing, P&A, slickline, e-line, CT · SIM');
  else if(ST.menu=='saved')T.innerHTML=`<h3 class=svh>Saved sites (on this device)</h3>`+(ST.saved||[]).map(m=>`<div class=svrow>${tile('open:'+m.id,'🗺',esc(m.name),m.wells+' wells · '+m.sites+' sites · imported '+new Date(m.date).toLocaleDateString('en-AU')+' · '+(m.size>=1e6?(m.size/1e6).toFixed(1)+' MB':Math.max(1,Math.round(m.size/1e3))+' kB'))}<button class=svrm data-rm="${esc(m.id)}" aria-label="Remove ${esc(m.name)}">Remove</button></div>`).join('')+tile('back','↩','Back','Main menu');
  else T.innerHTML=tile('simA','🎯','SIM proposal A','Directional J-curve to T1/T2 · 3 casing points')+tile('simFree','⛏','Free drilling','Vertical SIM well, no plan loaded')+tile('back','↩','Back','Main menu');
  T.querySelectorAll('.svrm').forEach(b=>b.onclick=async e=>{e.preventDefault();e.stopPropagation();const id=b.dataset.rm,m=(ST.saved||[]).find(x=>x.id==id);if(!confirm('Remove saved site "'+(m?.name||id)+'" from this device?'))return;const S=await import('./edmstore.js?v=5941');await S.remove(id);ST.saved=await S.list();if(!ST.saved.length)ST.menu='main';render()});
@@ -63,10 +63,11 @@ function focus(k){if(!ST.items.length)return;k=(k+ST.items.length)%ST.items.leng
 function cols(){return innerWidth>=820?2:1}
 function move(d){const c=cols();if(d=='l')focus(ST.i-1);else if(d=='r')focus(ST.i+1);else if(d=='u')focus(ST.i-c);else focus(ST.i+c)}
 function back(){if(ST.menu!='main'){ST.menu='main';beep(300);render()}}
-function close(dest){ST.last=dest;const A=api();A.last=dest;if(dest!='join'&&dest!='continue'&&dest!='edm'&&dest!='monitor')try{localStorage.setItem('dw_start_save',JSON.stringify({t:Date.now(),dest}))}catch(err){}removeEventListener('keydown',key,true);cancelAnimationFrame(ST.raf);clearInterval(ST.padT);const e=ST.el;ST.el=null;e.classList.add('out');setTimeout(()=>e.remove(),360);try{dispatchEvent(new CustomEvent('dw:start',{detail:dest}))}catch(err){}}
+function close(dest){ST.last=dest;const A=api();A.last=dest;if(dest!='join'&&dest!='continue'&&dest!='edm'&&dest!='monitor'&&dest!='workover')try{localStorage.setItem('dw_start_save',JSON.stringify({t:Date.now(),dest}))}catch(err){}removeEventListener('keydown',key,true);cancelAnimationFrame(ST.raf);clearInterval(ST.padT);const e=ST.el;ST.el=null;e.classList.add('out');setTimeout(()=>e.remove(),360);try{dispatchEvent(new CustomEvent('dw:start',{detail:dest}))}catch(err){}}
 async function choose(){const go=ST.items[ST.i]?.dataset.go;beep(880,.1);
  if(go=='sim'){ST.menu='sim';return render()}
  if(go=='monitor'){close('monitor');const m=await import('./monitor.js?v=593');m.open();return}
+ if(go=='workover'){close('workover');const m=await import('./workover.js');m.open();return}
  if(go=='saved'){ST.menu='saved';return render()}
  if(go?.startsWith('open:')){close('edm');const m=await import('./edmui.js?v=5942');m.openSaved(go.slice(5)).catch(e=>alert('Could not open saved site: '+e.message));return}
  if(go=='edm'){close('edm');const m=await import('./edmui.js?v=5942');m.open();return}if(go=='back')return back();
@@ -92,3 +93,5 @@ export function show(){api();if(ST.el)return;const st=document.createElement('st
  import('./edmstore.js?v=5941').then(S=>S.list()).then(L=>{ST.saved=L;if(ST.el&&ST.menu=='main'&&L.length){const k=ST.i;render();focus(k)}}).catch(()=>{})}
 const API={ST,show,shouldShow,hasSave,last:null};function api(){window.dwStart=API;window.GX=window.GX||{};if(window.GX.start!==API)window.GX.start=API;return API}api();addEventListener('load',api);setTimeout(api,3000);
 if(shouldShow()){if(document.body)show();else addEventListener('DOMContentLoaded',show)}
+
+if(new URLSearchParams(location.search).has('workover'))import('./workover.js');
