@@ -1,5 +1,6 @@
 // woeng.js (feat/workover): pure engineering + job library for Workover / Completions / Intervention. SIM teaching model, metric (SI).
 // No DOM, no network. Sources: see docs/workover.md.
+import * as FR from './fraceng.js';export {FR};let FJ=null;export function stratReady(S){FR.useStrat(S);FJ=null}
 export const G=9.80665,IN=0.0254,E_STEEL=207e9,RHO_STEEL=7850;
 // ---- SIM well (vertical land well, simplified) ----
 export const WELL={name:'SIM well WO-1',td:2600,tvd:2600,csg:{od:7,id:6.184,kgm:43.2,shoe:2590,name:'7 in 29 lb/ft L-80'},
@@ -116,6 +117,7 @@ export function jobs(w=WELL){const B=bullhead(w),K=killSG(w),S=sssvOpen(w),U=und
   {t:'Wash sand fill, circulate to surface',d:10,s:{tdep:w.packer-5,sand:0},chk:['Sand at returns','Short trips every 30 m'],calc:'Annular velocity CT×tubing must exceed sand slip velocity; short trips stop sand bridges'},
   {t:'Pump nitrogen, lift the well',d:6,s:{flow:1},chk:['N2 rate 30 m³/min (std)'],calc:'N2 lowers the hydrostatic in tubing so the reservoir flows'},
   {t:'POOH, rig down, log fatigue',d:8,s:{tdep:0,tool:'',lub:0},chk:['Fatigue +'+ctFatigue(1).cycles+' bend cycles ('+f(ctFatigue(1).life,1)+' % SIM life)']}]};
+ J.frac=FJ||(FJ=FR.fracJob());
  return J}
 // timeline: cumulative times; stateAt(job,t) interpolates numeric keys, discrete keys switch at step end (or start for tool)
 const NUM=['blk','str','tdep','kill','perf','gp','flow','lvl','mast','fishTop'];
@@ -123,8 +125,10 @@ export function timeline(J){let t=0;const T=J.steps.map(s=>{const o={...s,t0:t};
 export function stateAt(J,TL,t){const base={unit:J.unit,blk:.3,str:0,tdep:0,tree:1,bop:0,lub:0,tool:'',kill:0,pkr:0,sssv:1,perf:0,gp:0,cem:[],flow:0,lvl:0,mast:J.unit=='rig'&&J.key!='workover'?1:0,jar:0,sand:0,fishTop:0,bpv:0,log:0,cut:0,...J.init};
  if(J.key=='workover')base.mast=0;let s={...base},i=0;
  for(;i<TL.steps.length;i++){const st=TL.steps[i];if(t>=st.t0+st.d){s={...s,...st.s};continue}
-  const u=Math.max(0,(t-st.t0)/st.d),e=u*u*(3-2*u),n={...s};for(const k in st.s){const v=st.s[k];if(NUM.includes(k)&&typeof v=='number'){const a=s[k]??0;n[k]=a+(v-a)*e}else if(k=='tool'||k=='lub'||k=='bop'&&v==1||k=='jar')n[k]=v;else if(u>0.6)n[k]=v}
+  const u=Math.max(0,(t-st.t0)/st.d),e=u*u*(3-2*u),n={...s};for(const k in st.s){const v=st.s[k];if(k=='ft'){const a=s.stg===st.s.stg||st.s.stg==null?(s.ft??0):0;n[k]=a+(v-a)*u}else if(NUM.includes(k)&&typeof v=='number'){const a=s[k]??0;n[k]=a+(v-a)*e}else if(k=='tool'||k=='lub'||k=='bop'&&v==1||k=='jar'||['fon','stg','spread','plug'].includes(k))n[k]=v;else if(u>0.6)n[k]=v}
   s=n;break}
  s.i=Math.min(i,TL.steps.length-1);s.done=t>=TL.T;
  const w=WELL,ks=killSG(w);s.whp=s.flow>0.5?w.whp*0.6:s.kill>0.95||s.tree==0?0:w.whp*(1-s.kill);s.hook=s.unit=='rig'?hook(s.str,s.kill>0.5?ks:w.fluidSG):s.unit=='ct'?Math.max(0,ctForces(s.tdep,s.whp).Fsurf_kN):Math.max(0,lineTension(s.tdep,s.unit=='slick'?'slick':'wl',s.whp).T);
- if(s.jar&&s.unit=='rig')s.hook+=Math.max(0,Math.sin(t*3))*220;s.bhp=s.kill>0.5?hyd(ks,w.perf[0]):w.pres;return s}
+ if(s.jar&&s.unit=='rig')s.hook+=Math.max(0,Math.sin(t*3))*220;s.bhp=s.kill>0.5?hyd(ks,w.perf[0]):w.pres;
+ if(J.unit=='frac'){const S=J.D[s.stg|0];s.fr=s.fon>0?FR.at(S,s.ft):null;s.whp=s.fr?s.fr.p:s.flow>.5?3:0;s.bhp=s.fr?s.fr.bhp:w.pres;s.hook=s.tool?Math.max(0,lineTension(s.tdep,'wl',s.whp).T):0;s.done=t>=TL.T}
+ return s}
