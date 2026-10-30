@@ -14,3 +14,9 @@ All data is SYNTHETIC and labelled SIM. Nothing is read from WITSML, Supabase, A
 - AAPG Wiki, Quick-look lithology from logs: https://wiki.aapg.org/Quick-look_lithology_from_logs
 - KGS, Geological Log Analysis, The Gamma Ray Log: https://www.kgs.ku.edu/Publications/Bulletins/LA/03_gamma.html
 - Petro Shine, Drilling measurements and logging tools in geosteering (LWD GR used for bed-boundary correlation): https://petroshine.com/drilling-measurements-and-logging-tools/2/
+
+## v2: earth model (helper D, strat.js)
+- The target layer is `GX.strat.geologyFn(GX.strat.formationIndex('reservoir'), 45)`, a drop-in for `geology(x)`. Logs, decisions and the curtain all use it. The bit starts at 58% of the layer thickness.
+- "Tops ahead" uses `GX.strat.lookAhead(150)`. The `strat:bit` event shows "Rig bit: entered <formation> (<lith>) at MD …".
+- Fallback to the SIM layer (with its SIM fault at x = 520 m) if GX.strat is missing, has no reservoir formation, or returns bad values. The reason is shown in the panel.
+- Label: SIM stays unless the earth model source is real data (WITSML/EDM). The demo never shows LIVE.
