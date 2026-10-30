@@ -170,7 +170,7 @@ export async function init(ctx){C=ctx;S=C.S;PH=C.PH;el=C.el;PANEL=C.PANEL;ui();
  Object.assign(window.GX,{traces:{TR,addTrack,rmTrack,open,toCSV,catalogue:()=>(refreshCat(),CAT.map(c=>({id:c.id,label:c.label,unit:c.unit}))),entSignals:n=>entSignals(C.ents.find(e=>e.name==n)).map(c=>c.id),addFormula,renderTree}});
  try{(await import('./ext4.js?v=5923')).init(C)}catch(err){console.error('ext4',err)}
  try{(await import('./ext5.js?v=5922')).init(C)}catch(err){console.error('ext5',err)}
- try{(await import('./wmlinvui.js?v=5923')).init(C)}catch(err){console.error('wmlinv',err)}
+ try{(await import('./wmlinvui.js?v=5923')).init(C)}catch(err){console.error('wmlinv',err)} try{(await import('./input.js?v=594')).init(C)}catch(err){console.error('input',err)}
  try{(await import('./ext6.js?v=592')).init(C)}catch(err){console.error('ext6',err)}
  try{(await import('./ext7.js?v=592')).init(C)}catch(err){console.error('ext7',err)}
  try{(await import('./ext8.js?v=592')).init(C)}catch(err){console.error('ext8',err)}
