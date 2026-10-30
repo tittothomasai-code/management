@@ -37,3 +37,6 @@ All outputs are planning aids and are tagged **SIM**. Nothing is written to Supa
 ## Friction factor calibration (SIM)
 - GX.wpg.ffCalib(md, hookKN, op) back-calculates the open-hole friction factor that matches a measured hookload (block weight removed), using bisection on the Johancsik soft-string model. Cased-hole FF is held fixed. Returns {ff:null} when the reading is outside the 0.02–0.8 range.
 - T&D screen has a 'Calibrate' box (#wgCal): bit depth, measured hookload, trip out/in; applies the matched open-hole FF.
+
+## Survey tool choice (SIM)
+- C.TOOLS: MWD, MWD+IFR1 (declination sigma 0.15°, DBH x0.4), north-seeking gyro, continuous gyro. Each tool is a multiplier on each ISCWSA term sigma; gyro tools drop the magnetic terms and add simplified gyro azimuth terms (GYAZ reference, GYDR drift per 1000 m, GYRN random). Concept only; the full ISCWSA gyro model is Torkildsen et al. 2008 (SPE 112269). Error/SF tab: top-section tool to an MD, then a tool below. Offsets stay on MWD.

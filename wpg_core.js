@@ -75,10 +75,24 @@ export function terms(g=GEO){const G=g.G,B=g.B,th=g.dip*D2R,tn=Math.tan(th),cB=B
  {id:'AMIL',s:220,p:'sys',w:(I,A)=>[0,0,Math.sin(I)*Math.sin(A)/cB],d:'Axial magnetic interference'},
  {id:'SAG',s:0.2*D2R,p:'sys',w:I=>[0,Math.sin(I),0],d:'BHA sag'},
  {id:'XYM1',s:0.1*D2R,p:'sys',w:I=>[0,Math.abs(Math.sin(I)),0],d:'Misalignment 1'},
- {id:'XYM2',s:0.1*D2R,p:'sys',w:()=>[0,0,-1],d:'Misalignment 2'}]}
+ {id:'XYM2',s:0.1*D2R,p:'sys',w:()=>[0,0,-1],d:'Misalignment 2'},
+ // simplified north-seeking gyro azimuth terms (concept; full ISCWSA gyro model is Torkildsen et al. 2008, SPE 112269)
+ {id:'GYAZ',s:0.10*D2R,p:'sys',w:()=>[0,0,1],d:'Gyro azimuth reference (north finding)'},
+ {id:'GYDR',s:0.05*D2R,p:'sys',w:(I,A,md)=>[0,0,md/1000],d:'Gyro drift with depth (per 1000 m)'},
+ {id:'GYRN',s:0.05*D2R,p:'rand',w:()=>[0,0,1],d:'Gyro random azimuth noise'}]}
+// Survey tool models: multiplier on each term sigma (0 = term not used). Values are SIM/indicative.
+const MAG=['ABXY-TI1','ABZ','ASXY-TI1','ASZ','MBXY-TI1','MBZ','MSXY-TI1','MSZ','DEC','DBH','AMIL'],COMMON=['DRFR','DSFS','DSTG','SAG','XYM1','XYM2'],ACC=['ABXY-TI1','ABZ','ASXY-TI1','ASZ'];
+const mk=(o)=>Object.fromEntries([...COMMON,...MAG,'GYAZ','GYDR','GYRN'].map(k=>[k,o[k]??0]));const one=a=>Object.fromEntries(a.map(k=>[k,1]));
+export const TOOLS={
+ 'MWD':{name:'MWD (standard)',f:mk({...one(COMMON),...one(MAG)})},
+ 'MWD+IFR1':{name:'MWD + IFR1 (in-field referencing)',f:mk({...one(COMMON),...one(MAG),DEC:0.15/0.36,DBH:0.4,MBXY:1})},
+ 'GYRO':{name:'North-seeking gyro',f:mk({...one(COMMON),...one(ACC),GYAZ:1,GYDR:1,GYRN:1})},
+ 'GYRO-CONT':{name:'Continuous gyro (better)',f:mk({...one(COMMON),...one(ACC),GYAZ:0.6,GYDR:0.6,GYRN:0.5})}};
+// plan: [{toMD, tool}] ascending; last one runs to TD
+export function toolAt(plan,md){if(!plan?.length)return 'MWD';for(const x of plan)if(md<=x.toMD)return x.tool;return plan.at(-1).tool}
 const dT=(I,A)=>[[Math.cos(I)*Math.cos(A),Math.cos(I)*Math.sin(A),-Math.sin(I)],[-Math.sin(I)*Math.sin(A),Math.sin(I)*Math.cos(A),0]];
 // st: [{md,inc,azi,n,e,tvd}] ascending. Returns rows with C (3x3 NEV covariance, 1 sigma)
-export function covISCWSA(st,{geo=GEO,scale=1,only=null}={}){const T0=terms(geo).filter(x=>!only||only.includes(x.id)),N=st.length;
+export function covISCWSA(st,{geo=GEO,scale=1,only=null,tools=null}={}){const T0=terms(geo).filter(x=>!only||only.includes(x.id)),N=st.length;
  // near-vertical singularity (ISCWSA Rev4 idea): XY sensor terms act in both horizontal axes. Shadow copies act 90° to the azimuth while inc < VSING.
  const VS=0.5*D2R,T=[...T0,...T0.filter(x=>/XY/.test(x.id)&&x.p=='sys').map(x=>({...x,id:x.id+'-V',rot:1,w:(I,A,md,tvd)=>{if(I>=VS)return [0,0,0];const w=x.w(0,A,md,tvd);return [0,w[1]*(1-I/VS),0]}}))];
  const t=st.map(r=>vec(r.inc,r.azi)),dt=st.map(r=>dT(r.inc*D2R,r.azi*D2R)),dt9=st.map(r=>dT(r.inc*D2R,(r.azi+90)*D2R));
@@ -88,9 +102,9 @@ export function covISCWSA(st,{geo=GEO,scale=1,only=null}={}){const T0=terms(geo)
  const sys=T.map(()=>[0,0,0]);let rnd=[[0,0,0],[0,0,0],[0,0,0]];const out=[];
  const outer=(e,C,k=1)=>{for(let a=0;a<3;a++)for(let b=0;b<3;b++)C[a][b]+=k*e[a]*e[b]};
  for(let K=0;K<N;K++){const r=st[K],I=r.inc*D2R,A=(r.azi-(geo.dec||0))*D2R,C=[[0,0,0],[0,0,0],[0,0,0]];const dL0=dr(K,true),dI0=dr(K,false),dL9=dr(K,true,dt9),dI9=dr(K,false,dt9);
-  T.forEach((x,j)=>{const dL=x.rot?dL9:dL0,dI=x.rot?dI9:dI0;const w=x.w(I,A,r.md,r.tvd),s=x.s*scale;if(K==0&&x.p=='sys'){}const eL=[0,1,2].map(a=>s*(dL[0][a]*w[0]+dL[1][a]*w[1]+dL[2][a]*w[2])),eI=[0,1,2].map(a=>s*(dI[0][a]*w[0]+dI[1][a]*w[1]+dI[2][a]*w[2]));
+  T.forEach((x,j)=>{const dL=x.rot?dL9:dL0,dI=x.rot?dI9:dI0;const tf=(TOOLS[toolAt(tools,r.md)]||TOOLS.MWD).f[x.id.replace(/-V$/,'')]??0;if(!tf&&x.p=='rand')return;const w=x.w(I,A,r.md,r.tvd),s=x.s*scale*tf;if(K==0&&x.p=='sys'){}const eL=[0,1,2].map(a=>s*(dL[0][a]*w[0]+dL[1][a]*w[1]+dL[2][a]*w[2])),eI=[0,1,2].map(a=>s*(dI[0][a]*w[0]+dI[1][a]*w[1]+dI[2][a]*w[2]));
    if(x.p=='sys'){outer(add(sys[j],eL),C);sys[j]=add(sys[j],eI)}else{outer(eL,C);for(let a=0;a<3;a++)for(let b=0;b<3;b++)C[a][b]+=rnd[a][b];outer(eI,rnd)}});
-  out.push({...r,C})}
+  out.push({...r,C,tool:toolAt(tools,r.md)})}
  return out}
 export function sym2eig(a,b,c){const tr=(a+c)/2,d=Math.sqrt(((a-c)/2)**2+b*b);const l1=tr+d,l2=Math.max(0,tr-d),ang=0.5*Math.atan2(2*b,a-c);return [Math.sqrt(Math.max(0,l1)),Math.sqrt(l2),ang]}
 // horizontal (NE) ellipse and ellipse in the plane perpendicular to the hole
