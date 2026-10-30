@@ -6,7 +6,7 @@ const ls={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},set:
 function I(){return window.GX?.input}
 function css(){if(document.getElementById('vpcss'))return;const s=document.createElement('style');s.id='vpcss';s.textContent=`
 #vpToggle{position:fixed;right:10px;bottom:calc(62px + env(safe-area-inset-bottom));z-index:9650;width:40px;height:40px;border-radius:50%;border:1px solid #4a6a8a;background:#0a1a2a99;color:#cde;font-size:20px;line-height:38px;padding:0;cursor:pointer;opacity:.75}
-#vpToggle[aria-pressed=true]{background:#2a5d8acc;border-color:#9cf;opacity:1}body.desk #vpToggle{bottom:14px;right:14px}
+#vpToggle[aria-pressed=true]{background:#2a5d8acc;border-color:#9cf;opacity:1}body.desk #vpToggle{bottom:14px;right:14px}body.vpHide #vpToggle,body.vpHide #vpad{display:none!important}
 #vpad{position:fixed;inset:0;pointer-events:none;z-index:9640}#vpad .vg{position:absolute;pointer-events:auto;touch-action:none;user-select:none;-webkit-user-select:none}
 #vpad .stk{width:120px;height:120px;border-radius:50%;background:#0a1a2a55;border:2px solid #8ab4d966}#vpad .thumb{position:absolute;left:38px;top:38px;width:44px;height:44px;border-radius:50%;background:#8ab4d999;border:1px solid #cdeaff}
 #vpad .grip{position:absolute;top:-14px;left:50%;transform:translateX(-50%);font-size:12px;color:#9bd;background:#0a1a2a99;border-radius:6px;padding:0 6px;cursor:move;touch-action:none}
@@ -35,5 +35,5 @@ export function set(on){ST.on=!!on;ls.set(K,on?'1':'0');const t=document.getElem
  const m=document.getElementById('vpSet');if(m)m.textContent='On-screen controls: '+(on?'ON':'OFF');
  if(on){build().style.display='';if(!ST.raf)ST.raf=requestAnimationFrame(loop)}else{const o=document.getElementById('vpad');if(o)o.style.display='none';cancelAnimationFrame(ST.raf);ST.raf=0;ST.sticks={L:[0,0],R:[0,0]}}}
 function menu(){const g=document.getElementById('uig_set');if(!g){if((ST.tries=(ST.tries||0)+1)<60)setTimeout(menu,500);return}if(document.getElementById('vpSet'))return;const b=document.createElement('button');b.id='vpSet';b.onclick=()=>set(!ST.on);g.appendChild(b);b.textContent='On-screen controls: '+(ST.on?'ON':'OFF')}
-export function init(){if(typeof document=='undefined'||window.GX?.vpad)return;css();const t=document.createElement('button');t.id='vpToggle';t.textContent='🎮';t.setAttribute('aria-label','On-screen controls');t.onclick=e=>{e.stopPropagation();set(!ST.on)};document.body.appendChild(t);
+export function init(){if(typeof document=='undefined'||window.GX?.vpad)return;css();const t=document.createElement('button');t.id='vpToggle';t.textContent='🎮';t.setAttribute('aria-label','On-screen controls');t.onclick=e=>{e.stopPropagation();set(!ST.on)};document.body.appendChild(t);const ov=()=>['edm','start','emfp'].some(i=>{const e=document.getElementById(i);return e&&e.isConnected&&getComputedStyle(e).display!='none'&&e.getBoundingClientRect().height>200});setInterval(()=>document.body.classList.toggle('vpHide',ov()),300);
  window.GX=window.GX||{};window.GX.vpad={ST,set,act,on:()=>ST.on};set(ls.get(K)=='1');menu()}
