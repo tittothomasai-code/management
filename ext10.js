@@ -1,6 +1,6 @@
 // ext10.js v5.2: SIM-TEST reference fixture (hand-transcribed from the WestSide/Ensign 958 geosteering report, NOT live)
 // + "Compare to report": paste the report's Last survey / Projection rows → deltas vs our minimum-curvature values.
-import * as GG from './geo.js?v=55';
+import * as GG from './geo.js?v=5922';
 const FT=0.3048,R=Math.PI/180;let C,S;const $=id=>document.getElementById(id);const es=t=>String(t??'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
 export const REF_URL='fixtures/westside_dr101l_wb01b02_2879.json';
 // parse pasted report rows. Accepts "Last survey 2,851.05 92.34 171.74 171.74 250.52 109.41 1.08" (7 nums incl. magnetic azi), 6 nums (no mag azi), or 5 (no DLS).

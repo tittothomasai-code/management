@@ -50,7 +50,9 @@ async function listWells(){const j=await call('WMLS_GetFromStore','well',`<wells
 async function listWellbores(w){const j=await call('WMLS_GetFromStore','wellbore',`<wellbores ${NS}><wellbore uidWell="${w}" uid=""><name/></wellbore></wellbores>`,'returnElements=id-only');return kids(xml(j.xml),'wellbore').map(b=>({uid:b.getAttribute('uid'),name:txt(b,'name')||b.getAttribute('uid')}))}
 async function listLogs(w,b){const j=await call('WMLS_GetFromStore','log',`<logs ${NS}><log uidWell="${w}" uidWellbore="${b}" uid=""/></logs>`,'returnElements=header-only');
  return kids(xml(j.xml),'log').map(l=>({uom:kids(l,'endIndex')[0]?.getAttribute('uom')||'',uid:l.getAttribute('uid'),name:txt(l,'name'),nameWell:txt(l,'nameWell'),indexType:txt(l,'indexType'),indexCurve:txt(l,'indexCurve'),start:txt(l,'startDateTimeIndex')||txt(l,'startIndex'),end:txt(l,'endDateTimeIndex')||txt(l,'endIndex'),
-  curves:kids(l,'logCurveInfo').map(c=>({mn:txt(c,'mnemonic'),unit:txt(c,'unit')}))}))}
+  nullValue:txt(l,'nullValue'),direction:txt(l,'direction'),curves:kids(l,'logCurveInfo').map(c=>({mn:txt(c,'mnemonic'),unit:txt(c,'unit'),nullValue:txt(c,'nullValue')}))}))}
+// WITSML 1.4.1.1 data value: empty = null; equal to curve nullValue (else log nullValue) = null; non-numeric = null
+export function wmlVal(raw,cNull,lNull){const t=raw==null?'':String(raw).trim();if(t==='')return null;const nv=cNull!==''&&cNull!=null?cNull:lNull;if(nv!==''&&nv!=null&&(t===String(nv).trim()||+t===+nv))return null;const v=+t;return isFinite(v)?v:null}
 function autoMap(curves){for(const c of curves){if(CFG.map[c.mn]!==undefined)continue;const a=AUTO.find(([re])=>re.test(c.mn));CFG.map[c.mn]=a?a[1]:''}}
 // ---- polling: get only rows after the last index ----
 const bne=ms=>new Date(ms).toLocaleTimeString('en-AU',{timeZone:'Australia/Brisbane',hour:'2-digit',minute:'2-digit',hour12:false});
@@ -70,7 +72,7 @@ async function poll(){const L=WML.log;if(!L)return;if(WML.inflight){WML.miss++;c
   const ix=Math.max(0,ml.indexOf(L.indexCurve));const key=r=>time?Date.parse(r[ix]):+r[ix];if(WML.last!=null){const lk=time?Date.parse(WML.last):+WML.last;rows=rows.filter(r=>key(r)>lk)}
   if(time&&rows.length){WML.hist=WML.hist||[];for(const x of rows)WML.hist.push({t:Date.parse(x[ix]),x});WML.histMl=ml;WML.histUl=ul;WML.histIx=ix;if(WML.hist.length>60000)WML.hist.splice(0,WML.hist.length-60000)}
   if(rows.length){const r=rows.at(-1);WML.last=r[ix];WML.rows+=rows.length;WML.fresh=Date.now();WML.lastRowMs=time?Date.parse(r[ix]):Date.now();
-   ml.forEach((mn,i)=>{if(i==ix)return;const v=r[i]===''||r[i]==null?null:+r[i];const ch=WML.channels[mn]||(WML.channels[mn]={unit:ul[i]||'',log:L.name});ch.unit=ul[i]||ch.unit;ch.v=isFinite(v)?v:null;ch.map=CFG.map[mn]||''})}
+   const cvn=mn=>(L.curves||[]).find(c=>c.mn==mn)?.nullValue;ml.forEach((mn,i)=>{if(i==ix)return;const v=wmlVal(r[i],cvn(mn),L.nullValue);const ch=WML.channels[mn]||(WML.channels[mn]={unit:ul[i]||'',log:L.name});ch.unit=ul[i]||ch.unit;ch.v=isFinite(v)?v:null;ch.map=CFG.map[mn]||''})}
   else if(time&&!WML.lastRowMs&&L.end)WML.lastRowMs=Date.parse(L.end);
   if(WML.healthy())apply()}
  catch(e){WML.errors++;WML.miss++;S.events.push([S.t,'WITSML poll error: '+e.message])}
@@ -122,13 +124,25 @@ const svSimTest=()=>WML.simulated||/\/\/(127\.0\.0\.1|localhost)[:/]/.test(CFG.u
 // v4.7: robust XMLout normalisation: CDATA-wrapped, single/double-escaped, BOM, prefixed namespaces (getElementsByTagNameNS('*')).
 const unescX=t=>t.replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&amp;/g,'&');
 function normXml(x){let t=String(x||'').replace(/^\uFEFF/,'').trim();for(let k=0;k<4;k++){const c=t.match(/^<!\[CDATA\[([\s\S]*)\]\]>$/);if(c){t=c[1].trim();continue}if(/^&(amp;)*lt;/.test(t)){t=unescX(t).trim();continue}break}return t}
-const LEN={m:1/0.3048,ft:1,usft:1,'ft(us)':1,km:1000/0.3048,cm:0.01/0.3048,'in':1/12};const ANGU={dega:1,deg:1,'°':1,rad:180/Math.PI,mrad:0.18/Math.PI,gon:0.9,grad:0.9};
+const LEN={m:1/0.3048,ft:1,usft:1200/3937/0.3048,'ft(us)':1200/3937/0.3048,'us ft':1200/3937/0.3048,dm:0.1/0.3048,km:1000/0.3048,cm:0.01/0.3048,'in':1/12};const ANGU={dega:1,deg:1,'°':1,'0.1 deg':0.1,'0.01 deg':0.01,rad:180/Math.PI,mrad:0.18/Math.PI,gon:0.9,grad:0.9};
 function svParse(x){const d=xml(normXml(x)),out=[];const cv=(n,t)=>{const e=kids(n,t)[0];if(!e)return null;const v=parseFloat(e.textContent),u=(e.getAttribute('uom')||'').toLowerCase().trim();if(!isFinite(v))return null;return {v,u}};
  for(const tr of kids(d,'trajectory')){const nm=txt(tr,'name'),tu=tr.getAttribute('uid')||'',twb=tr.getAttribute('uidWellbore')||'';const rows=[];
-  for(const s of kids(tr,'trajectoryStation')){const md=cv(s,'md'),inc=cv(s,'incl'),az=cv(s,'azi'),tv=cv(s,'tvd');if(!md||!inc||!az)continue;rows.push({s,md,inc,az,tv})}
+  // trajectory-level (direct children only): aziRef, magDeclUsed, gridCorUsed, aziVertSect, dispNsVertSectOrig/dispEwVertSectOrig
+  const top=t=>[...tr.children].find(e=>e.localName==t),tv0=t=>{const e=top(t);if(!e)return null;const v=parseFloat(e.textContent);return isFinite(v)?{v,u:(e.getAttribute('uom')||'').toLowerCase().trim()}:null};
+  const ang=o=>o?o.v*(ANGU[o.u]??1):null;const meta={aziRef:(top('aziRef')?.textContent||'').trim().toLowerCase(),decl:ang(tv0('magDeclUsed')),conv:ang(tv0('gridCorUsed')),vsAzi:ang(tv0('aziVertSect')),vsN:tv0('dispNsVertSectOrig'),vsE:tv0('dispEwVertSectOrig')};
+  for(const s of kids(tr,'trajectoryStation')){const md=cv(s,'md'),inc=cv(s,'incl'),az=cv(s,'azi'),tv=cv(s,'tvd');if(!md||!inc||!az)continue;rows.push({s,md,inc,az,tv,ns:cv(s,'dispNs'),ew:cv(s,'dispEw'),typ:txt(s,'typeTrajStation').toLowerCase(),datum:(kids(s,'md')[0]?.getAttribute('datum')||''),tdatum:(kids(s,'tvd')[0]?.getAttribute('datum')||'')})}
   const rad=rows.length>=3&&rows.every(r=>!r.inc.u&&!r.az.u)&&rows.every(r=>Math.abs(r.inc.v)<=Math.PI+1e-6&&r.az.v>=0&&r.az.v<=2*Math.PI+1e-6)&&rows.some(r=>r.inc.v>0.05);
   const ft=o=>o&&o.v*(LEN[o.u]??1),dg=o=>rad&&!o.u?o.v*180/Math.PI:o.v*(ANGU[o.u]??1);
-  for(const {s,md,inc,az,tv} of rows)out.push({uid:s.getAttribute('uid')||'',md:ft(md),inc:dg(inc),azi:dg(az),tvdRep:tv?ft(tv):null,t:txt(s,'dTimStn'),nativeMd:md.v,uom:md.u||'ft',name:nm,traj:tu,wb:twb})}return out.sort((a,b)=>a.md-b.md)}
+  const corr=azRefCorr(meta);for(const {s,md,inc,az,tv,ns,ew,typ,datum,tdatum} of rows){const tr0=ft(tv);out.push({uid:s.getAttribute('uid')||'',md:ft(md),inc:dg(inc),azi:((dg(az)+corr.d)%360+360)%360,aziRaw:dg(az),tvdRep:tv?tr0:null,tvd_rep:tv?tr0:undefined,ns_rep:ns?ft(ns):undefined,ew_rep:ew?ft(ew):undefined,typ,tie:/tie/.test(typ)?'tie-in station':undefined,datum,tdatum,t:txt(s,'dTimStn'),nativeMd:md.v,uom:md.u||'ft',name:nm,traj:tu,wb:twb,ref:corr.ref,refNote:corr.note,vsAzi:meta.vsAzi!=null?(meta.vsAzi+corr.d+360)%360:null})}}
+ // order by MD; ties broken by dTimStn (latest wins); dedupe by station uid (later replaces earlier)
+ const byUid=new Map(),noUid=[];for(const x of out){if(x.uid){const o=byUid.get(x.uid);if(!o||(Date.parse(x.t)||0)>=(Date.parse(o.t)||0))byUid.set(x.uid,x)}else noUid.push(x)}
+ return [...byUid.values(),...noUid].sort((a,b)=>a.md-b.md||(Date.parse(a.t)||0)-(Date.parse(b.t)||0))}
+// North reference (WITSML aziRef): convert to grid north when grid convergence is given (plan coordinates are grid), magnetic -> true via magDeclUsed.
+// grid = true - convergence; true = magnetic + declination. If a needed correction is missing, keep as reported and say so.
+function azRefCorr(m){const r=m.aziRef||'';let d=0,ref=r||'not stated',note='';
+ if(/magnetic/.test(r)){if(m.decl!=null){d+=m.decl;ref='true north';note='magnetic + declination '+m.decl.toFixed(3)+'°'}else note='⚠ magnetic azimuths, no magDeclUsed — not corrected'}
+ if((/true/.test(r)||ref=='true north')&&m.conv!=null){d-=m.conv;ref='grid north';note=(note?note+', ':'')+'true − convergence '+m.conv.toFixed(3)+'°'}
+ return {d,ref,note}}
 // v4.7 survey discovery: list EVERY trajectory under the WELL (all wellbores, id-only), fetch stations per candidate, pick best, let user choose.
 const redact=t=>{let r=String(t||'');for(const v of [CRED?.user,CRED?.pass])if(v&&v.length>1)r=r.split(v).join('***');return r.replace(/(Basic\s+)[A-Za-z0-9+/=]{6,}/g,'$1***').replace(/((?:pass(?:word)?|pwd|secret|token|authorization)\s*[=:"'>]\s*)[^\s"'<&,;]+/gi,'$1***')};
 WML.svDiag=[];WML.svCands=[];setInterval(()=>{try{svHud();const d=$('svdbg');if(d&&d.open)svDbgRender()}catch{}},2000);
@@ -209,8 +223,10 @@ async function svPoll(){const V=WML.sv;if(WML.authDead){svStop('STOPPED · auth 
 function svStart(){const V=WML.sv;if(WML.authDead){V.state='refused · auth failed earlier — reload page/restart proxy';svRender();return}svStop();Object.assign(V,{found:false,cur:null,mismatch:'',dropped:0,logWb:'',trajTime:'',lastMd:null,uom:null,polls:0,added:0,dups:0,fm:'unknown',fmHash:'',err:''});CFG.svInterval=Math.min(300000,Math.max(60000,+CFG.svInterval||60000));V.state='starting';const pr=svPoll();V.timer=setInterval(svPoll,CFG.svInterval);return pr}
 function svStop(why){clearInterval(WML.sv.timer);WML.sv.timer=null;WML.sv.state=why||'stopped';svRender()}
 function svStatus(){const V=WML.sv,c=V.cur,n=window.GEO?.surv?.stations?.length||0,t=x=>x?new Date(x).toLocaleTimeString('en-AU',{timeZone:'Australia/Brisbane',hour:'2-digit',minute:'2-digit',second:'2-digit'})+' AEST':'–';
- if(c)return `Survey: wellbore ${c.wbName&&c.wbName!=c.wb?c.wbName+' ('+c.wb+')':c.wb} · trajectory ${c.name||c.uid} · ${n} stations · last MD ${n?(GEO.surv.stations.at(-1).md*0.3048).toFixed(1)+' m':'–'} · updated ${t(V.lastUpd||V.fetchedAt)} · ${V.state}${V.mismatch?' · ⚠ '+V.mismatch:''}${V.fullFallback?' · full re-fetch '+V.fullFallback+'×':''} · markers: ${V.fm}${V.err?' · '+V.err:''}`;
+ if(c)return `Survey: wellbore ${c.wbName&&c.wbName!=c.wb?c.wbName+' ('+c.wb+')':c.wb} · trajectory ${c.name||c.uid} · ${n} stations · last MD ${n?(GEO.surv.stations.at(-1).md*0.3048).toFixed(1)+' m':'–'} · updated ${t(V.lastUpd||V.fetchedAt)} · ${V.state}${V.mismatch?' · ⚠ '+V.mismatch:''}${V.fullFallback?' · full re-fetch '+V.fullFallback+'×':''} · markers: ${V.fm}${V.err?' · '+V.err:''}${svProf()}`;
  const L=WML.svCands||[];return `Survey: none loaded — ${L.length?L.length+' trajectory(ies) found, '+(L.some(x=>x.n)?'none with stations in the log wellbore; choose one below':'all with 0 stations'):(V.why||(V.polls?'no trajectory found for well '+CFG.svWell:'not started'))} · ${V.state} · polls ${V.polls} · markers: ${V.fm}${V.err?' · '+V.err:''}`}
+function svProf(){const S=window.GEO?.surv?.stations||[],C=window.GEO?.calc||[];if(!S.length)return'';const s0=S.find(x=>x.ref)||S[0],c0=C[0]||{},f=C.filter(x=>x.tvdFlag);
+ return ` · azimuth: ${s0.ref||'as reported'}${s0.refNote?' ('+s0.refNote+')':''} · tie-in: ${c0.tie||'–'} · VS ${isFinite(c0.vsAziUsed)?((c0.vsAziUsed+360)%360).toFixed(2)+'°':'–'} from ${c0.vsSrc||'–'} · MD datum ${s0.datum||'not stated'}${f.length?` · ⚠ server TVD differs from min-curvature at ${f.length} station(s), max ${Math.max(...f.map(x=>Math.abs(x.dTvd))).toFixed(1)*0.3048>0?(Math.max(...f.map(x=>Math.abs(x.dTvd)))*0.3048).toFixed(2):'0'} m`:''}`}
 WML.svStatus=()=>svStatus();
 function svRender(){const e=$('svst');if(!e)return;const V=WML.sv;e.textContent=svStatus();e.style.color=WML.authDead?'#f66':'#fd8'}
 // ---- v3.9 per-well replica: switching well/wellbore fully resets state, then rebuilds from that well's own data ----

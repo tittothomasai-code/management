@@ -5,15 +5,20 @@ const LEN={ft:1,m:1/FT_M,'ft_us':1,usft:1};const ANG={dega:1,deg:1,'°':1,rad:1/
 const lenToFt=(v,u)=>{u=String(u||'ft').toLowerCase();return v*(LEN[u]??(u.startsWith('m')?1/FT_M:1))};
 const angToDeg=(v,u)=>v*(ANG[String(u||'dega').toLowerCase()]??1);
 // ---- minimum curvature ----
-export function minCurvStations(st,{vsAzi=null,tieIn=null}={}){
- const s=st.filter(x=>isFinite(x.md)&&isFinite(x.inc)&&isFinite(x.azi)).map(x=>({...x})).sort((a,b)=>a.md-b.md);if(!s.length)return[];
- // v5.2: a survey that starts deep (sidetrack / partial trajectory) ties in at the first station's REPORTED TVD (WITSML <tvd>), not md*cos(inc)
- const r0=s[0],hasRep=isFinite(r0.tvd_rep)&&r0.md>0;const t=tieIn||(hasRep?{tvd:r0.tvd_rep,ns:r0.ns_rep??0,ew:r0.ew_rep??0}:{tvd:r0.md*Math.cos(r0.inc*R),ns:0,ew:0});// else: straight hole from surface to first station
- Object.assign(s[0],{tvd:t.tvd,ns:t.ns,ew:t.ew,dls:0});if(!tieIn&&hasRep)s[0].tie='reported TVD';
+export function minCurvStations(st,{vsAzi=null,tieIn=null,tvdTolFt=1}={}){
+ // v5.9.2.2 standard minimum curvature (ratio factor). Tie-in: explicit tieIn > first station's reported tvd/dispNs/dispEw (WITSML tie-in point)
+ // > surface (MD 0, inc 0, at wellhead) min-curved to the first station. Never md*cos(inc) straight-line guesses.
+ let s=st.filter(x=>isFinite(x.md)&&isFinite(x.inc)&&isFinite(x.azi)).map(x=>({...x})).sort((a,b)=>a.md-b.md);if(!s.length)return[];
+ const r0=s[0],trep=r0.tvd_rep??r0.tvdRep,hasRep=isFinite(trep)&&r0.md>0&&(/tie/i.test(r0.typ||r0.tie||'')||isFinite(r0.ns_rep)||isFinite(r0.ew_rep)||r0.md*0.3048>=200);// a shallow first station with only TVD reported: tie from surface (server TVD still compared)
+ if(tieIn)Object.assign(s[0],{tvd:tieIn.tvd,ns:tieIn.ns||0,ew:tieIn.ew||0,dls:0,tie:'tie-in given'});
+ else if(hasRep)Object.assign(s[0],{tvd:trep,ns:isFinite(r0.ns_rep)?r0.ns_rep:0,ew:isFinite(r0.ew_rep)?r0.ew_rep:0,dls:0,tie:'reported TVD'+(isFinite(r0.ns_rep)?'/NS/EW':'')});
+ else if(r0.md>0){s.unshift({md:0,inc:0,azi:r0.azi,tvd:0,ns:0,ew:0,dls:0,virtual:true,tie:'surface'})}
+ else Object.assign(s[0],{tvd:0,ns:0,ew:0,dls:0,tie:'surface'});
  for(let k=1;k<s.length;k++){const a=s[k-1],b=s[k],i1=a.inc*R,i2=b.inc*R,a1=a.azi*R,a2=b.azi*R,dm=b.md-a.md;
   const cb=Math.cos(i2-i1)-Math.sin(i1)*Math.sin(i2)*(1-Math.cos(a2-a1)),dl=Math.acos(Math.max(-1,Math.min(1,cb))),rf=dl<1e-9?1:2/dl*Math.tan(dl/2);
-  b.ns=a.ns+dm/2*(Math.sin(i1)*Math.cos(a1)+Math.sin(i2)*Math.cos(a2))*rf;b.ew=a.ew+dm/2*(Math.sin(i1)*Math.sin(a1)+Math.sin(i2)*Math.sin(a2))*rf;b.tvd=a.tvd+dm/2*(Math.cos(i1)+Math.cos(i2))*rf;b.dls=dm>0?dl/R/dm*100:0}
- const l=s.at(-1),va=(vsAzi??(Math.atan2(l.ew,l.ns)/R))*R;for(const x of s)x.vs=x.ns*Math.cos(va)+x.ew*Math.sin(va);return s}
+  b.ns=a.ns+dm/2*(Math.sin(i1)*Math.cos(a1)+Math.sin(i2)*Math.cos(a2))*rf;b.ew=a.ew+dm/2*(Math.sin(i1)*Math.sin(a1)+Math.sin(i2)*Math.sin(a2))*rf;b.tvd=a.tvd+dm/2*(Math.cos(i1)+Math.cos(i2))*rf;b.dls=dm>0?dl/R/dm*100:0;
+  const tr=b.tvd_rep??b.tvdRep;if(isFinite(tr)){b.dTvd=b.tvd-tr;b.tvdFlag=Math.abs(b.dTvd)>tvdTolFt}}
+ const l=s.at(-1),vsA=vsAzi??s.find(x=>isFinite(x.vsAzi))?.vsAzi??null,va=(vsA??(Math.atan2(l.ew,l.ns)/R))*R;for(const x of s){x.vs=x.ns*Math.cos(va)+x.ew*Math.sin(va);x.vsAziUsed=va/R;x.vsSrc=vsAzi!=null?'plan':vsA!=null?'trajectory aziVertSect':'closure (no plan/trajectory VS azimuth)'}return s}
 export const dlsPer30m=d=>d*30/(100*FT_M);// deg/100ft -> deg/30m
 export function interpAt(s,md){if(!s.length)return null;if(md<=s[0].md)return {...s[0],md};for(let k=1;k<s.length;k++)if(md<=s[k].md){const a=s[k-1],b=s[k],f=(md-a.md)/(b.md-a.md||1);const o={md};for(const q of ['inc','tvd','ns','ew','vs','dls'])o[q]=a[q]+f*(b[q]-a[q]);o.azi=a.azi+f*((((b.azi-a.azi)%360)+540)%360-180);o.azi=(o.azi+360)%360;return o}
  const l=s.at(-1),dm=md-l.md;return {...l,md,tvd:l.tvd+dm*Math.cos(l.inc*R),ns:l.ns+dm*Math.sin(l.inc*R)*Math.cos(l.azi*R),ew:l.ew+dm*Math.sin(l.inc*R)*Math.sin(l.azi*R)}}

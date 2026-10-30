@@ -1,7 +1,7 @@
 // ext5.js v3.8: subsurface layers (formation tops as 3D strata) + survey (min curvature) panels.
 // No server calls: WITSML formationMarker / trajectory XML is parsed from pasted or loaded text (hand-made samples in tests).
 // LIVE badge only ever shown for survey data pushed via GEO.ingestTrajectory(xml,{live:true}) from a live WITSML connection; files/manual/examples are SIM.
-import * as GG from './geo.js?v=55';
+import * as GG from './geo.js?v=5922';
 let C,S,THREE,G3,PATH,lay,sur,rd;const KEY='dw-geo';const $=id=>document.getElementById(id);
 const GEO={layers:[],surv:{src:'SIM',name:'',live:false,stations:[]},calc:[]};window.GEO=GEO;
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -14,7 +14,8 @@ function load(){try{const d=JSON.parse(localStorage.getItem(KEY)||'null');if(d){
 const ev=m=>C.PH.ev(S,m);
 // ---- active path: imported survey if any, else the simulator's own survey ----
 const simStations=()=>S.surveys.map(q=>({md:q[0],inc:q[1],azi:q[2],ns:q[3],ew:q[4],tvd:q[5]}));
-function recalc(){GEO.calc=GEO.surv.stations.length?GG.minCurvStations(GEO.surv.stations):[];}
+const planVsAzi=()=>{try{const W=window.GX?.wplan?.W;if(!W?.S)return null;if(GEO.surv.live&&/SIM/.test(W.P?.tag||''))return null;const v=W.S.vsAzi;return isFinite(v)?v:null}catch{return null}};// plan VS azimuth (not a SIM plan on a real well); trajectory aziVertSect takes precedenceGEO.planVsAzi=planVsAzi;
+function recalc(){GEO.calc=GEO.surv.stations.length?GG.minCurvStations(GEO.surv.stations,{vsAzi:GEO.surv.stations.find(x=>isFinite(x.vsAzi))?.vsAzi??planVsAzi()}):[];GEO.tvdFlags=GEO.calc.filter(x=>x.tvdFlag).length}
 const active=()=>GEO.calc.length>=2?GEO.calc:simStations();
 const pos=md=>GEO.calc.length>=2?GG.pointAt(GEO.calc,md):GG.interpAt(simStations(),md);
 GEO.pathPts=md=>GEO.calc.length>=2?GG.samplePath(GEO.calc,md,Math.max(20,md/200)):null;
