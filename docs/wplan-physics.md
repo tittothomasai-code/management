@@ -36,3 +36,4 @@ All outputs are planning aids and are tagged **SIM**. Nothing is written to Supa
 
 ## Friction factor calibration (SIM)
 - GX.wpg.ffCalib(md, hookKN, op) back-calculates the open-hole friction factor that matches a measured hookload (block weight removed), using bisection on the Johancsik soft-string model. Cased-hole FF is held fixed. Returns {ff:null} when the reading is outside the 0.02–0.8 range.
+- T&D screen has a 'Calibrate' box (#wgCal): bit depth, measured hookload, trip out/in; applies the matched open-hole FF.
