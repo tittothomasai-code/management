@@ -15,14 +15,12 @@ const st=C.motorState(M,{flow:1800,wob:20,rotating:false,rpm:0});ok(st.stall&&st
 ok(C.motorState(M,{flow:1800,wob:8,rotating:true,rpm:40}).bitRpm>ms.motorRpm,'rotating: bit RPM = motor + surface');
 ok(C.motorState({...M,bend:2.12},{flow:1800,wob:8,rotating:true,rpm:40}).warn.includes('ROTATE-WITH-BEND LIMIT'),'rotate-with-bend limit warning');
 ok(C.motorState(M,{flow:900,wob:5}).warn.includes('FLOW OUT OF RANGE'),'flow range warning');
-ok(JSON.stringify(C.parse('Slide 10 m at TF 30L'))==JSON.stringify({cmd:'slide',len:10,tf:330}),'parse slide with left TF');ok(C.parse('rotate 27')?.len==27&&C.parse('take survey')?.cmd=='survey'&&C.parse('WOB 6')?.v==6,'parse rotate/survey/wob');
-ok(/I do not understand/.test(C.command(C.newSession('build'),'make coffee').say[0]),'unknown command: driller asks again');
 // build scenario driven by the recommendation calculator should stay near plan
-const S=C.newSession('build');while(S.bit.md<S.S.endMd){const t=C.planTarget(S,30),r=C.recommend(S,t.inc,t.azi,30);if(r.slide>0.5)C.command(S,`slide ${r.slide} m at tf ${r.tf}`);if(r.rotate>0.5)C.command(S,`rotate ${r.rotate} m`);C.command(S,'take survey')}
-const sc=C.score(S);ok(sc.done&&sc.avgDev<5&&sc.score>=70,`build: recommendation path stays on plan (avg ${sc.avgDev} m, score ${sc.score})`);ok(S.statorH>0&&S.temp>20,'stator hours + temperature tracked');
-const S2=C.newSession('build');C.command(S2,'rotate 300');ok(C.score(S2).avgDev>C.score(S).avgDev,'rotate only: further from plan than steered run');
-const SS=C.newSession('build');C.command(SS,'wob 25');const r2=C.command(SS,'slide 10 tf 0');ok(SS.stalled&&r2.say.some(x=>/STALL/.test(x)),'stall in session');ok(/stalled/.test(C.command(SS,'rotate 5').say.join()),'driller refuses until pick-up');
-C.command(SS,'pick up');C.command(SS,'wob 6');ok(!SS.stalled&&C.command(SS,'slide 5 tf 0').say.some(x=>/complete/.test(x)),'recovery: pick up, less WOB, drill on');
+const S=C.newSession('build');while(S.bit.md<S.S.endMd){const t=C.planTarget(S,30),r=C.recommend(S,t.inc,t.azi,30);if(r.slide>0.5)C.drillCourse(S,r.slide,false,r.tf);if(r.rotate>0.5)C.drillCourse(S,r.rotate,true);C.takeSurvey(S)}
+const sc=C.score(S);ok(sc.done&&sc.avgDev<5&&sc.score>=70,`build: drilling to the calculator stays on plan (avg ${sc.avgDev} m, score ${sc.score})`);ok(S.surveys.length>10&&S.surveys.every(v=>v.dls<S.S.dlsMax),'surveys with DLS under limit');
+const S2=C.newSession('build');C.drillCourse(S2,300,true);ok(C.score(S2).avgDev>C.score(S).avgDev,'rotate only: further from plan than steered run');
+const SS=C.newSession('build');SS.set.wob=25;C.drillCourse(SS,10,false,0);ok(!SS.stalled&&SS.bit.md==310,'no motor plug-in: plain SIM motor, no stall');
+const SM=C.newSession('build',{motorFn:(m,o)=>({...C.motorState(m,o),stall:true})});C.drillCourse(SM,10,false,0);ok(SM.stalled&&SM.bit.md==300,'motor plug-in (motorFn) can stall the session');
 const L=C.newSession('land');ok(L.S.zone&&C.score(L).zone===0,'land scenario has zone score');const lp=C.landPoint(L.plan),z=L.zoneFn(Math.hypot(lp.E,lp.N));ok(lp.tvd>z.top&&lp.tvd<z.base&&z.src=='SIM','zone sits on plan landing point, SIM');
 const K=C.newSession('collide');const t0=C.tcPoint(K.bit,K.offsets[0].P);ok(t0.d>0&&t0.sf>0&&t0.ang>=0&&t0.ang<360,'travelling cylinder point');
 let minPlan=9;for(const p of K.plan)if(p.md>300&&p.md<1000)minPlan=Math.min(minPlan,C.tcPoint(p,K.offsets[0].P).sf);ok(minPlan<1.5,'collide: plan path brings SF below 1.5 (trainee must steer away)');
@@ -36,15 +34,14 @@ for(const [nm,vp] of [['phone',{width:390,height:844,isMobile:true,hasTouch:true
  ok(t.sim>=6&&!t.live,`${nm}: SIM tags, no LIVE`);ok(t.cv&&t.rows>=2,`${nm}: data screens (toolface, section, gamma, TC, survey table)`);ok(!t.ov,`${nm}: no page side scroll`);
  await p.screenshot({path:SH+nm+'_1_cabin.png'});
  if(nm=='phone'){await p.click('[data-tab="steer"]');await w(200)}
- await p.type('#ddCmd','Slide 10 m at TF 20');await p.click('#ddSend');await w(300);
- const a1=await p.evaluate(()=>({md:DDCAB.sess.bit.md,log:document.getElementById('ddLog').innerText}));ok(a1.md>=309.9&&/Copy\. Slide 10 m at toolface 20 deg/.test(a1.log)&&/Slide is complete/.test(a1.log),`${nm}: typed instruction, driller acknowledges and executes`);
- await p.click('#ddRec');await w(400);const a2=await p.evaluate(()=>({n:DDCAB.sess.surveys.length,calc:document.getElementById('ddCalc').innerText}));ok(a2.n>=2&&/Recommendation: slide/.test(a2.calc),`${nm}: recommendation button drills + surveys`);
- await p.screenshot({path:SH+nm+'_2_steer.png'});
- if(nm=='phone'){await p.click('[data-tab="motor"]');await w(200)}
- ok(await p.evaluate(()=>{const e=document.getElementById('ddMotor');return e&&e.offsetParent!==null&&/Max diff pressure/.test(e.innerText)&&/Rev per gal/.test(e.innerText)}),`${nm}: motor spec sheet visible`);
- await p.evaluate(()=>{DDCAB.cmd('WOB 25');DDCAB.cmd('Slide 5 m at TF 0')});await w(300);ok(await p.evaluate(()=>!!document.getElementById('ddStall')&&/STALL/.test(document.getElementById('ddLog').innerText)),`${nm}: stall detection shows recovery steps`);
- if(nm=='phone')await p.click('[data-tab="screens"]');await w(200);await p.screenshot({path:SH+nm+'_3_stall.png'});
- await p.evaluate(()=>{DDCAB.cmd('Pick up off bottom');DDCAB.cmd('WOB 6')});ok(await p.evaluate(()=>!document.getElementById('ddStall')),`${nm}: recovered after pick up`);
+ await p.type('#ddCmd','Slide 10 m');await p.click('#ddSend');await w(300);ok(await p.evaluate(()=>/driller module is not loaded/.test(document.getElementById('ddLog').innerText)&&DDCAB.sess.bit.md==DDCAB.sess.S.start.md),`${nm}: no driller plug-in: cabin says so, no drilling`);
+ await p.evaluate(()=>{GX.ddcab.onInstruction=(t,a)=>{const m=t.match(/slide (\d+)/i);if(m){a.drill(+m[1],{tf:0});a.survey();return {say:['TEST driller: '+t]}}};});
+ await p.evaluate(()=>{document.getElementById('ddCmd').value=''});await p.type('#ddCmd','Slide 10 m');await p.click('#ddSend');await w(300);
+ const a1=await p.evaluate(()=>({md:DDCAB.sess.bit.md,n:DDCAB.sess.surveys.length,log:document.getElementById('ddLog').innerText,rows:document.querySelectorAll('#ddSurv tr').length}));
+ ok(a1.md>=309.9&&a1.n==2&&a1.rows==3&&/TEST driller: Slide 10 m/.test(a1.log),`${nm}: GX.ddcab.onInstruction hook drives drill + survey, screens update`);
+ await p.click('#ddRec');await w(300);ok(await p.evaluate(()=>/TEST driller: Slide/.test(document.getElementById('ddLog').innerText.split('\n').slice(-1)[0])&&/Recommendation: slide/.test(document.getElementById('ddCalc').innerText)),`${nm}: calculator button sends its instruction to the hook`);
+ await p.screenshot({path:SH+nm+'_2_screens_after.png'});
+ ok(await p.evaluate(()=>!!document.getElementById('ddMotorSlot')&&GX.ddcab.motor===null),`${nm}: motor slot present, GX.ddcab.motor hook empty`);
  await p.evaluate(()=>DDCAB.scenario('land'));await w(300);ok(await p.evaluate(()=>/in zone/.test(document.getElementById('ddScoreP').innerText)),`${nm}: land scenario shows in-zone %`);await p.screenshot({path:SH+nm+'_4_land.png'});
  await p.evaluate(()=>DDCAB.scenario('collide'));await w(300);ok(await p.evaluate(()=>/OFFSET-A \(SIM\)/.test(document.getElementById('ddTCt').innerText)),`${nm}: collide scenario: offset in travelling cylinder`);await p.screenshot({path:SH+nm+'_5_collide.png'});
  if(nm=='desk'){const cols=await p.evaluate(()=>getComputedStyle(document.querySelector('#ddc .bd')).gridTemplateColumns.split(' ').length);ok(cols==3,'desk: docked 3-column layout');

@@ -64,15 +64,17 @@ export function parse(txt){const s=String(txt||'').toLowerCase().replace(/,/g,' 
  if(m=s.match(/rpm\D*(\d+(?:\.\d+)?)/))return {cmd:'rpm',v:+m[1]};
  if(/survey/.test(s))return {cmd:'survey'};if(/pick ?up|off ?bottom/.test(s))return {cmd:'pickup'};return null}
 export function ste(c){if(!c)return '';const f=STE[c.cmd];return f?f(c.len??c.v,c.tf!=null?Math.round(c.tf):undefined):c.cmd=='pickup'?'Pick up off bottom.':''}
+// Motor management (stall, limits, fatigue, spec sheet) belongs to the dd-motor helper: pass o.motorFn(motor,opts)->motorState-like object.
+// Without it the cabin uses a plain SIM motor with no stall.
 export function newSession(key='build',o={}){const S=SCEN[key];const plan=planPath(S.plan);const p0=closest(plan,{E:0,N:0,tvd:0});
  let st=plan[0];for(const p of plan)if(p.md<=S.start.md)st=p; st={...minCurve(st,S.start.md,S.start.inc,S.start.azi),dls:0};
- return {key,S,plan,motor:{...MOTOR,...(o.motor||{})},rng:mulberry(o.seed||7),zoneFn:o.zoneFn?rebaseZone(o.zoneFn,plan):(()=>{const L=landPoint(plan);return simZone(L.tvd-2.5,Math.hypot(L.E,L.N))})(),offsets:(S.offsets||[]).map(x=>({...x,P:offsetPath(x)})),
+ return {key,S,plan,motor:{...MOTOR,...(o.motor||{})},motorFn:o.motorFn||null,rng:mulberry(o.seed||7),zoneFn:o.zoneFn?rebaseZone(o.zoneFn,plan):(()=>{const L=landPoint(plan);return simZone(L.tvd-2.5,Math.hypot(L.E,L.N))})(),offsets:(S.offsets||[]).map(x=>({...x,P:offsetPath(x)})),
   bit:{...st},surveys:[{...st}],lastSurveyMd:st.md,set:{wob:8,flow:1800,rpm:40},rotating:false,stalled:false,mode:'idle',hours:0,statorH:0,temp:0,log:[],time:0,events:[],zoneL:0,totL:0,dlsOver:0,maxDev:0,minSF:Infinity,slideMd:0,rotMd:0,mwdOffset:15}}
 export function lithFactor(sess){return 1} // UI replaces with strat response
 export function bitTemp(tvd,dP,dPmax){return +(20+0.03*tvd+12*Math.min(1,dP/dPmax)).toFixed(1)} // SIM geothermal 3 degC/100 m + motor heat
 // drill one course; returns events
 function drill(sess,len,rot,tf){const m=sess.motor,ev=[];const sub=Math.max(1,Math.ceil(len/2)),dl=len/sub;let done=0;
- for(let k=0;k<sub;k++){const lr=sess.lith?sess.lith(sess.bit):{rop:1,dP:1};const ms=motorState(m,{flow:sess.set.flow,wob:sess.set.wob,rotating:rot,rpm:sess.set.rpm,lith:lr.dP??1});
+ for(let k=0;k<sub;k++){const lr=sess.lith?sess.lith(sess.bit):{rop:1,dP:1};const mf=sess.motorFn||((mm,o)=>motorState({...mm,dPmax:1e9},o));const ms=mf(m,{flow:sess.set.flow,wob:sess.set.wob,rotating:rot,rpm:sess.set.rpm,lith:lr.dP??1});
   if(ms.stall){sess.stalled=true;ev.push({t:'stall',md:sess.bit.md,ms});break}
   const rop=ropOf(ms,{wob:sess.set.wob,lithRop:lr.rop??1,rotating:rot});let tfAct=tf;
   let dls;if(rot){dls=0.15+(sess.S.walk||0)*0.25;tfAct=sess.S.walk?90:180}else{dls=yieldDLS(m,0.9+0.2*sess.rng());tfAct=tf+(sess.rng()-.5)*16} // SIM scatter: reactive torque
@@ -84,6 +86,10 @@ function drill(sess,len,rot,tf){const m=sess.motor,ev=[];const sub=Math.max(1,Ma
   for(const o of sess.offsets){const t=tcPoint(b,o.P);sess.minSF=Math.min(sess.minSF,t.sf);if(t.sf<1.5&&!sess.sfWarn){sess.sfWarn=1;ev.push({t:'sf',sf:t.sf})}}
   if(ms.warn.includes('ROTATE-WITH-BEND LIMIT'))ev.push({t:'rotlimit'})}
  return {done,ev}}
+// Data primitives for plug-ins (dd-driller / dd-motor helpers): drill a course and take a survey. They change only the SIM session.
+export function drillCourse(sess,len,rotate=false,tf=0){return drill(sess,len,rotate,tf)}
+export function takeSurvey(sess){const pv=sess.surveys.at(-1),s={...sess.bit};s.dls=s.md>pv.md?dogleg(pv.inc,pv.azi,s.inc,s.azi)*30/(s.md-pv.md):0;sess.surveys.push(s);sess.lastSurveyMd=s.md;sess.time+=0.05;return s}
+// Reference only: simple instruction parser + driller script. NOT wired in the cabin UI; the dd-driller helper owns this (GX.ddcab.onInstruction).
 export function command(sess,c){if(typeof c=='string')c=parse(c);const say=[];if(!c)return {ok:false,say:['Driller: I do not understand. Say again. Example: "Slide 10 m at TF 30".']};
  say.push('You: '+ste(c));const m=sess.motor;
  if(sess.stalled&&c.cmd!='pickup'&&c.cmd!='wob'&&c.cmd!='flow'&&c.cmd!='survey'){say.push('Driller: The motor is stalled. Tell me to pick up off bottom first.');return {ok:false,say}}
