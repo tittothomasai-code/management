@@ -21,10 +21,10 @@ function css(){if($('ddcCss'))return;const s=document.createElement('style');s.i
 #ddLog{height:170px;overflow:auto;background:#081018;border-radius:6px;padding:6px;font:12px ui-monospace,monospace;white-space:pre-wrap}
 #ddc .tabs{display:flex;gap:4px;padding:0 8px 0}#ddc .tabs button.on{background:#2f5a85}
 #ddc .row{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0}
-#ddc .side{display:flex;flex-direction:column;gap:8px;min-width:0}#ddc .colb{position:absolute;top:4px;right:4px;min-height:26px;padding:2px 7px}
+#ddc .side{position:relative;display:flex;flex-direction:column;gap:8px;min-width:0}#ddc .colb{position:absolute;z-index:5;top:4px;right:4px;min-height:26px;padding:2px 7px}
 @media(max-width:1023px){#ddc [data-t]:not(.on){display:none}#ddc .colb{display:none}}
 @media(min-width:1024px){#ddc .tabs{display:none}#ddc .bd{grid-template-columns:var(--l,340px) 1fr var(--r,380px);overflow:hidden}#ddc .side,#ddc .mid{overflow:auto}
- #ddc .side.dkCol>*:not(.colb){display:none}#ddc .side.dkCol{background:#121b25;border-radius:8px}}
+ #ddc .side.ddCol>*:not(.colb){display:none}#ddc .side.ddCol{background:#121b25;border-radius:8px}}
 `;document.head.appendChild(s)}
 function lithAt(b){const S=ST.strat;if(!S||!ST.M)return {rop:1,dP:1,lith:'shale'};try{const r=S.lithAt(ST.M,b.tvd,b.E,b.N);if(!r)return {rop:1,dP:1};const q=S.response(r.lith);return {rop:q.rop,dP:q.tq,lith:r.lith}}catch(e){return {rop:1,dP:1}}}
 function gammaAt(b){const S=ST.strat;try{if(S&&ST.M){const g=S.gammaAt(ST.M,b.tvd,b.E,b.N);if(g!=null)return g}}catch(e){}return 60+40*Math.sin(b.tvd/7)}
@@ -42,9 +42,9 @@ function shell(){const s=ST.sess,sc=C.score(s);const opt=Object.entries(C.SCEN).
  return `<div class="hd"><b>🧭 DD Training cabin</b><span class="sim">SIM</span><select id="ddScen">${opt}</select><span id="ddScore">Score <b>${sc.score}</b></span><button class="x" id="ddClose">Close</button></div>
  <div class="tabs">${['screens','steer','motor'].map(t=>`<button data-tab="${t}" class="${ST.tab==t?'on':''}">${{screens:'Screens',steer:'Steer',motor:'Motor'}[t]}</button>`).join('')}</div>
  <div class="bd" style="--l:${ST.col.l?'40px':'340px'};--r:${ST.col.r?'40px':'380px'}">
- <div class="side ${ST.col.l?'dkCol':''}" data-t="screens" id="ddL"><button class="colb" data-col="l">${ST.col.l?'▸':'◂'}</button>${survey()}${tc()}</div>
+ <div class="side ${ST.col.l?'ddCol':''}" data-t="screens" id="ddL"><button class="colb" data-col="l">${ST.col.l?'▸':'◂'}</button>${survey()}${tc()}</div>
  <div class="mid side" data-t="screens">${gauges()}${dial()}${section()}${gamma()}</div>
- <div class="side ${ST.col.r?'dkCol':''}" id="ddR" data-t="steer"><button class="colb" data-col="r">${ST.col.r?'◂':'▸'}</button>${steerP()}${calc()}${motorP()}${scoreP(sc)}</div></div>`}
+ <div class="side ${ST.col.r?'ddCol':''}" id="ddR" data-t="steer"><button class="colb" data-col="r">${ST.col.r?'◂':'▸'}</button>${steerP()}${calc()}${motorP()}${scoreP(sc)}</div></div>`}
 function survey(){const s=ST.sess,rows=s.surveys.slice(-12).reverse().map(v=>{const p=C.closest(s.plan,v);return `<tr><td>${f1(v.md)}</td><td>${f2(v.inc)}</td><td>${f2(v.azi)}</td><td>${f1(v.tvd)}</td><td class="${(v.dls||0)>s.S.dlsMax?'bad':''}">${f2(v.dls||0)}</td><td>${f1(p.d)}</td></tr>`}).join('');
  const pb=C.projectToBit(s);return `<div class="pn"><h3>Survey table <span class="sim">SIM</span></h3><table id="ddSurv"><tr><th>MD m</th><th>Inc°</th><th>Azi°</th><th>TVD m</th><th>DLS°/30m</th><th>To plan m</th></tr>${rows}</table>
  <div id="ddProj" class="row">Projection to bit (+${f1(pb.L)} m): Inc ${f2(pb.inc)}° · Azi ${f2(pb.azi)}° · TVD ${f1(pb.tvd)} m</div></div>`}

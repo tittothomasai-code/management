@@ -105,6 +105,6 @@ export function recommend(sess,inc,azi,L){const p=projectToBit(sess),r=requiredT
  return {need:+need.toFixed(2),yield:+y.toFixed(2),tf:Math.round(r.tf),slide:+slide.toFixed(1),rotate:+(L-slide).toFixed(1),ratio:+(slide/L*100).toFixed(0),ok:need<=y}}
 export function planTarget(sess,ahead=30){const md=sess.bit.md+ahead;let a=sess.plan[0];for(const p of sess.plan)if(p.md<=md)a=p;return a}
 export function score(sess){const avgDev=sess.totL?sess.devSum/sess.totL:0,zone=sess.S.zone?(sess.totL?sess.zoneL/sess.totL*100:0):null;
- const dls=sess.surveys.reduce((m,s)=>Math.max(m,s.dls||0),0),over=Math.max(0,dls-sess.S.dlsMax);let pts=100-avgDev*2-over*10-Math.max(0,sess.time-24)*0.5;
+ const dls=sess.surveys.reduce((m,s)=>Math.max(m,s.dls||0),0),over=Math.max(0,dls-sess.S.dlsMax);let pts=100-avgDev*2-over*10-Math.max(0,sess.time-(sess.S.endMd-sess.S.start.md)/8)*0.5; // SIM time allowance: 8 m/h average
  if(zone!=null)pts=pts*0.5+zone*0.5;if(sess.offsets.length&&sess.minSF<1.5)pts-=30;
  return {avgDev:+avgDev.toFixed(1),maxDev:+sess.maxDev.toFixed(1),maxDLS:+dls.toFixed(2),dlsOver:over>0,hours:+sess.time.toFixed(1),zone:zone==null?null:+zone.toFixed(0),minSF:isFinite(sess.minSF)?sess.minSF:null,score:Math.round(cl(pts,0,100)),done:sess.bit.md>=sess.S.endMd}}
