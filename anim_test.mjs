@@ -15,14 +15,19 @@ ok(AN.rotAnim(S({td:{rpm:0.4}}),false)==0,'RPM < 1 → 0');ok(AN.rotAnim(S({td:{
 // browser
 const b=await puppeteer.launch({executablePath:'/usr/bin/google-chrome',args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--no-sandbox']});const p=await b.newPage();await p.setViewport({width:1200,height:800});
 const errs=[];p.on('pageerror',e=>errs.push(e.message));await p.goto(BASE+'/?nosplash=1',{waitUntil:'load',timeout:120000});await p.waitForFunction(()=>window.G?.animProbe&&G.S?.pumps?.length,{timeout:120000});
-const w=ms=>new Promise(r=>setTimeout(r,ms));const pr=()=>p.evaluate(()=>G.animProbe());
+const w0=ms=>new Promise(r=>setTimeout(r,ms));
+// Load-robust waits: a fixed wall-clock sleep can see 0 rendered frames on a busy box (rAF stalls >2 s with SwiftShader),
+// which gave Δt=0 → NaN rates. w(ms) now sleeps ms AND waits until the sim clock has advanced by the nominal amount
+// (ms × speed) and at least 3 new frames rendered. Assertions are unchanged.
+const frames=n=>p.evaluate(n=>new Promise(r=>{let k=0;const f=()=>++k>=n?r():requestAnimationFrame(f);requestAnimationFrame(f)}),n);
+const w=async ms=>{const t0=await p.evaluate(()=>G.S.t);await w0(ms);await p.waitForFunction((t0,d)=>G.S.t>=t0+d*(+document.getElementById("spd").value||1),{timeout:180000,polling:50},t0,ms/1000*0.9);await frames(3)};const pr=()=>p.evaluate(()=>G.animProbe());
 await p.evaluate(()=>{G.S.pumps.forEach(p=>{p.on=true;p.cmd=60});G.S.autoSteer=false;G.S.mode='rotate';G.S.slips=false;G.S.connected=true;G.S.rough=false;G.S.td.cmd=60});await w(6000);
 let x0=await pr();await w(2000);let x1=await pr();const r60=(x1.vth[0]-x0.vth[0])/(x1.t-x0.t),q60=(x1.vtd-x0.vtd)/(x1.t-x0.t);
 ok(r60>0&&x1.vis&&JSON.stringify(x1.pp)!=JSON.stringify(x0.pp),'pumps on: pistons turn and flow particles move');
 await p.evaluate(()=>G.S.pumps.forEach(p=>p.cmd=120));await w(7000);x0=await pr();await w(2000);x1=await pr();const r120=(x1.vth[0]-x0.vth[0])/(x1.t-x0.t);
 const exp=x1.spm[0]/x0.spm[0];ok(Math.abs(r120/r60-(x1.anim.pumps.per[0]/ (r60*60/2/Math.PI)))<0.2||Math.abs(r120/r60-2)<0.25,'pump speed ∝ SPM: rate ratio '+(r120/r60).toFixed(2)+' for SPM '+(r60*60/2/Math.PI).toFixed(0)+'→'+(r120*60/2/Math.PI).toFixed(0));
 ok(Math.abs(r120*60/2/Math.PI-x1.anim.pumps.per[0])<0.1*x1.anim.pumps.per[0],'piston rate matches SPM ('+(r120*60/2/Math.PI).toFixed(1)+' vs '+x1.anim.pumps.per[0].toFixed(1)+')');
-await p.evaluate(()=>G.S.pumps.forEach(p=>p.on=false));await w(300);x0=await pr();await w(1500);x1=await pr();
+await p.evaluate(()=>G.S.pumps.forEach(p=>p.on=false));await w0(300);await frames(2);x0=await pr();await w(1500);x1=await pr();
 ok(JSON.stringify(x0.vth)==JSON.stringify(x1.vth)&&JSON.stringify(x0.pp)==JSON.stringify(x1.pp)&&!x1.vis,'pumps off: pistons and particles frame-to-frame identical, particles hidden (SPM still decaying: '+x1.spm.map(v=>v.toFixed(1)).join('/')+')');
 ok(q60>0,'rotary: quill/string turning ('+(q60*60/2/Math.PI).toFixed(1)+' rpm)');
 await p.evaluate(()=>{G.S.td.cmd=120});await w(6000);x0=await pr();await w(2000);x1=await pr();const q120=(x1.vtd-x0.vtd)/(x1.t-x0.t);
