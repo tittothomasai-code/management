@@ -16,7 +16,7 @@ export function actualPts(){const G=window.GEO;try{if(G?.calc?.length>=2)return 
 export function planPts(){try{return window.G.PH.planPath().map(p=>V(p[3]*FT,p[4]*FT,p[5]*FT))}catch(e){return []}}
 // helper D strat API: prefer the shared instance GX.strat (loaded by index.html), else import it, else SIM layers
 const SM=()=>window.GX?.strat?.model?window.GX.strat:ST.strat;
-async function loadStrat(){if(window.GX?.strat?.model)return window.GX.strat;if(ST.stratTried)return ST.strat;ST.stratTried=true;try{ST.strat=await import('./strat.js?v=b4')}catch(e){ST.strat=null}return ST.strat}
+async function loadStrat(){if(window.GX?.strat?.model)return window.GX.strat;if(ST.stratTried)return ST.strat;ST.stratTried=true;try{ST.strat=await import('./strat.js?v=b6')}catch(e){ST.strat=null}return ST.strat}
 // SIM demo casing program (used only when the well plan has no casing design). MD in m; td=true runs to TD.
 export const DEMO_CASING=[{name:'Conductor 30 in',od:0.762,shoeMD:40,topMD:0,tocMD:0},{name:'Surface 20 in',od:0.508,shoeMD:450,topMD:0,tocMD:0},{name:'Intermediate 13 3/8 in',od:0.340,shoeMD:1150,topMD:0,tocMD:750},{name:'Production 9 5/8 in',od:0.245,shoeMD:2400,topMD:0,tocMD:1900}];
 export function casingProgram(){try{const D=window.GX?.casing?.design?.();if(Array.isArray(D)&&D.length)return {src:'plan',list:D.map((s,i)=>({name:s.name||s.s?.name||('String '+(i+1)),shoeMD:s.s?.shoeMD??s.shoeMD,topMD:s.s?.topMD??s.topMD??0,tocMD:s.tocMD??s.s?.tocMD}))}}catch(e){}
