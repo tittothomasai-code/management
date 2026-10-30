@@ -61,7 +61,7 @@ export function step(S,dt){S.t+=dt;const w=S.w,g=S.g,mud=S.mud;
  // kill fluid fronts
  if(Qin>0){S.circV+=Qin*dt;if(S.kmw&&S.pumpingKill){S.killV+=Qin*dt;S.killStrBot=strMdFromTopVol(g,S.killV);const va2=S.killV-g.Vstr;S.killAnnTop=va2>0?annMdFromBottomVol(g,va2):null;if(S.killAnnTop!=null&&S.killAnnTop<=0.5&&!S.flags.killed){S.flags.killed=true;ev(S,'Kill mud at surface. Well dead check: stop pumps and flow check')}}}
  // pressures
- const BHP=bhpOf(S,Pc,fr);S.BHP=BHP;S.Pshoe=Pc+annHydro(S,w.shoeMD)+fr*w.shoeMD/w.md;
+ const BHP=bhpOf(S,Pc,fr);S.BHP=BHP;S.Pshoe=Pc+annHydro(S,w.shoeMD)+fr*w.shoeMD/w.md;if(S.mode=='kill'&&!S.done)scoreStep(S,BHP,dt);
  S.Pdp=Qin>0?BHP-strHydro(S)+(H.spp-H.ann):Math.max(0,BHP-strHydro(S));
  // pits: returns into active, suction out
  const dPit=(S.Qout-Qin)*dt;S.pits.active+=dPit;S.flowDiff=S.Qout-Qin;
@@ -100,3 +100,12 @@ export function tripStep(S,dt,v,o={}){// v>0 pulling (m/s)
  if(BHP<PoreP){const dv=S.PI*(PoreP-BHP)*dt;S.pits.trip+=dv;S.influxTot+=dv;S.trip.swabbed=(S.trip.swabbed||0)+dv}
  if(o.lossRate)S.pits.trip-=o.lossRate*dt;S.trip.measured=3.0-S.pits.trip;S.trip.diff=S.trip.measured-S.trip.expected;// fill used vs expected (negative = well gave back mud)
  if(S.trip.diff<-0.3&&!S.flags.swab){S.flags.swab=true;ev(S,'Hole took less fill than calculated: swabbed influx. Stop, flow check, run back to bottom')}return S}
+
+/* Choke-handling score (SIM). Industry aim: keep BHP constant, a little above pore pressure (safety margin plus annular friction, up to ~2.5 MPa),
+   never below (new influx), never break the shoe. Score 0–100 from time-weighted error. */
+export function scoreStep(S,BHP,dt){const sc=S.sc||(S.sc={t:0,man:0,under:0,over:0,frac:0,loss0:S.lossTot||0,minM:1e9,maxM:-1e9});
+ const Pp=S.pore*1000*G*S.w.tvd,m=(BHP-Pp)/1e6;sc.t+=dt;if(!S.auto)sc.man+=dt;sc.minM=Math.min(sc.minM,m);sc.maxM=Math.max(sc.maxM,m);
+ if(m<0)sc.under+=-m*dt;else if(m>2.5)sc.over+=(m-2.5)*dt;if(S.flags?.fracExceeded)sc.frac+=dt;return sc}
+export function score(S){const sc=S.sc;if(!sc||!sc.t)return null;const T=sc.t/60;// per minute
+ const pen=sc.under/T*25+sc.over/T*4+sc.frac/sc.t*100+((S.lossTot||0)-sc.loss0)*5;const v=Math.max(0,Math.min(100,Math.round(100-pen)));
+ return{score:v,grade:v>=90?'A':v>=75?'B':v>=60?'C':'Fail',manualPct:Math.round(100*sc.man/sc.t),minMarginMPa:sc.minM,maxMarginMPa:sc.maxM,underMPaMin:sc.under/60,overMPaMin:sc.over/60}}
