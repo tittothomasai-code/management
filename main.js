@@ -123,7 +123,7 @@ const motorMesh=cyl(0.35,0.35,1.6,mat.paint,0,0.8,0,bha);const bitMesh=cyl(0.45,
 // v4.0: single path. If md moved back (well switch / reset / replay) drop stations deeper than md so the sim path never folds back into a V.
 function trimSurveys(){const s=S.surveys;if(!s||!s.length){S.surveys=[[0,0,0,0,0,0]];return}if(s.at(-1)[0]<=S.md+0.5)return;const k=s.filter(q=>q[0]<=S.md);S.surveys=k.length?k:[s[0][0]<=S.md?s[0]:[0,0,0,0,0,0]];S.lastS=S.surveys.at(-1)[0];S.pos=S.surveys.at(-1).slice(3)}
 // v4.6: real-data mode (Live WITSML connected, or Replay). In real mode the SIM physics trajectory must never be drawn.
-const realMode=()=>{const X=window.GX?.witsml?.WML||window.WML;if(!X)return null;if(X.mode=='replay'&&X.rp)return 'REPLAY';if(X.liveMode)return X.simulated?'SIMULATED':'LIVE';return null};
+const realMode=()=>{const X=window.GX?.witsml?.WML||window.WML;if(!X)return null;if(X.mode=='replay'&&X.rp)return 'REPLAY';if(X.liveMode)return X.simulated?'SIMULATED':(X.healthy?.()&&X.hist?.length?'LIVE':'SIM');return null};// v5.8: LIVE only when a real feed is connected and returning data
 window.realMode=realMode;window.pathSrc=()=>PATHSRC;window.wellPts=()=>tipPath().map(v=>[v.x,v.y,v.z]);let PATHSRC='SIM';
 const realSurvey=(rm)=>{const g=window.GEO;return g&&g.calc&&g.calc.length>=2&&!(rm=='LIVE'&&g.surv?.simTest)&&g.surv?.src!='SIM'};
 const tipPath=()=>{const rm=realMode();if(rm&&!realSurvey(rm)){PATHSRC='VERTICAL';return [W(0,0,0),W(0,0,Math.max(1,S.md))]}
@@ -299,7 +299,7 @@ function actX(e,x,b){if(EXT.actX(e,x,b))return;const st=e.st,all=()=>!!document.
  m.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{const e=addEquip(b.dataset.add);m.style.display='none';select(e)});
  m.querySelector('#eqreset').onclick=()=>{if(confirm('Reset equipment layout and 3D models to default?')){localStorage.removeItem(LKEY);localStorage.removeItem(MKEY);try{indexedDB.deleteDatabase('dw3')}catch{}location.reload()}}}
 
-import('./ext.js?v=572').then(x=>x.init({THREE,S,PH,scene,cam,ctl,ents,pumps,select,entity,box,cyl,beam,mat,M,lp,curves,FLOOR,MH,td,tdAll,blk,dwG,slG,rnG,rnArm,cwG,UG,W,allCurves:()=>allCurves(),getWell:()=>wellCurve,act,EXT,removeEnt,saveLayout,addEquip,EQ,eqList,pumpsArr:pumps,setUnder,ren,groundMat,pad,sun,bha,rigG,dwG,ctl,makePump,rebuildLines,sel:()=>sel})).catch(e=>console.error('ext',e));
+import('./ext.js?v=58').then(x=>x.init({THREE,S,PH,scene,cam,ctl,ents,pumps,select,entity,box,cyl,beam,mat,M,lp,curves,FLOOR,MH,td,tdAll,blk,dwG,slG,rnG,rnArm,cwG,UG,W,allCurves:()=>allCurves(),getWell:()=>wellCurve,act,EXT,removeEnt,saveLayout,addEquip,EQ,eqList,pumpsArr:pumps,setUnder,ren,groundMat,pad,sun,bha,rigG,dwG,ctl,makePump,rebuildLines,sel:()=>sel})).catch(e=>console.error('ext',e));
 // ---------- loop (fixed step) ----------
 const DT=0.05;let acc=0,last=performance.now(),spd=20,uiT=0;
 function frame(now){const dtR=Math.min(0.1,(now-last)/1000);last=now;spd=+$('spd').value;

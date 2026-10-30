@@ -1,5 +1,7 @@
 // ui.js v5.7: UI simplification. Rig full screen, minimal HUD, one bottom nav (5 tabs), one panel open at a time,
 // all other controls grouped in Tools. Existing buttons are MOVED (not copied), so there are no duplicates.
+// v5.8 desktop (>=1024px): left nav rail; Data / Slide sheet / Tools / Well plan / Crew dock as resizable side panels, several open at once,
+// never auto-closed (no 3D-click close, no modal sheets); open set, widths and active tab persist in localStorage 'dw_desk'. Phone unchanged.
 // ?ui=classic restores the old layout (used by older regression tests).
 const $=id=>document.getElementById(id);
 const GROUPS=[['equip','Equipment and exploded view'],['bha','BHA'],['geo','Surveys and geology'],['seq','Replay and sequences'],['set','Settings and connection'],['adv','Advanced (settings)']];
@@ -50,16 +52,56 @@ function buildTools(){const T=document.createElement('section');T.id='uiTools';T
  mk('seq','Sequence player',()=>show($('seqpanel')),'uiSeq');
  const sig=[...document.body.children].find(e=>/^Signal sources/.test(e.textContent.trim()));if(sig){sig.id=sig.id||'sigsrc';mk('set','Signal sources',()=>show(sig),'uiSig')}
  mk('adv','Events log',()=>{$('log')?.classList.toggle('uihide')},'uiLog');mk('adv','Formation at bit',()=>{$('geoRd')?.classList.toggle('uihide')},'uiFrm');
- T.addEventListener('click',ev=>{const b=ev.target.closest('button');if(!b||STAY.has(b.id)||/Washout|Motor stall|Plugged nozzle|Brake fade/.test(b.textContent))return;setTimeout(()=>{T.style.display='none';tick()},0)},true);
+ T.addEventListener('click',ev=>{if(DK.on)return;const b=ev.target.closest('button');if(!b||STAY.has(b.id)||/Washout|Motor stall|Plugged nozzle|Brake fade/.test(b.textContent))return;setTimeout(()=>{T.style.display='none';tick()},0)},true);
  if($('wcov'))mk('adv','WITSML coverage',()=>show($('wcov')),'uiCov')}
 function panels(){const o=[...document.body.children].filter(e=>(e.tagName=='DIV'||e.id=='uiTools')&&!PANEL_SKIP.has(e.id)&&/fixed|absolute/.test(getComputedStyle(e).position));document.querySelectorAll('#panels>.panel').forEach(e=>o.push(e));const w=$('wshop');if(w&&!o.includes(w))o.push(w);return o}
 const vis=e=>e&&getComputedStyle(e).display!='none'&&e.getBoundingClientRect().height>0&&(e.childElementCount||e.textContent.trim());
 function hide(e){if(!e)return;if(e.id=='ss56'){window.GX?.ss56?.close?.();return}if(e.id=='chatSheet'){window.GX?.chat?.toggle?.(false);e.style.setProperty('display','none','important');return}e.style.display='none'}
-export function show(e){if(!e)return;for(const p of panels())if(p!==e&&vis(p))hide(p);if(e.id=='uiTools'){e.style.display='block'}else if(e.id=='chatSheet'){e.style.removeProperty('display');e.style.display='flex';window.GX?.chat?.toggle?.(true)}else if(e.id=='ss56'){window.GX?.ss56?.open?.()}else e.style.display=e.dataset.uidisp||'block';cur=e;tick()}
-export function closeAll(){for(const p of panels())if(vis(p))hide(p);cur=null;tick()}
-const TABS=[['rig','🛢','Rig',()=>closeAll()],['data','📈','Data',()=>{const t=$('traces');if(vis(t))return closeAll();if(t)show(t);else $('trbtn')?.click()}],['sheet','📋','Slide sheet',()=>show($('ss56'))],['tools','☰','Tools',()=>show($('uiTools'))],['crew','💬','Crew',()=>show($('chatSheet'))]];
+
+// ---------- v5.8 desktop dock ----------
+const DK={on:false,open:[],w:{},active:null},DLS='dw_desk',DEFW={data:520,sheet:640,tools:380,plan:560,crew:360};
+const isDesk=()=>innerWidth>=1024;
+const del=k=>({data:$('traces'),sheet:$('ss56'),tools:$('uiTools'),crew:$('chatSheet'),plan:$('wp')}[k]);
+const keyOf=e=>['data','sheet','tools','plan','crew'].find(k=>del(k)===e&&e);
+function dsave(){try{localStorage.setItem(DLS,JSON.stringify({open:DK.open,w:DK.w,active:DK.active}))}catch(e){}}
+function dload(){try{const o=JSON.parse(localStorage.getItem(DLS)||'{}');DK.open=(o.open||[]).filter(k=>k in DEFW);DK.w=o.w||{};DK.active=o.active||null}catch(e){}}
+const OPEN={data:()=>{let t=$('traces');if(!t){$('trbtn')?.click();t=$('traces')}if(t)t.style.display='block'},sheet:()=>window.GX?.ss56?.open?.(),
+ tools:()=>{$('uiTools').style.display='block'},plan:()=>{window.GX?.wplan?.open?.()},crew:()=>{const c=$('chatSheet');if(!c)return;c.style.removeProperty('display');c.style.display='flex';window.GX?.chat?.toggle?.(true)}};
+const SP=(e,k,v)=>e.style.setProperty(k,v,'important');
+function undock(e){if(!e)return;if(e.dataset.dkOrig!=null){const d=e.style.display;e.style.cssText=e.dataset.dkOrig;e.style.display=d;delete e.dataset.dkOrig}e.querySelector(':scope>.dkH')?.remove();e.querySelector(':scope>.dkX')?.remove();e.classList.remove('dk')}
+export function dockOpen(k,act=true){if(!DK.open.includes(k))DK.open.push(k);if(act)DK.active=k;DK.busy=true;try{OPEN[k]?.()}catch(e){console.warn('dock',k,e)}DK.busy=false;dsave();layout();tick()}
+export function dockClose(k){DK.open=DK.open.filter(x=>x!=k);if(DK.active==k)DK.active=DK.open.at(-1)||null;const e=del(k);if(e){undock(e);hide(e)}dsave();layout();tick()}
+function layout(){if(!DK.on)return;let right=0;const top=0,L=DK.open.filter(k=>vis(del(k))),want=L.map(k=>Math.max(280,Math.min(DK.w[k]||DEFW[k],innerWidth-420))),avail=innerWidth-104-240,sum=want.reduce((a,b)=>a+b,0),f=sum>avail?avail/sum:1;
+ for(const k of L){const e=del(k);let w=Math.max(220,Math.round(want[L.indexOf(k)]*f));
+  if(e.dataset.dkOrig==null)e.dataset.dkOrig=e.style.cssText.replace(/display:[^;]*;?/g,'');e.classList.add('dk');SP(e,'position','fixed');SP(e,'inset','auto');SP(e,'top',top+'px');SP(e,'bottom','0px');SP(e,'right',(right)+'px');SP(e,'left','auto');SP(e,'width',w+'px');SP(e,'max-width','none');SP(e,'height','auto');SP(e,'max-height','none');SP(e,'border-radius','0');SP(e,'z-index',String(9400+(DK.active==k?50:0)));SP(e,'box-sizing','border-box');
+  if(k=='crew'){const b=$('chatBody');if(b)b.style.display='flex'}
+  if(!e.querySelector(':scope>.dkH')){const h=document.createElement('div');h.className='dkH';h.title='Drag to resize';h.dataset.k=k;e.appendChild(h);h.addEventListener('pointerdown',ev=>{ev.preventDefault();ev.stopPropagation();h.setPointerCapture(ev.pointerId);const x0=ev.clientX,w0=e.getBoundingClientRect().width;
+    const mv=m=>{DK.w[k]=Math.round(Math.max(280,Math.min(innerWidth-420,w0+(x0-m.clientX))));layout()},up=()=>{h.removeEventListener('pointermove',mv);h.removeEventListener('pointerup',up);dsave()};h.addEventListener('pointermove',mv);h.addEventListener('pointerup',up)});
+   const x=document.createElement('button');x.className='dkX';x.textContent='✕';x.title='Close panel';x.setAttribute('aria-label','Close '+k);x.onclick=ev=>{ev.stopPropagation();dockClose(k)};e.appendChild(x);
+   e.addEventListener('pointerdown',()=>{if(DK.active!=k){DK.active=k;dsave();layout();tick()}},true)}
+  right+=w}
+ document.body.style.setProperty('--dkR',right+'px')}
+function dcss(){const s=document.createElement('style');s.textContent=`
+body.desk #uiNav{top:0;bottom:0;right:auto;width:104px;height:auto;flex-direction:column;justify-content:flex-start;padding:8px 0;border-top:0;border-right:1px solid #2a3a50}
+body.desk #uiNav button{flex:0 0 74px;font:600 14px system-ui;gap:4px;border-left:3px solid transparent}
+body.desk #uiNav button b{font-size:22px}body.desk #uiNav button.on{border-left-color:#7cf}body.desk #uiNav button.act{background:#22406a;color:#fff}
+body.desk #uiTop{left:112px;transform:none;justify-content:flex-start;max-width:calc(100vw - 124px - var(--dkR,0px));font-size:14px}body.desk #uiX{display:none!important}
+body.desk #appVer{bottom:4px!important;right:calc(var(--dkR,0px) + 6px)!important}
+body:not(.desk) #uiTab_plan{display:none!important}
+.dk{background:rgba(12,19,30,.98)!important;border:0!important;border-left:1px solid #3a5070!important;overflow:auto}.dk.dk{padding-left:12px}
+.dkH{position:absolute;left:0;top:0;bottom:0;width:8px;cursor:ew-resize;background:linear-gradient(90deg,#3a5070,transparent);z-index:5;touch-action:none}
+.dkH:hover{background:#5fa8ff}
+.dkX{position:absolute;top:6px;right:8px;z-index:6;width:30px;height:30px;border-radius:15px;border:1px solid #789;background:#22303f;color:#fff;font:15px system-ui;cursor:pointer}
+body.desk #ss56.dk .bar{padding-right:46px}body.desk #chatSheet.dk #chatHead{display:flex!important;padding-right:46px}
+body.desk #traces.dk,body.desk #uiTools.dk,body.desk #wp.dk{padding-top:40px!important}body.desk #uiTools.dk,body.desk #wp.dk{font-size:15px}`;document.head.appendChild(s)}
+function deskMode(){const d=isDesk();if(d==DK.on)return;DK.on=d;document.body.classList.toggle('desk',d);
+ if(d){for(const k of DK.open)if(del(k)||OPEN[k]){try{DK.busy=true;OPEN[k]()}catch(e){}DK.busy=false}layout()}
+ else{for(const k of Object.keys(DEFW)){const e=del(k);if(e&&e.classList.contains('dk')){undock(e);hide(e)}}document.body.style.removeProperty('--dkR')}tick()}
+export function show(e){if(DK.on){const k=keyOf(e);if(k){if(!DK.busy)dockOpen(k);return}}if(!e)return;for(const p of panels())if(p!==e&&vis(p))hide(p);if(e.id=='uiTools'){e.style.display='block'}else if(e.id=='chatSheet'){e.style.removeProperty('display');e.style.display='flex';window.GX?.chat?.toggle?.(true)}else if(e.id=='ss56'){window.GX?.ss56?.open?.()}else e.style.display=e.dataset.uidisp||'block';cur=e;tick()}
+export function closeAll(){if(DK.on){for(const k of [...DK.open])dockClose(k);return}for(const p of panels())if(vis(p))hide(p);cur=null;tick()}
+const TABS=[['rig','🛢','Rig',()=>closeAll()],['data','📈','Data',()=>{const t=$('traces');if(vis(t))return closeAll();if(t)show(t);else $('trbtn')?.click()}],['sheet','📋','Slide sheet',()=>show($('ss56'))],['tools','☰','Tools',()=>show($('uiTools'))],['crew','💬','Crew',()=>show($('chatSheet'))],['plan','📐','Well plan',()=>window.GX?.wplan?.open?.()]];
 function buildNav(){const n=document.createElement('nav');n.id='uiNav';n.innerHTML=TABS.map(([k,i,l])=>`<button id=uiTab_${k} data-k=${k}><b>${i}</b>${l}</button>`).join('');document.body.appendChild(n);
- for(const [k,,,f] of TABS)$('uiTab_'+k).onclick=()=>{const tgt={sheet:$('ss56'),tools:$('uiTools'),crew:$('chatSheet')}[k];if(tgt&&vis(tgt)&&k!='rig'){closeAll();return}f()};
+ for(const [k,,,f] of TABS)$('uiTab_'+k).onclick=()=>{if(DK.on){if(k=='rig'){closeAll();return}if(DK.open.includes(k)){if(DK.active==k)dockClose(k);else{DK.active=k;dsave();layout();tick()}}else dockOpen(k);return}const tgt={sheet:$('ss56'),tools:$('uiTools'),crew:$('chatSheet')}[k];if(tgt&&vis(tgt)&&k!='rig'){closeAll();return}f()};
  const x=document.createElement('button');x.id='uiX';x.textContent='✕';x.title='Close';x.setAttribute('aria-label','Close panel');x.onclick=()=>closeAll();document.body.appendChild(x);
  const t=document.createElement('header');t.id='uiTop';document.body.appendChild(t)}
 function status(){const W=window.GX?.witsml?.WML,S=window.G?.S||{};const ft=.3048;
@@ -70,6 +112,11 @@ function status(){const W=window.GX?.witsml?.WML,S=window.G?.S||{};const ft=.304
  const rpm=S.bitRpm??S.rpm??0,q=S.Q??0,onb=S.wob>1;const mode=q<50?'Pumps off':!onb?'Off bottom':rpm<5?'Slide':'Rotate';
  return {st:rep?'SIM':st,src:rep?'Replay':live?'WITSML':'SIM',well,bd,rop:rop.v,mode,player:window.GX?.player?.get()||'—'}}
 function tick(){const s=status(),T=$('uiTop');if(T)T.innerHTML=`<span>${s.well}</span><span>Bit ${s.bd!=null?s.bd.toFixed(1):'—'} m</span><span>ROP ${s.rop.toFixed(1)} m/h</span><span>${s.mode}</span><span class="st ${s.st}">${s.st}${s.src=='Replay'?' · Replay':''}</span><span>👤 ${s.player}</span>`;
+ if(DK.on){for(const k of [...DK.open]){const e=del(k);if(!DK.restoring&&(!e||!vis(e))){DK.open=DK.open.filter(x=>x!=k);undock(e);dsave()}}
+  for(const k of Object.keys(DEFW)){const e=del(k);if(e&&vis(e)&&!DK.open.includes(k)&&!DK.busy){DK.open.push(k);DK.active=k;dsave()}}
+  layout();prevVis=new Set(panels().filter(vis));cur=del(DK.active)||null;
+  for(const [k] of TABS){const b=$('uiTab_'+k);b?.classList.toggle('on',k=='rig'?!DK.open.length:DK.open.includes(k));b?.classList.toggle('act',k==DK.active&&DK.open.includes(k))}
+  const X=$('uiX');if(X)X.style.display='none';return}
  // one panel at a time: a panel that just opened by its own button closes the others
  const P=panels(),V=new Set(P.filter(vis));for(const e of V)if(!prevVis.has(e)){for(const o of V)if(o!==e)hide(o);cur=e}
  const open=P.filter(vis);if(!open.includes(cur))cur=open.at(-1)||null;prevVis=new Set(open);
@@ -80,4 +127,5 @@ export function init(){if(typeof document=='undefined')return;const q=new URLSea
  document.body.classList.add('ui57');css();buildNav();buildTools();
  for(const id of ['seqpanel','geoRd','log'])if($(id)){if(id=='seqpanel')$(id).style.display='none';else $(id).classList.add('uihide')}
  const sig=$('sigsrc');if(sig)sig.style.display='none';const ch=$('chatSheet');if(ch)ch.style.setProperty('display','none','important');
- prevVis=new Set(panels().filter(vis));GX.ui={show,closeAll,status,tick,classic:false};setInterval(tick,400);tick()}
+ dcss();dload();prevVis=new Set(panels().filter(vis));GX.ui={show,closeAll,status,tick,classic:false,DK,dockOpen,dockClose,layout};
+ DK.restoring=true;deskMode();addEventListener('resize',()=>{deskMode();layout()});setTimeout(()=>{if(DK.on)for(const k of DK.open)if(!vis(del(k))){try{DK.busy=true;OPEN[k]()}catch(e){}DK.busy=false}layout();setTimeout(()=>{DK.restoring=false;tick()},1200)},1500);setInterval(tick,400);tick()}

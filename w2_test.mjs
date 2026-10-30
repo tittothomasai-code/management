@@ -36,10 +36,12 @@ for(const [tag,vp] of [['phone',{width:390,height:844,deviceScaleFactor:2,isMobi
  const inp=await pg.$('#acFile');await inp.uploadFile('fixtures/offset_sim.csv','fixtures/offset_sim_edm.xml');await pg.waitForFunction(()=>/Imported 2/.test(document.getElementById('acMsg')?.textContent||''),{timeout:15000}).catch(()=>{});
  ok(await pg.evaluate(()=>GX.wac.A.offs.length==5&&GX.wac.A.offs.filter(o=>o.tag=='IMPORT').length==2),tag+' imported CSV + EDM into IndexedDB (5 wells)');await shot('1_offsets_3d');
  await pg.evaluate(()=>document.querySelector('#wp [data-v=ac]').click());await pg.waitForSelector('#acTC');await shot('2_minsf_report');
+ ok(await pg.evaluate(()=>/Error model: concept only, not certified/.test(document.getElementById('wpBody').textContent)),tag+' AC view shows concept-only error-model label');
  ok(await pg.evaluate(()=>/STOP/.test(document.getElementById('wpBody').textContent)&&document.querySelectorAll('#wpBody canvas').length==3),tag+' min-SF report with STOP + ladder/SF/TC plots');
  await pg.evaluate(()=>document.getElementById('acLad').scrollIntoView());await new Promise(r=>setTimeout(r,300));await pg.screenshot({path:`shots_live/109_w2_${tag}_3_ladder_sf.png`});
  await pg.evaluate(()=>document.getElementById('acTC').scrollIntoView());await new Promise(r=>setTimeout(r,300));await pg.screenshot({path:`shots_live/109_w2_${tag}_4_tc.png`});
  await pg.evaluate(()=>{GX.wac.A.bitMd=1380;document.querySelector('#wp [data-v=beam]').click()});await pg.waitForSelector('#acBeam');await shot('5_beam');
+ ok(await pg.evaluate(()=>/Error model: concept only, not certified \(simplified ISCWSA-style\)/.test(document.getElementById('wpBody').textContent)),tag+' beam view shows concept-only error-model label');
  ok(await pg.evaluate(()=>/IN BEAM/.test(document.getElementById('acBeamT').textContent)),tag+' beam flags Offset-3 ahead of bit at 1380 m');
  await pg.evaluate(()=>document.getElementById('wp3d').scrollIntoView());await new Promise(r=>setTimeout(r,1200));await pg.screenshot({path:`shots_live/109_w2_${tag}_6_beam_3d.png`});
  ok(await pg.evaluate(()=>!/\bLIVE\b/.test(document.getElementById('wp').textContent)),tag+' no LIVE label');
