@@ -83,3 +83,5 @@ function setTab(t){R.tab=t;R.el.querySelectorAll('[data-t]').forEach(b=>b.classL
 function key(e){if(R.el&&e.key=='Escape'){close();e.stopPropagation()}}
 export function close(){if(!R.el)return;removeEventListener('keydown',key,true);R.el.remove();document.getElementById('wo2Css')?.remove();R.el=null}
 function api(){return {R,setTab,set:(k,v)=>{R.v[k]=v;render()},close,E}}
+// fix/flakes: on phone the ui.js one-panel rule saw #wo turn visible after #wo2 opened and hid #wo2 (screenshots showed the rig). While #wo2 is open, park #wo; restore it when #wo2 closes.
+if(typeof document!='undefined'&&document.body)new MutationObserver(()=>{const w=document.getElementById('wo');if(!w)return;if(R.el&&R.el.isConnected){if(w.style.display!='none'){w.dataset.wo2park=w.style.display||'_';w.style.display='none'}}else if(w.dataset.wo2park){const v=w.dataset.wo2park;delete w.dataset.wo2park;w.style.display=v=='_'?'':v}}).observe(document.body,{childList:true});

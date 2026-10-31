@@ -25,9 +25,9 @@ for(const [nm,vp] of [['desk',{width:1440,height:900}],['phone',{width:390,heigh
  // keyboard: Down moves focus, Enter on New simulation opens SIM picker, Esc goes back
  await p.keyboard.press('ArrowDown');let f=await p.evaluate(()=>document.querySelector('#start .tile.on')?.dataset.go);ok(f==(T?'well':'login'),`${nm}: keyboard ArrowDown moves focus (${f})`);
  await p.keyboard.press('ArrowUp');f=await p.evaluate(()=>document.querySelector('#start .tile.on')?.dataset.go);
- await p.keyboard.press('Enter');await w(300);let sub=await p.evaluate(()=>[...document.querySelectorAll('#start .tile')].map(b=>b.dataset.go).join());ok(f=='sim'&&sub=='simA,simFree,back',`${nm}: Enter on New simulation → SIM well picker (${sub})`);
+ await p.keyboard.press('Enter');await w(300);await p.waitForFunction(()=>[...document.querySelectorAll('#start .tile')].map(b=>b.dataset.go).join()=='simA,simFree,back',{timeout:30000,polling:50}).catch(()=>{});let sub=await p.evaluate(()=>[...document.querySelectorAll('#start .tile')].map(b=>b.dataset.go).join());ok(f=='sim'&&sub=='simA,simFree,back',`${nm}: Enter on New simulation → SIM well picker (${sub})`);
  await p.screenshot({path:`${DIR}/${PRE}${nm}_2_sim_picker.png`});
- await p.keyboard.press('Escape');await w(200);sub=await p.evaluate(()=>[...document.querySelectorAll('#start .tile')].map(b=>b.dataset.go).join());ok(sub=='sim,well,login,edm,monitor,workover,ddcab,showroom','Esc → back to main menu');
+ await p.keyboard.press('Escape');await w(200);await p.waitForFunction(()=>[...document.querySelectorAll('#start .tile')].map(b=>b.dataset.go).join()=='sim,well,login,edm,monitor,workover,ddcab,showroom',{timeout:30000,polling:50}).catch(()=>{});sub=await p.evaluate(()=>[...document.querySelectorAll('#start .tile')].map(b=>b.dataset.go).join());ok(sub=='sim,well,login,edm,monitor,workover,ddcab,showroom','Esc → back to main menu');
  // sound toggle
  await tap(p,'#stSnd',T);ok(/Sound on/.test(await p.$eval('#stSnd',e=>e.textContent)),`${nm}: sound toggle turns on`);await tap(p,'#stSnd',T);
  // New simulation → SIM proposal A (touch/click)
@@ -50,7 +50,7 @@ for(const [nm,vp] of [['desk',{width:1440,height:900}],['phone',{width:390,heigh
  r=await p.evaluate(()=>({last:dwStart.last,join:!!document.getElementById('plJoin'),pw:!!document.querySelector('#plJoin input[type=password]')}));
  ok(g&&r.last=='join'&&r.join&&!r.pw,`${nm}: Log in as player → name join, no password field`);
  await p.screenshot({path:`${DIR}/${PRE}${nm}_5_login.png`});
- await p.$eval('#plName',e=>e.value='');await p.$eval('#plName',e=>e.focus());await p.keyboard.type('Start Tester');await p.$eval('#plJoin form',f=>f.requestSubmit());await p.waitForFunction(()=>document.getElementById('sessPanel')?.style.display=='block',{timeout:20000}).catch(()=>{});
+ await p.$eval('#plName',e=>e.value='');await p.$eval('#plName',e=>e.focus());await p.keyboard.type('Start Tester');await p.$eval('#plJoin form',f=>f.requestSubmit());await p.waitForFunction(()=>document.getElementById('sessPanel')?.style.display=='block',{timeout:60000}).catch(()=>{});
  r=await p.evaluate(()=>({n:GX.player.name,sp:document.getElementById('sessPanel')?.style.display}));ok(r.n=='Start Tester'&&r.sp=='block',`${nm}: after name → session panel (lobby / join by code) opens (${JSON.stringify(r)})`);
  await p.ctx.close();
  // Continue only with saved state

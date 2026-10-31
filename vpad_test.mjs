@@ -32,7 +32,8 @@ for(const [nm,vp] of [['phone',{width:390,height:844,deviceScaleFactor:2,isMobil
  const op=await p.$eval('#vpL',e=>+getComputedStyle(e).backgroundColor.match(/[\d.]+\)$/)?.[0].replace(')','')||1);ok(op<0.6,`${nm}: semi-transparent (alpha ${op})`);await p.screenshot({path:SH+nm+'_2_moved.png'});
  await go(p);const r1=await p.evaluate(()=>({on:GX.vpad.on(),vis:!!document.querySelector('#vpB')?.offsetParent,top:document.querySelector('#vpB').style.top}));ok(r1.on&&r1.vis,`${nm}: ON persists after reload`);
  ok(Math.abs(parseFloat(r1.top)-(g1[1]-(g0[1]-parseFloat(r1.top))))<200,`${nm}: moved position restored`);
- await p.evaluate(()=>GX.ui?.show?.(document.getElementById('uiTools'))||document.getElementById('uiTab_tools')?.click());await w(400);const mi=await p.evaluate(()=>document.getElementById('vpSet')?.textContent);ok(/ON/.test(mi||''),`${nm}: Tools ▸ Settings entry "${mi}"`);
+ await p.evaluate(()=>GX.ui?.show?.(document.getElementById('uiTools'))||document.getElementById('uiTab_tools')?.click());await w(400);await p.waitForFunction(()=>/ON|OFF/.test(document.getElementById('vpSet')?.textContent||''),{timeout:60000,polling:100}).catch(()=>{});const mi=await p.evaluate(()=>document.getElementById('vpSet')?.textContent);ok(/ON/.test(mi||''),`${nm}: Tools ▸ Settings entry "${mi}"`);
+ await p.waitForFunction(()=>!!document.getElementById('vpHelp')?.closest('#uig_set'),{timeout:60000,polling:100}).catch(()=>{});
  ok(await p.evaluate(()=>!!document.getElementById('vpHelp')?.closest('#uig_set')),`${nm}: Tools ▸ Settings has "Controls guide"`);
  await p.evaluate(()=>document.getElementById('vpHelp').click());await w(300);ok(await p.evaluate(()=>getComputedStyle(inpLegend).display=='block'&&!!inpLegend.querySelector('.lgX')),`${nm}: Settings entry opens the legend`);
  await p.screenshot({path:'shots_live/152_ctlguide_'+nm+'_settings_help.png'});await p.evaluate(()=>inpLegend.querySelector('.lgX').click());await w(200);

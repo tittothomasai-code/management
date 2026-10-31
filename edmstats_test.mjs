@@ -29,7 +29,7 @@ for(const [nm,vp] of [['phone',{width:390,height:844,deviceScaleFactor:2,isMobil
  ok(fv.vis&&fv.in,`${nm}: filter sheet opens on screen`);ok(/7 wells/.test(fv.t)&&/Field stats/.test(fv.t)&&/TD \(MD\) histogram/.test(fv.t)&&/Max inclination histogram/.test(fv.t)&&/Status/.test(fv.t),`${nm}: field stats with histograms shown`);
  await p.screenshot({path:SH+nm+'_2_filters.png'});
  // site filter via UI select
- await p.evaluate(()=>{const s=document.getElementById('emfs');for(const o of s.options)o.selected=/PAD B/.test(o.textContent);s.dispatchEvent(new Event('change'))});await w(700);
+ await p.evaluate(()=>{const s=document.getElementById('emfs');for(const o of s.options)o.selected=/PAD B/.test(o.textContent);s.dispatchEvent(new Event('change'))});await w(700);await p.waitForFunction(()=>GX.edmmap?.settled?.(),{timeout:60000,polling:100}).catch(()=>{});
  let r=await p.evaluate(()=>{const M=GX.edmmap;const vis=M.W.wells.map((w,i)=>M.visible(i));return {vis,bdg:document.getElementById('embdg').textContent,cnt:document.getElementById('emcnt').innerText,fn:document.getElementById('emfn').innerText,fs:M.fstats()}});
  ok(r.vis.filter(Boolean).length==3&&r.bdg=='1',`${nm}: site filter → 3 of 7 visible, badge ${r.bdg}`);ok(/3 of 7 wells/.test(r.cnt)&&/3 of 7 wells match/.test(r.fn)&&r.fs.wells==3,`${nm}: counts update (${r.cnt})`);
  await p.click('#emfx');await w(300);await p.evaluate(()=>GX.edmmap.fit());await w(1200);
