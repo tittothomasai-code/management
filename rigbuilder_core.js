@@ -40,15 +40,16 @@ export function buildCatalogue(man1,man2,bomRig){const out=[],seen=new Set();
  fromMan(man1,'B','pass1');fromMan(man2,'C','pass2');
  for(const a of bomRig?.assets||[]){if(a.group=='downhole')continue;const id='A:'+a.id;out.push({id,slot:slotOf(a.id),node:a.id,name:a.label||pretty(a.id),src:'A',pack:'blender',rig:'A',rigName:'Classic workshop',bom:'A/'+a.id,kids:(a.components||[]).map((c,i)=>({path:a.id+'/'+(c.n||i),bom:'A/'+a.id+'/'+i,lines:(c.lines||[]).length})),cls:CLS.A})}
  return out}
-export function defaults(cat){const s={};for(const S of SLOTS){if(S.multi)continue;const pick=cat.find(c=>c.slot==S.k&&c.rig=='land_1500_ac_double'&&c.src=='B')||cat.find(c=>c.slot==S.k);if(pick)s[S.k]=pick.id}
+export function defaults(cat){const s={};for(const S of SLOTS){if(S.multi)continue;const P={td:'top_drive',pipe:'catwalk',tanks:'mud_system'},pick=cat.find(c=>c.slot==S.k&&c.rig=='land_1500_ac_double'&&c.src=='B'&&(!P[S.k]||c.node==P[S.k]))||cat.find(c=>c.slot==S.k&&c.rig=='land_1500_ac_double'&&c.src=='B')||cat.find(c=>c.slot==S.k);if(pick)s[S.k]=pick.id}
  return {v:1,id:'',name:'',tag:'SIM',slots:s,qty:{pumps:2,power:3},extras:[],created:0,updated:0}}
 const byId=(cat,id)=>cat.find(c=>c.id==id)||null;
 // Key specs (SIM): hook load = weakest of mast, drawworks and top drive; depth = min of mast and drawworks class depth,
+// (load = larger of drawworks and pumps, plus 15 % for other users; generator unit = 0.9 x class kW)
 // cut in proportion when pump power is under 1 hp per 4 m (hydraulics limit); power = generator class kW x count; BOP = stack rating.
 export function specs(rig,cat){const g=k=>byId(cat,rig.slots?.[k]),c=k=>g(k)?.cls,q=rig.qty||{},miss=SLOTS.filter(S=>S.req&&!g(S.k)).map(S=>S.l);
  const hook=Math.min(...['mast','dw','td'].map(k=>c(k)?.hook??0));const pq=Math.max(1,q.pumps||1),gq=Math.max(1,q.power||1);
  const php=(c('pumps')?.php||0)*pq,base=Math.min(c('mast')?.depth??0,c('dw')?.depth??0),need=base/4,depth=Math.round(php>=need||!need?base:base*php/need);
- const kw=Math.round((c('power')?.kw||0)/3*gq),bop=c('bop')?.bop||0,load=Math.round((c('dw')?.hp||0)*0.746+php*0.746);
+ const kw=Math.round((c('power')?.kw||0)*0.9*gq),bop=c('bop')?.bop||0,load=Math.round(Math.max(c('dw')?.hp||0,php)*0.746*1.15);
  const warn=[...miss.map(m=>'Missing: '+m)];if(kw&&load>kw)warn.push(`Power is low: load ${load.toLocaleString('en-AU')} kW, supply ${kw.toLocaleString('en-AU')} kW`);
  if(php<need)warn.push('Pump power limits depth');return {hook,depth,kw,bop,pumpHp:php,load,warn,tag:'SIM'}}
 export function bom(rig,cat){const rows=[];for(const S of SLOTS){const ids=S.multi?(rig.extras||[]):(rig.slots?.[S.k]?[rig.slots[S.k]]:[]);
