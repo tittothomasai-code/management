@@ -27,7 +27,7 @@ for(const nm of ['desk','phone']){if(only&&only!=nm)continue;const vp=VP[nm];
  await p.evaluate(()=>GX.showroom.close());
  // 2) switch to B in Settings (Tools group) and open via HUD button
  await p.waitForFunction(()=>!!document.getElementById('srabSet'),{timeout:30000}).catch(()=>{});ok(await p.evaluate(()=>!!document.getElementById('srabSet')),nm+': Settings has Showroom A/B toggle');
- ok(await p.evaluate(()=>GX.showroomAB.keys().join()=='A,B'&&!document.getElementById('srabTC')&&!document.getElementById('srabSC')),nm+': selector A/B, C hidden until it registers');
+ ok(await p.evaluate(()=>GX.showroomAB.keys().join()=='A,B'&&[...document.querySelectorAll('#srabTC,#srabSC')].every(b=>b.disabled&&/soon/.test(b.textContent))),nm+': selector A/B, C disabled (soon) until it registers');
  ok(await p.evaluate(()=>{localStorage.setItem('dw_showroom_ab','C');const g=GX.showroomAB.get();localStorage.setItem('dw_showroom_ab','A');return g=='A'}),nm+': unregistered C falls back to A');
  await p.evaluate(()=>srabTB.click());ok(await p.evaluate(()=>localStorage.getItem('dw_showroom_ab')=='B'&&srabTB.classList.contains('on')),nm+': Settings toggle sets B (saved)');
  await p.waitForSelector('#btnShow',{timeout:30000}).catch(()=>{});await p.evaluate(()=>btnShow.click());await p.waitForSelector('#showroomB canvas',{timeout:30000}).catch(()=>{});
