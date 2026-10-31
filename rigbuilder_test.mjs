@@ -11,7 +11,7 @@ const GL={ns:{}};const VP={desk:{width:1440,height:900},phone:{width:390,height:
 for(const nm of ['desk','phone']){if(process.env.ONLY&&process.env.ONLY!=nm)continue;
  const ctx=await b.createBrowserContext();const p=await ctx.newPage();await p.setViewport(VP[nm]);p.on('pageerror',e=>errs.push(nm+': '+e));await p.evaluateOnNewDocument(MOCK);
  await p.setRequestInterception(true);p.on('request',r=>{if(/supabase\.co|adaga|witsml/i.test(r.url())&&!/\.js(\?|$)/.test(r.url()))return r.abort();r.continue()});
- const pad=async i=>{await p.evaluate(i=>{__pad.buttons[i]={pressed:true,value:1}},i);await w(220);await p.evaluate(i=>{__pad.buttons[i]={pressed:false,value:0}},i);await w(220)};
+ const pad=async i=>{await p.evaluate(i=>{__pad.buttons[i]={pressed:true,value:1}},i);await p.waitForFunction(i=>GX.rigBuilder?.ST?.padPrev?.[i]||!document.getElementById('rigBuilder'),{timeout:8000,polling:30},i).catch(()=>{});await p.evaluate(i=>{__pad.buttons[i]={pressed:false,value:0}},i);await w(220)};
  await p.goto(BASE+'/?start=1',{waitUntil:'load',timeout:120000});await p.waitForSelector('#rbBtnStart',{timeout:60000}).catch(()=>{});
  ok(await p.evaluate(()=>!!document.getElementById('rbBtnStart')),nm+': start screen has Rig builder button');
  await p.evaluate(()=>rbBtnStart.click());await p.waitForSelector('#rigBuilder #rbSvg canvas',{timeout:60000}).catch(()=>{});
@@ -56,7 +56,8 @@ for(const nm of ['desk','phone']){if(process.env.ONLY&&process.env.ONLY!=nm)cont
  const cam0=await p.evaluate(()=>GX.rigBuilder.stage().cam.position.toArray().map(v=>+v.toFixed(1)).join());
  if(nm=='phone'){await p.evaluate(()=>document.querySelector('#rbSvg').scrollIntoView({block:'center'}));await w(200);const c2=await p.evaluate(()=>{const r=document.querySelector('#rbSvg canvas').getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2}});await p.touchscreen.touchStart(c2.x,c2.y);for(let i=1;i<=6;i++){await p.touchscreen.touchMove(c2.x+i*14,c2.y+2);await w(30)}await p.touchscreen.touchEnd()}else{await p.mouse.move(cv.x,cv.y);await p.mouse.down();await p.mouse.move(cv.x+80,cv.y+10,{steps:6});await p.mouse.up();}await w(400);
  const cam1=await p.evaluate(()=>GX.rigBuilder.stage().cam.position.toArray().map(v=>+v.toFixed(1)).join());ok(cam0!=cam1,nm+': drag orbits the camera');
- const fps=await p.evaluate(()=>GX.rigBuilder.stage().bench(3000));if(nm=='phone')ok(fps>=2,nm+': phone FPS sanity floor, LOD L ('+fps+' fps in software GL; floor 2)');else console.log('INFO desk fps in software GL: '+fps);
+ const pf=await p.evaluate(async()=>{const s=GX.rigBuilder.stage();s.ren.render(s.sc,s.cam);const i=s.ren.info.render,c=i.calls,t=i.triangles,fps=await s.bench(3000);return {fps,calls:c,tris:t,lod:s.root.userData.lod}});
+ if(nm=='phone')ok(pf.lod=='L'&&pf.fps>=1&&pf.calls<=250&&pf.tris<=150000,nm+': phone FPS sanity floor, LOD L ('+pf.fps+' fps in software GL on a loaded box, floor 1; '+pf.calls+' draw calls, '+pf.tris+' triangles)');else console.log('INFO desk '+JSON.stringify(pf));
  if(nm=='phone'){const sr=await p.evaluate(()=>{const s=rbSlots.getBoundingClientRect(),b=[...rbSlots.querySelectorAll('button')].map(x=>x.getBoundingClientRect().height);return {h:s.height,min:Math.min(...b)}});ok(sr.min>=44&&sr.h>=sr.min,nm+': slot row is not clipped (row '+sr.h.toFixed(0)+' px, buttons '+sr.min.toFixed(0)+' px)')}
  GL.ns[nm]=null;
  // name validation + save
