@@ -12,7 +12,7 @@ const CSS=`#ddmp{position:fixed;right:8px;top:70px;width:340px;max-width:calc(10
 #ddmp h3{margin:4px 0;font-size:13px}#ddmp .sim{background:#c80;color:#000;border-radius:3px;padding:0 4px;font-size:10px;margin-left:4px}#ddmp .g{display:grid;grid-template-columns:repeat(3,1fr);gap:3px}#ddmp .g div{background:#16222e;padding:3px;border-radius:4px}
 #ddmp b{font-size:14px}#ddmp .bad{color:#f55}#ddmp .warn{color:#fc3}#ddmp canvas{width:100%;height:150px;background:#0a1118;border-radius:4px}#ddmp .x{float:right;background:#234;color:#fff;border:1px solid #456;border-radius:4px;min-height:32px}
 #ddmp .fb{position:relative;height:12px;background:#234;border-radius:6px;margin:3px 0}#ddmp .fb i{position:absolute;left:25%;width:50%;height:100%;background:#2a5}#ddmp .fb u{position:absolute;top:-2px;width:3px;height:16px;background:#fff}
-@media(max-width:700px){#ddmp{left:8px;right:8px;width:auto;top:auto;bottom:70px;max-height:45vh}}`;
+body.mob #ddmp.msheet,body.mob #ddmp{z-index:2147483001!important}@media(max-width:700px){#ddmp{left:8px;right:8px;width:auto;top:auto;bottom:70px;max-height:45vh}}`;
 function html(p,S,st){const g=(n,v,u,c='')=>`<div><small>${n}</small><br><b class="${c}">${v}</b> <small>${u}</small></div>`,m=S.m;
  const x=Math.max(0,Math.min(100,25+p.flow.pct/2));
  return `<button class="x" id="ddmpX">Close</button><h3>Motor performance <span class="sim">SIM</span></h3>

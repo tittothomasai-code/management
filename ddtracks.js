@@ -93,7 +93,7 @@ export function isOpen(){return !!ST.el}
 export function open(o={}){css();if(!ST.el){build();addEventListener('keydown',key,true);ST.pad.prev=((navigator.getGamepads?.()||[]).find(x=>x)?.buttons||[]).map(x=>x.pressed)}
  if(o.track){const t=TRACKS.find(x=>x.id==o.track);if(t){ST.cup=t.ci;ST.ti=t.ti}}else{const s=load(),last=[...TRACKS].reverse().find(t=>unlocked(t,s));if(last){ST.cup=last.ci;ST.ti=last.ti}}grid();if(!ST.raf)loop();if(!ST.piv)ST.piv=setInterval(pollPad,40);watch();return API}
 export function close(){if(ST.el){ST.el.remove();ST.el=null}removeEventListener('keydown',key,true);cancelAnimationFrame(ST.raf);ST.raf=0;clearInterval(ST.piv);ST.piv=0;ST.focus='grid'}
-async function cabin(){if(!globalThis.GX?.ddrun||!document.getElementById('ddc')||document.getElementById('ddc').style.display=='none'){const m=await import('./ddcab.js?v=r1');m.open()}
+async function cabin(){if(!globalThis.GX?.ddrun||!document.getElementById('ddc')||document.getElementById('ddc').style.display=='none'){const m=await import('./ddcab.js?v=r2');m.open()}
  const t0=performance.now();while(!globalThis.GX?.ddrun?.mount&&performance.now()-t0<20000)await new Promise(r=>setTimeout(r,100));return globalThis.GX?.ddrun}
 // load track t into the cabin steering run (ddrun reset hook: plan / error override / track id)
 export async function launch(id,{autostart=true}={}){const t=TRACKS.find(x=>x.id==id)||cur();if(!unlocked(t))return null;const D=await cabin();if(!D)throw new Error('ddrun not ready');

@@ -68,7 +68,7 @@ function close(dest){ST.last=dest;const A=api();A.last=dest;if(dest!='join'&&des
 async function choose(){const go=ST.items[ST.i]?.dataset.go;beep(880,.1);
  if(go=='sim'){ST.menu='sim';return render()}
  if(go=='monitor'){close('monitor');const m=await import('./monitor.js?v=b11');m.open();return}
- if(go=='ddcab'){close('ddcab');const m=await import('./ddcab.js?v=r1');m.open();return}
+ if(go=='ddcab'){close('ddcab');const m=await import('./ddcab.js?v=r2');m.open();return}
  if(go=='showroom'){close('showroom');const P=await import('./srpick.js?v=b2').catch(()=>null);if(P&&P.get()!='A'){await P.open();return}const m=await import('./showroom.js?v=b16');m.init();m.open();return}
  if(go=='workover'){close('workover');const m=await import('./workover.js?v=b13');m.open();return}
  if(go=='saved'){ST.menu='saved';return render()}
