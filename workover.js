@@ -110,9 +110,17 @@ function apply(s,t){const W=E.WELL,rig=s.unit=='rig',frac=s.unit=='frac',truck=!
  G.flow.visible=s.flow>0.05;if(G.flow.visible){const bot=Math.min(W.perf[0],str||W.packer)*K;for(const p of G.flow.children){const u=(p.userData.k+t*.15)%1;p.position.set(Math.sin(p.userData.k*40)*.2,-bot*(1-u),0)}}
  if(R.view=='auto'){const foc=frac&&s.fr?(s.fr.top+s.fr.bot)/2:s.tool?td:(rig&&s.str>40&&s.str<W.packer-40?s.str:0);const ty=foc>40?-foc*K:6,dy=(ty-ctl.target.y)*.05;ctl.target.y+=dy;cam.position.y+=dy}}
 // ---------- frac (SIM): spread on surface, plug-and-perf stages, PKN fracture wings growing in 3D ----------
+// SE1 pass-3 frac pump truck GLB via showroom3d.js loadUrl (single loader); the drawn trucks stay as fallback.
+G.pumpGlb={n:0,lod:null,err:null};
+async function pumpGlb(){try{const lod=(matchMedia('(max-width:700px)').matches||navigator.maxTouchPoints>0&&innerWidth<900)?'L':'M';G.pumpGlb.lod=lod;
+ const S3=await import('./showroom3d.js?v=5116');const src=await S3.loadUrl(new URL(`./assets/rigparts/pass3/glb/frac_pump_truck_single_lod${lod}.glb`,import.meta.url).href);
+ const bb=new THREE.Box3().setFromObject(src),sz=bb.getSize(new THREE.Vector3()),alongZ=sz.z>sz.x,L=Math.max(sz.x,sz.z)||1,sc=11/L;
+ for(const t of G.pumps){const m=src.clone(true);m.scale.setScalar(sc);const c=bb.getCenter(new THREE.Vector3());const o=new THREE.Group();m.position.set(-c.x*sc,-bb.min.y*sc,-c.z*sc);o.rotation.y=alongZ?Math.PI/2:0;o.add(m);
+  m.traverse(q=>{if(q.isMesh){q.castShadow=q.receiveShadow=true}});t.children.forEach(ch=>ch.visible=false);t.add(o);G.pumpGlb.n++}}catch(e){G.pumpGlb.err=String(e&&e.message||e)}}
 function buildFrac(){const F=E.FR,J=E.jobs().frac;G.FD=J.D;G.spread=new THREE.Group();scene.add(G.spread);const sm=M(0x9aa5b0,{metalness:.7});
  const truck=(x,z,col,len=9)=>{const g=new THREE.Group();const b=box(len,2.6,2.6,M(col));b.position.y=1.9;g.add(b);const c=box(2.4,2.4,2.6,M(0xd0d6dc));c.position.set(-len/2-1.3,1.8,0);g.add(c);for(const xx of [-len/2+1,len/2-1.5])for(const zz of [-1.3,1.3]){const w=cyl(.6,.4,M(0x222222));w.rotation.x=Math.PI/2;w.position.set(xx,.6,zz);g.add(w)}g.position.set(x,0,z);G.spread.add(g);return g};
- for(let k=0;k<6;k++){const t=truck(18+(k%3)*0,0,0xc0392b);t.position.set(14+Math.floor(k/3)*0,0,(k%3)*4-4+(k>=3?0:0));t.position.x=k<3?16:30;t.rotation.y=k<3?0:Math.PI;const pe=box(2.2,1.6,1.8,sm);pe.position.set(k<3?3:-3,3.4,0);t.add(pe)}// 6 pump trucks (2 rows)
+ G.pumps=[];for(let k=0;k<6;k++){const t=truck(18+(k%3)*0,0,0xc0392b);t.position.set(14+Math.floor(k/3)*0,0,(k%3)*4-4+(k>=3?0:0));t.position.x=k<3?16:30;t.rotation.y=k<3?0:Math.PI;const pe=box(2.2,1.6,1.8,sm);pe.position.set(k<3?3:-3,3.4,0);t.add(pe);G.pumps.push(t)}// 6 pump trucks (2 rows)
+ pumpGlb();
  const bl=truck(23,-14,0xe67e22,8);const tub=cyl(1.1,1.6,sm);tub.position.set(2,3.6,0);bl.add(tub);// blender
  const van=truck(8,-16,0x2c3e50,7);van.rotation.y=Math.PI/2;// data van
  for(let k=0;k<3;k++){const si=cyl(1.6,9,M(0xd9c27a,{metalness:.2}));si.position.set(32+k*3.6,4.5,-15);G.spread.add(si)}// sand silos
@@ -184,5 +192,5 @@ function step(){const s=R.last;if(R.hold){if(!checksDone(s.i))return;R.hold=fals
  if(!R.stepMode){R.stepMode=true;$('#woSm').checked=true}R.lastI=s.i;R.play=true}
 function key(e){if(!R.el||document.getElementById('wo2')||/INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName))return;if(e.key=='Escape'){close();e.stopPropagation()}else if(e.key==' '){R.play=!R.play;e.preventDefault()}else if(e.key=='n'||e.key=='N')step()}
 export function close(){if(!R.el)return;cancelAnimationFrame(R.raf);clearInterval(R.clk);removeEventListener('keydown',key,true);removeEventListener('resize',fit);try{ren.dispose()}catch(e){}R.el.remove();document.getElementById('woCss')?.remove();R.el=null;ren=null}
-function api(){return {R,E,open,close,setJob,seek,step,tick:t=>{R.t=t;tick(0,true)},tickAll:()=>{for(const st of R.TL.steps)st.chk?.forEach((_,j)=>R.ticks[R.TL.steps.indexOf(st)+':'+j]=true);tick(0,true)},get last(){return R.last}}}
+function api(){return {pumps:()=>G.pumpGlb,R,E,open,close,setJob,seek,step,tick:t=>{R.t=t;tick(0,true)},tickAll:()=>{for(const st of R.TL.steps)st.chk?.forEach((_,j)=>R.ticks[R.TL.steps.indexOf(st)+':'+j]=true);tick(0,true)},get last(){return R.last}}}
 if(typeof location!='undefined'){const q=new URLSearchParams(location.search);if(q.has('workover'))open(q.get('workover')||'workover')}
