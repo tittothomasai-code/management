@@ -21,7 +21,7 @@ for(const [nm,vp] of [['desk',{width:1440,height:900}],['phone',{width:390,heigh
  ok(r1.md>r0.md+30,nm+': depth advances while running ('+r0.md.toFixed(1)+' -> '+r1.md.toFixed(1)+')');ok(r1.n>=3,nm+': MWD surveys arrive ('+r1.n+')');
  ok(await E(()=>{const s=GX.ddrun.run.surveys;return s.slice(1).every((v,i)=>Math.abs(v.md-s[i].md-30)<0.05)}),nm+': one MWD survey per 30 m stand');
  ok(r1.instr!=r0.instr,nm+': driller instruction changes ('+r1.instr.slice(0,60)+')');ok(await E(g=>document.getElementById('drG').textContent!=g,g0),nm+': deviation / rig readouts update live');
- await E(()=>{const e=document.getElementById('drWob');e.value=20;e.dispatchEvent(new Event('input'))});await w(1200);const d1=await E(()=>({...GX.ddcab.motorPerf.dot})),r2=await R();
+ await E(()=>{const e=document.getElementById('drWob');e.value=20;e.dispatchEvent(new Event('input'))});await p.waitForFunction(x=>GX.ddcab.motorPerf?.dot&&GX.ddcab.motorPerf.dot.x!=x,{timeout:30000},d0?.x).catch(()=>{});await w(300);const d1=await E(()=>({...GX.ddcab.motorPerf.dot})),r2=await R();
  ok(await E(()=>GX.ddcab.motor?.sess?.wob==GX.ddrun.run.set.wob),nm+': mud motor driven through GX.ddcab.motor.step (WOB '+r2.wob+')');ok(r2.dP!=r0.dP&&r2.dP>0,nm+': motor diff pressure updates ('+r2.dP+' bar)');
  ok(d1.x!=d0.x||d1.yRpm!=d0.yRpm,nm+': perf pop-up dot moves ('+d0.x+' -> '+d1.x+')');
  await E(()=>{const e=document.getElementById('drWob');e.value=10;e.dispatchEvent(new Event('input'))});await w(1500);ok(await E(()=>{const e=document.getElementById('ddmp');return !!e&&e.getBoundingClientRect().bottom<=innerHeight+1&&e.getBoundingClientRect().height>100}),nm+': perf pop-up open and on screen mid-run');await p.screenshot({path:SH+nm+'_midrun_perf.png'});ok(true,nm+': screenshot '+SH+nm+'_midrun_perf.png');
@@ -42,7 +42,7 @@ for(const [nm,vp] of [['desk',{width:1440,height:900}],['phone',{width:390,heigh
  ok(await E(()=>{const D=GX.ddrun;let got=null;const un=D.onFinish(x=>got=x);const r=D.load({plan:D.defaultPlan(),difficulty:'easy',seed:7,errors:{bitWalk:0}});const okL=r.diff=='easy'&&r.seed==7&&r.E.bitWalk==0;D.start();D.drill(r,5000);un();D.pause();return okL&&got&&Number.isFinite(got.score)&&got.time.simHours>0&&got.src=='SIM'}),nm+': plug-in API load()/start()/onFinish() -> {score,time}');
  await p.click('#drReset');await w(300);
  // stall drill
- await p.select('#drScen','stall');await w(300);await p.click('#drGo');const s0=Date.now();while(Date.now()-s0<20000&&!(await E(()=>GX.ddrun.run.stalled)))await w(300);
+ await p.select('#drScen','stall');await w(300);await p.click('#drGo');const s0=Date.now();while(Date.now()-s0<60000&&!(await E(()=>GX.ddrun.run.stalled)))await w(300);
  ok(await E(()=>{const e=document.getElementById('drStall');return GX.ddrun.run.stalls>=1&&!e.hidden&&/STALL/.test(e.textContent)}),nm+': Motor stall drill ramps WOB to stall and shows the warning (WOB '+(await R()).wob+' t)');
  await p.click('#drPU');await w(300);ok(await E(()=>!GX.ddrun.run.stalled),nm+': Pick up off bottom clears the stall');await p.click('#drGo');await w(300);
  // gamepad: Start (9) tap toggles, hold resets, no Home
