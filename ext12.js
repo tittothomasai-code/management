@@ -176,9 +176,9 @@ function frame(force){if(!ST.open)return;const now=performance.now(),dt=Math.min
  if(ST.mode=='exp'&&$('wsGo')&&(ST.target>0.5)!=$('wsGo').classList.contains('on'))goLab();
  if(!force)raf=requestAnimationFrame(()=>frame())}
 function pick(e){const r=canvas.getBoundingClientRect(),rc=new THREE.Raycaster();rc.setFromCamera(new THREE.Vector2((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1),cam);const h=rc.intersectObjects(ST.meshes,false)[0];if(h)showPart(h.object.userData.i);else{$('wsInfo').style.display='none';hi(-1)}}
-function hi(i){ST.sel=i;ST.meshes.forEach((m,j)=>m.material.emissive?.set(j==i?'#335577':'#000'));ST.labels.forEach(e=>e.classList.toggle('on',+e.dataset.i==i))}
+function hi(i){ST.sel=i;GX.bom?.onHi?.(i);ST.meshes.forEach((m,j)=>m.material.emissive?.set(j==i?'#335577':'#000'));ST.labels.forEach(e=>e.classList.toggle('on',+e.dataset.i==i))}
 export function showPart(i){hi(i);const box=$('wsInfo');let h;
- if(ST.mode=='exp'){const p=CAT[ST.eq].parts[i];h=`<b>${es(p.n)}</b> <span class="wsSim">SIM</span><br>${es(p.ds)}`}else{const it=ST.bha[i];h=`<b>${i+1}. ${es(it.n)}</b> <span class="wsSim">SIM</span><br>${es(it.ds)}<br>L ${(+it.len).toFixed(2)} m · OD ${it.od} mm · ID ${it.id||'—'} mm · ${kgOf(it).toFixed(0)} kg`}
+ if(ST.mode!='bha'){const p=CAT[ST.eq].parts[i];h=`<b>${es(p.n)}</b> <span class="wsSim">SIM</span><br>${es(p.ds)}`}else{const it=ST.bha[i];h=`<b>${i+1}. ${es(it.n)}</b> <span class="wsSim">SIM</span><br>${es(it.ds)}<br>L ${(+it.len).toFixed(2)} m · OD ${it.od} mm · ID ${it.id||'—'} mm · ${kgOf(it).toFixed(0)} kg`}
  box.innerHTML=h+'<div style="text-align:right"><button id="wsInfoX" style="background:#1b2430;color:#dde;border:1px solid #456;border-radius:6px;min-height:32px">OK</button></div>';box.style.display='block';$('wsInfoX').onclick=()=>{box.style.display='none';hi(-1)};ST.info=h}
 // ---------- BHA 3D ----------
 function buildBha(){clear();const hole=ST.holeMM/1000,X=ST.radX;let y=0;const T=totals(ST.bha);
@@ -194,7 +194,7 @@ function buildBha(){clear();const hole=ST.holeMM/1000,X=ST.radX;let y=0;const T=
  root.position.set(0,0,0);root.updateMatrixWorld(true);fit()}
 // ---------- UI ----------
 function setMode(m){ST.mode=m;$('wsExp').classList.toggle('on',m=='exp');$('wsBha').classList.toggle('on',m=='bha');$('wsInfo').style.display='none';ST.sel=-1;root.rotation.set(0,0,0);refresh()}
-function refresh(){if(!ST.open)return;if(ST.mode=='exp')uiExp();else uiBha();layout()}
+function refresh(){if(!ST.open)return;$('wsBom')?.classList.toggle('on',ST.mode=='bom');if(ST.mode=='bom')GX.bom?.ui?.();else if(ST.mode=='exp')uiExp();else uiBha();layout()}
 function uiExp(){const E=CAT[ST.eq];$('wsBody').innerHTML=`<div class="row"><b>Exploded view</b><span class="wsSim">SIM generic model — not this rig's drawings</span></div>
 <div class="row"><select id="wsEq">${Object.entries(CAT).map(([k,v])=>`<option value="${k}"${k==ST.eq?' selected':''}>${es(v.label)}</option>`).join('')}</select>
 <button id="wsGo">💥 Explode</button><button id="wsRe">🔧 Reassemble</button></div>
@@ -229,4 +229,4 @@ function goLab(){const b=$('wsGo');if(b){b.textContent=ST.target>0.5?'🔧 Colla
 export function close(){ST.open=false;$('wshop').style.display='none';cancelAnimationFrame(raf);for(const id of ['btnExpl','btnBhaB'])$(id)?.classList.remove('on')}
 export async function init(c){C=c;THREE=c.THREE;OC=(await import('./vendor/OrbitControls.js')).OrbitControls;css();build();loadBha();
  const hud=$('hud');for(const [id,t,m] of [['btnExpl','🔩 Exploded view','exp'],['btnBhaB','🧰 BHA builder','bha']]){const b=document.createElement('button');b.id=id;b.textContent=t;b.onclick=()=>{if(ST.open&&ST.mode==m)close();else open(m)};hud.appendChild(b)}
- window.GX=window.GX||{};GX.ws={ST,CAT,LIB,PRESETS,open,close,explode,reassemble,showPart,addItem,removeItem,move,preset,totals,kgOf,keyFor,itemFrom}}
+ window.GX=window.GX||{};GX.ws={ST,CAT,LIB,PRESETS,open,close,explode,reassemble,showPart,addItem,removeItem,move,preset,totals,kgOf,keyFor,itemFrom,hi,buildExp,setMode,layout,$};import('./bom.js?v=b13').then(m=>m.init(GX.ws)).catch(e=>console.error('bom',e))}
