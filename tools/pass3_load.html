@@ -1,7 +1,7 @@
 <!doctype html><script type="importmap">{"imports":{"three":"../vendor/three.module.js"}}</script>
 <script type="module">
-import * as THREE from 'three';import {GLTFLoader} from '../vendor/loaders/GLTFLoader.js';import {DRACOLoader} from '../vendor/loaders/DRACOLoader.js';
-const d=new DRACOLoader();d.setDecoderPath('../vendor/libs/draco/');d.setDecoderConfig({type:'wasm'});const l=new GLTFLoader();l.setDRACOLoader(d);
+import * as THREE from 'three';import * as M3 from '../showroom3d.js?v=5116';/* D2: single loader */
+const l=await M3.gltf();
 const base=new URLSearchParams(location.search).get('base');const man=await (await fetch(base+'manifest.json')).json();const out=[];
 for(const p of man.parts)for(const k of ["H","M","L"]){if(window.ONLY&&!ONLY.includes(p.id))continue;const f=p.lods[k].file;try{const g=await l.loadAsync(base+f);const s=g.scene;s.updateMatrixWorld(true);
  const bb=new THREE.Box3().setFromObject(s),sz=bb.getSize(new THREE.Vector3());let tris=0,mesh=0;s.traverse(o=>{if(o.isMesh){mesh++;const g=o.geometry;tris+=(g.index?g.index.count:g.attributes.position.count)/3}});

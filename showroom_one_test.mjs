@@ -29,7 +29,7 @@ for(const nm of (process.env.ONLY?[process.env.ONLY]:['desk','phone'])){const ct
  await p.click('#srcFleetB');await w(600);hb=await hdrHit();ok(!hb.length,nm+': Rigs not over header');await p.click('#srcFleetB');
  await p.click('#srcExp');await w(1500);ok(await p.evaluate(()=>GX.showroomC.ST.expT>0),nm+': Explode button');await p.screenshot({path:SH+nm+'_explode.png'});await p.click('#srcExp');
  await p.click('#showroomC [data-pre=bop]');await w(1500);ok(await p.evaluate(()=>GX.showroomC.ST.preset=='bop'),nm+': BOP close-up');await p.click('#showroomC [data-pre=overview]');await w(1200);
- const L=await p.evaluate(()=>GX.showroomC.rigList());ok(L.length==20&&L[0]===''&&L[1].startsWith('b:')&&!L[19].startsWith('b:'),nm+': rig list = C main + 10 B + 9 A ('+L.length+')');
+ const L=await p.evaluate(()=>GX.showroomC.rigList());ok(L.length==13&&L[0]===''&&L[1].startsWith('b:')&&!L[12].startsWith('b:')&&!L.includes('b:land_1500_ac_double')&&!L.includes('jackup'),nm+': rig list (D3, one per rig type) = C main + 9 B + 3 A ('+L.length+')');
  const lod=await p.evaluate(()=>GX.showroomC.ST.lod);ok(nm=='phone'?lod!='H':lod=='H',nm+': main rig LOD '+lod);
  await w(800);await p.screenshot({path:SH+nm+'_day.png'});
  await p.click('#srcNight');await w(2500);const nt=await p.evaluate(()=>({n:GX.showroomC.ST.night,r:!!window.GX.nightReal}));ok(nt.n&&nt.r,nm+': Day/Night toggle -> realistic night (GX.nightReal)');await p.screenshot({path:SH+nm+'_night.png'});

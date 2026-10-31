@@ -1,0 +1,16 @@
+{"_doc":"D3 (inventory): one entry per rig type. Pick order rigsc (pass2) > rigsb (pass1) > rigs (A). Superseded packs stay on disk (no deletes); the one showroom lists only the canonical entry.",
+ "rigs":[
+  {"type":"land_1500_ac_double","use":"C","id":"","supersedes":["b:land_1500_ac_double"]},
+  {"type":"land_3000_triple_walking","use":"B","id":"b:land_3000_triple_walking"},
+  {"type":"workover","use":"B","id":"b:workover_truck","supersedes":["workover"]},
+  {"type":"coiled_tubing","use":"B","id":"b:coiled_tubing","supersedes":["ctu"]},
+  {"type":"jackup","use":"B","id":"b:jackup","supersedes":["jackup"]},
+  {"type":"semi_submersible","use":"B","id":"b:semi_submersible","supersedes":["semi"]},
+  {"type":"drillship","use":"B","id":"b:drillship","supersedes":["ship"]},
+  {"type":"platform_modular","use":"B","id":"b:platform_modular"},
+  {"type":"snubbing_unit","use":"B","id":"b:snubbing_unit"},
+  {"type":"frac_spread","use":"B","id":"b:frac_spread","supersedes":["frac"]},
+  {"type":"land_single","use":"A","id":"single"},
+  {"type":"land_triple","use":"A","id":"triple"},
+  {"type":"heli","use":"A","id":"heli"}
+ ]}
