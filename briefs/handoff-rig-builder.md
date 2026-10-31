@@ -21,3 +21,12 @@ Status: READY, NOT DEPLOYED (waits for Showroom C live). SE1 must bump index.htm
 3. A pack: substructure/drill floor (only "site" exists); generators and mudpumps are banks; add userData.part tags to A files.
 4. Single frac pump truck — B frac pump_trucks repeated as a bank.
 5. Standalone offshore derrick — offshore "drilling_package" bundles mast with other kit.
+
+## rb3 — pass-3 single-unit parts (branch feat/rig-parts-p3, on top of feat/rig-builder)
+NOT DEPLOYED. Ships after v5.12.1.2 (A/B/C switch hotfix), v5.12.2 (Showroom C) and v5.12.3 (site-sync). SE1: index.html `rigbuilder.js?v=rb1` → `?v=rb3` at merge.
+- assets/rigparts/pass3/: 18 Draco GLBs (6 parts × H/M/L, 5.8 MB) + manifest + README. source/ is not shipped.
+- Audit: all 18 load in three.js with Draco, metres, Y-up, base at y 0, within triangle, byte and texture budgets, attach_* present.
+- Catalogue src 'P3': genset_single→power, mud_tank_single→tanks, mud_pump_single and frac_pump_truck_single→pumps, offshore_derrick→mast, substructure_drill_floor→sub. New rig defaults use the P3 pump, genset and tank.
+- The P3 substructure pivots on attach_wellcentre and the floor is at its 9 m datum, so the mast sits on the rotary.
+- Showroom B and C: not changed. Pass 3 contains single parts only, no full rigs. Custom rigs in B use them through assemble3d.
+- Open request: docs-out/Codex-Component-Request-2026-10-31.md (offshore drill floor, A-style substructure, frac M/L 7 mm float).
