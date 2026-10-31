@@ -38,7 +38,7 @@ export function poll(now=performance.now()){const pads=navigator.getGamepads?.()
  const lx=ax(0),ly=ax(1),rx=ax(2),ry=ax(3);if(!document.getElementById('start')&&!document.getElementById('showroom')){if(lx||ly)orbit(lx*1.6*dt,ly*1.2*dt);if(rx)look(rx*1.2*dt);if(ry)zoom(1+ry*1.5*dt);
   const rt=bv(7),lt=bv(6);if(rt>0.1)wob(ST.wobStep*rt*10*dt);if(lt>0.1)wob(-ST.wobStep*lt*10*dt);if(edge(5))rpm(ST.rpmStep);if(edge(4))rpm(-ST.rpmStep);
   if(edge(14))tab(-1);if(edge(15))tab(1);if(edge(12))moveFocus(-1);if(edge(13))moveFocus(1);if(edge(0)){const a=document.activeElement;if(a&&a!==document.body)a.click()}if(edge(1)){closeAll();if(ST.legend)legend(false)}}
- if(edge(9))legend();ST.prev=p.buttons.map(b=>b.pressed)}
+ if(edge(9)&&!window.GX?.ddrun?.active?.())legend();ST.prev=p.buttons.map(b=>b.pressed)}
 let raf;function loop(){poll();raf=requestAnimationFrame(loop)}
 export function stop(){cancelAnimationFrame(raf);raf=0}
 export function init(){if(typeof document=="undefined"||window.__input)return;css();addEventListener('keydown',key);addEventListener('gamepadconnected',e=>{ST.pad=e.gamepad.id;legend(true);setTimeout(()=>ST.legend&&legend(false),6000)});loop();window.GX=window.GX||{};window.__input=window.GX.input={ST,poll,key,legend,orbit,zoom,look,wob,rpm,tab,stop}}

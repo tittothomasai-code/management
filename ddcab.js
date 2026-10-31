@@ -43,7 +43,7 @@ export function cmd(t){const s=ST.sess,h=typeof window!='undefined'&&window.GX?.
  else s.log.push('You: '+t,'Cabin: the driller module is not loaded (GX.ddcab.onInstruction).');render();return r}
 export function open(key){if(typeof document=='undefined')return;css();if(!ST.el){const d=document.createElement('section');d.id='ddc';document.body.appendChild(d);ST.el=d}ST.el.style.display='flex';
  strat().then(()=>{if(!ST.sess||key)scenario(key||ST.key);else render()});if(!ST.sess)scenario(key||ST.key);return API}
-export function close(){if(ST.el)ST.el.style.display='none'}
+export function close(){if(ST.el)ST.el.style.display='none';try{RUNM?.pause()}catch(e){}}
 function setTab(t){ST.tab=t;render()}
 function tog(side){ST.col[side]=!ST.col[side];render()}
 function shell(){const s=ST.sess,sc=C.score(s);const opt=Object.entries(C.SCEN).map(([k,v])=>`<option value="${k}"${k==ST.key?' selected':''}>${v.name}</option>`).join('');
@@ -78,7 +78,9 @@ function render(){if(!ST.el||!ST.sess)return;const a=document.activeElement?.id,
  ST.el.querySelectorAll('[data-col]').forEach(b=>b.onclick=()=>tog(b.dataset.col));ST.el.querySelectorAll('[data-q]').forEach(b=>b.onclick=()=>cmd(b.dataset.q));
  $('ddSend').onclick=()=>{const t=$('ddCmd').value;if(t)cmd(t)};$('ddCmd').onkeydown=e=>{if(e.key=='Enter'){e.preventDefault();$('ddSend').click()}};if(a=='ddCmd'){$('ddCmd').focus()}
  $('ddRec').onclick=()=>{const r=ST.rec;if(r.slide>0.5)cmd(`Slide ${r.slide} m at TF ${r.tf}`);if(r.rotate>0.5)cmd(`Rotate ${r.rotate} m`);cmd('Take a survey')};
- try{hook()?.bind?.($('ddMotorSlot'),ST.sess,render)}catch(e){console.error('ddmotor',e)}const lg=$('ddLog');lg.scrollTop=lg.scrollHeight;draw()}
+ try{hook()?.bind?.($('ddMotorSlot'),ST.sess,render)}catch(e){console.error('ddmotor',e)}const lg=$('ddLog');lg.scrollTop=lg.scrollHeight;draw();runMount()}
+// v5.11.4.1: Start / Pause / Reset steering run (ddrun.js) docked at the top of the cabin
+let RUNM=null;function runMount(){if(RUNM){try{RUNM.mount(API)}catch(e){console.error('ddrun',e)}return}import('./ddrun.js?v=r1').then(m=>{RUNM=m.default;RUNM.mount(API)}).catch(e=>console.error('ddrun',e))}
 function draw(){const s=ST.sess;
  {const c=$('ddTF'),x=c.getContext('2d'),W=c.width,cx=W/2,r=W/2-18;x.clearRect(0,0,W,W);x.strokeStyle='#567';x.lineWidth=2;x.beginPath();x.arc(cx,cx,r,0,7);x.stroke();x.fillStyle='#9ab';x.font='11px system-ui';x.textAlign='center';
   for(let a=0;a<360;a+=30){const t=(a-90)*Math.PI/180;x.fillText(a==0?(s.bit.inc<5?'N':'HS'):a,cx+(r+10)*Math.cos(t),cx+(r+10)*Math.sin(t)+4)}
@@ -96,6 +98,6 @@ function draw(){const s=ST.sess;
  {const c=$('ddTC'),x=c.getContext('2d'),W=c.width,cx=W/2,r=W/2-16;x.clearRect(0,0,W,W);x.strokeStyle='#345';for(const k of [1,2,3]){x.beginPath();x.arc(cx,cx,r*k/3,0,7);x.stroke()}x.fillStyle='#9ab';x.font='10px system-ui';x.textAlign='center';x.fillText(s.bit.inc<5?'N':'HS',cx,10);x.fillText('100 m',cx+r-12,cx-4);
   for(const o of s.offsets){x.fillStyle='#ff6b6b';const hist=[...s.surveys,s.bit].map(p=>C.tcPoint(p,o.P));hist.forEach((t,i)=>{const d=Math.min(100,t.d)/100*r,q=(t.ang-90)*Math.PI/180;x.globalAlpha=i==hist.length-1?1:.35;x.beginPath();x.arc(cx+d*Math.cos(q),cx+d*Math.sin(q),i==hist.length-1?6:3,0,7);x.fill()});x.globalAlpha=1}}}
 export function init(){if(typeof document=='undefined')return;const add=(n=0)=>{const a=document.getElementById('uig_seq')||document.getElementById('btnLay');if(!a){if(n<40)setTimeout(()=>add(n+1),500);return}if($('btnDDC'))return;const b=document.createElement('button');b.id='btnDDC';b.textContent='DD Training';if(a.id=='btnLay'){b.className=a.className;a.after(b)}else a.appendChild(b);b.onclick=()=>ST.el&&ST.el.style.display!='none'?close():open()};add()}
-const API={open,close,cmd,scenario,init,hook,get sess(){return ST.sess},get state(){return ST},core:C};
+const API={open,close,cmd,scenario,init,hook,render:()=>render(),get sess(){return ST.sess},get state(){return ST},core:C};
 if(typeof window!='undefined'){window.DDCAB=API;window.GX=window.GX||{};GX.ddcab=Object.assign(GX.ddcab||{},{open,close,cmd,scenario,api,get sess(){return ST.sess},render:()=>render()});if(!('motor' in GX.ddcab))GX.ddcab.motor=null;if(!('onInstruction' in GX.ddcab))GX.ddcab.onInstruction=null;window.DDCAB_open=open;const q=new URLSearchParams(location.search);if(q.get('demo')=='ddcab'||q.has('ddcab')){const go=()=>document.body?open(q.get('scen')||undefined):setTimeout(go,50);go()}}
 export default API;

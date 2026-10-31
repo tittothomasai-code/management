@@ -170,11 +170,11 @@ export async function init(ctx){C=ctx;S=C.S;PH=C.PH;el=C.el;PANEL=C.PANEL;ui();
  Object.assign(window.GX,{traces:{TR,addTrack,rmTrack,open,toCSV,catalogue:()=>(refreshCat(),CAT.map(c=>({id:c.id,label:c.label,unit:c.unit}))),entSignals:n=>entSignals(C.ents.find(e=>e.name==n)).map(c=>c.id),addFormula,renderTree}});
  try{(await import('./ext4.js?v=h1')).init(C)}catch(err){console.error('ext4',err)}
  try{(await import('./ext5.js?v=5922')).init(C)}catch(err){console.error('ext5',err)}
- try{(await import('./wmlinvui.js?v=5923')).init(C)}catch(err){console.error('wmlinv',err)} try{(await import('./input.js?v=b13')).init(C)}catch(err){console.error('input',err)} try{(await import('./vpad.js?v=b9')).init()}catch(err){console.error('vpad',err)}
+ try{(await import('./wmlinvui.js?v=5923')).init(C)}catch(err){console.error('wmlinv',err)} try{(await import('./input.js?v=r1')).init(C)}catch(err){console.error('input',err)} try{(await import('./vpad.js?v=b9')).init()}catch(err){console.error('vpad',err)}
  try{(await import('./ext6.js?v=592')).init(C)}catch(err){console.error('ext6',err)}
  try{(await import('./ext7.js?v=592')).init(C)}catch(err){console.error('ext7',err)}
  try{(await import('./wellcontrol.js?v=E1')).init(C)}catch(err){console.error('wellcontrol',err)}
- try{(await import('./ddcab.js?v=b11')).init(C)}catch(err){console.error('ddcab',err)}
+ try{(await import('./ddcab.js?v=r1')).init(C)}catch(err){console.error('ddcab',err)}
  try{(await import('./broomstick.js?v=I4')).init(C)}catch(err){console.error('broomstick',err)}
  try{(await import('./wbs.js?v=E6')).init(C)}catch(err){console.error('wbs',err)}
  try{(await import('./cemeval.js?v=I46')).init(C)}catch(err){console.error('cemeval',err)}
