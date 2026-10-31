@@ -11,16 +11,21 @@ await p.waitForSelector('#btnShow',{timeout:180000});await p.evaluate(()=>btnSho
 await p.waitForSelector('#showroomB #srbTop .srabH',{visible:true,timeout:180000});
 // overlap + visibility check for a given header
 const lay=sel=>p.evaluate(sel=>{const h=document.querySelector(sel+' .srabH');if(!h)return {vis:0};const r=h.getBoundingClientRect(),vis=r.width>60&&r.height>24&&r.top>=0&&r.right<=innerWidth&&getComputedStyle(h).visibility!='hidden';
- const root=h.closest('#showroom,#showroomB'),bad=[];root.querySelectorAll('button,a,select,input,[role=button],#srbBanner,#srbTop .tt,#srTop>b').forEach(e=>{if(h.contains(e)||e.contains(h))return;const q=e.getBoundingClientRect();if(!q.width||!q.height||getComputedStyle(e).visibility=='hidden')return;if(q.left<r.right-1&&q.right>r.left+1&&q.top<r.bottom-1&&q.bottom>r.top+1)bad.push((e.id||e.className||e.tagName)+'')});
+ const root=h.closest('#showroom,#showroomB,#showroomC'),bad=[];root.querySelectorAll('button,a,select,input,[role=button],#srbBanner,#srbTop .tt,#srTop>b').forEach(e=>{if(h.contains(e)||e.contains(h))return;const q=e.getBoundingClientRect();if(!q.width||!q.height||getComputedStyle(e).visibility=='hidden')return;if(q.left<r.right-1&&q.right>r.left+1&&q.top<r.bottom-1&&q.bottom>r.top+1)bad.push((e.id||e.className||e.tagName)+'')});
  const c=document.getElementById('srabHC');return {vis,bad,r:[r.left,r.top,r.width,r.height].map(Math.round),cDis:!!c?.disabled,cTxt:c?.textContent}},sel);
-let L=await lay('#srbTop');ck(L.vis,'B header switch visible '+JSON.stringify(L.r));ck(!L.bad.length,'B switch no overlap '+L.bad);ck(L.cDis&&/soon/.test(L.cTxt),'C disabled + soon ('+L.cTxt+')');
+let L=await lay('#srbTop');ck(L.vis,'B header switch visible '+JSON.stringify(L.r));ck(!L.bad.length,'B switch no overlap '+L.bad);ck(!L.cDis&&!/soon/.test(L.cTxt),'C enabled, not soon ('+L.cTxt+')');
 await p.screenshot({path:SHOT+'_B.png'});
 await p.tap('#srabHA');await p.waitForFunction(()=>document.getElementById('showroom')&&!document.getElementById('showroomB'),{timeout:180000}).catch(()=>{});
 ck(await p.evaluate(()=>!!document.getElementById('showroom')&&!document.getElementById('showroomB')&&GX.showroomAB.get()=='A'),'tap A -> showroom A');
 await p.waitForSelector('#srTop .srabH',{visible:true,timeout:60000}).catch(()=>{});
-L=await lay('#srTop');ck(L.vis,'A header switch visible '+JSON.stringify(L.r));ck(!L.bad.length,'A switch no overlap '+L.bad);ck(L.cDis,'C disabled in A');
+L=await lay('#srTop');ck(L.vis,'A header switch visible '+JSON.stringify(L.r));ck(!L.bad.length,'A switch no overlap '+L.bad);ck(!L.cDis,'C enabled in A');
 await p.screenshot({path:SHOT+'_A.png'});
-await p.tap('#srabHC').catch(()=>{});await new Promise(r=>setTimeout(r,800));ck(await p.evaluate(()=>!!document.getElementById('showroom')&&GX.showroomAB.get()=='A'),'tap C does nothing');
+await p.tap('#srabHC');await p.waitForFunction(()=>document.getElementById('showroomC')&&!document.getElementById('showroom'),{timeout:180000}).catch(()=>{});
+ck(await p.evaluate(()=>!!document.getElementById('showroomC')&&!document.getElementById('showroom')&&GX.showroomAB.get()=='C'),'tap C -> showroom C');
+await p.waitForSelector('#srcTop .srabH',{visible:true,timeout:60000}).catch(()=>{});
+L=await lay('#srcTop');ck(L.vis,'C header switch visible '+JSON.stringify(L.r));ck(!L.bad.length,'C switch no overlap '+L.bad);
+ck(await p.evaluate(()=>document.querySelector('#srcTop #srabHC')?.classList.contains('on')),'C segment active in C header');
+await new Promise(r=>setTimeout(r,4000));await p.screenshot({path:SHOT+'_C.png'});
 await p.tap('#srabHB');await p.waitForFunction(()=>document.getElementById('showroomB')&&!document.getElementById('showroom'),{timeout:180000}).catch(()=>{});
 ck(await p.evaluate(()=>!!document.getElementById('showroomB')&&GX.showroomAB.get()=='B'),'tap B -> showroom B');
 ck(!errs.length,'no page errors '+errs.slice(0,2).join(' | '));
