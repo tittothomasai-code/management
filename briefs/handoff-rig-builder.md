@@ -32,3 +32,8 @@ NOT DEPLOYED. Ships after v5.12.1.2 (A/B/C switch hotfix), v5.12.2 (Showroom C) 
 - Phone LOD L merges each pass-3 part to one mesh per material (draw calls 296→159).
 - Tests: desk 36/0 (first run had 2 pad-timing flakes, rerun clean), phone 39/0.
 - Open request: docs-out/Codex-Component-Request-2026-10-31.md (offshore drill floor, A-style substructure, frac M/L 7 mm float).
+
+## P3b (de31bbc + screenshot commit)
+- Added offshore_drill_floor (sub slot) and substructure_drill_floor_A (sub slot). Fixed the frac M/L float (base now at y 0).
+- Offshore build check: the derrick's 4 feet land on the floor's 4 feet at (±6.1, 3.87, ±6.1) world, and the well centres agree. Screenshot: shots_live/201_rb_desk_offshore.png
+- desk 36/0, phone 39/0 (159 draw calls on LOD L).
