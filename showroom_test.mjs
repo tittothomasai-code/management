@@ -56,6 +56,15 @@ for(const nm of ['desk','phone']){const vp=VP[nm];
  ok(await p.evaluate(()=>localStorage.getItem('dw_showroom_rig')=='jackup'),nm+': chosen rig saved');
  await p.evaluate(()=>btnShow.click());await w(400);ok(await p.evaluate(()=>GX.showroom.ST.i==5),nm+': re-opens on the chosen rig');
  await p.keyboard.press('Escape');ok(await p.evaluate(()=>!document.getElementById('showroom')),nm+': Esc closes');
+ // day / night (feat/night) in the showroom scene
+ await p.evaluate(()=>{if(!document.getElementById('showroom'))GX.showroom.open()});await w(400);
+ await p.evaluate(()=>srNight.click());await w(2200);
+ let ns=await p.evaluate(()=>{const S=GX.showroom.ST,N=GX.night;return N?{...N.stats(S.scene),btn:srNight.textContent}:null});
+ ok(ns&&ns.on&&ns.t>0.9&&ns.stars>0&&/Day/.test(ns.btn),nm+': night on in showroom ('+JSON.stringify(ns)?.slice(0,90)+')');
+ await p.evaluate(()=>GX.showroom.go(1));await w(1200);ok(await p.evaluate(()=>GX.night.stats(GX.showroom.ST.scene).on&&GX.showroom.isNight()),nm+': night stays on after rig change');
+ await p.screenshot({path:SH+nm+'_6_night.png'});
+ ok(await p.evaluate(()=>{const sc=GX.showroom.ST.scene,n0=sc.children.length;GX.showroom.close();const n1=sc.children.length;return n1<n0&&!GX.night.stats(sc)?.on}),nm+': close disposes night objects');
+ ok(await p.evaluate(()=>GX.night.isOn()===false),nm+': main scene night state untouched');
  // A>B>C drill-down: real tap on the rig opens the asset table at that asset
  await p.evaluate(()=>{btnShow.click()});await w(400);await p.evaluate(()=>GX.showroom.show(1));await w(300);
  const pt2=await p.evaluate(()=>{const S=GX.showroom.ST;S.grp.updateMatrixWorld(true);const pr=['drawworks','mudpump','mudsys','gen'];for(const m of [...S.parts.filter(m=>pr.includes(m.userData.part)),...S.parts]){const v=new (S.cam.position.constructor)();m.getWorldPosition(v);v.project(S.cam);const x=(v.x+1)/2*innerWidth,y=(1-v.y)/2*innerHeight,h=GX.showroom.pick(x,y);const el=document.elementFromPoint(x,y);if(h&&el&&el.tagName=='CANVAS')return{x,y,k:h.userData.part}}return null});

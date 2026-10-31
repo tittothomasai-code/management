@@ -12,3 +12,4 @@ Open: home tile "Rig showroom", HUD button "🏁 Showroom", or `?demo=showroom`.
   - Lines with `part:null` have no workshop 3D model: no exploded-view button.
 - The rig models are one mesh level. A C selection highlights and zooms to its B asset.
 - "Use this rig" sets the game design (GX.setDesign) and saves `dw_showroom_rig`. Frac spread loads 4 pumps in the scene (card shows the fleet of 16).
+- Day / night: button "☾ Night" in the showroom. Uses feat/night `GX.night.set(on, showroomScene, rigRoot, {ren, quality, instant})` (+ `useThree(THREE)`), re-applied instantly on rig change, `GX.night.dispose(scene)` on close. Starts in the main scene's night state. Guarded: no-op if night.js is missing. Main-scene night state is not changed.

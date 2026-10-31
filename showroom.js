@@ -78,7 +78,7 @@ function frameCam(){const g=ST.grp;if(!g)return;const s=g.userData.size,fit=s/(2
  ST.cam.position.set(0,g.userData.cy+s*.25,fit);ST.look=new THREE.Vector3(0,g.userData.cy*.85,0);ST.cam.lookAt(ST.look);ST.table.scale.set(s*.62,1,s*.62)}
 function show(i,dir=0){const n=RIGS.length;i=(i+n)%n;ST.i=i;const r=RIGS[i];if(ST.old){ST.scene.remove(ST.old)}ST.old=dir?ST.grp:null;if(!dir&&ST.grp)ST.scene.remove(ST.grp);
  const g=ST.grp=build(r);g.rotation.y=ST.grp0rot??-.5;ST.scene.add(g);ST.tr=dir?{t:0,dir}:null;frameCam();
- if(!dir)g.position.x=0;ST.camT=null;ST.lvl=null;if(ST.dOpen)renderList();card();const ds=ST.el.querySelectorAll('#srDots i');ds.forEach((d,k)=>{d.classList.toggle('on',k==i);d.setAttribute('aria-current',k==i)});ST.el.dataset.rig=r.id}
+ if(!dir)g.position.x=0;ST.camT=null;ST.lvl=null;if(ST.dOpen)renderList();card();const ds=ST.el.querySelectorAll('#srDots i');ds.forEach((d,k)=>{d.classList.toggle('on',k==i);d.setAttribute('aria-current',k==i)});ST.el.dataset.rig=r.id;if(ST.night)nightSet(true,true)}
 const go=d=>show(ST.i+d,d);
 function card(){const r=RIGS[ST.i],c=$('srCard');c.innerHTML=`<h3>${es(r.name)} <span class=srSim>SIM</span></h3><div class=ty>${es(r.type)}</div><table>
 <tr><td>Hookload</td><td>${es(r.hook)}</td></tr><tr><td>Drawworks</td><td>${es(r.dw)}</td></tr><tr><td>Mast / derrick height</td><td>${es(r.mast)}</td></tr><tr><td>Mud pumps</td><td>${es(r.pumps)}</td></tr><tr><td>BOP rating</td><td>${es(r.bop)}</td></tr></table>
@@ -111,12 +111,12 @@ export function open(i){if(ST.el)return;window.GX=window.GX||{};if(!window.GX.sh
  const el=ST.el=document.createElement('section');el.id='showroom';el.setAttribute('role','dialog');el.setAttribute('aria-label','Rig showroom');
  el.innerHTML=`<canvas></canvas><div id=srTop><b>🏁 Rig showroom <span class=srSim>SIM</span></b><button id=srClose aria-label="Close showroom">✕ Close</button></div><div id=srToast></div>
 <div id=srCard></div><aside id=srDrw aria-label="Rig assets"><button id=srHdl aria-label="Open or close the asset table" aria-expanded=false>☰ Assets</button><div id=srCrumb></div><div id=srList></div></aside><div id=srHint>← → or LB / RB: change rig · Enter: use · Esc: close<br>Tap a part for its exploded view</div>
-<div id=srBar><div id=srNav><button id=srPrev aria-label="Previous rig">◀</button><div id=srDots>${RIGS.map((r,k)=>`<i data-k=${k} title="${es(r.name)}"></i>`).join('')}</div><button id=srNext aria-label="Next rig">▶</button></div><button id=srUse>✔ Use this rig</button></div>`;
- document.body.appendChild(el);$('srClose').onclick=close;$('srPrev').onclick=()=>go(-1);$('srNext').onclick=()=>go(1);$('srUse').onclick=use;$('srHdl').onclick=()=>drawer(!ST.dOpen);
+<div id=srBar><div id=srNav><button id=srPrev aria-label="Previous rig">◀</button><div id=srDots>${RIGS.map((r,k)=>`<i data-k=${k} title="${es(r.name)}"></i>`).join('')}</div><button id=srNext aria-label="Next rig">▶</button></div><button id=srNight aria-label="Day or night">☾ Night</button><button id=srUse>✔ Use this rig</button></div>`;
+ document.body.appendChild(el);$('srClose').onclick=close;$('srPrev').onclick=()=>go(-1);$('srNext').onclick=()=>go(1);$('srUse').onclick=use;$('srNight').onclick=()=>nightSet(!ST.night);$('srHdl').onclick=()=>drawer(!ST.dOpen);
  el.querySelectorAll('#srDots i').forEach(d=>d.onclick=()=>{const k=+d.dataset.k;if(k!=ST.i)show(k,k>ST.i?1:-1)});
- setupGL();ptr();let st=i;if(st==null)try{st=Math.max(0,RIGS.findIndex(r=>r.id==localStorage.getItem('dw_showroom_rig')))}catch(e){st=0}show(st||0);
+ setupGL();ptr();let st=i;if(st==null)try{st=Math.max(0,RIGS.findIndex(r=>r.id==localStorage.getItem('dw_showroom_rig')))}catch(e){st=0}show(st||0);nightInit();
  addEventListener('keydown',key,true);addEventListener('resize',size);const p=[...(navigator.getGamepads?.()||[])].find(Boolean);ST.prev=p?p.buttons.map(x=>x.pressed):{};ST.last=0;ST.raf=requestAnimationFrame(frame);ST.pi=setInterval(pad,50)}
-export function close(){if(!ST.el)return;cancelAnimationFrame(ST.raf);clearInterval(ST.pi);removeEventListener('keydown',key,true);removeEventListener('resize',size);try{ST.ren.dispose()}catch(e){}ST.el.remove();ST.el=null;ST.dOpen=false;ST.camT=null;ST.lvl=null;ST.grp=null;ST.old=null}
+export function close(){if(!ST.el)return;try{ST.N?.dispose(ST.scene)}catch(e){}ST.N=null;ST.night=false;cancelAnimationFrame(ST.raf);clearInterval(ST.pi);removeEventListener('keydown',key,true);removeEventListener('resize',size);try{ST.ren.dispose()}catch(e){}ST.el.remove();ST.el=null;ST.dOpen=false;ST.camT=null;ST.lvl=null;ST.grp=null;ST.old=null}
 export function init(){if(typeof document=='undefined'||$('btnShow'))return;const hud=$('hud');if(hud){const b=document.createElement('button');b.id='btnShow';b.textContent='🏁 Showroom';b.title='Rig showroom (SIM)';b.onclick=()=>open();hud.appendChild(b)}
  window.GX=window.GX||{};window.GX.showroom=api()}
 
@@ -167,5 +167,11 @@ function renderList(){const r=RIGS[ST.i],L=ST.lvl,A=L&&ASSET[L.b],cs=L?comps(L.b
   return `<tr class="b${open?' on':''}" data-k="${k}"><td>${open?'▾':'▸'} ${es(nameOf(k))}</td><td>${es(a.type)}</td><td>${es(a.spec(r))}</td><td>${bomCount(k)}</td></tr>`+(open?comps(k).map(c=>`<tr class=c data-c="${c.i}"><td>${es(c.n)}</td><td colspan=2>${es(c.lines[0]?.spec||'')}</td><td>${c.lines.length}</td></tr>`).join(''):'')}).join('')+`</table><div style="font-size:11px;opacity:.6;padding:6px">Generic SIM values. Tap a row to zoom; tap again to close.</div>`;
  $('srList').querySelectorAll('tr.b').forEach(tr=>{const k=tr.dataset.k;tr.onmouseenter=()=>{if(!ST.lvl)hilite(k,1)};tr.onmouseleave=()=>{if(!ST.lvl)hilite(k,0)};tr.onclick=()=>{if(ST.lvl?.b==k)back();else selB(k)}});
  $('srList').querySelectorAll('tr.c').forEach(tr=>tr.onclick=()=>selC(+tr.dataset.c))}
-function api(){return {ST,RIGS,ASSET,open,close,go,show,use,tapPart,pick,isOpen:()=>!!ST.el,init,comps,drawer,selB,selC,back}}
+function api(){return {ST,RIGS,ASSET,open,close,go,show,use,tapPart,pick,isOpen:()=>!!ST.el,init,comps,drawer,selB,selC,back,nightSet,isNight:()=>!!ST.night}}
 if(typeof window!='undefined'){window.GX=window.GX||{};window.GX.showroom=window.GX.showroom||api()}
+
+// ---------- Day / night (feat/night). Guarded: does nothing if night.js is not there. ----------
+async function nightMod(){let N=window.GX?.night;if(!N){try{N=(await import('./night.js?v=n1')).night}catch(e){N=null}}if(N){try{N.useThree?.(THREE)}catch(e){}}return N}
+export async function nightSet(on,instant){const N=await nightMod();ST.night=!!on;const b=$('srNight');if(b){b.textContent=on?'☀ Day':'☾ Night';b.classList.toggle('on',!!on)}
+ if(!N||!ST.scene||!ST.grp)return false;ST.N=N;try{if(instant)N.dispose(ST.scene);await N.set(!!on,ST.scene,ST.grp,{ren:ST.ren,quality:q(),instant:!!instant})}catch(e){console.error('showroom night',e);return false}return true}
+export function nightInit(){let on=false;try{const N=window.GX?.night;on=N?.isOn?N.isOn():localStorage.getItem('dw_night')=='1'}catch(e){}if(on)nightSet(true,true)}
