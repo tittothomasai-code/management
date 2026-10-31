@@ -4,6 +4,7 @@
 // into numeric arrays and decimated. Nothing is uploaded. Output is tagged IMPORT (never LIVE). EDM lengths are feet → metres.
 import {minCurvM} from './ac.js?v=5924';
 import {trajStats} from './edmstats.js?v=5942';
+import {inv,parseZone} from './edmgeo.js?v=1';
 const FT=0.3048;
 const KEEP={CD_PROJECT:1,CD_SITE:1,CD_WELL:1,CD_WELLBORE:1,CD_DATUM:1,CD_SCENARIO:1,CD_DESIGN:1,CD_DEFINITIVE_SURVEY_HEADER:1,CD_SURVEY_HEADER:1,CD_PLAN_HEADER:1,CD_WELLPLAN:1,
  CD_ASSEMBLY:1,CD_ASSEMBLY_COMP:1,CD_CASE:1,CD_HOLE_SECT:1,DP_PROJECT_TARGET:1,CD_PROJ_TARG_WELL_LINK:1,CD_PROJECT_TARGET_WB_LINK:1,CD_TARGET:1,CD_WP_TARGET:1,
@@ -57,7 +58,10 @@ const r1=v=>v==null?null:Math.round(v*10)/10;
 export function world(R,{units='ft',name='EDM'}={}){const L=units=='m'?1:FT,len=v=>v==null?null:v*L,T=k=>R.T[k]||[];
  const projects=new Map(T('CD_PROJECT').map(p=>[p.project_id,{id:p.project_id,name:p.project_name||p.project_id,zone:p.geo_zone_id||null,datum:p.geo_datum_id||null,sysDatum:p.system_datum_desc||null}]));
  const customer=T('CD_POLICY')[0]?.customer_name||null;const wellRows=T('CD_WELL');
- const geo=T('CD_SITE').some(s=>num(s.geo_latitude)!=null)||wellRows.some(w=>num(w.geo_latitude)!=null);
+ // v5.12.4 CRS: lat/long in the file, else UTM/MGA map E/N (geo_offset_east/north) converted with the project zone
+ const P0=[...projects.values()].find(p=>p.zone)||null,zn=parseZone(P0?.zone,P0?.datum);let crs=null,fromMap=0;
+ if(!wellRows.some(w=>num(w.geo_latitude)!=null)&&zn)for(const w of wellRows){const e=len(num(w.geo_offset_east)),n=len(num(w.geo_offset_north));if(e&&n&&e>1e5&&e<9e5){const q=inv(e,n,zn.zone,zn.south);w.geo_latitude=String(q.lat);w.geo_longitude=String(q.lon);fromMap++}}
+ const geo=T('CD_SITE').some(s=>num(s.geo_latitude)!=null)||wellRows.some(w=>num(w.geo_latitude)!=null);if(geo)crs={kind:fromMap?'utm':'latlon',zone:P0?.zone||null,datum:P0?.datum||null,sys:P0?.sysDatum||null,fromMap};
  const sites=T('CD_SITE').map(s=>({id:s.site_id,name:pick(s,'site_name','site_common_name')||s.site_id,project:projects.get(s.project_id)?.name||null,lat:num(s.geo_latitude),lon:num(s.geo_longitude),
   mapE:len(num(pick(s,'geo_map_easting','loc_easting','easting'))),mapN:len(num(pick(s,'geo_map_northing','loc_northing','northing'))),created:ts(s.create_date),updated:ts(s.update_date),wells:[]}));
  const siteBy=new Map(sites.map(s=>[s.id,s]));
@@ -72,14 +76,17 @@ export function world(R,{units='ft',name='EDM'}={}){const L=units=='m'?1:FT,len=
  const tgt=t=>({name:t.target_name||t.project_target_id||t.target_id,tvd:r1(len(num(pick(t,'target_tvd','tvd')))),lat:num(t.geo_latitude),lon:num(t.geo_longitude),dN:r1(len(num(pick(t,'offset_north','ns')))),dE:r1(len(num(pick(t,'offset_east','ew')))),r:r1(len(num(pick(t,'radius','target_radius','tolerance_right'))))});
  const wells=[],wbs=[];
  for(const w of wellRows){const s=siteBy.get(w.site_id);const dl=(datums.get(w.well_id)||[]).map(d=>({name:d.datum_name,elev:r1(len(num(pick(d,'datum_elevation','elevation')))),def:d.is_default=='Y',date:ts(d.date_established)}));
-  const dd=dl.find(d=>d.def)||dl[0]||null;let E,N;const la=num(w.geo_latitude),lo=num(w.geo_longitude);
+  const dd=dl.find(d=>d.def)||dl[0]||null;
+  // ground level from real fields only: datum named GL/GE/ground → onshore Compass ground elevation (water_depth) → default datum minus air gap → n/a
+  const gD=dl.find(d=>/^(GL|GE)\b|ground/i.test(d.name||'')&&d.elev!=null),ag=len(num(pick(datums.get(w.well_id)?.find(d=>d.is_default=='Y')||{},'air_gap','airgap'))),wd=len(num(w.water_depth));
+  const gl=gD?{v:gD.elev,src:'datum '+gD.name}:w.is_subsea!='Y'&&wd!=null&&wd!==0?{v:r1(wd),src:'ground elevation (water_depth)'}:dd&&dd.elev!=null&&ag!=null?{v:r1(dd.elev-ag),src:dd.name+' minus air gap'}:{v:null,src:null};let E,N;const la=num(w.geo_latitude),lo=num(w.geo_longitude);
   if(geo&&la!=null&&lo!=null&&Math.abs(la)>0.001)({E,N}=enu(la,lo));else if(geo&&s?.lat!=null)({E,N}=enu(s.lat,s.lon));else{E=((s?.mapE??0)-s0.mapE)+(len(num(pick(w,'offset_east','loc_offset_east')))??0)+(len(num(w.slot_ew))??0);N=((s?.mapN??0)-s0.mapN)+(len(num(pick(w,'offset_north','loc_offset_north')))??0)+(len(num(w.slot_ns))??0)}
   const W={id:w.well_id,site:w.site_id,siteName:s?.name||null,project:s?.project||null,name:pick(w,'well_common_name','well_legal_name','well_name')||w.well_id,lat:la,lon:lo,E:r1(E),N:r1(N),
-   mapE:r1(len(num(w.geo_offset_east))),mapN:r1(len(num(w.geo_offset_north))),datum:dd,datums:dl,waterDepth:r1(len(num(w.water_depth))),subsea:w.is_subsea=='Y',spud:ts(pick(w,'spud_date','date_spud','spud_dt'))||null,operator:pick(w,'operator','operator_name','company_name')||customer||null,created:ts(w.create_date),updated:ts(w.update_date),wbs:[],
+   mapE:r1(len(num(w.geo_offset_east))),mapN:r1(len(num(w.geo_offset_north))),datum:dd,datums:dl,waterDepth:r1(len(num(w.water_depth))),gl:gl.v,glSrc:gl.src,subsea:w.is_subsea=='Y',spud:ts(pick(w,'spud_date','date_spud','spud_dt'))||null,operator:pick(w,'operator','operator_name','company_name')||customer||null,created:ts(w.create_date),updated:ts(w.update_date),wbs:[],
    targets:(tgW.get(w.well_id)||[]).map(x=>ptg.get(x.project_target_id)).filter(Boolean).map(tgt)};
   wells.push(W);s?.wells.push(W.id);const del=dd?.elev??0;
   for(const b of wbsBy.get(w.well_id)||[]){const id=b.wellbore_id;const traj=[];
-   const add=(kind,h,g)=>{if(!g)return;const p=pathOf(g,L);if(!p)return;traj.push({kind,name:h?.name||h?.survey_name||h?.plan_name||kind,phase:(h?.phase||designById.get(h?.design_id)?.phase||'').toUpperCase()||null,company:h?.company||null,date:ts(h?.header_date||h?.effective_date),stations:p.n,mdMax:r1(p.pts.at(-1).md),maxDls:p.maxDls,pts:p.pts})};
+   const add=(kind,h,g)=>{if(!g)return;const p=pathOf(g,L);if(!p)return;traj.push({kind,name:h?.name||h?.survey_name||h?.plan_name||kind,phase:(h?.phase||designById.get(h?.design_id)?.phase||'').toUpperCase()||null,company:h?.company||null,date:ts(h?.header_date||h?.effective_date),stations:p.n,mdMax:r1(p.pts.at(-1).md),maxDls:p.maxDls,pts:p.pts,end:(q=>({md:r1(q.md),tvd:r1(q.tvd),E:r1(E+q.ew),N:r1(N+q.ns)}))(p.pts.at(-1))})};
    for(const h of defH.get(id)||[])add('definitive',h,R.S.def[h.def_survey_header_id||h.definitive_survey_id]);for(const h of svH.get(id)||[])add('survey',h,R.S.svy[h.survey_header_id]);for(const h of plH.get(id)||[])add('plan',h,R.S.plan[h.plan_id]);
    const rank=t=>(t.kind=='definitive'?0:t.kind=='survey'?2:4)+(t.phase=='ACTUAL'?0:1);traj.sort((a,b)=>rank(a)-rank(b));const best=traj[0]||null;
    const sc=(scen.get(id)||[]).map(d=>({name:d.name||d.design_name,phase:(d.phase||'').toUpperCase(),version:d.version||null}));const actual=traj.some(t=>t.phase=='ACTUAL'&&t.kind!='plan')||sc.some(d=>d.phase=='ACTUAL');
@@ -101,7 +108,7 @@ export function world(R,{units='ft',name='EDM'}={}){const L=units=='m'?1:FT,len=
  const bx=(f)=>{let e0=Infinity,e1=-Infinity,n0=Infinity,n1=-Infinity,z1=0;const ext=(E,N)=>{e0=Math.min(e0,E);e1=Math.max(e1,E);n0=Math.min(n0,N);n1=Math.max(n1,N)};
   for(const s of sites)if(f(s))ext(s.E,s.N);for(const w of wells)if(f(w))ext(w.E,w.N);for(const b of wbs)if(f(b))for(const p of b.path||[]){ext(p.E,p.N);z1=Math.max(z1,p.Z)}if(!Number.isFinite(e0)){e0=n0=-100;e1=n1=100}return {e0,e1,n0,n1,maxDepth:z1}};
  const bounds=bx(x=>!x.outlier),boundsAll=bx(()=>true);
- return {tag:'IMPORT',name,customer,units,geo,origin:{lat:lat0,lon:lon0},projects:[...projects.values()],sites,wells,wbs,bounds,boundsAll,outliers:nOut,tables:R.cnt,files:R.files,ms:R.ms,built:new Date().toISOString()}}
+ return {tag:'IMPORT',name,customer,units,geo,crs,origin:{lat:lat0,lon:lon0},projects:[...projects.values()],sites,wells,wbs,bounds,boundsAll,outliers:nOut,tables:R.cnt,files:R.files,ms:R.ms,built:new Date().toISOString()}}
 // legacy tables for the pad-level parser in edm.js (small files only): station rows rebuilt from packed arrays
 export function legacyTables(R){const T={...R.T};const rows=(st,tab,key)=>{for(const [k,g] of Object.entries(R.S[st])){const a=T[tab]||(T[tab]=[]);for(let i=0;i<g.md.length;i++)a.push({[key]:k,wellbore_id:g.wb,md:String(g.md[i]),inclination:String(g.inc[i]),azimuth:String(g.azi[i])})}};
  rows('def','CD_DEFINITIVE_SURVEY_STATION','definitive_survey_id');rows('svy','CD_SURVEY_STATION','survey_header_id');rows('plan','CD_PLAN_STATION','plan_id');
