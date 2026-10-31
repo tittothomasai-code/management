@@ -1,0 +1,4353 @@
+{
+  "schemaVersion": "3.0.0",
+  "title": "Rig Builder / Pass 3 / single-unit parts",
+  "units": "metres",
+  "upAxis": "Y",
+  "forwardAxis": "+Z",
+  "origin": "Bottom centre of rendered footprint (including stairs, rails and fixed appurtenances)",
+  "license": "CC0-1.0 original procedural geometry and textures",
+  "compression": "KHR_draco_mesh_compression",
+  "budgets": {
+    "H": {
+      "triangles": 60000,
+      "bytes": 3000000,
+      "textureMax": 2048
+    },
+    "M": {
+      "triangles": 20000,
+      "bytes": 1500000,
+      "textureMax": 1024
+    },
+    "L": {
+      "triangles": 6000,
+      "bytes": 500000,
+      "textureMax": 512
+    }
+  },
+  "textures": {
+    "H": 2048,
+    "M": 1024,
+    "L": 512
+  },
+  "ao": "Ray-baked per-vertex contact AO multiplied by an embedded material cavity/ORM map",
+  "lights": "Emissive light_* fixture nodes. No viewer lights embedded; showroom supplies scene illumination.",
+  "parts": [
+    {
+      "id": "genset_single",
+      "name": "Single 1.3 MW diesel genset",
+      "kind": "power",
+      "specs": {
+        "kW": 1300,
+        "fuel": "diesel",
+        "cylinders": 12,
+        "configuration": "V12",
+        "ratingBasis": "Representative prime electrical output"
+      },
+      "front": "Radiator / cooling-air discharge",
+      "view": [
+        1.3,
+        0.8,
+        1.5
+      ],
+      "unitCount": 1,
+      "lods": {
+        "H": {
+          "file": "glb/genset_single_lodH.glb",
+          "triangles": 14842,
+          "bytes": 446644,
+          "drawCalls": 42,
+          "boundingBox": {
+            "min": [
+              -1.3425000202655792,
+              0,
+              -3.4000000953674316
+            ],
+            "max": [
+              1.3425000202655792,
+              3.4300000671297313,
+              3.4000000953674316
+            ],
+            "size": [
+              2.6850000405311585,
+              3.4300000671297313,
+              6.800000190734863
+            ]
+          },
+          "nodeToBom": {
+            "genset_single/skid": "RB3/genset_single/skid",
+            "genset_single/isolation_mounts": "RB3/genset_single/isolation_mounts",
+            "genset_single/engine": "RB3/genset_single/engine",
+            "genset_single/engine/engine_castings": "RB3/genset_single/engine/engine_castings",
+            "genset_single/engine/turbochargers_and_intake": "RB3/genset_single/engine/turbochargers_and_intake",
+            "genset_single/engine/filters_and_fuel_lines": "RB3/genset_single/engine/filters_and_fuel_lines",
+            "genset_single/alternator": "RB3/genset_single/alternator",
+            "genset_single/coupling_guard": "RB3/genset_single/coupling_guard",
+            "genset_single/radiator": "RB3/genset_single/radiator",
+            "genset_single/coolant_pipework": "RB3/genset_single/coolant_pipework",
+            "genset_single/exhaust": "RB3/genset_single/exhaust",
+            "genset_single/control_panel": "RB3/genset_single/control_panel",
+            "genset_single/cable_tray": "RB3/genset_single/cable_tray",
+            "genset_single/light_service": "RB3/genset_single/light_service"
+          },
+          "bakedAO": true,
+          "optimisation": {
+            "before": 14842,
+            "after": 14842,
+            "budget": 60000,
+            "maxPositionErrorMetres": 0.008
+          },
+          "textureMax": 2048
+        },
+        "M": {
+          "file": "glb/genset_single_lodM.glb",
+          "triangles": 6014,
+          "bytes": 287272,
+          "drawCalls": 41,
+          "boundingBox": {
+            "min": [
+              -1.3425000202655792,
+              0,
+              -3.4000000953674316
+            ],
+            "max": [
+              1.3425000202655792,
+              3.4300000671297313,
+              3.4000000953674316
+            ],
+            "size": [
+              2.6850000405311585,
+              3.4300000671297313,
+              6.800000190734863
+            ]
+          },
+          "nodeToBom": {
+            "genset_single/skid": "RB3/genset_single/skid",
+            "genset_single/isolation_mounts": "RB3/genset_single/isolation_mounts",
+            "genset_single/engine": "RB3/genset_single/engine",
+            "genset_single/engine/engine_castings": "RB3/genset_single/engine/engine_castings",
+            "genset_single/engine/turbochargers_and_intake": "RB3/genset_single/engine/turbochargers_and_intake",
+            "genset_single/engine/filters_and_fuel_lines": "RB3/genset_single/engine/filters_and_fuel_lines",
+            "genset_single/alternator": "RB3/genset_single/alternator",
+            "genset_single/coupling_guard": "RB3/genset_single/coupling_guard",
+            "genset_single/radiator": "RB3/genset_single/radiator",
+            "genset_single/coolant_pipework": "RB3/genset_single/coolant_pipework",
+            "genset_single/exhaust": "RB3/genset_single/exhaust",
+            "genset_single/control_panel": "RB3/genset_single/control_panel",
+            "genset_single/cable_tray": "RB3/genset_single/cable_tray",
+            "genset_single/light_service": "RB3/genset_single/light_service"
+          },
+          "bakedAO": true,
+          "optimisation": {
+            "before": 6014,
+            "after": 6014,
+            "budget": 20000,
+            "maxPositionErrorMetres": 0.035
+          },
+          "textureMax": 1024
+        },
+        "L": {
+          "file": "glb/genset_single_lodL.glb",
+          "triangles": 2454,
+          "bytes": 139004,
+          "drawCalls": 28,
+          "boundingBox": {
+            "min": [
+              -1.3425000202655792,
+              0,
+              -3.4000000953674316
+            ],
+            "max": [
+              1.3425000202655792,
+              3.4300000671297313,
+              3.4000000953674316
+            ],
+            "size": [
+              2.6850000405311585,
+              3.4300000671297313,
+              6.800000190734863
+            ]
+          },
+          "nodeToBom": {
+            "genset_single/skid": "RB3/genset_single/skid",
+            "genset_single/isolation_mounts": "RB3/genset_single/isolation_mounts",
+            "genset_single/engine": "RB3/genset_single/engine",
+            "genset_single/engine/engine_castings": "RB3/genset_single/engine/engine_castings",
+            "genset_single/engine/turbochargers_and_intake": "RB3/genset_single/engine/turbochargers_and_intake",
+            "genset_single/engine/filters_and_fuel_lines": "RB3/genset_single/engine/filters_and_fuel_lines",
+            "genset_single/alternator": "RB3/genset_single/alternator",
+            "genset_single/coupling_guard": "RB3/genset_single/coupling_guard",
+            "genset_single/radiator": "RB3/genset_single/radiator",
+            "genset_single/coolant_pipework": "RB3/genset_single/coolant_pipework",
+            "genset_single/exhaust": "RB3/genset_single/exhaust",
+            "genset_single/control_panel": "RB3/genset_single/control_panel",
+            "genset_single/cable_tray": "RB3/genset_single/cable_tray",
+            "genset_single/light_service": "RB3/genset_single/light_service"
+          },
+          "bakedAO": true,
+          "optimisation": {
+            "before": 2454,
+            "after": 2454,
+            "budget": 6000,
+            "maxPositionErrorMetres": 0.13
+          },
+          "textureMax": 512
+        }
+      },
+      "nodeToBom": {
+        "genset_single/skid": "RB3/genset_single/skid",
+        "genset_single/isolation_mounts": "RB3/genset_single/isolation_mounts",
+        "genset_single/engine": "RB3/genset_single/engine",
+        "genset_single/engine/engine_castings": "RB3/genset_single/engine/engine_castings",
+        "genset_single/engine/turbochargers_and_intake": "RB3/genset_single/engine/turbochargers_and_intake",
+        "genset_single/engine/filters_and_fuel_lines": "RB3/genset_single/engine/filters_and_fuel_lines",
+        "genset_single/alternator": "RB3/genset_single/alternator",
+        "genset_single/coupling_guard": "RB3/genset_single/coupling_guard",
+        "genset_single/radiator": "RB3/genset_single/radiator",
+        "genset_single/coolant_pipework": "RB3/genset_single/coolant_pipework",
+        "genset_single/exhaust": "RB3/genset_single/exhaust",
+        "genset_single/control_panel": "RB3/genset_single/control_panel",
+        "genset_single/cable_tray": "RB3/genset_single/cable_tray",
+        "genset_single/light_service": "RB3/genset_single/light_service"
+      },
+      "components": [
+        {
+          "nodePath": "genset_single/skid",
+          "bomId": "RB3/genset_single/skid",
+          "name": "skid",
+          "specs": {
+            "dimensions_m": [
+              2.6500000953674316,
+              0.5600000027567148,
+              6.800000190734863
+            ],
+            "width_m": 2.65,
+            "length_m": 6.8
+          }
+        },
+        {
+          "nodePath": "genset_single/isolation_mounts",
+          "bomId": "RB3/genset_single/isolation_mounts",
+          "name": "isolation mounts",
+          "specs": {
+            "dimensions_m": [
+              1.6699999570846558,
+              0.3499999940395355,
+              5.476999998092651
+            ]
+          }
+        },
+        {
+          "nodePath": "genset_single/engine",
+          "bomId": "RB3/genset_single/engine",
+          "name": "engine",
+          "specs": {
+            "dimensions_m": [
+              1.9765105247497559,
+              2.004999965429306,
+              2.6500000953674316
+            ],
+            "type": "Turbocharged V12 diesel",
+            "cylinders": 12
+          }
+        },
+        {
+          "nodePath": "genset_single/engine/engine_castings",
+          "bomId": "RB3/genset_single/engine/engine_castings",
+          "name": "engine castings",
+          "specs": {
+            "dimensions_m": [
+              1.8002612590789795,
+              1.6301204860210419,
+              2.6500000953674316
+            ]
+          }
+        },
+        {
+          "nodePath": "genset_single/engine/turbochargers_and_intake",
+          "bomId": "RB3/genset_single/engine/turbochargers_and_intake",
+          "name": "turbochargers and intake",
+          "specs": {
+            "dimensions_m": [
+              1.9580000638961792,
+              0.7250000238418579,
+              1.9049999713897705
+            ]
+          }
+        },
+        {
+          "nodePath": "genset_single/engine/filters_and_fuel_lines",
+          "bomId": "RB3/genset_single/engine/filters_and_fuel_lines",
+          "name": "filters and fuel lines",
+          "specs": {
+            "dimensions_m": [
+              1.967510461807251,
+              0.9610197246074677,
+              1.8519887328147888
+            ]
+          }
+        },
+        {
+          "nodePath": "genset_single/alternator",
+          "bomId": "RB3/genset_single/alternator",
+          "name": "alternator",
+          "specs": {
+            "dimensions_m": [
+              1.3176000118255615,
+              1.508800029754639,
+              1.8125
+            ],
+            "type": "Three-phase brushless alternator",
+            "kW": 1300
+          }
+        },
+        {
+          "nodePath": "genset_single/coupling_guard",
+          "bomId": "RB3/genset_single/coupling_guard",
+          "name": "coupling guard",
+          "specs": {
+            "dimensions_m": [
+              0.9200000166893005,
+              0.9200000166893006,
+              0.48250001668930054
+            ]
+          }
+        },
+        {
+          "nodePath": "genset_single/radiator",
+          "bomId": "RB3/genset_single/radiator",
+          "name": "radiator",
+          "specs": {
+            "dimensions_m": [
+              2.2200000286102295,
+              2.2200000286102295,
+              0.6949999779462814
+            ],
+            "type": "Engine cooling radiator with axial fan"
+          }
+        },
+        {
+          "nodePath": "genset_single/coolant_pipework",
+          "bomId": "RB3/genset_single/coolant_pipework",
+          "name": "coolant pipework",
+          "specs": {
+            "dimensions_m": [
+              1.2960000038146973,
+              0.6055667400360107,
+              1.2637743949890137
+            ]
+          }
+        },
+        {
+          "nodePath": "genset_single/exhaust",
+          "bomId": "RB3/genset_single/exhaust",
+          "name": "exhaust",
+          "specs": {
+            "dimensions_m": [
+              1.1478238105773926,
+              1.380000114440918,
+              1.8399999737739563
+            ],
+            "type": "Twin turbo feed / silencer / guarded stack"
+          }
+        },
+        {
+          "nodePath": "genset_single/control_panel",
+          "bomId": "RB3/genset_single/control_panel",
+          "name": "control panel",
+          "specs": {
+            "dimensions_m": [
+              0.6399999856948853,
+              0.8599999845027924,
+              0.31999999284744257
+            ],
+            "type": "Local controls and emergency stop"
+          }
+        },
+        {
+          "nodePath": "genset_single/cable_tray",
+          "bomId": "RB3/genset_single/cable_tray",
+          "name": "cable tray",
+          "specs": {
+            "dimensions_m": [
+              0.2399999499320984,
+              0.17249998450279236,
+              3.200000047683716
+            ]
+          }
+        },
+        {
+          "nodePath": "genset_single/light_service",
+          "bomId": "RB3/genset_single/light_service",
+          "name": "light service",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        }
+      ],
+      "anchors": {
+        "attach_base": {
+          "nodePath": "genset_single/attach_base",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "role": "Ground / receiving surface"
+        }
+      },
+      "screenshots": {
+        "day": "screenshots/genset_single_day.png",
+        "night": "screenshots/genset_single_night.png"
+      },
+      "sourceToOriginOffset": [
+        -0.01749997258186342,
+        3.7252903539730653e-10,
+        0
+      ],
+      "boundingBox": {
+        "min": [
+          -1.3425000202655792,
+          0,
+          -3.4000000953674316
+        ],
+        "max": [
+          1.3425000202655792,
+          3.4300000671297313,
+          3.4000000953674316
+        ],
+        "size": [
+          2.6850000405311585,
+          3.4300000671297313,
+          6.800000190734863
+        ]
+      },
+      "nodes": {
+        "genset_single/skid": {
+          "bomId": "RB3/genset_single/skid",
+          "name": "skid",
+          "specs": {
+            "dimensions_m": [
+              2.6500000953674316,
+              0.5600000027567148,
+              6.800000190734863
+            ],
+            "width_m": 2.65,
+            "length_m": 6.8
+          }
+        },
+        "genset_single/isolation_mounts": {
+          "bomId": "RB3/genset_single/isolation_mounts",
+          "name": "isolation mounts",
+          "specs": {
+            "dimensions_m": [
+              1.6699999570846558,
+              0.3499999940395355,
+              5.476999998092651
+            ]
+          }
+        },
+        "genset_single/engine": {
+          "bomId": "RB3/genset_single/engine",
+          "name": "engine",
+          "specs": {
+            "dimensions_m": [
+              1.9765105247497559,
+              2.004999965429306,
+              2.6500000953674316
+            ],
+            "type": "Turbocharged V12 diesel",
+            "cylinders": 12
+          }
+        },
+        "genset_single/engine/engine_castings": {
+          "bomId": "RB3/genset_single/engine/engine_castings",
+          "name": "engine castings",
+          "specs": {
+            "dimensions_m": [
+              1.8002612590789795,
+              1.6301204860210419,
+              2.6500000953674316
+            ]
+          }
+        },
+        "genset_single/engine/turbochargers_and_intake": {
+          "bomId": "RB3/genset_single/engine/turbochargers_and_intake",
+          "name": "turbochargers and intake",
+          "specs": {
+            "dimensions_m": [
+              1.9580000638961792,
+              0.7250000238418579,
+              1.9049999713897705
+            ]
+          }
+        },
+        "genset_single/engine/filters_and_fuel_lines": {
+          "bomId": "RB3/genset_single/engine/filters_and_fuel_lines",
+          "name": "filters and fuel lines",
+          "specs": {
+            "dimensions_m": [
+              1.967510461807251,
+              0.9610197246074677,
+              1.8519887328147888
+            ]
+          }
+        },
+        "genset_single/alternator": {
+          "bomId": "RB3/genset_single/alternator",
+          "name": "alternator",
+          "specs": {
+            "dimensions_m": [
+              1.3176000118255615,
+              1.508800029754639,
+              1.8125
+            ],
+            "type": "Three-phase brushless alternator",
+            "kW": 1300
+          }
+        },
+        "genset_single/coupling_guard": {
+          "bomId": "RB3/genset_single/coupling_guard",
+          "name": "coupling guard",
+          "specs": {
+            "dimensions_m": [
+              0.9200000166893005,
+              0.9200000166893006,
+              0.48250001668930054
+            ]
+          }
+        },
+        "genset_single/radiator": {
+          "bomId": "RB3/genset_single/radiator",
+          "name": "radiator",
+          "specs": {
+            "dimensions_m": [
+              2.2200000286102295,
+              2.2200000286102295,
+              0.6949999779462814
+            ],
+            "type": "Engine cooling radiator with axial fan"
+          }
+        },
+        "genset_single/coolant_pipework": {
+          "bomId": "RB3/genset_single/coolant_pipework",
+          "name": "coolant pipework",
+          "specs": {
+            "dimensions_m": [
+              1.2960000038146973,
+              0.6055667400360107,
+              1.2637743949890137
+            ]
+          }
+        },
+        "genset_single/exhaust": {
+          "bomId": "RB3/genset_single/exhaust",
+          "name": "exhaust",
+          "specs": {
+            "dimensions_m": [
+              1.1478238105773926,
+              1.380000114440918,
+              1.8399999737739563
+            ],
+            "type": "Twin turbo feed / silencer / guarded stack"
+          }
+        },
+        "genset_single/control_panel": {
+          "bomId": "RB3/genset_single/control_panel",
+          "name": "control panel",
+          "specs": {
+            "dimensions_m": [
+              0.6399999856948853,
+              0.8599999845027924,
+              0.31999999284744257
+            ],
+            "type": "Local controls and emergency stop"
+          }
+        },
+        "genset_single/cable_tray": {
+          "bomId": "RB3/genset_single/cable_tray",
+          "name": "cable tray",
+          "specs": {
+            "dimensions_m": [
+              0.2399999499320984,
+              0.17249998450279236,
+              3.200000047683716
+            ]
+          }
+        },
+        "genset_single/light_service": {
+          "bomId": "RB3/genset_single/light_service",
+          "name": "light service",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        }
+      }
+    },
+    {
+      "id": "mud_tank_single",
+      "name": "Single 450 bbl active mud tank",
+      "kind": "mud",
+      "specs": {
+        "bbl": 450,
+        "workingVolume_m3": 71.5442827,
+        "agitators": 2,
+        "agitator_kW_each": 11,
+        "shellLength_m": 10.8,
+        "shellWidth_m": 3.3,
+        "shellDepth_m": 2.4
+      },
+      "front": "Short end with level scale and suction header",
+      "view": [
+        1.2,
+        0.9,
+        1.5
+      ],
+      "unitCount": 1,
+      "lods": {
+        "H": {
+          "file": "glb/mud_tank_single_lodH.glb",
+          "triangles": 16166,
+          "bytes": 437616,
+          "drawCalls": 38,
+          "boundingBox": {
+            "min": [
+              -2.002500057220459,
+              0,
+              -6.156499862670898
+            ],
+            "max": [
+              2.002500057220459,
+              4.004000187292695,
+              6.156499862670898
+            ],
+            "size": [
+              4.005000114440918,
+              4.004000187292695,
+              12.312999725341797
+            ]
+          },
+          "nodeToBom": {
+            "mud_tank_single/skid": "RB3/mud_tank_single/skid",
+            "mud_tank_single/tank_shell": "RB3/mud_tank_single/tank_shell",
+            "mud_tank_single/tank_shell/external_stiffeners": "RB3/mud_tank_single/tank_shell/external_stiffeners",
+            "mud_tank_single/walkway": "RB3/mud_tank_single/walkway",
+            "mud_tank_single/handrails": "RB3/mud_tank_single/handrails",
+            "mud_tank_single/access_hatches": "RB3/mud_tank_single/access_hatches",
+            "mud_tank_single/agitators": "RB3/mud_tank_single/agitators",
+            "mud_tank_single/agitators/agitator_1": "RB3/mud_tank_single/agitators/agitator_1",
+            "mud_tank_single/agitators/agitator_2": "RB3/mud_tank_single/agitators/agitator_2",
+            "mud_tank_single/suction_header": "RB3/mud_tank_single/suction_header",
+            "mud_tank_single/drain_and_valves": "RB3/mud_tank_single/drain_and_valves",
+            "mud_tank_single/access_ladder": "RB3/mud_tank_single/access_ladder",
+            "mud_tank_single/level_indicator": "RB3/mud_tank_single/level_indicator",
+            "mud_tank_single/light_walkway_front": "RB3/mud_tank_single/light_walkway_front",
+            "mud_tank_single/light_walkway_rear": "RB3/mud_tank_single/light_walkway_rear"
+          },
+          "bakedAO": true,
+          "optimisation": {
+            "before": 16166,
+            "after": 16166,
+            "budget": 60000,
+            "maxPositionErrorMetres": 0.008
+          },
+          "textureMax": 2048
+        },
+        "M": {
+          "file": "glb/mud_tank_single_lodM.glb",
+          "triangles": 7618,
+          "bytes": 290532,
+          "drawCalls": 39,
+          "boundingBox": {
+            "min": [
+              -2.002500057220459,
+              0,
+              -6.156499862670898
+            ],
+            "max": [
+              2.002500057220459,
+              4.004000187292695,
+              6.156499862670898
+            ],
+            "size": [
+              4.005000114440918,
+              4.004000187292695,
+              12.312999725341797
+            ]
+          },
+          "nodeToBom": {
+            "mud_tank_single/skid": "RB3/mud_tank_single/skid",
+            "mud_tank_single/tank_shell": "RB3/mud_tank_single/tank_shell",
+            "mud_tank_single/tank_shell/external_stiffeners": "RB3/mud_tank_single/tank_shell/external_stiffeners",
+            "mud_tank_single/walkway": "RB3/mud_tank_single/walkway",
+            "mud_tank_single/handrails": "RB3/mud_tank_single/handrails",
+            "mud_tank_single/access_hatches": "RB3/mud_tank_single/access_hatches",
+            "mud_tank_single/agitators": "RB3/mud_tank_single/agitators",
+            "mud_tank_single/agitators/agitator_1": "RB3/mud_tank_single/agitators/agitator_1",
+            "mud_tank_single/agitators/agitator_2": "RB3/mud_tank_single/agitators/agitator_2",
+            "mud_tank_single/suction_header": "RB3/mud_tank_single/suction_header",
+            "mud_tank_single/drain_and_valves": "RB3/mud_tank_single/drain_and_valves",
+            "mud_tank_single/access_ladder": "RB3/mud_tank_single/access_ladder",
+            "mud_tank_single/level_indicator": "RB3/mud_tank_single/level_indicator",
+            "mud_tank_single/light_walkway_front": "RB3/mud_tank_single/light_walkway_front",
+            "mud_tank_single/light_walkway_rear": "RB3/mud_tank_single/light_walkway_rear"
+          },
+          "bakedAO": true,
+          "optimisation": {
+            "before": 7618,
+            "after": 7618,
+            "budget": 20000,
+            "maxPositionErrorMetres": 0.035
+          },
+          "textureMax": 1024
+        },
+        "L": {
+          "file": "glb/mud_tank_single_lodL.glb",
+          "triangles": 3036,
+          "bytes": 147488,
+          "drawCalls": 32,
+          "boundingBox": {
+            "min": [
+              -2.002500057220459,
+              0,
+              -6.156499862670898
+            ],
+            "max": [
+              2.002500057220459,
+              4.004000187292695,
+              6.156499862670898
+            ],
+            "size": [
+              4.005000114440918,
+              4.004000187292695,
+              12.312999725341797
+            ]
+          },
+          "nodeToBom": {
+            "mud_tank_single/skid": "RB3/mud_tank_single/skid",
+            "mud_tank_single/tank_shell": "RB3/mud_tank_single/tank_shell",
+            "mud_tank_single/tank_shell/external_stiffeners": "RB3/mud_tank_single/tank_shell/external_stiffeners",
+            "mud_tank_single/walkway": "RB3/mud_tank_single/walkway",
+            "mud_tank_single/handrails": "RB3/mud_tank_single/handrails",
+            "mud_tank_single/access_hatches": "RB3/mud_tank_single/access_hatches",
+            "mud_tank_single/agitators": "RB3/mud_tank_single/agitators",
+            "mud_tank_single/agitators/agitator_1": "RB3/mud_tank_single/agitators/agitator_1",
+            "mud_tank_single/agitators/agitator_2": "RB3/mud_tank_single/agitators/agitator_2",
+            "mud_tank_single/suction_header": "RB3/mud_tank_single/suction_header",
+            "mud_tank_single/drain_and_valves": "RB3/mud_tank_single/drain_and_valves",
+            "mud_tank_single/access_ladder": "RB3/mud_tank_single/access_ladder",
+            "mud_tank_single/level_indicator": "RB3/mud_tank_single/level_indicator",
+            "mud_tank_single/light_walkway_front": "RB3/mud_tank_single/light_walkway_front",
+            "mud_tank_single/light_walkway_rear": "RB3/mud_tank_single/light_walkway_rear"
+          },
+          "bakedAO": true,
+          "optimisation": {
+            "before": 3036,
+            "after": 3036,
+            "budget": 6000,
+            "maxPositionErrorMetres": 0.13
+          },
+          "textureMax": 512
+        }
+      },
+      "nodeToBom": {
+        "mud_tank_single/skid": "RB3/mud_tank_single/skid",
+        "mud_tank_single/tank_shell": "RB3/mud_tank_single/tank_shell",
+        "mud_tank_single/tank_shell/external_stiffeners": "RB3/mud_tank_single/tank_shell/external_stiffeners",
+        "mud_tank_single/walkway": "RB3/mud_tank_single/walkway",
+        "mud_tank_single/handrails": "RB3/mud_tank_single/handrails",
+        "mud_tank_single/access_hatches": "RB3/mud_tank_single/access_hatches",
+        "mud_tank_single/agitators": "RB3/mud_tank_single/agitators",
+        "mud_tank_single/agitators/agitator_1": "RB3/mud_tank_single/agitators/agitator_1",
+        "mud_tank_single/agitators/agitator_2": "RB3/mud_tank_single/agitators/agitator_2",
+        "mud_tank_single/suction_header": "RB3/mud_tank_single/suction_header",
+        "mud_tank_single/drain_and_valves": "RB3/mud_tank_single/drain_and_valves",
+        "mud_tank_single/access_ladder": "RB3/mud_tank_single/access_ladder",
+        "mud_tank_single/level_indicator": "RB3/mud_tank_single/level_indicator",
+        "mud_tank_single/light_walkway_front": "RB3/mud_tank_single/light_walkway_front",
+        "mud_tank_single/light_walkway_rear": "RB3/mud_tank_single/light_walkway_rear"
+      },
+      "components": [
+        {
+          "nodePath": "mud_tank_single/skid",
+          "bomId": "RB3/mud_tank_single/skid",
+          "name": "skid",
+          "specs": {
+            "dimensions_m": [
+              3.75,
+              0.5600000027567148,
+              11.5
+            ],
+            "width_m": 3.75,
+            "length_m": 11.5
+          }
+        },
+        {
+          "nodePath": "mud_tank_single/tank_shell",
+          "bomId": "RB3/mud_tank_single/tank_shell",
+          "name": "tank shell",
+          "specs": {
+            "dimensions_m": [
+              3.5290000438690186,
+              2.429999977350235,
+              10.961999893188477
+            ],
+            "workingVolume_bbl": 450,
+            "workingVolume_m3": 71.5442827
+          }
+        },
+        {
+          "nodePath": "mud_tank_single/tank_shell/external_stiffeners",
+          "bomId": "RB3/mud_tank_single/tank_shell/external_stiffeners",
+          "name": "external stiffeners",
+          "specs": {
+            "dimensions_m": [
+              3.5290000438690186,
+              2.429999977350235,
+              10.9399995803833
+            ]
+          }
+        },
+        {
+          "nodePath": "mud_tank_single/walkway",
+          "bomId": "RB3/mud_tank_single/walkway",
+          "name": "walkway",
+          "specs": {
+            "dimensions_m": [
+              3.555000066757202,
+              0.08999991416931152,
+              11.055000305175781
+            ]
+          }
+        },
+        {
+          "nodePath": "mud_tank_single/handrails",
+          "bomId": "RB3/mud_tank_single/handrails",
+          "name": "handrails",
+          "specs": {
+            "dimensions_m": [
+              3.5959999561309814,
+              1.1240003108978267,
+              11.095999717712402
+            ]
+          }
+        },
+        {
+          "nodePath": "mud_tank_single/access_hatches",
+          "bomId": "RB3/mud_tank_single/access_hatches",
+          "name": "access hatches",
+          "specs": {
+            "dimensions_m": [
+              1.2000000476837158,
+              0.2932119369506836,
+              8
+            ],
+            "quantity": 3
+          }
+        },
+        {
+          "nodePath": "mud_tank_single/agitators",
+          "bomId": "RB3/mud_tank_single/agitators",
+          "name": "agitators",
+          "specs": {
+            "dimensions_m": [
+              1.4500000476837158,
+              3.1977999210357666,
+              5.619999957084656
+            ],
+            "quantity": 2,
+            "power_kW_each": 11
+          }
+        },
+        {
+          "nodePath": "mud_tank_single/agitators/agitator_1",
+          "bomId": "RB3/mud_tank_single/agitators/agitator_1",
+          "name": "agitator 1",
+          "specs": {
+            "dimensions_m": [
+              1.4500000476837158,
+              3.1977999210357666,
+              1.4199999570846558
+            ],
+            "kW": 11
+          }
+        },
+        {
+          "nodePath": "mud_tank_single/agitators/agitator_2",
+          "bomId": "RB3/mud_tank_single/agitators/agitator_2",
+          "name": "agitator 2",
+          "specs": {
+            "dimensions_m": [
+              1.4500000476837158,
+              3.1977999210357666,
+              1.4199999570846558
+            ],
+            "kW": 11
+          }
+        },
+        {
+          "nodePath": "mud_tank_single/suction_header",
+          "bomId": "RB3/mud_tank_single/suction_header",
+          "name": "suction header",
+          "specs": {
+            "dimensions_m": [
+              2.899500012397766,
+              0.5699999928474427,
+              0.6149997711181641
+            ],
+            "connection": "process"
+          }
+        },
+        {
+          "nodePath": "mud_tank_single/drain_and_valves",
+          "bomId": "RB3/mud_tank_single/drain_and_valves",
+          "name": "drain and valves",
+          "specs": {
+            "dimensions_m": [
+              0.4900001287460327,
+              0.40400001406669617,
+              8.123000144958496
+            ],
+            "connection": "process"
+          }
+        },
+        {
+          "nodePath": "mud_tank_single/access_ladder",
+          "bomId": "RB3/mud_tank_single/access_ladder",
+          "name": "access ladder",
+          "specs": {
+            "dimensions_m": [
+              0.9758327901363373,
+              3.9100001007318497,
+              0.9744954109191895
+            ]
+          }
+        },
+        {
+          "nodePath": "mud_tank_single/level_indicator",
+          "bomId": "RB3/mud_tank_single/level_indicator",
+          "name": "level indicator",
+          "specs": {
+            "dimensions_m": [
+              0.17000000178813934,
+              2.0999999046325684,
+              0.057500001043081284
+            ],
+            "type": "Visual level scale"
+          }
+        },
+        {
+          "nodePath": "mud_tank_single/light_walkway_front",
+          "bomId": "RB3/mud_tank_single/light_walkway_front",
+          "name": "light walkway front",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.3384577184915538,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        },
+        {
+          "nodePath": "mud_tank_single/light_walkway_rear",
+          "bomId": "RB3/mud_tank_single/light_walkway_rear",
+          "name": "light walkway rear",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.3384577184915538,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        }
+      ],
+      "anchors": {
+        "attach_base": {
+          "nodePath": "mud_tank_single/attach_base",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "role": "Ground / receiving surface"
+        }
+      },
+      "screenshots": {
+        "day": "screenshots/mud_tank_single_day.png",
+        "night": "screenshots/mud_tank_single_night.png"
+      },
+      "sourceToOriginOffset": [
+        0.12750005722045898,
+        3.7252903539730653e-10,
+        0.18149995803833008
+      ],
+      "boundingBox": {
+        "min": [
+          -2.002500057220459,
+          0,
+          -6.156499862670898
+        ],
+        "max": [
+          2.002500057220459,
+          4.004000187292695,
+          6.156499862670898
+        ],
+        "size": [
+          4.005000114440918,
+          4.004000187292695,
+          12.312999725341797
+        ]
+      },
+      "nodes": {
+        "mud_tank_single/skid": {
+          "bomId": "RB3/mud_tank_single/skid",
+          "name": "skid",
+          "specs": {
+            "dimensions_m": [
+              3.75,
+              0.5600000027567148,
+              11.5
+            ],
+            "width_m": 3.75,
+            "length_m": 11.5
+          }
+        },
+        "mud_tank_single/tank_shell": {
+          "bomId": "RB3/mud_tank_single/tank_shell",
+          "name": "tank shell",
+          "specs": {
+            "dimensions_m": [
+              3.5290000438690186,
+              2.429999977350235,
+              10.961999893188477
+            ],
+            "workingVolume_bbl": 450,
+            "workingVolume_m3": 71.5442827
+          }
+        },
+        "mud_tank_single/tank_shell/external_stiffeners": {
+          "bomId": "RB3/mud_tank_single/tank_shell/external_stiffeners",
+          "name": "external stiffeners",
+          "specs": {
+            "dimensions_m": [
+              3.5290000438690186,
+              2.429999977350235,
+              10.9399995803833
+            ]
+          }
+        },
+        "mud_tank_single/walkway": {
+          "bomId": "RB3/mud_tank_single/walkway",
+          "name": "walkway",
+          "specs": {
+            "dimensions_m": [
+              3.555000066757202,
+              0.08999991416931152,
+              11.055000305175781
+            ]
+          }
+        },
+        "mud_tank_single/handrails": {
+          "bomId": "RB3/mud_tank_single/handrails",
+          "name": "handrails",
+          "specs": {
+            "dimensions_m": [
+              3.5959999561309814,
+              1.1240003108978267,
+              11.095999717712402
+            ]
+          }
+        },
+        "mud_tank_single/access_hatches": {
+          "bomId": "RB3/mud_tank_single/access_hatches",
+          "name": "access hatches",
+          "specs": {
+            "dimensions_m": [
+              1.2000000476837158,
+              0.2932119369506836,
+              8
+            ],
+            "quantity": 3
+          }
+        },
+        "mud_tank_single/agitators": {
+          "bomId": "RB3/mud_tank_single/agitators",
+          "name": "agitators",
+          "specs": {
+            "dimensions_m": [
+              1.4500000476837158,
+              3.1977999210357666,
+              5.619999957084656
+            ],
+            "quantity": 2,
+            "power_kW_each": 11
+          }
+        },
+        "mud_tank_single/agitators/agitator_1": {
+          "bomId": "RB3/mud_tank_single/agitators/agitator_1",
+          "name": "agitator 1",
+          "specs": {
+            "dimensions_m": [
+              1.4500000476837158,
+              3.1977999210357666,
+              1.4199999570846558
+            ],
+            "kW": 11
+          }
+        },
+        "mud_tank_single/agitators/agitator_2": {
+          "bomId": "RB3/mud_tank_single/agitators/agitator_2",
+          "name": "agitator 2",
+          "specs": {
+            "dimensions_m": [
+              1.4500000476837158,
+              3.1977999210357666,
+              1.4199999570846558
+            ],
+            "kW": 11
+          }
+        },
+        "mud_tank_single/suction_header": {
+          "bomId": "RB3/mud_tank_single/suction_header",
+          "name": "suction header",
+          "specs": {
+            "dimensions_m": [
+              2.899500012397766,
+              0.5699999928474427,
+              0.6149997711181641
+            ],
+            "connection": "process"
+          }
+        },
+        "mud_tank_single/drain_and_valves": {
+          "bomId": "RB3/mud_tank_single/drain_and_valves",
+          "name": "drain and valves",
+          "specs": {
+            "dimensions_m": [
+              0.4900001287460327,
+              0.40400001406669617,
+              8.123000144958496
+            ],
+            "connection": "process"
+          }
+        },
+        "mud_tank_single/access_ladder": {
+          "bomId": "RB3/mud_tank_single/access_ladder",
+          "name": "access ladder",
+          "specs": {
+            "dimensions_m": [
+              0.9758327901363373,
+              3.9100001007318497,
+              0.9744954109191895
+            ]
+          }
+        },
+        "mud_tank_single/level_indicator": {
+          "bomId": "RB3/mud_tank_single/level_indicator",
+          "name": "level indicator",
+          "specs": {
+            "dimensions_m": [
+              0.17000000178813934,
+              2.0999999046325684,
+              0.057500001043081284
+            ],
+            "type": "Visual level scale"
+          }
+        },
+        "mud_tank_single/light_walkway_front": {
+          "bomId": "RB3/mud_tank_single/light_walkway_front",
+          "name": "light walkway front",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.3384577184915538,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        },
+        "mud_tank_single/light_walkway_rear": {
+          "bomId": "RB3/mud_tank_single/light_walkway_rear",
+          "name": "light walkway rear",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.3384577184915538,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        }
+      }
+    },
+    {
+      "id": "mud_pump_single",
+      "name": "Single 1,600 hp triplex mud pump",
+      "kind": "mud",
+      "specs": {
+        "hp": 1600,
+        "max_psi": 7500,
+        "motor_kW": 1193,
+        "cylinders": 3,
+        "stroke_in": 12,
+        "ratingBasis": "Maximum pressure depends on liner diameter; maximum pressure and flow are not simultaneous"
+      },
+      "front": "Fluid-end service face / discharge",
+      "view": [
+        1.4,
+        0.85,
+        1.6
+      ],
+      "unitCount": 1,
+      "lods": {
+        "H": {
+          "file": "glb/mud_pump_single_lodH.glb",
+          "triangles": 13660,
+          "bytes": 432684,
+          "drawCalls": 40,
+          "boundingBox": {
+            "min": [
+              -2.424999952316284,
+              0,
+              -3.244749903678894
+            ],
+            "max": [
+              2.424999952316284,
+              3.1799999956041574,
+              3.244749903678894
+            ],
+            "size": [
+              4.849999904632568,
+              3.1799999956041574,
+              6.489499807357788
+            ]
+          },
+          "nodeToBom": {
+            "mud_pump_single/skid": "RB3/mud_pump_single/skid",
+            "mud_pump_single/power_end": "RB3/mud_pump_single/power_end",
+            "mud_pump_single/drive_motor": "RB3/mud_pump_single/drive_motor",
+            "mud_pump_single/drive_guard": "RB3/mud_pump_single/drive_guard",
+            "mud_pump_single/liners_and_pony_rods": "RB3/mud_pump_single/liners_and_pony_rods",
+            "mud_pump_single/fluid_end": "RB3/mud_pump_single/fluid_end",
+            "mud_pump_single/suction_manifold": "RB3/mud_pump_single/suction_manifold",
+            "mud_pump_single/discharge_manifold": "RB3/mud_pump_single/discharge_manifold",
+            "mud_pump_single/pulsation_dampener": "RB3/mud_pump_single/pulsation_dampener",
+            "mud_pump_single/liner_cooling_and_lubrication": "RB3/mud_pump_single/liner_cooling_and_lubrication",
+            "mud_pump_single/control_panel": "RB3/mud_pump_single/control_panel",
+            "mud_pump_single/light_service": "RB3/mud_pump_single/light_service"
+          },
+          "bakedAO": true,
+          "optimisation": {
+            "before": 13684,
+            "after": 13684,
+            "budget": 60000,
+            "maxPositionErrorMetres": 0.008
+          },
+          "textureMax": 2048
+        },
+        "M": {
+          "file": "glb/mud_pump_single_lodM.glb",
+          "triangles": 6588,
+          "bytes": 286744,
+          "drawCalls": 40,
+          "boundingBox": {
+            "min": [
+              -2.424999952316284,
+              0,
+              -3.244749903678894
+            ],
+            "max": [
+              2.424999952316284,
+              3.1799999956041574,
+              3.244749903678894
+            ],
+            "size": [
+              4.849999904632568,
+              3.1799999956041574,
+              6.489499807357788
+            ]
+          },
+          "nodeToBom": {
+            "mud_pump_single/skid": "RB3/mud_pump_single/skid",
+            "mud_pump_single/power_end": "RB3/mud_pump_single/power_end",
+            "mud_pump_single/drive_motor": "RB3/mud_pump_single/drive_motor",
+            "mud_pump_single/drive_guard": "RB3/mud_pump_single/drive_guard",
+            "mud_pump_single/liners_and_pony_rods": "RB3/mud_pump_single/liners_and_pony_rods",
+            "mud_pump_single/fluid_end": "RB3/mud_pump_single/fluid_end",
+            "mud_pump_single/suction_manifold": "RB3/mud_pump_single/suction_manifold",
+            "mud_pump_single/discharge_manifold": "RB3/mud_pump_single/discharge_manifold",
+            "mud_pump_single/pulsation_dampener": "RB3/mud_pump_single/pulsation_dampener",
+            "mud_pump_single/liner_cooling_and_lubrication": "RB3/mud_pump_single/liner_cooling_and_lubrication",
+            "mud_pump_single/control_panel": "RB3/mud_pump_single/control_panel",
+            "mud_pump_single/light_service": "RB3/mud_pump_single/light_service"
+          },
+          "bakedAO": true,
+          "optimisation": {
+            "before": 6600,
+            "after": 6600,
+            "budget": 20000,
+            "maxPositionErrorMetres": 0.035
+          },
+          "textureMax": 1024
+        },
+        "L": {
+          "file": "glb/mud_pump_single_lodL.glb",
+          "triangles": 1896,
+          "bytes": 134936,
+          "drawCalls": 29,
+          "boundingBox": {
+            "min": [
+              -2.424999952316284,
+              0,
+              -3.244749903678894
+            ],
+            "max": [
+              2.424999952316284,
+              3.1799999956041574,
+              3.2052499055862427
+            ],
+            "size": [
+              4.849999904632568,
+              3.1799999956041574,
+              6.449999809265137
+            ]
+          },
+          "nodeToBom": {
+            "mud_pump_single/skid": "RB3/mud_pump_single/skid",
+            "mud_pump_single/power_end": "RB3/mud_pump_single/power_end",
+            "mud_pump_single/drive_motor": "RB3/mud_pump_single/drive_motor",
+            "mud_pump_single/drive_guard": "RB3/mud_pump_single/drive_guard",
+            "mud_pump_single/liners_and_pony_rods": "RB3/mud_pump_single/liners_and_pony_rods",
+            "mud_pump_single/fluid_end": "RB3/mud_pump_single/fluid_end",
+            "mud_pump_single/suction_manifold": "RB3/mud_pump_single/suction_manifold",
+            "mud_pump_single/discharge_manifold": "RB3/mud_pump_single/discharge_manifold",
+            "mud_pump_single/pulsation_dampener": "RB3/mud_pump_single/pulsation_dampener",
+            "mud_pump_single/liner_cooling_and_lubrication": "RB3/mud_pump_single/liner_cooling_and_lubrication",
+            "mud_pump_single/control_panel": "RB3/mud_pump_single/control_panel",
+            "mud_pump_single/light_service": "RB3/mud_pump_single/light_service"
+          },
+          "bakedAO": true,
+          "optimisation": {
+            "before": 1902,
+            "after": 1902,
+            "budget": 6000,
+            "maxPositionErrorMetres": 0.13
+          },
+          "textureMax": 512
+        }
+      },
+      "nodeToBom": {
+        "mud_pump_single/skid": "RB3/mud_pump_single/skid",
+        "mud_pump_single/power_end": "RB3/mud_pump_single/power_end",
+        "mud_pump_single/drive_motor": "RB3/mud_pump_single/drive_motor",
+        "mud_pump_single/drive_guard": "RB3/mud_pump_single/drive_guard",
+        "mud_pump_single/liners_and_pony_rods": "RB3/mud_pump_single/liners_and_pony_rods",
+        "mud_pump_single/fluid_end": "RB3/mud_pump_single/fluid_end",
+        "mud_pump_single/suction_manifold": "RB3/mud_pump_single/suction_manifold",
+        "mud_pump_single/discharge_manifold": "RB3/mud_pump_single/discharge_manifold",
+        "mud_pump_single/pulsation_dampener": "RB3/mud_pump_single/pulsation_dampener",
+        "mud_pump_single/liner_cooling_and_lubrication": "RB3/mud_pump_single/liner_cooling_and_lubrication",
+        "mud_pump_single/control_panel": "RB3/mud_pump_single/control_panel",
+        "mud_pump_single/light_service": "RB3/mud_pump_single/light_service"
+      },
+      "components": [
+        {
+          "nodePath": "mud_pump_single/skid",
+          "bomId": "RB3/mud_pump_single/skid",
+          "name": "skid",
+          "specs": {
+            "dimensions_m": [
+              4.849999904632568,
+              0.5600000027567148,
+              6.449999809265137
+            ],
+            "width_m": 4.85,
+            "length_m": 6.45
+          }
+        },
+        {
+          "nodePath": "mud_pump_single/power_end",
+          "bomId": "RB3/mud_pump_single/power_end",
+          "name": "power end",
+          "specs": {
+            "dimensions_m": [
+              2.9674999713897705,
+              1.8774999678134918,
+              2.0770000219345093
+            ],
+            "hp": 1600,
+            "stroke_in": 12
+          }
+        },
+        {
+          "nodePath": "mud_pump_single/drive_motor",
+          "bomId": "RB3/mud_pump_single/drive_motor",
+          "name": "drive motor",
+          "specs": {
+            "dimensions_m": [
+              2.9000000953674316,
+              1.5049999952316284,
+              1.2527999877929688
+            ],
+            "kW": 1193,
+            "hp": 1600,
+            "type": "AC induction motor"
+          }
+        },
+        {
+          "nodePath": "mud_pump_single/drive_guard",
+          "bomId": "RB3/mud_pump_single/drive_guard",
+          "name": "drive guard",
+          "specs": {
+            "dimensions_m": [
+              0.3539999723434448,
+              1.7300000190734863,
+              2.5599999129772186
+            ]
+          }
+        },
+        {
+          "nodePath": "mud_pump_single/liners_and_pony_rods",
+          "bomId": "RB3/mud_pump_single/liners_and_pony_rods",
+          "name": "liners and pony rods",
+          "specs": {
+            "dimensions_m": [
+              2.319999933242798,
+              0.8600000143051149,
+              1.2649999856948853
+            ],
+            "quantity": 3
+          }
+        },
+        {
+          "nodePath": "mud_pump_single/fluid_end",
+          "bomId": "RB3/mud_pump_single/fluid_end",
+          "name": "fluid end",
+          "specs": {
+            "dimensions_m": [
+              2.370000123977661,
+              1.64000004529953,
+              1.0099999904632568
+            ],
+            "max_psi": 7500,
+            "cylinders": 3
+          }
+        },
+        {
+          "nodePath": "mud_pump_single/suction_manifold",
+          "bomId": "RB3/mud_pump_single/suction_manifold",
+          "name": "suction manifold",
+          "specs": {
+            "dimensions_m": [
+              3.494499921798706,
+              0.6460000276565552,
+              0.6460000276565552
+            ],
+            "connection": "process"
+          }
+        },
+        {
+          "nodePath": "mud_pump_single/discharge_manifold",
+          "bomId": "RB3/mud_pump_single/discharge_manifold",
+          "name": "discharge manifold",
+          "specs": {
+            "dimensions_m": [
+              3.718999981880188,
+              1.1039999723434448,
+              1.179499864578247
+            ],
+            "max_psi": 7500,
+            "connection": "High-pressure discharge"
+          }
+        },
+        {
+          "nodePath": "mud_pump_single/pulsation_dampener",
+          "bomId": "RB3/mud_pump_single/pulsation_dampener",
+          "name": "pulsation dampener",
+          "specs": {
+            "dimensions_m": [
+              0.8000000119209288,
+              1.1299999952316284,
+              0.8330000042915344
+            ],
+            "type": "Bladder-type discharge dampener"
+          }
+        },
+        {
+          "nodePath": "mud_pump_single/liner_cooling_and_lubrication",
+          "bomId": "RB3/mud_pump_single/liner_cooling_and_lubrication",
+          "name": "liner cooling and lubrication",
+          "specs": {
+            "dimensions_m": [
+              2.9871007204055786,
+              1.084255963563919,
+              2.159444570541382
+            ]
+          }
+        },
+        {
+          "nodePath": "mud_pump_single/control_panel",
+          "bomId": "RB3/mud_pump_single/control_panel",
+          "name": "control panel",
+          "specs": {
+            "dimensions_m": [
+              0.6399999856948853,
+              0.8599999845027924,
+              0.3199999928474426
+            ],
+            "type": "Local controls and emergency stop"
+          }
+        },
+        {
+          "nodePath": "mud_pump_single/light_service",
+          "bomId": "RB3/mud_pump_single/light_service",
+          "name": "light service",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        }
+      ],
+      "anchors": {
+        "attach_base": {
+          "nodePath": "mud_pump_single/attach_base",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "role": "Ground / receiving surface"
+        }
+      },
+      "screenshots": {
+        "day": "screenshots/mud_pump_single_day.png",
+        "night": "screenshots/mud_pump_single_night.png"
+      },
+      "sourceToOriginOffset": [
+        0,
+        3.7252903539730653e-10,
+        -0.019749999046325684
+      ],
+      "boundingBox": {
+        "min": [
+          -2.424999952316284,
+          0,
+          -3.244749903678894
+        ],
+        "max": [
+          2.424999952316284,
+          3.1799999956041574,
+          3.244749903678894
+        ],
+        "size": [
+          4.849999904632568,
+          3.1799999956041574,
+          6.489499807357788
+        ]
+      },
+      "nodes": {
+        "mud_pump_single/skid": {
+          "bomId": "RB3/mud_pump_single/skid",
+          "name": "skid",
+          "specs": {
+            "dimensions_m": [
+              4.849999904632568,
+              0.5600000027567148,
+              6.449999809265137
+            ],
+            "width_m": 4.85,
+            "length_m": 6.45
+          }
+        },
+        "mud_pump_single/power_end": {
+          "bomId": "RB3/mud_pump_single/power_end",
+          "name": "power end",
+          "specs": {
+            "dimensions_m": [
+              2.9674999713897705,
+              1.8774999678134918,
+              2.0770000219345093
+            ],
+            "hp": 1600,
+            "stroke_in": 12
+          }
+        },
+        "mud_pump_single/drive_motor": {
+          "bomId": "RB3/mud_pump_single/drive_motor",
+          "name": "drive motor",
+          "specs": {
+            "dimensions_m": [
+              2.9000000953674316,
+              1.5049999952316284,
+              1.2527999877929688
+            ],
+            "kW": 1193,
+            "hp": 1600,
+            "type": "AC induction motor"
+          }
+        },
+        "mud_pump_single/drive_guard": {
+          "bomId": "RB3/mud_pump_single/drive_guard",
+          "name": "drive guard",
+          "specs": {
+            "dimensions_m": [
+              0.3539999723434448,
+              1.7300000190734863,
+              2.5599999129772186
+            ]
+          }
+        },
+        "mud_pump_single/liners_and_pony_rods": {
+          "bomId": "RB3/mud_pump_single/liners_and_pony_rods",
+          "name": "liners and pony rods",
+          "specs": {
+            "dimensions_m": [
+              2.319999933242798,
+              0.8600000143051149,
+              1.2649999856948853
+            ],
+            "quantity": 3
+          }
+        },
+        "mud_pump_single/fluid_end": {
+          "bomId": "RB3/mud_pump_single/fluid_end",
+          "name": "fluid end",
+          "specs": {
+            "dimensions_m": [
+              2.370000123977661,
+              1.64000004529953,
+              1.0099999904632568
+            ],
+            "max_psi": 7500,
+            "cylinders": 3
+          }
+        },
+        "mud_pump_single/suction_manifold": {
+          "bomId": "RB3/mud_pump_single/suction_manifold",
+          "name": "suction manifold",
+          "specs": {
+            "dimensions_m": [
+              3.494499921798706,
+              0.6460000276565552,
+              0.6460000276565552
+            ],
+            "connection": "process"
+          }
+        },
+        "mud_pump_single/discharge_manifold": {
+          "bomId": "RB3/mud_pump_single/discharge_manifold",
+          "name": "discharge manifold",
+          "specs": {
+            "dimensions_m": [
+              3.718999981880188,
+              1.1039999723434448,
+              1.179499864578247
+            ],
+            "max_psi": 7500,
+            "connection": "High-pressure discharge"
+          }
+        },
+        "mud_pump_single/pulsation_dampener": {
+          "bomId": "RB3/mud_pump_single/pulsation_dampener",
+          "name": "pulsation dampener",
+          "specs": {
+            "dimensions_m": [
+              0.8000000119209288,
+              1.1299999952316284,
+              0.8330000042915344
+            ],
+            "type": "Bladder-type discharge dampener"
+          }
+        },
+        "mud_pump_single/liner_cooling_and_lubrication": {
+          "bomId": "RB3/mud_pump_single/liner_cooling_and_lubrication",
+          "name": "liner cooling and lubrication",
+          "specs": {
+            "dimensions_m": [
+              2.9871007204055786,
+              1.084255963563919,
+              2.159444570541382
+            ]
+          }
+        },
+        "mud_pump_single/control_panel": {
+          "bomId": "RB3/mud_pump_single/control_panel",
+          "name": "control panel",
+          "specs": {
+            "dimensions_m": [
+              0.6399999856948853,
+              0.8599999845027924,
+              0.3199999928474426
+            ],
+            "type": "Local controls and emergency stop"
+          }
+        },
+        "mud_pump_single/light_service": {
+          "bomId": "RB3/mud_pump_single/light_service",
+          "name": "light service",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        }
+      }
+    },
+    {
+      "id": "frac_pump_truck_single",
+      "name": "Single 2,500 hhp frac pump trailer",
+      "kind": "stimulation",
+      "specs": {
+        "hhp": 2500,
+        "max_psi": 15000,
+        "engine_bhp": 3000,
+        "cylinders": 5,
+        "form": "Unhitched tri-axle semi-trailer on deployed landing legs",
+        "ratingBasis": "Representative hydraulic output; pressure/flow envelope depends on plunger and speed"
+      },
+      "front": "Kingpin / towing direction",
+      "view": [
+        1.5,
+        0.85,
+        -1.2
+      ],
+      "unitCount": 1,
+      "lods": {
+        "H": {
+          "file": "glb/frac_pump_truck_single_lodH.glb",
+          "triangles": 36492,
+          "bytes": 655432,
+          "drawCalls": 73,
+          "boundingBox": {
+            "min": [
+              -1.5700000524520874,
+              0,
+              -7.107499972879887
+            ],
+            "max": [
+              1.5700000524520874,
+              4.432000190485269,
+              7.107499972879887
+            ],
+            "size": [
+              3.140000104904175,
+              4.432000190485269,
+              14.214999945759773
+            ]
+          },
+          "nodeToBom": {
+            "frac_pump_truck_single/trailer_chassis": "RB3/frac_pump_truck_single/trailer_chassis",
+            "frac_pump_truck_single/running_gear": "RB3/frac_pump_truck_single/running_gear",
+            "frac_pump_truck_single/landing_legs": "RB3/frac_pump_truck_single/landing_legs",
+            "frac_pump_truck_single/kingpin_and_gooseneck": "RB3/frac_pump_truck_single/kingpin_and_gooseneck",
+            "frac_pump_truck_single/radiator": "RB3/frac_pump_truck_single/radiator",
+            "frac_pump_truck_single/engine": "RB3/frac_pump_truck_single/engine",
+            "frac_pump_truck_single/engine/engine_castings": "RB3/frac_pump_truck_single/engine/engine_castings",
+            "frac_pump_truck_single/engine/turbochargers_and_intake": "RB3/frac_pump_truck_single/engine/turbochargers_and_intake",
+            "frac_pump_truck_single/engine/filters_and_fuel_lines": "RB3/frac_pump_truck_single/engine/filters_and_fuel_lines",
+            "frac_pump_truck_single/exhaust_and_heat_shields": "RB3/frac_pump_truck_single/exhaust_and_heat_shields",
+            "frac_pump_truck_single/transmission": "RB3/frac_pump_truck_single/transmission",
+            "frac_pump_truck_single/driveshaft_guard": "RB3/frac_pump_truck_single/driveshaft_guard",
+            "frac_pump_truck_single/pump_power_end": "RB3/frac_pump_truck_single/pump_power_end",
+            "frac_pump_truck_single/pump_fluid_end": "RB3/frac_pump_truck_single/pump_fluid_end",
+            "frac_pump_truck_single/high_pressure_manifold": "RB3/frac_pump_truck_single/high_pressure_manifold",
+            "frac_pump_truck_single/suction_manifold": "RB3/frac_pump_truck_single/suction_manifold",
+            "frac_pump_truck_single/lube_and_cooling_pack": "RB3/frac_pump_truck_single/lube_and_cooling_pack",
+            "frac_pump_truck_single/fuel_tank": "RB3/frac_pump_truck_single/fuel_tank",
+            "frac_pump_truck_single/service_walkway": "RB3/frac_pump_truck_single/service_walkway",
+            "frac_pump_truck_single/handrails": "RB3/frac_pump_truck_single/handrails",
+            "frac_pump_truck_single/access_steps": "RB3/frac_pump_truck_single/access_steps",
+            "frac_pump_truck_single/reflectors_and_mudguards": "RB3/frac_pump_truck_single/reflectors_and_mudguards",
+            "frac_pump_truck_single/control_panel": "RB3/frac_pump_truck_single/control_panel",
+            "frac_pump_truck_single/light_work_rear": "RB3/frac_pump_truck_single/light_work_rear",
+            "frac_pump_truck_single/light_work_engine": "RB3/frac_pump_truck_single/light_work_engine",
+            "frac_pump_truck_single/light_tail_left": "RB3/frac_pump_truck_single/light_tail_left",
+            "frac_pump_truck_single/light_tail_right": "RB3/frac_pump_truck_single/light_tail_right"
+          },
+          "bakedAO": true,
+          "optimisation": {
+            "before": 36492,
+            "after": 36492,
+            "budget": 60000,
+            "maxPositionErrorMetres": 0.008
+          },
+          "textureMax": 2048
+        },
+        "M": {
+          "file": "glb/frac_pump_truck_single_lodM.glb",
+          "triangles": 11008,
+          "bytes": 364236,
+          "drawCalls": 73,
+          "boundingBox": {
+            "min": [
+              -1.5700000524520874,
+              0.006999999377876515,
+              -7.107499972879887
+            ],
+            "max": [
+              1.5700000524520874,
+              4.432000190485269,
+              7.107499972879887
+            ],
+            "size": [
+              3.140000104904175,
+              4.425000191107392,
+              14.214999945759773
+            ]
+          },
+          "nodeToBom": {
+            "frac_pump_truck_single/trailer_chassis": "RB3/frac_pump_truck_single/trailer_chassis",
+            "frac_pump_truck_single/running_gear": "RB3/frac_pump_truck_single/running_gear",
+            "frac_pump_truck_single/landing_legs": "RB3/frac_pump_truck_single/landing_legs",
+            "frac_pump_truck_single/kingpin_and_gooseneck": "RB3/frac_pump_truck_single/kingpin_and_gooseneck",
+            "frac_pump_truck_single/radiator": "RB3/frac_pump_truck_single/radiator",
+            "frac_pump_truck_single/engine": "RB3/frac_pump_truck_single/engine",
+            "frac_pump_truck_single/engine/engine_castings": "RB3/frac_pump_truck_single/engine/engine_castings",
+            "frac_pump_truck_single/engine/turbochargers_and_intake": "RB3/frac_pump_truck_single/engine/turbochargers_and_intake",
+            "frac_pump_truck_single/engine/filters_and_fuel_lines": "RB3/frac_pump_truck_single/engine/filters_and_fuel_lines",
+            "frac_pump_truck_single/exhaust_and_heat_shields": "RB3/frac_pump_truck_single/exhaust_and_heat_shields",
+            "frac_pump_truck_single/transmission": "RB3/frac_pump_truck_single/transmission",
+            "frac_pump_truck_single/driveshaft_guard": "RB3/frac_pump_truck_single/driveshaft_guard",
+            "frac_pump_truck_single/pump_power_end": "RB3/frac_pump_truck_single/pump_power_end",
+            "frac_pump_truck_single/pump_fluid_end": "RB3/frac_pump_truck_single/pump_fluid_end",
+            "frac_pump_truck_single/high_pressure_manifold": "RB3/frac_pump_truck_single/high_pressure_manifold",
+            "frac_pump_truck_single/suction_manifold": "RB3/frac_pump_truck_single/suction_manifold",
+            "frac_pump_truck_single/lube_and_cooling_pack": "RB3/frac_pump_truck_single/lube_and_cooling_pack",
+            "frac_pump_truck_single/fuel_tank": "RB3/frac_pump_truck_single/fuel_tank",
+            "frac_pump_truck_single/service_walkway": "RB3/frac_pump_truck_single/service_walkway",
+            "frac_pump_truck_single/handrails": "RB3/frac_pump_truck_single/handrails",
+            "frac_pump_truck_single/access_steps": "RB3/frac_pump_truck_single/access_steps",
+            "frac_pump_truck_single/reflectors_and_mudguards": "RB3/frac_pump_truck_single/reflectors_and_mudguards",
+            "frac_pump_truck_single/control_panel": "RB3/frac_pump_truck_single/control_panel",
+            "frac_pump_truck_single/light_work_rear": "RB3/frac_pump_truck_single/light_work_rear",
+            "frac_pump_truck_single/light_work_engine": "RB3/frac_pump_truck_single/light_work_engine",
+            "frac_pump_truck_single/light_tail_left": "RB3/frac_pump_truck_single/light_tail_left",
+            "frac_pump_truck_single/light_tail_right": "RB3/frac_pump_truck_single/light_tail_right"
+          },
+          "bakedAO": true,
+          "optimisation": {
+            "before": 11008,
+            "after": 11008,
+            "budget": 20000,
+            "maxPositionErrorMetres": 0.035
+          },
+          "textureMax": 1024
+        },
+        "L": {
+          "file": "glb/frac_pump_truck_single_lodL.glb",
+          "triangles": 5086,
+          "bytes": 204396,
+          "drawCalls": 62,
+          "boundingBox": {
+            "min": [
+              -1.5700000524520874,
+              0.006999999377876515,
+              -7.107499972879887
+            ],
+            "max": [
+              1.5700000524520874,
+              4.432000190485269,
+              7.107499972879887
+            ],
+            "size": [
+              3.140000104904175,
+              4.425000191107392,
+              14.214999945759773
+            ]
+          },
+          "nodeToBom": {
+            "frac_pump_truck_single/trailer_chassis": "RB3/frac_pump_truck_single/trailer_chassis",
+            "frac_pump_truck_single/running_gear": "RB3/frac_pump_truck_single/running_gear",
+            "frac_pump_truck_single/landing_legs": "RB3/frac_pump_truck_single/landing_legs",
+            "frac_pump_truck_single/kingpin_and_gooseneck": "RB3/frac_pump_truck_single/kingpin_and_gooseneck",
+            "frac_pump_truck_single/radiator": "RB3/frac_pump_truck_single/radiator",
+            "frac_pump_truck_single/engine": "RB3/frac_pump_truck_single/engine",
+            "frac_pump_truck_single/engine/engine_castings": "RB3/frac_pump_truck_single/engine/engine_castings",
+            "frac_pump_truck_single/engine/turbochargers_and_intake": "RB3/frac_pump_truck_single/engine/turbochargers_and_intake",
+            "frac_pump_truck_single/engine/filters_and_fuel_lines": "RB3/frac_pump_truck_single/engine/filters_and_fuel_lines",
+            "frac_pump_truck_single/exhaust_and_heat_shields": "RB3/frac_pump_truck_single/exhaust_and_heat_shields",
+            "frac_pump_truck_single/transmission": "RB3/frac_pump_truck_single/transmission",
+            "frac_pump_truck_single/driveshaft_guard": "RB3/frac_pump_truck_single/driveshaft_guard",
+            "frac_pump_truck_single/pump_power_end": "RB3/frac_pump_truck_single/pump_power_end",
+            "frac_pump_truck_single/pump_fluid_end": "RB3/frac_pump_truck_single/pump_fluid_end",
+            "frac_pump_truck_single/high_pressure_manifold": "RB3/frac_pump_truck_single/high_pressure_manifold",
+            "frac_pump_truck_single/suction_manifold": "RB3/frac_pump_truck_single/suction_manifold",
+            "frac_pump_truck_single/lube_and_cooling_pack": "RB3/frac_pump_truck_single/lube_and_cooling_pack",
+            "frac_pump_truck_single/fuel_tank": "RB3/frac_pump_truck_single/fuel_tank",
+            "frac_pump_truck_single/service_walkway": "RB3/frac_pump_truck_single/service_walkway",
+            "frac_pump_truck_single/handrails": "RB3/frac_pump_truck_single/handrails",
+            "frac_pump_truck_single/access_steps": "RB3/frac_pump_truck_single/access_steps",
+            "frac_pump_truck_single/reflectors_and_mudguards": "RB3/frac_pump_truck_single/reflectors_and_mudguards",
+            "frac_pump_truck_single/control_panel": "RB3/frac_pump_truck_single/control_panel",
+            "frac_pump_truck_single/light_work_rear": "RB3/frac_pump_truck_single/light_work_rear",
+            "frac_pump_truck_single/light_work_engine": "RB3/frac_pump_truck_single/light_work_engine",
+            "frac_pump_truck_single/light_tail_left": "RB3/frac_pump_truck_single/light_tail_left",
+            "frac_pump_truck_single/light_tail_right": "RB3/frac_pump_truck_single/light_tail_right"
+          },
+          "bakedAO": true,
+          "optimisation": {
+            "before": 5086,
+            "after": 5086,
+            "budget": 6000,
+            "maxPositionErrorMetres": 0.13
+          },
+          "textureMax": 512
+        }
+      },
+      "nodeToBom": {
+        "frac_pump_truck_single/trailer_chassis": "RB3/frac_pump_truck_single/trailer_chassis",
+        "frac_pump_truck_single/running_gear": "RB3/frac_pump_truck_single/running_gear",
+        "frac_pump_truck_single/landing_legs": "RB3/frac_pump_truck_single/landing_legs",
+        "frac_pump_truck_single/kingpin_and_gooseneck": "RB3/frac_pump_truck_single/kingpin_and_gooseneck",
+        "frac_pump_truck_single/radiator": "RB3/frac_pump_truck_single/radiator",
+        "frac_pump_truck_single/engine": "RB3/frac_pump_truck_single/engine",
+        "frac_pump_truck_single/engine/engine_castings": "RB3/frac_pump_truck_single/engine/engine_castings",
+        "frac_pump_truck_single/engine/turbochargers_and_intake": "RB3/frac_pump_truck_single/engine/turbochargers_and_intake",
+        "frac_pump_truck_single/engine/filters_and_fuel_lines": "RB3/frac_pump_truck_single/engine/filters_and_fuel_lines",
+        "frac_pump_truck_single/exhaust_and_heat_shields": "RB3/frac_pump_truck_single/exhaust_and_heat_shields",
+        "frac_pump_truck_single/transmission": "RB3/frac_pump_truck_single/transmission",
+        "frac_pump_truck_single/driveshaft_guard": "RB3/frac_pump_truck_single/driveshaft_guard",
+        "frac_pump_truck_single/pump_power_end": "RB3/frac_pump_truck_single/pump_power_end",
+        "frac_pump_truck_single/pump_fluid_end": "RB3/frac_pump_truck_single/pump_fluid_end",
+        "frac_pump_truck_single/high_pressure_manifold": "RB3/frac_pump_truck_single/high_pressure_manifold",
+        "frac_pump_truck_single/suction_manifold": "RB3/frac_pump_truck_single/suction_manifold",
+        "frac_pump_truck_single/lube_and_cooling_pack": "RB3/frac_pump_truck_single/lube_and_cooling_pack",
+        "frac_pump_truck_single/fuel_tank": "RB3/frac_pump_truck_single/fuel_tank",
+        "frac_pump_truck_single/service_walkway": "RB3/frac_pump_truck_single/service_walkway",
+        "frac_pump_truck_single/handrails": "RB3/frac_pump_truck_single/handrails",
+        "frac_pump_truck_single/access_steps": "RB3/frac_pump_truck_single/access_steps",
+        "frac_pump_truck_single/reflectors_and_mudguards": "RB3/frac_pump_truck_single/reflectors_and_mudguards",
+        "frac_pump_truck_single/control_panel": "RB3/frac_pump_truck_single/control_panel",
+        "frac_pump_truck_single/light_work_rear": "RB3/frac_pump_truck_single/light_work_rear",
+        "frac_pump_truck_single/light_work_engine": "RB3/frac_pump_truck_single/light_work_engine",
+        "frac_pump_truck_single/light_tail_left": "RB3/frac_pump_truck_single/light_tail_left",
+        "frac_pump_truck_single/light_tail_right": "RB3/frac_pump_truck_single/light_tail_right"
+      },
+      "components": [
+        {
+          "nodePath": "frac_pump_truck_single/trailer_chassis",
+          "bomId": "RB3/frac_pump_truck_single/trailer_chassis",
+          "name": "trailer chassis",
+          "specs": {
+            "dimensions_m": [
+              2.690000057220459,
+              0.6790000200271606,
+              14.119999885559082
+            ],
+            "axles": 3,
+            "length_m": 14,
+            "width_m": 2.55
+          }
+        },
+        {
+          "nodePath": "frac_pump_truck_single/running_gear",
+          "bomId": "RB3/frac_pump_truck_single/running_gear",
+          "name": "running gear",
+          "specs": {
+            "dimensions_m": [
+              2.615000009536743,
+              1.1539999549277127,
+              3.753999948501587
+            ],
+            "axles": 3,
+            "tyres": 12
+          }
+        },
+        {
+          "nodePath": "frac_pump_truck_single/landing_legs",
+          "bomId": "RB3/frac_pump_truck_single/landing_legs",
+          "name": "landing legs",
+          "specs": {
+            "dimensions_m": [
+              2.4200000762939453,
+              1.2949999574571849,
+              1.008284330368042
+            ],
+            "state": "Deployed"
+          }
+        },
+        {
+          "nodePath": "frac_pump_truck_single/kingpin_and_gooseneck",
+          "bomId": "RB3/frac_pump_truck_single/kingpin_and_gooseneck",
+          "name": "kingpin and gooseneck",
+          "specs": {
+            "dimensions_m": [
+              1.7999999523162842,
+              0.3649999499320984,
+              1.4000000953674316
+            ]
+          }
+        },
+        {
+          "nodePath": "frac_pump_truck_single/radiator",
+          "bomId": "RB3/frac_pump_truck_single/radiator",
+          "name": "radiator",
+          "specs": {
+            "dimensions_m": [
+              2.299999952316284,
+              2.3399999141693115,
+              0.6949999779462814
+            ],
+            "type": "Engine cooling radiator with axial fan"
+          }
+        },
+        {
+          "nodePath": "frac_pump_truck_single/engine",
+          "bomId": "RB3/frac_pump_truck_single/engine",
+          "name": "engine",
+          "specs": {
+            "dimensions_m": [
+              2.2532219982147215,
+              2.285699960589409,
+              3.021000108718872
+            ],
+            "type": "High-output V12 diesel",
+            "cylinders": 12,
+            "brake_hp": 3000,
+            "fuel": "diesel"
+          }
+        },
+        {
+          "nodePath": "frac_pump_truck_single/engine/engine_castings",
+          "bomId": "RB3/frac_pump_truck_single/engine/engine_castings",
+          "name": "engine castings",
+          "specs": {
+            "dimensions_m": [
+              2.0522978353500365,
+              1.8583373540639876,
+              3.021000108718872
+            ]
+          }
+        },
+        {
+          "nodePath": "frac_pump_truck_single/engine/turbochargers_and_intake",
+          "bomId": "RB3/frac_pump_truck_single/engine/turbochargers_and_intake",
+          "name": "turbochargers and intake",
+          "specs": {
+            "dimensions_m": [
+              2.232120072841644,
+              0.8265000271797183,
+              2.1716999673843382
+            ]
+          }
+        },
+        {
+          "nodePath": "frac_pump_truck_single/engine/filters_and_fuel_lines",
+          "bomId": "RB3/frac_pump_truck_single/engine/filters_and_fuel_lines",
+          "name": "filters and fuel lines",
+          "specs": {
+            "dimensions_m": [
+              2.242961926460266,
+              1.095562486052513,
+              2.1112671554088593
+            ]
+          }
+        },
+        {
+          "nodePath": "frac_pump_truck_single/exhaust_and_heat_shields",
+          "bomId": "RB3/frac_pump_truck_single/exhaust_and_heat_shields",
+          "name": "exhaust and heat shields",
+          "specs": {
+            "dimensions_m": [
+              2.059999942779541,
+              1.2900002002716064,
+              0.8633682727813721
+            ]
+          }
+        },
+        {
+          "nodePath": "frac_pump_truck_single/transmission",
+          "bomId": "RB3/frac_pump_truck_single/transmission",
+          "name": "transmission",
+          "specs": {
+            "dimensions_m": [
+              1.100000023841858,
+              0.949999988079071,
+              1.54749995470047
+            ],
+            "type": "Automatic power-shift transmission"
+          }
+        },
+        {
+          "nodePath": "frac_pump_truck_single/driveshaft_guard",
+          "bomId": "RB3/frac_pump_truck_single/driveshaft_guard",
+          "name": "driveshaft guard",
+          "specs": {
+            "dimensions_m": [
+              0.5,
+              0.5,
+              1.2000000178813934
+            ]
+          }
+        },
+        {
+          "nodePath": "frac_pump_truck_single/pump_power_end",
+          "bomId": "RB3/frac_pump_truck_single/pump_power_end",
+          "name": "pump power end",
+          "specs": {
+            "dimensions_m": [
+              2.337499976158142,
+              1.2724999785423279,
+              1.597000002861023
+            ],
+            "type": "Quintuplex",
+            "hhp": 2500
+          }
+        },
+        {
+          "nodePath": "frac_pump_truck_single/pump_fluid_end",
+          "bomId": "RB3/frac_pump_truck_single/pump_fluid_end",
+          "name": "pump fluid end",
+          "specs": {
+            "dimensions_m": [
+              2.25,
+              1.1200001239776611,
+              1.712499976158142
+            ],
+            "cylinders": 5,
+            "max_psi": 15000
+          }
+        },
+        {
+          "nodePath": "frac_pump_truck_single/high_pressure_manifold",
+          "bomId": "RB3/frac_pump_truck_single/high_pressure_manifold",
+          "name": "high pressure manifold",
+          "specs": {
+            "dimensions_m": [
+              2.3585000038146973,
+              0.4609999656677246,
+              2.755000114440918
+            ],
+            "max_psi": 15000,
+            "connection": "15000 psi visual discharge connection"
+          }
+        },
+        {
+          "nodePath": "frac_pump_truck_single/suction_manifold",
+          "bomId": "RB3/frac_pump_truck_single/suction_manifold",
+          "name": "suction manifold",
+          "specs": {
+            "dimensions_m": [
+              2.600000023841858,
+              0.5699999332427979,
+              0.570000171661377
+            ],
+            "connection": "process"
+          }
+        },
+        {
+          "nodePath": "frac_pump_truck_single/lube_and_cooling_pack",
+          "bomId": "RB3/frac_pump_truck_single/lube_and_cooling_pack",
+          "name": "lube and cooling pack",
+          "specs": {
+            "dimensions_m": [
+              0.8350000381469727,
+              0.75,
+              0.9000000059604645
+            ]
+          }
+        },
+        {
+          "nodePath": "frac_pump_truck_single/fuel_tank",
+          "bomId": "RB3/frac_pump_truck_single/fuel_tank",
+          "name": "fuel tank",
+          "specs": {
+            "dimensions_m": [
+              1.5199999809265137,
+              0.5999999642372131,
+              2.049999952316284
+            ],
+            "fuel": "diesel"
+          }
+        },
+        {
+          "nodePath": "frac_pump_truck_single/service_walkway",
+          "bomId": "RB3/frac_pump_truck_single/service_walkway",
+          "name": "service walkway",
+          "specs": {
+            "dimensions_m": [
+              0.5049999356269836,
+              0.09000003337860107,
+              10.154999732971191
+            ]
+          }
+        },
+        {
+          "nodePath": "frac_pump_truck_single/handrails",
+          "bomId": "RB3/frac_pump_truck_single/handrails",
+          "name": "handrails",
+          "specs": {
+            "dimensions_m": [
+              2.7360000610351562,
+              1.1239999532699585,
+              10.656000137329102
+            ]
+          }
+        },
+        {
+          "nodePath": "frac_pump_truck_single/access_steps",
+          "bomId": "RB3/frac_pump_truck_single/access_steps",
+          "name": "access steps",
+          "specs": {
+            "dimensions_m": [
+              0.9079999923706055,
+              2.552726797759533,
+              1.4022784233093262
+            ]
+          }
+        },
+        {
+          "nodePath": "frac_pump_truck_single/reflectors_and_mudguards",
+          "bomId": "RB3/frac_pump_truck_single/reflectors_and_mudguards",
+          "name": "reflectors and mudguards",
+          "specs": {
+            "dimensions_m": [
+              3.140000104904175,
+              1.102499932050705,
+              12.360000133514404
+            ]
+          }
+        },
+        {
+          "nodePath": "frac_pump_truck_single/control_panel",
+          "bomId": "RB3/frac_pump_truck_single/control_panel",
+          "name": "control panel",
+          "specs": {
+            "dimensions_m": [
+              0.6399999856948853,
+              0.8599999845027924,
+              0.3199999928474426
+            ],
+            "type": "Local controls and emergency stop"
+          }
+        },
+        {
+          "nodePath": "frac_pump_truck_single/light_work_rear",
+          "bomId": "RB3/frac_pump_truck_single/light_work_rear",
+          "name": "light work rear",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        },
+        {
+          "nodePath": "frac_pump_truck_single/light_work_engine",
+          "bomId": "RB3/frac_pump_truck_single/light_work_engine",
+          "name": "light work engine",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        },
+        {
+          "nodePath": "frac_pump_truck_single/light_tail_left",
+          "bomId": "RB3/frac_pump_truck_single/light_tail_left",
+          "name": "light tail left",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "Red obstruction beacon",
+            "emissive": true
+          }
+        },
+        {
+          "nodePath": "frac_pump_truck_single/light_tail_right",
+          "bomId": "RB3/frac_pump_truck_single/light_tail_right",
+          "name": "light tail right",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "Red obstruction beacon",
+            "emissive": true
+          }
+        }
+      ],
+      "anchors": {
+        "attach_base": {
+          "nodePath": "frac_pump_truck_single/attach_base",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "role": "Ground / receiving surface"
+        }
+      },
+      "screenshots": {
+        "day": "screenshots/frac_pump_truck_single_day.png",
+        "night": "screenshots/frac_pump_truck_single_night.png"
+      },
+      "sourceToOriginOffset": [
+        0,
+        0.00699999975040555,
+        0.04750003010034565
+      ],
+      "boundingBox": {
+        "min": [
+          -1.5700000524520874,
+          0,
+          -7.107499972879887
+        ],
+        "max": [
+          1.5700000524520874,
+          4.432000190485269,
+          7.107499972879887
+        ],
+        "size": [
+          3.140000104904175,
+          4.432000190485269,
+          14.214999945759773
+        ]
+      },
+      "nodes": {
+        "frac_pump_truck_single/trailer_chassis": {
+          "bomId": "RB3/frac_pump_truck_single/trailer_chassis",
+          "name": "trailer chassis",
+          "specs": {
+            "dimensions_m": [
+              2.690000057220459,
+              0.6790000200271606,
+              14.119999885559082
+            ],
+            "axles": 3,
+            "length_m": 14,
+            "width_m": 2.55
+          }
+        },
+        "frac_pump_truck_single/running_gear": {
+          "bomId": "RB3/frac_pump_truck_single/running_gear",
+          "name": "running gear",
+          "specs": {
+            "dimensions_m": [
+              2.615000009536743,
+              1.1539999549277127,
+              3.753999948501587
+            ],
+            "axles": 3,
+            "tyres": 12
+          }
+        },
+        "frac_pump_truck_single/landing_legs": {
+          "bomId": "RB3/frac_pump_truck_single/landing_legs",
+          "name": "landing legs",
+          "specs": {
+            "dimensions_m": [
+              2.4200000762939453,
+              1.2949999574571849,
+              1.008284330368042
+            ],
+            "state": "Deployed"
+          }
+        },
+        "frac_pump_truck_single/kingpin_and_gooseneck": {
+          "bomId": "RB3/frac_pump_truck_single/kingpin_and_gooseneck",
+          "name": "kingpin and gooseneck",
+          "specs": {
+            "dimensions_m": [
+              1.7999999523162842,
+              0.3649999499320984,
+              1.4000000953674316
+            ]
+          }
+        },
+        "frac_pump_truck_single/radiator": {
+          "bomId": "RB3/frac_pump_truck_single/radiator",
+          "name": "radiator",
+          "specs": {
+            "dimensions_m": [
+              2.299999952316284,
+              2.3399999141693115,
+              0.6949999779462814
+            ],
+            "type": "Engine cooling radiator with axial fan"
+          }
+        },
+        "frac_pump_truck_single/engine": {
+          "bomId": "RB3/frac_pump_truck_single/engine",
+          "name": "engine",
+          "specs": {
+            "dimensions_m": [
+              2.2532219982147215,
+              2.285699960589409,
+              3.021000108718872
+            ],
+            "type": "High-output V12 diesel",
+            "cylinders": 12,
+            "brake_hp": 3000,
+            "fuel": "diesel"
+          }
+        },
+        "frac_pump_truck_single/engine/engine_castings": {
+          "bomId": "RB3/frac_pump_truck_single/engine/engine_castings",
+          "name": "engine castings",
+          "specs": {
+            "dimensions_m": [
+              2.0522978353500365,
+              1.8583373540639876,
+              3.021000108718872
+            ]
+          }
+        },
+        "frac_pump_truck_single/engine/turbochargers_and_intake": {
+          "bomId": "RB3/frac_pump_truck_single/engine/turbochargers_and_intake",
+          "name": "turbochargers and intake",
+          "specs": {
+            "dimensions_m": [
+              2.232120072841644,
+              0.8265000271797183,
+              2.1716999673843382
+            ]
+          }
+        },
+        "frac_pump_truck_single/engine/filters_and_fuel_lines": {
+          "bomId": "RB3/frac_pump_truck_single/engine/filters_and_fuel_lines",
+          "name": "filters and fuel lines",
+          "specs": {
+            "dimensions_m": [
+              2.242961926460266,
+              1.095562486052513,
+              2.1112671554088593
+            ]
+          }
+        },
+        "frac_pump_truck_single/exhaust_and_heat_shields": {
+          "bomId": "RB3/frac_pump_truck_single/exhaust_and_heat_shields",
+          "name": "exhaust and heat shields",
+          "specs": {
+            "dimensions_m": [
+              2.059999942779541,
+              1.2900002002716064,
+              0.8633682727813721
+            ]
+          }
+        },
+        "frac_pump_truck_single/transmission": {
+          "bomId": "RB3/frac_pump_truck_single/transmission",
+          "name": "transmission",
+          "specs": {
+            "dimensions_m": [
+              1.100000023841858,
+              0.949999988079071,
+              1.54749995470047
+            ],
+            "type": "Automatic power-shift transmission"
+          }
+        },
+        "frac_pump_truck_single/driveshaft_guard": {
+          "bomId": "RB3/frac_pump_truck_single/driveshaft_guard",
+          "name": "driveshaft guard",
+          "specs": {
+            "dimensions_m": [
+              0.5,
+              0.5,
+              1.2000000178813934
+            ]
+          }
+        },
+        "frac_pump_truck_single/pump_power_end": {
+          "bomId": "RB3/frac_pump_truck_single/pump_power_end",
+          "name": "pump power end",
+          "specs": {
+            "dimensions_m": [
+              2.337499976158142,
+              1.2724999785423279,
+              1.597000002861023
+            ],
+            "type": "Quintuplex",
+            "hhp": 2500
+          }
+        },
+        "frac_pump_truck_single/pump_fluid_end": {
+          "bomId": "RB3/frac_pump_truck_single/pump_fluid_end",
+          "name": "pump fluid end",
+          "specs": {
+            "dimensions_m": [
+              2.25,
+              1.1200001239776611,
+              1.712499976158142
+            ],
+            "cylinders": 5,
+            "max_psi": 15000
+          }
+        },
+        "frac_pump_truck_single/high_pressure_manifold": {
+          "bomId": "RB3/frac_pump_truck_single/high_pressure_manifold",
+          "name": "high pressure manifold",
+          "specs": {
+            "dimensions_m": [
+              2.3585000038146973,
+              0.4609999656677246,
+              2.755000114440918
+            ],
+            "max_psi": 15000,
+            "connection": "15000 psi visual discharge connection"
+          }
+        },
+        "frac_pump_truck_single/suction_manifold": {
+          "bomId": "RB3/frac_pump_truck_single/suction_manifold",
+          "name": "suction manifold",
+          "specs": {
+            "dimensions_m": [
+              2.600000023841858,
+              0.5699999332427979,
+              0.570000171661377
+            ],
+            "connection": "process"
+          }
+        },
+        "frac_pump_truck_single/lube_and_cooling_pack": {
+          "bomId": "RB3/frac_pump_truck_single/lube_and_cooling_pack",
+          "name": "lube and cooling pack",
+          "specs": {
+            "dimensions_m": [
+              0.8350000381469727,
+              0.75,
+              0.9000000059604645
+            ]
+          }
+        },
+        "frac_pump_truck_single/fuel_tank": {
+          "bomId": "RB3/frac_pump_truck_single/fuel_tank",
+          "name": "fuel tank",
+          "specs": {
+            "dimensions_m": [
+              1.5199999809265137,
+              0.5999999642372131,
+              2.049999952316284
+            ],
+            "fuel": "diesel"
+          }
+        },
+        "frac_pump_truck_single/service_walkway": {
+          "bomId": "RB3/frac_pump_truck_single/service_walkway",
+          "name": "service walkway",
+          "specs": {
+            "dimensions_m": [
+              0.5049999356269836,
+              0.09000003337860107,
+              10.154999732971191
+            ]
+          }
+        },
+        "frac_pump_truck_single/handrails": {
+          "bomId": "RB3/frac_pump_truck_single/handrails",
+          "name": "handrails",
+          "specs": {
+            "dimensions_m": [
+              2.7360000610351562,
+              1.1239999532699585,
+              10.656000137329102
+            ]
+          }
+        },
+        "frac_pump_truck_single/access_steps": {
+          "bomId": "RB3/frac_pump_truck_single/access_steps",
+          "name": "access steps",
+          "specs": {
+            "dimensions_m": [
+              0.9079999923706055,
+              2.552726797759533,
+              1.4022784233093262
+            ]
+          }
+        },
+        "frac_pump_truck_single/reflectors_and_mudguards": {
+          "bomId": "RB3/frac_pump_truck_single/reflectors_and_mudguards",
+          "name": "reflectors and mudguards",
+          "specs": {
+            "dimensions_m": [
+              3.140000104904175,
+              1.102499932050705,
+              12.360000133514404
+            ]
+          }
+        },
+        "frac_pump_truck_single/control_panel": {
+          "bomId": "RB3/frac_pump_truck_single/control_panel",
+          "name": "control panel",
+          "specs": {
+            "dimensions_m": [
+              0.6399999856948853,
+              0.8599999845027924,
+              0.3199999928474426
+            ],
+            "type": "Local controls and emergency stop"
+          }
+        },
+        "frac_pump_truck_single/light_work_rear": {
+          "bomId": "RB3/frac_pump_truck_single/light_work_rear",
+          "name": "light work rear",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        },
+        "frac_pump_truck_single/light_work_engine": {
+          "bomId": "RB3/frac_pump_truck_single/light_work_engine",
+          "name": "light work engine",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        },
+        "frac_pump_truck_single/light_tail_left": {
+          "bomId": "RB3/frac_pump_truck_single/light_tail_left",
+          "name": "light tail left",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "Red obstruction beacon",
+            "emissive": true
+          }
+        },
+        "frac_pump_truck_single/light_tail_right": {
+          "bomId": "RB3/frac_pump_truck_single/light_tail_right",
+          "name": "light tail right",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "Red obstruction beacon",
+            "emissive": true
+          }
+        }
+      }
+    },
+    {
+      "id": "offshore_derrick",
+      "name": "Standalone 170 ft offshore derrick",
+      "kind": "structure",
+      "specs": {
+        "height_m": 51.816,
+        "height_ft": 170,
+        "hook_load_lbf": 1500000,
+        "hook_load_kN": 6672.3324,
+        "baseWidth_m": 12.2,
+        "baseDepth_m": 12.2,
+        "ratingBasis": "Representative static hook-load class; visual assembly only"
+      },
+      "front": "Open V-door face",
+      "view": [
+        1.1,
+        0.65,
+        1.65
+      ],
+      "unitCount": 1,
+      "lods": {
+        "H": {
+          "file": "glb/offshore_derrick_lodH.glb",
+          "triangles": 48340,
+          "bytes": 546124,
+          "drawCalls": 38,
+          "boundingBox": {
+            "min": [
+              -6.7052528858184814,
+              0,
+              -6.599999904632568
+            ],
+            "max": [
+              6.7052528858184814,
+              52.79000091701746,
+              6.599999904632568
+            ],
+            "size": [
+              13.410505771636963,
+              52.79000091701746,
+              13.199999809265137
+            ]
+          },
+          "nodeToBom": {
+            "offshore_derrick/main_legs": "RB3/offshore_derrick/main_legs",
+            "offshore_derrick/horizontal_girts": "RB3/offshore_derrick/horizontal_girts",
+            "offshore_derrick/diagonal_bracing": "RB3/offshore_derrick/diagonal_bracing",
+            "offshore_derrick/splice_plates_and_fasteners": "RB3/offshore_derrick/splice_plates_and_fasteners",
+            "offshore_derrick/crown_support_frame": "RB3/offshore_derrick/crown_support_frame",
+            "offshore_derrick/access_platforms": "RB3/offshore_derrick/access_platforms",
+            "offshore_derrick/ladder_and_safety_cage": "RB3/offshore_derrick/ladder_and_safety_cage",
+            "offshore_derrick/top_drive_guide_rails": "RB3/offshore_derrick/top_drive_guide_rails",
+            "offshore_derrick/racking_platform_structure": "RB3/offshore_derrick/racking_platform_structure",
+            "offshore_derrick/light_derrick_6": "RB3/offshore_derrick/light_derrick_6",
+            "offshore_derrick/light_derrick_18": "RB3/offshore_derrick/light_derrick_18",
+            "offshore_derrick/light_derrick_32": "RB3/offshore_derrick/light_derrick_32",
+            "offshore_derrick/light_derrick_47": "RB3/offshore_derrick/light_derrick_47",
+            "offshore_derrick/light_obstruction_left": "RB3/offshore_derrick/light_obstruction_left",
+            "offshore_derrick/light_obstruction_right": "RB3/offshore_derrick/light_obstruction_right"
+          },
+          "bakedAO": true,
+          "optimisation": {
+            "before": 48340,
+            "after": 48340,
+            "budget": 60000,
+            "maxPositionErrorMetres": 0.008
+          },
+          "textureMax": 2048
+        },
+        "M": {
+          "file": "glb/offshore_derrick_lodM.glb",
+          "triangles": 10292,
+          "bytes": 302372,
+          "drawCalls": 39,
+          "boundingBox": {
+            "min": [
+              -6.7052528858184814,
+              0,
+              -6.599999904632568
+            ],
+            "max": [
+              6.7052528858184814,
+              52.79000091701746,
+              6.599999904632568
+            ],
+            "size": [
+              13.410505771636963,
+              52.79000091701746,
+              13.199999809265137
+            ]
+          },
+          "nodeToBom": {
+            "offshore_derrick/main_legs": "RB3/offshore_derrick/main_legs",
+            "offshore_derrick/horizontal_girts": "RB3/offshore_derrick/horizontal_girts",
+            "offshore_derrick/diagonal_bracing": "RB3/offshore_derrick/diagonal_bracing",
+            "offshore_derrick/splice_plates_and_fasteners": "RB3/offshore_derrick/splice_plates_and_fasteners",
+            "offshore_derrick/crown_support_frame": "RB3/offshore_derrick/crown_support_frame",
+            "offshore_derrick/access_platforms": "RB3/offshore_derrick/access_platforms",
+            "offshore_derrick/ladder_and_safety_cage": "RB3/offshore_derrick/ladder_and_safety_cage",
+            "offshore_derrick/top_drive_guide_rails": "RB3/offshore_derrick/top_drive_guide_rails",
+            "offshore_derrick/racking_platform_structure": "RB3/offshore_derrick/racking_platform_structure",
+            "offshore_derrick/light_derrick_6": "RB3/offshore_derrick/light_derrick_6",
+            "offshore_derrick/light_derrick_18": "RB3/offshore_derrick/light_derrick_18",
+            "offshore_derrick/light_derrick_32": "RB3/offshore_derrick/light_derrick_32",
+            "offshore_derrick/light_derrick_47": "RB3/offshore_derrick/light_derrick_47",
+            "offshore_derrick/light_obstruction_left": "RB3/offshore_derrick/light_obstruction_left",
+            "offshore_derrick/light_obstruction_right": "RB3/offshore_derrick/light_obstruction_right"
+          },
+          "bakedAO": true,
+          "optimisation": {
+            "before": 10292,
+            "after": 10292,
+            "budget": 20000,
+            "maxPositionErrorMetres": 0.035
+          },
+          "textureMax": 1024
+        },
+        "L": {
+          "file": "glb/offshore_derrick_lodL.glb",
+          "triangles": 4052,
+          "bytes": 156828,
+          "drawCalls": 33,
+          "boundingBox": {
+            "min": [
+              -6.7052528858184814,
+              0,
+              -6.599999904632568
+            ],
+            "max": [
+              6.7052528858184814,
+              52.79000091701746,
+              6.599999904632568
+            ],
+            "size": [
+              13.410505771636963,
+              52.79000091701746,
+              13.199999809265137
+            ]
+          },
+          "nodeToBom": {
+            "offshore_derrick/main_legs": "RB3/offshore_derrick/main_legs",
+            "offshore_derrick/horizontal_girts": "RB3/offshore_derrick/horizontal_girts",
+            "offshore_derrick/diagonal_bracing": "RB3/offshore_derrick/diagonal_bracing",
+            "offshore_derrick/splice_plates_and_fasteners": "RB3/offshore_derrick/splice_plates_and_fasteners",
+            "offshore_derrick/crown_support_frame": "RB3/offshore_derrick/crown_support_frame",
+            "offshore_derrick/access_platforms": "RB3/offshore_derrick/access_platforms",
+            "offshore_derrick/ladder_and_safety_cage": "RB3/offshore_derrick/ladder_and_safety_cage",
+            "offshore_derrick/top_drive_guide_rails": "RB3/offshore_derrick/top_drive_guide_rails",
+            "offshore_derrick/racking_platform_structure": "RB3/offshore_derrick/racking_platform_structure",
+            "offshore_derrick/light_derrick_6": "RB3/offshore_derrick/light_derrick_6",
+            "offshore_derrick/light_derrick_18": "RB3/offshore_derrick/light_derrick_18",
+            "offshore_derrick/light_derrick_32": "RB3/offshore_derrick/light_derrick_32",
+            "offshore_derrick/light_derrick_47": "RB3/offshore_derrick/light_derrick_47",
+            "offshore_derrick/light_obstruction_left": "RB3/offshore_derrick/light_obstruction_left",
+            "offshore_derrick/light_obstruction_right": "RB3/offshore_derrick/light_obstruction_right"
+          },
+          "bakedAO": true,
+          "optimisation": {
+            "before": 4052,
+            "after": 4052,
+            "budget": 6000,
+            "maxPositionErrorMetres": 0.13
+          },
+          "textureMax": 512
+        }
+      },
+      "nodeToBom": {
+        "offshore_derrick/main_legs": "RB3/offshore_derrick/main_legs",
+        "offshore_derrick/horizontal_girts": "RB3/offshore_derrick/horizontal_girts",
+        "offshore_derrick/diagonal_bracing": "RB3/offshore_derrick/diagonal_bracing",
+        "offshore_derrick/splice_plates_and_fasteners": "RB3/offshore_derrick/splice_plates_and_fasteners",
+        "offshore_derrick/crown_support_frame": "RB3/offshore_derrick/crown_support_frame",
+        "offshore_derrick/access_platforms": "RB3/offshore_derrick/access_platforms",
+        "offshore_derrick/ladder_and_safety_cage": "RB3/offshore_derrick/ladder_and_safety_cage",
+        "offshore_derrick/top_drive_guide_rails": "RB3/offshore_derrick/top_drive_guide_rails",
+        "offshore_derrick/racking_platform_structure": "RB3/offshore_derrick/racking_platform_structure",
+        "offshore_derrick/light_derrick_6": "RB3/offshore_derrick/light_derrick_6",
+        "offshore_derrick/light_derrick_18": "RB3/offshore_derrick/light_derrick_18",
+        "offshore_derrick/light_derrick_32": "RB3/offshore_derrick/light_derrick_32",
+        "offshore_derrick/light_derrick_47": "RB3/offshore_derrick/light_derrick_47",
+        "offshore_derrick/light_obstruction_left": "RB3/offshore_derrick/light_obstruction_left",
+        "offshore_derrick/light_obstruction_right": "RB3/offshore_derrick/light_obstruction_right"
+      },
+      "components": [
+        {
+          "nodePath": "offshore_derrick/main_legs",
+          "bomId": "RB3/offshore_derrick/main_legs",
+          "name": "main legs",
+          "specs": {
+            "dimensions_m": [
+              13.199999809265137,
+              51.85606765896082,
+              13.199999809265137
+            ],
+            "height_m": 51.816,
+            "staticHookLoad_lbf": 1500000
+          }
+        },
+        {
+          "nodePath": "offshore_derrick/horizontal_girts",
+          "bomId": "RB3/offshore_derrick/horizontal_girts",
+          "name": "horizontal girts",
+          "specs": {
+            "dimensions_m": [
+              12.322585105895996,
+              46.912401646375656,
+              12.281585693359375
+            ]
+          }
+        },
+        {
+          "nodePath": "offshore_derrick/diagonal_bracing",
+          "bomId": "RB3/offshore_derrick/diagonal_bracing",
+          "name": "diagonal bracing",
+          "specs": {
+            "dimensions_m": [
+              12.275289535522461,
+              51.57358029484749,
+              12.236664772033691
+            ]
+          }
+        },
+        {
+          "nodePath": "offshore_derrick/splice_plates_and_fasteners",
+          "bomId": "RB3/offshore_derrick/splice_plates_and_fasteners",
+          "name": "splice plates and fasteners",
+          "specs": {
+            "dimensions_m": [
+              12.692584991455078,
+              47.01239934563637,
+              12.692584991455078
+            ]
+          }
+        },
+        {
+          "nodePath": "offshore_derrick/crown_support_frame",
+          "bomId": "RB3/offshore_derrick/crown_support_frame",
+          "name": "crown support frame",
+          "specs": {
+            "dimensions_m": [
+              4.039999961853027,
+              0.7080000042915344,
+              4.328000068664551
+            ],
+            "type": "Structural cap only; crown machinery excluded"
+          }
+        },
+        {
+          "nodePath": "offshore_derrick/access_platforms",
+          "bomId": "RB3/offshore_derrick/access_platforms",
+          "name": "access platforms",
+          "specs": {
+            "dimensions_m": [
+              3.847614884376526,
+              36.52679443359375,
+              10.218073844909668
+            ]
+          }
+        },
+        {
+          "nodePath": "offshore_derrick/ladder_and_safety_cage",
+          "bomId": "RB3/offshore_derrick/ladder_and_safety_cage",
+          "name": "ladder and safety cage",
+          "specs": {
+            "dimensions_m": [
+              4.839211702346802,
+              51.62222108244896,
+              4.829926133155823
+            ],
+            "rungPitch_m": 0.3
+          }
+        },
+        {
+          "nodePath": "offshore_derrick/top_drive_guide_rails",
+          "bomId": "RB3/offshore_derrick/top_drive_guide_rails",
+          "name": "top drive guide rails",
+          "specs": {
+            "dimensions_m": [
+              1.2699999809265137,
+              50.41730907559395,
+              4.344891309738159
+            ],
+            "type": "Bare structural rails only"
+          }
+        },
+        {
+          "nodePath": "offshore_derrick/racking_platform_structure",
+          "bomId": "RB3/offshore_derrick/racking_platform_structure",
+          "name": "racking platform structure",
+          "specs": {
+            "dimensions_m": [
+              5.455999851226807,
+              3.4541893005371094,
+              1.3304996490478516
+            ]
+          }
+        },
+        {
+          "nodePath": "offshore_derrick/light_derrick_6",
+          "bomId": "RB3/offshore_derrick/light_derrick_6",
+          "name": "light derrick 6",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        },
+        {
+          "nodePath": "offshore_derrick/light_derrick_18",
+          "bomId": "RB3/offshore_derrick/light_derrick_18",
+          "name": "light derrick 18",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        },
+        {
+          "nodePath": "offshore_derrick/light_derrick_32",
+          "bomId": "RB3/offshore_derrick/light_derrick_32",
+          "name": "light derrick 32",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        },
+        {
+          "nodePath": "offshore_derrick/light_derrick_47",
+          "bomId": "RB3/offshore_derrick/light_derrick_47",
+          "name": "light derrick 47",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        },
+        {
+          "nodePath": "offshore_derrick/light_obstruction_left",
+          "bomId": "RB3/offshore_derrick/light_obstruction_left",
+          "name": "light obstruction left",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "Red obstruction beacon",
+            "emissive": true
+          }
+        },
+        {
+          "nodePath": "offshore_derrick/light_obstruction_right",
+          "bomId": "RB3/offshore_derrick/light_obstruction_right",
+          "name": "light obstruction right",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "Red obstruction beacon",
+            "emissive": true
+          }
+        }
+      ],
+      "anchors": {
+        "attach_base": {
+          "nodePath": "offshore_derrick/attach_base",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "role": "Ground / receiving surface"
+        },
+        "attach_top": {
+          "nodePath": "offshore_derrick/attach_top",
+          "position": [
+            -0.10525298118591309,
+            51.81600000149012,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "role": "Structural cap datum"
+        },
+        "attach_wellcentre": {
+          "nodePath": "offshore_derrick/attach_wellcentre",
+          "position": [
+            -0.10525298118591309,
+            1.4901161415892261e-09,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "role": "Derrick centreline at receiving deck"
+        },
+        "attach_foot_LB": {
+          "nodePath": "offshore_derrick/attach_foot_LB",
+          "position": [
+            -6.205252981185913,
+            1.4901161415892261e-09,
+            -6.1
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "role": "Derrick leg datum"
+        },
+        "attach_foot_LF": {
+          "nodePath": "offshore_derrick/attach_foot_LF",
+          "position": [
+            -6.205252981185913,
+            1.4901161415892261e-09,
+            6.1
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "role": "Derrick leg datum"
+        },
+        "attach_foot_RB": {
+          "nodePath": "offshore_derrick/attach_foot_RB",
+          "position": [
+            5.994747018814087,
+            1.4901161415892261e-09,
+            -6.1
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "role": "Derrick leg datum"
+        },
+        "attach_foot_RF": {
+          "nodePath": "offshore_derrick/attach_foot_RF",
+          "position": [
+            5.994747018814087,
+            1.4901161415892261e-09,
+            6.1
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "role": "Derrick leg datum"
+        }
+      },
+      "screenshots": {
+        "day": "screenshots/offshore_derrick_day.png",
+        "night": "screenshots/offshore_derrick_night.png"
+      },
+      "sourceToOriginOffset": [
+        -0.10525298118591309,
+        1.4901161415892261e-09,
+        0
+      ],
+      "boundingBox": {
+        "min": [
+          -6.7052528858184814,
+          0,
+          -6.599999904632568
+        ],
+        "max": [
+          6.7052528858184814,
+          52.79000091701746,
+          6.599999904632568
+        ],
+        "size": [
+          13.410505771636963,
+          52.79000091701746,
+          13.199999809265137
+        ]
+      },
+      "nodes": {
+        "offshore_derrick/main_legs": {
+          "bomId": "RB3/offshore_derrick/main_legs",
+          "name": "main legs",
+          "specs": {
+            "dimensions_m": [
+              13.199999809265137,
+              51.85606765896082,
+              13.199999809265137
+            ],
+            "height_m": 51.816,
+            "staticHookLoad_lbf": 1500000
+          }
+        },
+        "offshore_derrick/horizontal_girts": {
+          "bomId": "RB3/offshore_derrick/horizontal_girts",
+          "name": "horizontal girts",
+          "specs": {
+            "dimensions_m": [
+              12.322585105895996,
+              46.912401646375656,
+              12.281585693359375
+            ]
+          }
+        },
+        "offshore_derrick/diagonal_bracing": {
+          "bomId": "RB3/offshore_derrick/diagonal_bracing",
+          "name": "diagonal bracing",
+          "specs": {
+            "dimensions_m": [
+              12.275289535522461,
+              51.57358029484749,
+              12.236664772033691
+            ]
+          }
+        },
+        "offshore_derrick/splice_plates_and_fasteners": {
+          "bomId": "RB3/offshore_derrick/splice_plates_and_fasteners",
+          "name": "splice plates and fasteners",
+          "specs": {
+            "dimensions_m": [
+              12.692584991455078,
+              47.01239934563637,
+              12.692584991455078
+            ]
+          }
+        },
+        "offshore_derrick/crown_support_frame": {
+          "bomId": "RB3/offshore_derrick/crown_support_frame",
+          "name": "crown support frame",
+          "specs": {
+            "dimensions_m": [
+              4.039999961853027,
+              0.7080000042915344,
+              4.328000068664551
+            ],
+            "type": "Structural cap only; crown machinery excluded"
+          }
+        },
+        "offshore_derrick/access_platforms": {
+          "bomId": "RB3/offshore_derrick/access_platforms",
+          "name": "access platforms",
+          "specs": {
+            "dimensions_m": [
+              3.847614884376526,
+              36.52679443359375,
+              10.218073844909668
+            ]
+          }
+        },
+        "offshore_derrick/ladder_and_safety_cage": {
+          "bomId": "RB3/offshore_derrick/ladder_and_safety_cage",
+          "name": "ladder and safety cage",
+          "specs": {
+            "dimensions_m": [
+              4.839211702346802,
+              51.62222108244896,
+              4.829926133155823
+            ],
+            "rungPitch_m": 0.3
+          }
+        },
+        "offshore_derrick/top_drive_guide_rails": {
+          "bomId": "RB3/offshore_derrick/top_drive_guide_rails",
+          "name": "top drive guide rails",
+          "specs": {
+            "dimensions_m": [
+              1.2699999809265137,
+              50.41730907559395,
+              4.344891309738159
+            ],
+            "type": "Bare structural rails only"
+          }
+        },
+        "offshore_derrick/racking_platform_structure": {
+          "bomId": "RB3/offshore_derrick/racking_platform_structure",
+          "name": "racking platform structure",
+          "specs": {
+            "dimensions_m": [
+              5.455999851226807,
+              3.4541893005371094,
+              1.3304996490478516
+            ]
+          }
+        },
+        "offshore_derrick/light_derrick_6": {
+          "bomId": "RB3/offshore_derrick/light_derrick_6",
+          "name": "light derrick 6",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        },
+        "offshore_derrick/light_derrick_18": {
+          "bomId": "RB3/offshore_derrick/light_derrick_18",
+          "name": "light derrick 18",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        },
+        "offshore_derrick/light_derrick_32": {
+          "bomId": "RB3/offshore_derrick/light_derrick_32",
+          "name": "light derrick 32",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        },
+        "offshore_derrick/light_derrick_47": {
+          "bomId": "RB3/offshore_derrick/light_derrick_47",
+          "name": "light derrick 47",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        },
+        "offshore_derrick/light_obstruction_left": {
+          "bomId": "RB3/offshore_derrick/light_obstruction_left",
+          "name": "light obstruction left",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "Red obstruction beacon",
+            "emissive": true
+          }
+        },
+        "offshore_derrick/light_obstruction_right": {
+          "bomId": "RB3/offshore_derrick/light_obstruction_right",
+          "name": "light obstruction right",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "Red obstruction beacon",
+            "emissive": true
+          }
+        }
+      }
+    },
+    {
+      "id": "substructure_drill_floor",
+      "name": "Land substructure and drill floor",
+      "kind": "structure",
+      "specs": {
+        "floor_height_m": 9,
+        "setback_load_lbf": 500000,
+        "setback_load_kN": 2224.1108,
+        "rotary_load_lbf": 1000000,
+        "rotary_load_kN": 4448.2216,
+        "deckWidth_m": 12.2,
+        "deckDepth_m": 11.2,
+        "ratingBasis": "Representative independent static load classes, not a combined-load calculation"
+      },
+      "front": "V-door / pipe ramp",
+      "view": [
+        -1.25,
+        0.95,
+        1.6
+      ],
+      "unitCount": 1,
+      "lods": {
+        "H": {
+          "file": "glb/substructure_drill_floor_lodH.glb",
+          "triangles": 21104,
+          "bytes": 505652,
+          "drawCalls": 59,
+          "boundingBox": {
+            "min": [
+              -7.628000020980835,
+              0,
+              -6.414778470993042
+            ],
+            "max": [
+              7.628000020980835,
+              10.540000015497206,
+              6.414778470993042
+            ],
+            "size": [
+              15.25600004196167,
+              10.540000015497206,
+              12.829556941986084
+            ]
+          },
+          "nodeToBom": {
+            "substructure_drill_floor/substructure": "RB3/substructure_drill_floor/substructure",
+            "substructure_drill_floor/substructure/box_on_box_frames": "RB3/substructure_drill_floor/substructure/box_on_box_frames",
+            "substructure_drill_floor/substructure/floor_support_beams": "RB3/substructure_drill_floor/substructure/floor_support_beams",
+            "substructure_drill_floor/substructure/hinges_pins_and_gussets": "RB3/substructure_drill_floor/substructure/hinges_pins_and_gussets",
+            "substructure_drill_floor/drill_floor": "RB3/substructure_drill_floor/drill_floor",
+            "substructure_drill_floor/rotary_table": "RB3/substructure_drill_floor/rotary_table",
+            "substructure_drill_floor/setback": "RB3/substructure_drill_floor/setback",
+            "substructure_drill_floor/perimeter_grating": "RB3/substructure_drill_floor/perimeter_grating",
+            "substructure_drill_floor/handrails": "RB3/substructure_drill_floor/handrails",
+            "substructure_drill_floor/vdoor": "RB3/substructure_drill_floor/vdoor",
+            "substructure_drill_floor/stairs": "RB3/substructure_drill_floor/stairs",
+            "substructure_drill_floor/stairs/flight_1": "RB3/substructure_drill_floor/stairs/flight_1",
+            "substructure_drill_floor/stairs/flight_2": "RB3/substructure_drill_floor/stairs/flight_2",
+            "substructure_drill_floor/stairs/flight_3": "RB3/substructure_drill_floor/stairs/flight_3",
+            "substructure_drill_floor/stairs/stair_top_landing": "RB3/substructure_drill_floor/stairs/stair_top_landing",
+            "substructure_drill_floor/stairs/light_stair_1": "RB3/substructure_drill_floor/stairs/light_stair_1",
+            "substructure_drill_floor/stairs/light_stair_2": "RB3/substructure_drill_floor/stairs/light_stair_2",
+            "substructure_drill_floor/stairs/light_stair_3": "RB3/substructure_drill_floor/stairs/light_stair_3",
+            "substructure_drill_floor/derrick_mounts": "RB3/substructure_drill_floor/derrick_mounts",
+            "substructure_drill_floor/light_floor_1": "RB3/substructure_drill_floor/light_floor_1",
+            "substructure_drill_floor/light_floor_2": "RB3/substructure_drill_floor/light_floor_2",
+            "substructure_drill_floor/light_floor_3": "RB3/substructure_drill_floor/light_floor_3",
+            "substructure_drill_floor/light_floor_4": "RB3/substructure_drill_floor/light_floor_4"
+          },
+          "bakedAO": true,
+          "optimisation": {
+            "before": 21108,
+            "after": 21108,
+            "budget": 60000,
+            "maxPositionErrorMetres": 0.008
+          },
+          "textureMax": 2048
+        },
+        "M": {
+          "file": "glb/substructure_drill_floor_lodM.glb",
+          "triangles": 8692,
+          "bytes": 325888,
+          "drawCalls": 57,
+          "boundingBox": {
+            "min": [
+              -7.628000020980835,
+              0,
+              -6.414778470993042
+            ],
+            "max": [
+              7.628000020980835,
+              10.540000015497206,
+              6.414778470993042
+            ],
+            "size": [
+              15.25600004196167,
+              10.540000015497206,
+              12.829556941986084
+            ]
+          },
+          "nodeToBom": {
+            "substructure_drill_floor/substructure": "RB3/substructure_drill_floor/substructure",
+            "substructure_drill_floor/substructure/box_on_box_frames": "RB3/substructure_drill_floor/substructure/box_on_box_frames",
+            "substructure_drill_floor/substructure/floor_support_beams": "RB3/substructure_drill_floor/substructure/floor_support_beams",
+            "substructure_drill_floor/substructure/hinges_pins_and_gussets": "RB3/substructure_drill_floor/substructure/hinges_pins_and_gussets",
+            "substructure_drill_floor/drill_floor": "RB3/substructure_drill_floor/drill_floor",
+            "substructure_drill_floor/rotary_table": "RB3/substructure_drill_floor/rotary_table",
+            "substructure_drill_floor/setback": "RB3/substructure_drill_floor/setback",
+            "substructure_drill_floor/perimeter_grating": "RB3/substructure_drill_floor/perimeter_grating",
+            "substructure_drill_floor/handrails": "RB3/substructure_drill_floor/handrails",
+            "substructure_drill_floor/vdoor": "RB3/substructure_drill_floor/vdoor",
+            "substructure_drill_floor/stairs": "RB3/substructure_drill_floor/stairs",
+            "substructure_drill_floor/stairs/flight_1": "RB3/substructure_drill_floor/stairs/flight_1",
+            "substructure_drill_floor/stairs/flight_2": "RB3/substructure_drill_floor/stairs/flight_2",
+            "substructure_drill_floor/stairs/flight_3": "RB3/substructure_drill_floor/stairs/flight_3",
+            "substructure_drill_floor/stairs/stair_top_landing": "RB3/substructure_drill_floor/stairs/stair_top_landing",
+            "substructure_drill_floor/stairs/light_stair_1": "RB3/substructure_drill_floor/stairs/light_stair_1",
+            "substructure_drill_floor/stairs/light_stair_2": "RB3/substructure_drill_floor/stairs/light_stair_2",
+            "substructure_drill_floor/stairs/light_stair_3": "RB3/substructure_drill_floor/stairs/light_stair_3",
+            "substructure_drill_floor/derrick_mounts": "RB3/substructure_drill_floor/derrick_mounts",
+            "substructure_drill_floor/light_floor_1": "RB3/substructure_drill_floor/light_floor_1",
+            "substructure_drill_floor/light_floor_2": "RB3/substructure_drill_floor/light_floor_2",
+            "substructure_drill_floor/light_floor_3": "RB3/substructure_drill_floor/light_floor_3",
+            "substructure_drill_floor/light_floor_4": "RB3/substructure_drill_floor/light_floor_4"
+          },
+          "bakedAO": true,
+          "optimisation": {
+            "before": 8708,
+            "after": 8708,
+            "budget": 20000,
+            "maxPositionErrorMetres": 0.035
+          },
+          "textureMax": 1024
+        },
+        "L": {
+          "file": "glb/substructure_drill_floor_lodL.glb",
+          "triangles": 4588,
+          "bytes": 183888,
+          "drawCalls": 48,
+          "boundingBox": {
+            "min": [
+              -7.628000020980835,
+              0,
+              -6.414778470993042
+            ],
+            "max": [
+              7.628000020980835,
+              10.540000015497206,
+              6.414778470993042
+            ],
+            "size": [
+              15.25600004196167,
+              10.540000015497206,
+              12.829556941986084
+            ]
+          },
+          "nodeToBom": {
+            "substructure_drill_floor/substructure": "RB3/substructure_drill_floor/substructure",
+            "substructure_drill_floor/substructure/box_on_box_frames": "RB3/substructure_drill_floor/substructure/box_on_box_frames",
+            "substructure_drill_floor/substructure/floor_support_beams": "RB3/substructure_drill_floor/substructure/floor_support_beams",
+            "substructure_drill_floor/substructure/hinges_pins_and_gussets": "RB3/substructure_drill_floor/substructure/hinges_pins_and_gussets",
+            "substructure_drill_floor/drill_floor": "RB3/substructure_drill_floor/drill_floor",
+            "substructure_drill_floor/rotary_table": "RB3/substructure_drill_floor/rotary_table",
+            "substructure_drill_floor/setback": "RB3/substructure_drill_floor/setback",
+            "substructure_drill_floor/perimeter_grating": "RB3/substructure_drill_floor/perimeter_grating",
+            "substructure_drill_floor/handrails": "RB3/substructure_drill_floor/handrails",
+            "substructure_drill_floor/vdoor": "RB3/substructure_drill_floor/vdoor",
+            "substructure_drill_floor/stairs": "RB3/substructure_drill_floor/stairs",
+            "substructure_drill_floor/stairs/flight_1": "RB3/substructure_drill_floor/stairs/flight_1",
+            "substructure_drill_floor/stairs/flight_2": "RB3/substructure_drill_floor/stairs/flight_2",
+            "substructure_drill_floor/stairs/flight_3": "RB3/substructure_drill_floor/stairs/flight_3",
+            "substructure_drill_floor/stairs/stair_top_landing": "RB3/substructure_drill_floor/stairs/stair_top_landing",
+            "substructure_drill_floor/stairs/light_stair_1": "RB3/substructure_drill_floor/stairs/light_stair_1",
+            "substructure_drill_floor/stairs/light_stair_2": "RB3/substructure_drill_floor/stairs/light_stair_2",
+            "substructure_drill_floor/stairs/light_stair_3": "RB3/substructure_drill_floor/stairs/light_stair_3",
+            "substructure_drill_floor/derrick_mounts": "RB3/substructure_drill_floor/derrick_mounts",
+            "substructure_drill_floor/light_floor_1": "RB3/substructure_drill_floor/light_floor_1",
+            "substructure_drill_floor/light_floor_2": "RB3/substructure_drill_floor/light_floor_2",
+            "substructure_drill_floor/light_floor_3": "RB3/substructure_drill_floor/light_floor_3",
+            "substructure_drill_floor/light_floor_4": "RB3/substructure_drill_floor/light_floor_4"
+          },
+          "bakedAO": true,
+          "optimisation": {
+            "before": 4604,
+            "after": 4604,
+            "budget": 6000,
+            "maxPositionErrorMetres": 0.13
+          },
+          "textureMax": 512
+        }
+      },
+      "nodeToBom": {
+        "substructure_drill_floor/substructure": "RB3/substructure_drill_floor/substructure",
+        "substructure_drill_floor/substructure/box_on_box_frames": "RB3/substructure_drill_floor/substructure/box_on_box_frames",
+        "substructure_drill_floor/substructure/floor_support_beams": "RB3/substructure_drill_floor/substructure/floor_support_beams",
+        "substructure_drill_floor/substructure/hinges_pins_and_gussets": "RB3/substructure_drill_floor/substructure/hinges_pins_and_gussets",
+        "substructure_drill_floor/drill_floor": "RB3/substructure_drill_floor/drill_floor",
+        "substructure_drill_floor/rotary_table": "RB3/substructure_drill_floor/rotary_table",
+        "substructure_drill_floor/setback": "RB3/substructure_drill_floor/setback",
+        "substructure_drill_floor/perimeter_grating": "RB3/substructure_drill_floor/perimeter_grating",
+        "substructure_drill_floor/handrails": "RB3/substructure_drill_floor/handrails",
+        "substructure_drill_floor/vdoor": "RB3/substructure_drill_floor/vdoor",
+        "substructure_drill_floor/stairs": "RB3/substructure_drill_floor/stairs",
+        "substructure_drill_floor/stairs/flight_1": "RB3/substructure_drill_floor/stairs/flight_1",
+        "substructure_drill_floor/stairs/flight_2": "RB3/substructure_drill_floor/stairs/flight_2",
+        "substructure_drill_floor/stairs/flight_3": "RB3/substructure_drill_floor/stairs/flight_3",
+        "substructure_drill_floor/stairs/stair_top_landing": "RB3/substructure_drill_floor/stairs/stair_top_landing",
+        "substructure_drill_floor/stairs/light_stair_1": "RB3/substructure_drill_floor/stairs/light_stair_1",
+        "substructure_drill_floor/stairs/light_stair_2": "RB3/substructure_drill_floor/stairs/light_stair_2",
+        "substructure_drill_floor/stairs/light_stair_3": "RB3/substructure_drill_floor/stairs/light_stair_3",
+        "substructure_drill_floor/derrick_mounts": "RB3/substructure_drill_floor/derrick_mounts",
+        "substructure_drill_floor/light_floor_1": "RB3/substructure_drill_floor/light_floor_1",
+        "substructure_drill_floor/light_floor_2": "RB3/substructure_drill_floor/light_floor_2",
+        "substructure_drill_floor/light_floor_3": "RB3/substructure_drill_floor/light_floor_3",
+        "substructure_drill_floor/light_floor_4": "RB3/substructure_drill_floor/light_floor_4"
+      },
+      "components": [
+        {
+          "nodePath": "substructure_drill_floor/substructure",
+          "bomId": "RB3/substructure_drill_floor/substructure",
+          "name": "substructure",
+          "specs": {
+            "dimensions_m": [
+              12.199999809265137,
+              8.954000472426413,
+              11.57800006866455
+            ],
+            "floorHeight_m": 9,
+            "style": "Pass 2 oxide-red land rig / Showroom-compatible"
+          }
+        },
+        {
+          "nodePath": "substructure_drill_floor/substructure/box_on_box_frames",
+          "bomId": "RB3/substructure_drill_floor/substructure/box_on_box_frames",
+          "name": "box on box frames",
+          "specs": {
+            "dimensions_m": [
+              11.800000190734863,
+              8.954000472426413,
+              11.199999809265137
+            ]
+          }
+        },
+        {
+          "nodePath": "substructure_drill_floor/substructure/floor_support_beams",
+          "bomId": "RB3/substructure_drill_floor/substructure/floor_support_beams",
+          "name": "floor support beams",
+          "specs": {
+            "dimensions_m": [
+              12.199999809265137,
+              0.3000001907348633,
+              11.57800006866455
+            ]
+          }
+        },
+        {
+          "nodePath": "substructure_drill_floor/substructure/hinges_pins_and_gussets",
+          "bomId": "RB3/substructure_drill_floor/substructure/hinges_pins_and_gussets",
+          "name": "hinges pins and gussets",
+          "specs": {
+            "dimensions_m": [
+              11.482500076293945,
+              8.324999809265137,
+              10.020000457763672
+            ]
+          }
+        },
+        {
+          "nodePath": "substructure_drill_floor/drill_floor",
+          "bomId": "RB3/substructure_drill_floor/drill_floor",
+          "name": "drill floor",
+          "specs": {
+            "dimensions_m": [
+              12.199999809265137,
+              0.12999999523162842,
+              11.199999809265137
+            ],
+            "width_m": 12.2,
+            "depth_m": 11.2,
+            "surfaceHeight_m": 9
+          }
+        },
+        {
+          "nodePath": "substructure_drill_floor/rotary_table",
+          "bomId": "RB3/substructure_drill_floor/rotary_table",
+          "name": "rotary table",
+          "specs": {
+            "dimensions_m": [
+              2.3359999656677246,
+              0.42249999940395355,
+              2.350000023841858
+            ],
+            "staticLoad_lbf": 1000000,
+            "clearBore_m": 1.05
+          }
+        },
+        {
+          "nodePath": "substructure_drill_floor/setback",
+          "bomId": "RB3/substructure_drill_floor/setback",
+          "name": "setback",
+          "specs": {
+            "dimensions_m": [
+              4.900000095367432,
+              0.11500000208616257,
+              2.5
+            ],
+            "staticLoad_lbf": 500000
+          }
+        },
+        {
+          "nodePath": "substructure_drill_floor/perimeter_grating",
+          "bomId": "RB3/substructure_drill_floor/perimeter_grating",
+          "name": "perimeter grating",
+          "specs": {
+            "dimensions_m": [
+              12.225000381469727,
+              0.09000015258789062,
+              11.255000114440918
+            ]
+          }
+        },
+        {
+          "nodePath": "substructure_drill_floor/handrails",
+          "bomId": "RB3/substructure_drill_floor/handrails",
+          "name": "handrails",
+          "specs": {
+            "dimensions_m": [
+              12.255999565124512,
+              1.1239995956420898,
+              11.255999565124512
+            ]
+          }
+        },
+        {
+          "nodePath": "substructure_drill_floor/vdoor",
+          "bomId": "RB3/substructure_drill_floor/vdoor",
+          "name": "vdoor",
+          "specs": {
+            "dimensions_m": [
+              3.5,
+              1.0261764526367188,
+              1.640556812286377
+            ],
+            "direction": "+Z",
+            "type": "Pipe receiving ramp, short floor-level V-door"
+          }
+        },
+        {
+          "nodePath": "substructure_drill_floor/stairs",
+          "bomId": "RB3/substructure_drill_floor/stairs",
+          "name": "stairs",
+          "specs": {
+            "dimensions_m": [
+              3.078000068664551,
+              10.123999607563018,
+              6.855999946594238
+            ],
+            "flights": 3,
+            "rise_m_each": 3,
+            "clearWidth_m": 1.12
+          }
+        },
+        {
+          "nodePath": "substructure_drill_floor/stairs/flight_1",
+          "bomId": "RB3/substructure_drill_floor/stairs/flight_1",
+          "name": "flight 1",
+          "specs": {
+            "dimensions_m": [
+              2.8560004234313965,
+              4.124000084400177,
+              5.765605926513672
+            ]
+          }
+        },
+        {
+          "nodePath": "substructure_drill_floor/stairs/flight_2",
+          "bomId": "RB3/substructure_drill_floor/stairs/flight_2",
+          "name": "flight 2",
+          "specs": {
+            "dimensions_m": [
+              2.8560004234313965,
+              4.124000072479248,
+              5.765606120228767
+            ]
+          }
+        },
+        {
+          "nodePath": "substructure_drill_floor/stairs/flight_3",
+          "bomId": "RB3/substructure_drill_floor/stairs/flight_3",
+          "name": "flight 3",
+          "specs": {
+            "dimensions_m": [
+              1.3400001525878906,
+              4.120940208435058,
+              4.675212100148201
+            ]
+          }
+        },
+        {
+          "nodePath": "substructure_drill_floor/stairs/stair_top_landing",
+          "bomId": "RB3/substructure_drill_floor/stairs/stair_top_landing",
+          "name": "stair top landing",
+          "specs": {
+            "dimensions_m": [
+              1.5279998779296875,
+              1.2439994812011719,
+              1.5560000240802765
+            ]
+          }
+        },
+        {
+          "nodePath": "substructure_drill_floor/stairs/light_stair_1",
+          "bomId": "RB3/substructure_drill_floor/stairs/light_stair_1",
+          "name": "light stair 1",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        },
+        {
+          "nodePath": "substructure_drill_floor/stairs/light_stair_2",
+          "bomId": "RB3/substructure_drill_floor/stairs/light_stair_2",
+          "name": "light stair 2",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        },
+        {
+          "nodePath": "substructure_drill_floor/stairs/light_stair_3",
+          "bomId": "RB3/substructure_drill_floor/stairs/light_stair_3",
+          "name": "light stair 3",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        },
+        {
+          "nodePath": "substructure_drill_floor/derrick_mounts",
+          "bomId": "RB3/substructure_drill_floor/derrick_mounts",
+          "name": "derrick mounts",
+          "specs": {
+            "dimensions_m": [
+              10.460000038146973,
+              0.2174997329711914,
+              10.520000457763672
+            ],
+            "mountingPattern_m": [
+              9.6,
+              9.6
+            ]
+          }
+        },
+        {
+          "nodePath": "substructure_drill_floor/light_floor_1",
+          "bomId": "RB3/substructure_drill_floor/light_floor_1",
+          "name": "light floor 1",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        },
+        {
+          "nodePath": "substructure_drill_floor/light_floor_2",
+          "bomId": "RB3/substructure_drill_floor/light_floor_2",
+          "name": "light floor 2",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        },
+        {
+          "nodePath": "substructure_drill_floor/light_floor_3",
+          "bomId": "RB3/substructure_drill_floor/light_floor_3",
+          "name": "light floor 3",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        },
+        {
+          "nodePath": "substructure_drill_floor/light_floor_4",
+          "bomId": "RB3/substructure_drill_floor/light_floor_4",
+          "name": "light floor 4",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        }
+      ],
+      "anchors": {
+        "attach_base": {
+          "nodePath": "substructure_drill_floor/attach_base",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "role": "Ground / receiving surface"
+        },
+        "attach_mast_foot_LB": {
+          "nodePath": "substructure_drill_floor/attach_mast_foot_LB",
+          "position": [
+            -3.2999997615814207,
+            9.160000011920928,
+            -5.425778436660766
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "role": "Land mast mounting plate"
+        },
+        "attach_mast_foot_LF": {
+          "nodePath": "substructure_drill_floor/attach_mast_foot_LF",
+          "position": [
+            -3.2999997615814207,
+            9.160000011920928,
+            4.174221563339233
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "role": "Land mast mounting plate"
+        },
+        "attach_mast_foot_RB": {
+          "nodePath": "substructure_drill_floor/attach_mast_foot_RB",
+          "position": [
+            6.300000238418579,
+            9.160000011920928,
+            -5.425778436660766
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "role": "Land mast mounting plate"
+        },
+        "attach_mast_foot_RF": {
+          "nodePath": "substructure_drill_floor/attach_mast_foot_RF",
+          "position": [
+            6.300000238418579,
+            9.160000011920928,
+            4.174221563339233
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "role": "Land mast mounting plate"
+        },
+        "attach_top": {
+          "nodePath": "substructure_drill_floor/attach_top",
+          "position": [
+            1.500000238418579,
+            9.000000011920928,
+            -0.6257784366607666
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "role": "Deck / mast stacking datum"
+        },
+        "attach_wellcentre": {
+          "nodePath": "substructure_drill_floor/attach_wellcentre",
+          "position": [
+            1.500000238418579,
+            9.000000011920928,
+            -0.6257784366607666
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "role": "Rotary clear-bore centre at drill-floor surface"
+        },
+        "attach_vdoor": {
+          "nodePath": "substructure_drill_floor/attach_vdoor",
+          "position": [
+            1.500000238418579,
+            9.000000011920928,
+            5.874221563339233
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "role": "Pipe-handling approach datum; faces +Z"
+        }
+      },
+      "screenshots": {
+        "day": "screenshots/substructure_drill_floor_day.png",
+        "night": "screenshots/substructure_drill_floor_night.png"
+      },
+      "sourceToOriginOffset": [
+        1.500000238418579,
+        1.1920929132713809e-08,
+        -0.6257784366607666
+      ],
+      "boundingBox": {
+        "min": [
+          -7.628000020980835,
+          0,
+          -6.414778470993042
+        ],
+        "max": [
+          7.628000020980835,
+          10.540000015497206,
+          6.414778470993042
+        ],
+        "size": [
+          15.25600004196167,
+          10.540000015497206,
+          12.829556941986084
+        ]
+      },
+      "showroomA": {
+        "reuse": true,
+        "style": "Same oxide / ivory / safety-yellow material family and 9 m floor datum as pass 2",
+        "exactBlenderParity": "Unverified: no Showroom A Blender file was available",
+        "mastMountPattern_m": [
+          9.6,
+          9.6
+        ],
+        "offshoreDerrickMountPattern_m": [
+          12.2,
+          12.2
+        ],
+        "mountingNote": "Offshore derrick feet require a separate engineered adapter; do not imply matching bolt patterns."
+      },
+      "nodes": {
+        "substructure_drill_floor/substructure": {
+          "bomId": "RB3/substructure_drill_floor/substructure",
+          "name": "substructure",
+          "specs": {
+            "dimensions_m": [
+              12.199999809265137,
+              8.954000472426413,
+              11.57800006866455
+            ],
+            "floorHeight_m": 9,
+            "style": "Pass 2 oxide-red land rig / Showroom-compatible"
+          }
+        },
+        "substructure_drill_floor/substructure/box_on_box_frames": {
+          "bomId": "RB3/substructure_drill_floor/substructure/box_on_box_frames",
+          "name": "box on box frames",
+          "specs": {
+            "dimensions_m": [
+              11.800000190734863,
+              8.954000472426413,
+              11.199999809265137
+            ]
+          }
+        },
+        "substructure_drill_floor/substructure/floor_support_beams": {
+          "bomId": "RB3/substructure_drill_floor/substructure/floor_support_beams",
+          "name": "floor support beams",
+          "specs": {
+            "dimensions_m": [
+              12.199999809265137,
+              0.3000001907348633,
+              11.57800006866455
+            ]
+          }
+        },
+        "substructure_drill_floor/substructure/hinges_pins_and_gussets": {
+          "bomId": "RB3/substructure_drill_floor/substructure/hinges_pins_and_gussets",
+          "name": "hinges pins and gussets",
+          "specs": {
+            "dimensions_m": [
+              11.482500076293945,
+              8.324999809265137,
+              10.020000457763672
+            ]
+          }
+        },
+        "substructure_drill_floor/drill_floor": {
+          "bomId": "RB3/substructure_drill_floor/drill_floor",
+          "name": "drill floor",
+          "specs": {
+            "dimensions_m": [
+              12.199999809265137,
+              0.12999999523162842,
+              11.199999809265137
+            ],
+            "width_m": 12.2,
+            "depth_m": 11.2,
+            "surfaceHeight_m": 9
+          }
+        },
+        "substructure_drill_floor/rotary_table": {
+          "bomId": "RB3/substructure_drill_floor/rotary_table",
+          "name": "rotary table",
+          "specs": {
+            "dimensions_m": [
+              2.3359999656677246,
+              0.42249999940395355,
+              2.350000023841858
+            ],
+            "staticLoad_lbf": 1000000,
+            "clearBore_m": 1.05
+          }
+        },
+        "substructure_drill_floor/setback": {
+          "bomId": "RB3/substructure_drill_floor/setback",
+          "name": "setback",
+          "specs": {
+            "dimensions_m": [
+              4.900000095367432,
+              0.11500000208616257,
+              2.5
+            ],
+            "staticLoad_lbf": 500000
+          }
+        },
+        "substructure_drill_floor/perimeter_grating": {
+          "bomId": "RB3/substructure_drill_floor/perimeter_grating",
+          "name": "perimeter grating",
+          "specs": {
+            "dimensions_m": [
+              12.225000381469727,
+              0.09000015258789062,
+              11.255000114440918
+            ]
+          }
+        },
+        "substructure_drill_floor/handrails": {
+          "bomId": "RB3/substructure_drill_floor/handrails",
+          "name": "handrails",
+          "specs": {
+            "dimensions_m": [
+              12.255999565124512,
+              1.1239995956420898,
+              11.255999565124512
+            ]
+          }
+        },
+        "substructure_drill_floor/vdoor": {
+          "bomId": "RB3/substructure_drill_floor/vdoor",
+          "name": "vdoor",
+          "specs": {
+            "dimensions_m": [
+              3.5,
+              1.0261764526367188,
+              1.640556812286377
+            ],
+            "direction": "+Z",
+            "type": "Pipe receiving ramp, short floor-level V-door"
+          }
+        },
+        "substructure_drill_floor/stairs": {
+          "bomId": "RB3/substructure_drill_floor/stairs",
+          "name": "stairs",
+          "specs": {
+            "dimensions_m": [
+              3.078000068664551,
+              10.123999607563018,
+              6.855999946594238
+            ],
+            "flights": 3,
+            "rise_m_each": 3,
+            "clearWidth_m": 1.12
+          }
+        },
+        "substructure_drill_floor/stairs/flight_1": {
+          "bomId": "RB3/substructure_drill_floor/stairs/flight_1",
+          "name": "flight 1",
+          "specs": {
+            "dimensions_m": [
+              2.8560004234313965,
+              4.124000084400177,
+              5.765605926513672
+            ]
+          }
+        },
+        "substructure_drill_floor/stairs/flight_2": {
+          "bomId": "RB3/substructure_drill_floor/stairs/flight_2",
+          "name": "flight 2",
+          "specs": {
+            "dimensions_m": [
+              2.8560004234313965,
+              4.124000072479248,
+              5.765606120228767
+            ]
+          }
+        },
+        "substructure_drill_floor/stairs/flight_3": {
+          "bomId": "RB3/substructure_drill_floor/stairs/flight_3",
+          "name": "flight 3",
+          "specs": {
+            "dimensions_m": [
+              1.3400001525878906,
+              4.120940208435058,
+              4.675212100148201
+            ]
+          }
+        },
+        "substructure_drill_floor/stairs/stair_top_landing": {
+          "bomId": "RB3/substructure_drill_floor/stairs/stair_top_landing",
+          "name": "stair top landing",
+          "specs": {
+            "dimensions_m": [
+              1.5279998779296875,
+              1.2439994812011719,
+              1.5560000240802765
+            ]
+          }
+        },
+        "substructure_drill_floor/stairs/light_stair_1": {
+          "bomId": "RB3/substructure_drill_floor/stairs/light_stair_1",
+          "name": "light stair 1",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        },
+        "substructure_drill_floor/stairs/light_stair_2": {
+          "bomId": "RB3/substructure_drill_floor/stairs/light_stair_2",
+          "name": "light stair 2",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        },
+        "substructure_drill_floor/stairs/light_stair_3": {
+          "bomId": "RB3/substructure_drill_floor/stairs/light_stair_3",
+          "name": "light stair 3",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        },
+        "substructure_drill_floor/derrick_mounts": {
+          "bomId": "RB3/substructure_drill_floor/derrick_mounts",
+          "name": "derrick mounts",
+          "specs": {
+            "dimensions_m": [
+              10.460000038146973,
+              0.2174997329711914,
+              10.520000457763672
+            ],
+            "mountingPattern_m": [
+              9.6,
+              9.6
+            ]
+          }
+        },
+        "substructure_drill_floor/light_floor_1": {
+          "bomId": "RB3/substructure_drill_floor/light_floor_1",
+          "name": "light floor 1",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        },
+        "substructure_drill_floor/light_floor_2": {
+          "bomId": "RB3/substructure_drill_floor/light_floor_2",
+          "name": "light floor 2",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        },
+        "substructure_drill_floor/light_floor_3": {
+          "bomId": "RB3/substructure_drill_floor/light_floor_3",
+          "name": "light floor 3",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        },
+        "substructure_drill_floor/light_floor_4": {
+          "bomId": "RB3/substructure_drill_floor/light_floor_4",
+          "name": "light floor 4",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        }
+      }
+    }
+  ]
+}

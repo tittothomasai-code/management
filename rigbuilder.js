@@ -2,14 +2,14 @@
 // assemble them in slots, see live key specs + BOM, save under a name. Saved rigs: load, rename, duplicate, delete (confirm),
 // export / import JSON, and they show as rigs in Showroom B. Storage via rigbuilder_store.js (localStorage dw_custom_rigs_v1 now).
 // All specs are SIM (generic class values). Keys, gamepad, touch; desk + phone.
-import * as C from './rigbuilder_core.js?v=rb2';import * as S from './rigbuilder_store.js?v=rb1';import * as R3 from './rigbuilder3d.js?v=rb2';
-export const VER='rb2';
+import * as C from './rigbuilder_core.js?v=rb3';import * as S from './rigbuilder_store.js?v=rb1';import * as R3 from './rigbuilder3d.js?v=rb3';
+export const VER='rb3';
 const $=id=>document.getElementById(id),es=t=>String(t??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])),fmt=n=>(+n||0).toLocaleString('en-AU');
 export const ST={el:null,cat:null,man1:null,rig:null,slot:'mast',sel:0,list:[],dirty:false,tab:'build',pad:null,padPrev:[],dlg:null,q:''};
 let CATp=null;
 export function catalogue(){return CATp||(CATp=(async()=>{const get=u=>fetch(new URL(u,import.meta.url).href+'?v='+VER).then(r=>r.ok?r.json():null).catch(()=>null);
- const [m1,m2,bd]=await Promise.all([get('./assets/rigsb/pass1/manifest.json'),get('./assets/rigsc/pass2/manifest.json'),import('./bom_data.js?v=1').catch(()=>null)]);
- ST.man1=m1;ST.man2=m2;ST.cat=C.buildCatalogue(m1,m2,bd?.RIG);return ST.cat})())}
+ const [m1,m2,bd,m3]=await Promise.all([get('./assets/rigsb/pass1/manifest.json'),get('./assets/rigsc/pass2/manifest.json'),import('./bom_data.js?v=1').catch(()=>null),get('./assets/rigparts/pass3/manifest.json')]);
+ ST.man1=m1;ST.man2=m2;ST.man3=m3;ST.cat=C.buildCatalogue(m1,m2,bd?.RIG,m3);return ST.cat})())}
 // ---------- showroom hook: custom rigs as extra Showroom B rigs (base model = rig that gave the mast) ----------
 export function showroomRigs(base){const list=S.cached();if(!ST.cat||!list.length)return [];const out=[];
  for(const r of list){const b=(base||[]).find(x=>x.id==C.baseRig(r,ST.cat))||(base||[])[0];if(!b)continue;const s=C.specs(r,ST.cat);
@@ -65,7 +65,7 @@ function svg(){const r=ST.rig,sp=C.SLOTS;return `<svg viewBox="0 0 400 320" role
 // ---------- 3D stage ----------
 const phoneish=()=>matchMedia('(max-width:819px)').matches||/Mobi|Android|iPhone/.test(navigator.userAgent);
 export function lod(){try{const u=new URLSearchParams(location.search).get('rblod');if(/^[HML]$/.test(u||''))return u}catch(e){}return phoneish()?'L':'M'}
-const man=()=>({m1:ST.man1,m2:ST.man2});
+const man=()=>({m1:ST.man1,m2:ST.man2,m3:ST.man3});
 function draw3d(){const st=ST.stage;if(!st)return;const k=JSON.stringify(C.nodeSet(ST.rig))+JSON.stringify(ST.rig.qty);
  if(k!=ST.k3){ST.k3=k;clearTimeout(ST.t3);$('rbLoad3').hidden=false;ST.t3=setTimeout(()=>st.set(ST.rig,ST.cat,man()).then(g=>{if(g){$('rbLoad3').hidden=true;miss3(g)}}),60)}st.select(ST.slot);
  const S0=C.SLOTS.find(s=>s.k==ST.slot),it=S0.multi?null:item(ST.rig.slots[ST.slot]);$('rb3Lbl').innerHTML=`<b>${es(S0.l)}</b> · ${S0.multi?ST.rig.extras.length+' added':it?es(it.name+' · '+it.rigName):'none'} · <small>${es(C.ANCHORS[ST.slot].at)}</small>`}

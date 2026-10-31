@@ -32,15 +32,22 @@ export const pretty=s=>{s=String(s).split('/').pop().replace(/_/g,' ');return s.
 const shortRig=id=>({land_1500_ac_double:'1500 AC land',land_3000_triple_walking:'3000 walker',workover_truck:'Workover',coiled_tubing:'Coil unit',jackup:'Jackup',semi_submersible:'Semi',drillship:'Drillship',platform_modular:'Platform',snubbing_unit:'Snubber',frac_spread:'Frac spread',land_1500_ac_double_detailed:'1500 AC detailed'}[id]||id);
 function nodes(r){const L=r.lods?.M||r.lods?.H||Object.values(r.lods||{})[0]||{};return L.nodeToBom||r.nodeToBom||{}}
 // man1 / man2: Codex manifests ({rigs:[...]}); bomRig: bom_data.js RIG ({assets:[{id,label?,components:[{n,lines}]}]}).
-export function buildCatalogue(man1,man2,bomRig){const out=[],seen=new Set();
+// Pass-3 single-unit parts (assets/rigparts/pass3): one real unit per mesh, attach_* datums. src 'P3'.
+const P3SLOT={genset_single:'power',mud_tank_single:'tanks',mud_pump_single:'pumps',frac_pump_truck_single:'pumps',offshore_derrick:'mast',substructure_drill_floor:'sub'};
+function p3cls(p){const b={...(CLS.land_1500_ac_double_detailed||CLS.A)},s=p.specs||{};
+ if(p.id=='genset_single')b.kw=s.kW||b.kw;if(p.id=='mud_pump_single')b.php=s.hp||b.php;if(p.id=='frac_pump_truck_single')b.php=s.hhp||b.php;
+ if(p.id=='offshore_derrick'){b.hook=Math.round((s.hook_load_kN||0)/9.80665);b.depth=(CLS.jackup||b).depth}return b}
+export function buildCatalogue(man1,man2,bomRig,man3){const out=[],seen=new Set();
  const fromMan=(m,src,pack)=>{for(const r of m?.rigs||[]){const n=nodes(r),top={};
   for(const [p,b] of Object.entries(n)){const t=p.split('/')[0];if(/^light/.test(t)||/^(handrails|stairs|vdoor|drill_line|drill_string|cable_trays|service_loop|safety_equipment)$/.test(t)&&src!='C')continue;(top[t]=top[t]||{bom:null,kids:[]});if(p==t)top[t].bom=b;else if(!/\/light/.test(p))top[t].kids.push({path:p,bom:b})}
   for(const [t,v] of Object.entries(top)){const id=src+':'+r.id+':'+t;if(seen.has(id))continue;seen.add(id);
    out.push({id,slot:slotOf(t),node:t,name:pretty(t),src,pack,rig:r.id,rigName:shortRig(r.id),bom:v.bom||(r.id+'/'+t).toUpperCase(),kids:v.kids,cls:CLS[r.id]||CLS.A})}}};
  fromMan(man1,'B','pass1');fromMan(man2,'C','pass2');
+ for(const p of man3?.parts||[]){const sl=P3SLOT[p.id];if(!sl)continue;const n=p.lods?.M?.nodeToBom||p.nodeToBom||{};
+  out.push({id:'P3:'+p.id,slot:sl,node:p.id,name:p.name||pretty(p.id),src:'P3',pack:'pass3',rig:p.id,rigName:'Single unit',bom:'RB3/'+p.id,kids:Object.entries(n).filter(([k])=>!/light_/.test(k)).map(([path,bom])=>({path,bom})),cls:p3cls(p),specs:p.specs||{}})}
  for(const a of bomRig?.assets||[]){if(a.group=='downhole')continue;const id='A:'+a.id;out.push({id,slot:slotOf(a.id),node:a.id,name:a.label||pretty(a.id),src:'A',pack:'blender',rig:'A',rigName:'Classic workshop',bom:'A/'+a.id,kids:(a.components||[]).map((c,i)=>({path:a.id+'/'+(c.n||i),bom:'A/'+a.id+'/'+i,lines:(c.lines||[]).length})),cls:CLS.A})}
  return out}
-export function defaults(cat){const s={};for(const S of SLOTS){if(S.multi)continue;const P={td:'top_drive',pipe:'catwalk',tanks:'mud_system'},pick=cat.find(c=>c.slot==S.k&&c.rig=='land_1500_ac_double'&&c.src=='B'&&(!P[S.k]||c.node==P[S.k]))||cat.find(c=>c.slot==S.k&&c.rig=='land_1500_ac_double'&&c.src=='B')||cat.find(c=>c.slot==S.k);if(pick)s[S.k]=pick.id}
+export function defaults(cat){const s={};for(const S of SLOTS){if(S.multi)continue;const P={td:'top_drive',pipe:'catwalk',tanks:'mud_system'},P3D={pumps:'P3:mud_pump_single',power:'P3:genset_single',tanks:'P3:mud_tank_single'},pick=cat.find(c=>c.id==P3D[S.k])||cat.find(c=>c.slot==S.k&&c.rig=='land_1500_ac_double'&&c.src=='B'&&(!P[S.k]||c.node==P[S.k]))||cat.find(c=>c.slot==S.k&&c.rig=='land_1500_ac_double'&&c.src=='B')||cat.find(c=>c.slot==S.k);if(pick)s[S.k]=pick.id}
  return {v:1,id:'',name:'',tag:'SIM',slots:s,qty:{pumps:2,power:3},extras:[],created:0,updated:0}}
 const byId=(cat,id)=>cat.find(c=>c.id==id)||null;
 // Key specs (SIM): hook load = weakest of mast, drawworks and top drive; depth = min of mast and drawworks class depth,

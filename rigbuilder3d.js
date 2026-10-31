@@ -4,28 +4,29 @@
 // Each part is pivoted to base centre and snapped to the anchor table in rigbuilder_core.js (layout). Metres, scale 1.
 // Pumps and generators: one unit mesh (mud_pump_N / generator_N child) is repeated in a row. Where a pack has only a bank mesh,
 // the bank is repeated and the part is listed in UNIT_MISSING. All data SIM.
-import * as THREE from 'three';import * as C from './rigbuilder_core.js?v=rb2';
-export const VER='rb2';
+import * as THREE from 'three';import * as C from './rigbuilder_core.js?v=rb3';
+export const VER='rb3';
 const UNIT={pumps:/^mud_pump_\d+$/,power:/^generator_\d+$/};
 const COMP={substructure:['drill_floor','rotary_table']};
 const ALOD={H:'high',M:'med',L:'low'};
 let LDp=null;function loader(){return LDp||(LDp=(async()=>{const [{GLTFLoader},{DRACOLoader}]=await Promise.all([import('./vendor/loaders/GLTFLoader.js'),import('./vendor/loaders/DRACOLoader.js')]);
  const d=new DRACOLoader();d.setDecoderPath(new URL('./vendor/libs/draco/',import.meta.url).href);d.setDecoderConfig({type:'wasm'});const l=new GLTFLoader();l.setDRACOLoader(d);return l})())}
 const FILES=new Map();
-export function fileFor(it,lod,man){if(it.src=='A')return `./assets/rigs/triple_${ALOD[lod]||'med'}.glb`;
+export function fileFor(it,lod,man){if(it.src=='P3'){const p=man.m3?.parts?.find(x=>x.id==it.node),f=p?.lods?.[lod]?.file||p?.lods?.M?.file;return f?'./assets/rigparts/pass3/'+f:null}if(it.src=='A')return `./assets/rigs/triple_${ALOD[lod]||'med'}.glb`;
  const m=it.src=='C'?man.m2:man.m1,r=m?.rigs?.find(x=>x.id==it.rig);const f=r?.lods?.[lod]?.file||r?.lods?.M?.file;return f?(it.src=='C'?'./assets/rigsc/pass2/':'./assets/rigsb/pass1/')+f:null}
 function scene(url){if(!FILES.has(url))FILES.set(url,loader().then(l=>l.loadAsync(new URL(url,import.meta.url).href)).then(g=>{g.scene.updateMatrixWorld(true);return g.scene}).catch(e=>{FILES.delete(url);throw e}));return FILES.get(url)}
 function findTop(sc,name){let hit=null;const q=[...sc.children];while(q.length){const o=q.shift();if(o.name==name){hit=o;break}q.push(...o.children)}return hit}
 // Returns {obj, size:[x,y,z], unit:'unit'|'bank'|'single', tris} or null. obj is pivoted: x,z centre at 0, base at y 0.
 const PARTS=new Map();
 export async function part(it,lod,man){const url=fileFor(it,lod,man);if(!url)return null;const key=url+'|'+it.node;
- if(!PARTS.has(key))PARTS.set(key,(async()=>{const sc=await scene(url);let n=findTop(sc,it.node);if(!n)return null;let unit='single';const U=UNIT[it.slot];
+ if(!PARTS.has(key))PARTS.set(key,(async()=>{const sc=await scene(url);let n=findTop(sc,it.node);if(!n)return null;let unit=it.src=='P3'?'unit':'single';const U=it.src=='P3'?null:UNIT[it.slot];
   if(U){const u=[];n.traverse(o=>{if(o!==n&&U.test(o.name)&&!u.length)u.push(o)});if(u.length){n=u[0];unit='unit'}else if(/generators|pump_trucks|mudpumps/.test(it.node))unit='bank'}
   const srcs=[n,...(COMP[it.node]||[]).map(x=>findTop(sc,x)).filter(Boolean)],g=new THREE.Group();
   for(const s of srcs){const c=s.clone(true);s.matrixWorld.decompose(c.position,c.quaternion,c.scale);g.add(c)}
   g.updateMatrixWorld(true);const bb=new THREE.Box3().setFromObject(g),sz=bb.getSize(new THREE.Vector3()),ce=bb.getCenter(new THREE.Vector3());
+  const wc=findTop(g,'attach_wellcentre');let fy=null;if(wc){const v=wc.getWorldPosition(new THREE.Vector3());ce.x=v.x;ce.z=v.z;if(it.slot=='sub')fy=v.y-bb.min.y}/* pass 3: pivot on the well centre */
   const p=new THREE.Group();g.position.set(-ce.x,-bb.min.y,-ce.z);p.add(g);let tris=0;p.traverse(o=>{if(o.isMesh){tris+=(o.geometry.index?o.geometry.index.count:o.geometry.attributes.position.count)/3;o.castShadow=o.receiveShadow=false}});
-  return {obj:p,size:[sz.x,sz.y,sz.z],unit,tris:Math.round(tris)}})().catch(e=>{PARTS.delete(key);console.warn('rig builder part',it.id,e);return null}));
+  return {obj:p,size:[sz.x,fy??sz.y,sz.z],unit,tris:Math.round(tris)}})().catch(e=>{PARTS.delete(key);console.warn('rig builder part',it.id,e);return null}));
  return PARTS.get(key)}
 function inst(p,it,slot,i){const o=p.obj.clone(true);o.traverse(m=>{if(m.isMesh){m.material=Array.isArray(m.material)?m.material.map(x=>x.clone()):m.material.clone();m.userData.rb={slot,id:it.id,i}}});
  o.userData.rb={slot,id:it.id,i,unit:p.unit,size:p.size};o.name='rb_'+slot+'_'+i;return o}
