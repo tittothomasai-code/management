@@ -23,6 +23,7 @@ const CSS=`#start{position:fixed;inset:0;z-index:100001;color:#eaf6ff;font-famil
 #start .tile .ic{font-size:30px;width:44px;text-align:center;flex:none}
 #start .tile b{display:block;font-size:clamp(18px,4.6vw,24px);font-weight:800}
 #start .tile small{display:block;opacity:.75;font-size:13px;margin-top:3px}
+@media (max-width:819px) and (max-height:900px){#start .ui{gap:1.4vh}#start .tiles{gap:8px}#start .tile{min-height:50px;padding:8px 14px;gap:10px}#start .tile .ic{font-size:24px;width:34px}#start .tile b{font-size:clamp(16px,4.4vw,20px)}#start .tile small{font-size:12px;margin-top:1px}}
 #start .svrow{display:flex;gap:8px;align-items:stretch}#start .svrow .tile{flex:1}#start .svrm{min-width:84px;border-radius:14px;border:2px solid #a55;background:#3a1418cc;color:#fdd;font:inherit;cursor:pointer}#start .svh{grid-column:1/-1;margin:0 0 4px}
 #start .tile.on{transform:scale(1.04);border-color:#7fe3ff;box-shadow:0 0 0 2px #7fe3ff,0 0 28px 6px rgba(80,200,255,.6),inset 0 0 24px rgba(80,200,255,.25);background:linear-gradient(135deg,rgba(30,90,150,.92),rgba(10,40,80,.92))}
 #start .tile.on::after{content:'';position:absolute;inset:-2px;border-radius:18px;animation:stpulse 1.4s ease-in-out infinite;box-shadow:0 0 22px 4px rgba(127,227,255,.55);pointer-events:none}
