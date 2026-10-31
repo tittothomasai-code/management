@@ -9,7 +9,7 @@
 // Each scene keeps its own state, so the showroom can call GX.night.set(true, showScene, rigGroup).
 // Quality: Low = emissive sprites + ground light pools, no real lights. Medium = + 3 spot/point lights, no shadows.
 //          High = + 6 lights (1 shadowed floodlight) + large glow halos (bloom look).
-let THREE=null;let NS=null;try{NS=await import('./nightsky.js?v=nr1')}catch(e){console.warn('nightsky',e)} // feat/night-real (guarded)
+let THREE=null;let NS=null;try{NS=await import('./nightsky.js?v=nr2')}catch(e){console.warn('nightsky',e)} // feat/night-real (guarded)
 const ST=new WeakMap(),ALL=new Set();let MAIN=null,btn=null,raf=0;
 const QL=()=>(window.GX&&GX.quality&&GX.quality.get())||'medium';
 function canvasTex(sz,draw){const c=document.createElement('canvas');c.width=c.height=sz;draw(c.getContext('2d'),sz);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t}
@@ -27,7 +27,7 @@ function stars(n,R){const pos=[],col=[];let s=12345;const rnd=()=>(s=(s*16807)%2
  const m=new THREE.Points(g,new THREE.PointsMaterial({size:2,sizeAttenuation:false,vertexColors:true,transparent:true,opacity:0,depthWrite:false,fog:false,toneMapped:false}));m.name='nightStars';m.renderOrder=-9;m.frustumCulled=false;return m}
 function build(s){const q=s.quality,T=tex(),G=new THREE.Group();G.name='nightRoot';G.visible=false;s.g=G;s.items=[];s.lights=[];
  const sk=new THREE.Group();sk.name='nightSkyGroup';let nS,moon;
- if(NS){NS.use(THREE);NS.css();nS=q=='low'?1500:q=='medium'?3000:5000;sk.add(NS.sky(1400,q));sk.add(NS.stars(nS,1300));moon=NS.moon();sk.add(moon)}
+ if(NS){NS.use(THREE);NS.css();nS=q=='low'?900:q=='medium'?3000:5000;sk.add(NS.sky(1400,q));sk.add(NS.stars(nS,1300));moon=NS.moon();sk.add(moon)}
  else{sk.add(sky(1400));nS=q=='low'?600:q=='medium'?1200:2000;sk.add(stars(nS,1300));moon=new THREE.Sprite(addMat(T.moon,0xffffff,0));moon.material.blending=THREE.NormalBlending;moon.position.set(-520,760,-700);moon.scale.setScalar(110);moon.name='nightMoon';moon.renderOrder=-8;sk.add(moon)}
  s.sky=sk;s.nStars=nS;G.add(sk);s.items.push({o:sk.children[0],k:1},{o:sk.children[1],k:1},{o:moon,k:1});
  // rig geometry from rigRoot bounding box (world space)
