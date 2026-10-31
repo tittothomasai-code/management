@@ -79,7 +79,7 @@ function build(){el=document.createElement('div');el.id='ddRun';const o=(m,v)=>O
  q('#drMode').onchange=e=>{RUN.set.mode=e.target.value;RUN.slid=e.target.value=='slide'?RUN.slid:RUN.slid;ui()};bind('drTF','tf');bind('drLen','len');bind('drWob','wob');bind('drFlow','flow');
  q('#drApply').onclick=()=>{applyRec(RUN);ui()};q('#drPU').onclick=()=>{RUN.set.wob=Math.max(0,Math.round(RUN.set.wob/2));RUN.ramp=false;RUN.stalled=false;RUN.log.push('Picked up off bottom. WOB set to '+RUN.set.wob+' t.');ui()};
  q('#drPerf').onclick=perf}
-async function perf(){const P=globalThis.GX?.ddcab?.motorPerf;try{const m=P||(await import('./ddmotorperf.js?v=b11')).default||globalThis.GX?.ddcab?.motorPerf;if($('ddmp'))m.close();else{m.open();motor(RUN,RUN.set.mode=='rotate',0)}}catch(e){console.error('ddrun perf',e)}}
+async function perf(){const P=globalThis.GX?.ddcab?.motorPerf;try{const m=P||(await import('./ddmotorperf.js?v=r1')).default||globalThis.GX?.ddcab?.motorPerf;if($('ddmp'))m.close();else{m.open();motor(RUN,RUN.set.mode=='rotate',0)}}catch(e){console.error('ddrun perf',e)}}
 function gv(n,v,u='',c=''){return `<div><small>${n}</small><b class="${c}">${v}</b> <small>${u}</small></div>`}
 export function ui(){if(!el||!RUN)return;const r=RUN,s=r.set,o=offsets(r),ms=r.ms||motor(r,s.mode=='rotate',0),sc=score(r),b=r.bit,last=r.surveys.at(-1),tfMode=b.inc<5?'MTF':'GTF',tfShow=r.tfAct==null?s.tf:r.tfAct,tfRead=b.inc<5?C.mtf(tfShow,b.azi):tfShow;r.ms=ms;
  const set=(id,v)=>{const e=$(id);if(e&&document.activeElement!==e)e.value=v};set('drMode',s.mode);set('drTF',s.tf);set('drLen',s.len);set('drWob',s.wob);set('drFlow',s.flow);$('drWobV').textContent=f1(s.wob);$('drFlowV').textContent=s.flow;
