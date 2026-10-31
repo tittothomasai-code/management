@@ -36,7 +36,7 @@ for(const nm of ['desk','phone']){if(process.env.ONLY&&process.env.ONLY!=nm)cont
  let s1=await sp();ok(s1.bop==15000&&s1.hook==340&&s1.pumpHp>s0.pumpHp&&s1.bom>s0.bom&&/15,000 psi/.test(s1.txt),nm+': specs + BOM update live (BOP '+s1.bop+', pumps '+s1.pumpHp+' hp, '+s1.bom+' lines)');
  ok(await p.evaluate(()=>/SIM/.test(document.getElementById('rigBuilder').textContent)&&!/\bLIVE\b/.test(document.getElementById('rigBuilder').textContent)&&!/openai|codex|claude|anthropic|chatgpt|gpt-|gemini|grok/i.test(document.getElementById('rigBuilder').innerText)),nm+': SIM label, no LIVE, no provider name');
  if(nm=='phone'){const r=await p.evaluate(()=>{const e=document.getElementById('rigBuilder').getBoundingClientRect(),n=rbName.getBoundingClientRect();return {w:e.width,h:e.height,sw:document.documentElement.scrollWidth,ny:n.bottom}});ok(r.w==390&&r.sw<=390,nm+': fits 390 wide ('+JSON.stringify(r)+')')}
- await p.screenshot({path:SH+nm+'_builder.png'});
+ await p.evaluate(()=>{for(const e of document.querySelectorAll('#rigBuilder,#rbMain'))e.scrollTop=0;window.scrollTo(0,0);GX.rigBuilder.stage()?.frame?.(true)});await idle3(p);await p.screenshot({path:SH+nm+'_builder.png'});
  if(nm=='phone'){await p.evaluate(()=>GX.rigBuilder.tab('specs'));await w(300);await p.screenshot({path:SH+nm+'_specs.png'});await p.evaluate(()=>GX.rigBuilder.tab('build'))}
  // ---- 3D assembly checks ----
  await idle3(p);

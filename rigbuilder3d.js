@@ -53,8 +53,9 @@ export function stage(host,opt={}){const ren=new THREE.WebGLRenderer({antialias:
  let down=null;ren.domElement.addEventListener('pointermove',e=>{if(e.pointerType!='mouse')return;const h=hit(e);const k=h?h.slot:null;if(k!==S.hover){S.hover=k;paint()}});
  ren.domElement.addEventListener('pointerdown',e=>{down=[e.clientX,e.clientY]});ren.domElement.addEventListener('pointerup',e=>{if(!down)return;const d=Math.hypot(e.clientX-down[0],e.clientY-down[1]);down=null;if(d>6)return;const h=hit(e);if(h&&S.onPick)S.onPick(h.slot)});
  function paint(){if(!S.root)return;S.need=Math.max(S.need,2);for(const o of S.root.userData.parts){const s=o.userData.rb.slot,c=s==S.sel?HL.sel:s==S.hover?HL.hover:0;o.traverse(m=>{if(m.isMesh)for(const x of [].concat(m.material))if(x.emissive){x.emissive.setHex(c);x.emissiveIntensity=c?.55:0}})}}
- function frame(fit){if(!S.root)return;const bb=new THREE.Box3().setFromObject(S.root),sz=bb.getSize(new THREE.Vector3()),c=bb.getCenter(new THREE.Vector3()),r=Math.max(sz.x,sz.y,sz.z)*.5||20;
-  if(S.ctl)S.ctl.target.set(c.x,Math.min(c.y,sz.y*.4),c.z);if(fit){const d=r/Math.tan(cam.fov*Math.PI/360)*(cam.aspect<1?1.9:1.25);const dir=new THREE.Vector3(.75,.45,.85).normalize();cam.position.copy((S.ctl?S.ctl.target:c).clone().add(dir.multiplyScalar(d)))}S.ctl?.update()}
+ function frame(fit){if(!S.root)return;const bb=new THREE.Box3().setFromObject(S.root),sz=bb.getSize(new THREE.Vector3()),c=bb.getCenter(new THREE.Vector3());
+  const tg=new THREE.Vector3(c.x,sz.y*.42,c.z);if(S.ctl)S.ctl.target.copy(tg);if(fit){const t=Math.tan(cam.fov*Math.PI/360),rad=Math.hypot(sz.x,sz.z)*.5,dv=(sz.y*.62)/t,dh=rad/(t*cam.aspect),d=Math.max(dv,dh,20)*1.08;
+   const dir=new THREE.Vector3(.72,.32,.78).normalize();cam.position.copy(tg).add(dir.multiplyScalar(d));cam.lookAt(tg)}S.ctl?.update();S.need=Math.max(S.need||0,2)}
  S.set=async(rig,cat,man,{fit=false}={})=>{const tok=++S.tok;S.busy=true;let g;try{g=await assemble(rig,cat,opt.lod||'M',man)}finally{if(tok==S.tok)S.busy=false}if(tok!=S.tok||S.dead)return null;
   if(S.root){S.sc.remove(S.root);S.root.traverse(m=>{if(m.isMesh)[].concat(m.material).forEach(x=>x.dispose())})}const first=!S.root;S.root=g;sc.add(g);paint();frame(first||fit);return g};
  S.select=k=>{S.sel=k;paint()};S.frame=()=>frame(true);
