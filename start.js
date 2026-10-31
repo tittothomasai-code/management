@@ -23,6 +23,7 @@ const CSS=`#start{position:fixed;inset:0;z-index:100001;color:#eaf6ff;font-famil
 #start .tile .ic{font-size:30px;width:44px;text-align:center;flex:none}
 #start .tile b{display:block;font-size:clamp(18px,4.6vw,24px);font-weight:800}
 #start .tile small{display:block;opacity:.75;font-size:13px;margin-top:3px}
+@media (max-width:819px) and (max-height:900px){#start .ui{gap:1.4vh}#start .tiles{gap:8px}#start .tile{min-height:50px;padding:8px 14px;gap:10px}#start .tile .ic{font-size:24px;width:34px}#start .tile b{font-size:clamp(16px,4.4vw,20px)}#start .tile small{font-size:12px;margin-top:1px}}
 #start .svrow{display:flex;gap:8px;align-items:stretch}#start .svrow .tile{flex:1}#start .svrm{min-width:84px;border-radius:14px;border:2px solid #a55;background:#3a1418cc;color:#fdd;font:inherit;cursor:pointer}#start .svh{grid-column:1/-1;margin:0 0 4px}
 #start .tile.on{transform:scale(1.04);border-color:#7fe3ff;box-shadow:0 0 0 2px #7fe3ff,0 0 28px 6px rgba(80,200,255,.6),inset 0 0 24px rgba(80,200,255,.25);background:linear-gradient(135deg,rgba(30,90,150,.92),rgba(10,40,80,.92))}
 #start .tile.on::after{content:'';position:absolute;inset:-2px;border-radius:18px;animation:stpulse 1.4s ease-in-out infinite;box-shadow:0 0 22px 4px rgba(127,227,255,.55);pointer-events:none}
@@ -54,7 +55,7 @@ function backdrop(cv){const x=cv.getContext('2d');let w,h,dpr;const stars=[...Ar
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function tile(id,ic,t,s){return `<button class=tile data-go="${id}" id="st_${id}"><span class=ic>${ic}</span><span><b>${t}</b><small>${s}</small></span></button>`}
 function render(){const T=ST.el.querySelector('.tiles');
- if(ST.menu=='main')T.innerHTML=(hasSave()?tile('continue','▶','Continue','Resume your saved SIM rig and well'):'')+tile('sim','🛢','New simulation','Pick a SIM well and start drilling')+tile('well','📐','New well','Well Planning with a blank proposal')+tile('login','👤','Log in as player','Name only, no password · lobby or join by code')+tile('edm','📂','Import EDM','All sites & wells from an EDM file · stays on this device')+(ST.saved?.length?tile('saved','💾','Saved sites',ST.saved.length+' saved on this device · open without importing'):'')+tile('monitor','📈','Monitor a well','Track progress · saved WITSML well or SIM')+tile('workover','🔧','Workover & intervention','Completions, workover, fishing, P&A, slickline, e-line, CT · SIM')+tile('showroom','🏁','Rig showroom','Browse 9 rig types · spin, compare, use · SIM');
+ if(ST.menu=='main')T.innerHTML=(hasSave()?tile('continue','▶','Continue','Resume your saved SIM rig and well'):'')+tile('sim','🛢','New simulation','Pick a SIM well and start drilling')+tile('well','📐','New well','Well Planning with a blank proposal')+tile('login','👤','Log in as player','Name only, no password · lobby or join by code')+tile('edm','📂','Import EDM','All sites & wells from an EDM file · stays on this device')+(ST.saved?.length?tile('saved','💾','Saved sites',ST.saved.length+' saved on this device · open without importing'):'')+tile('monitor','📈','Monitor a well','Track progress · saved WITSML well or SIM')+tile('workover','🔧','Workover & intervention','Completions, workover, fishing, P&A, slickline, e-line, CT · SIM')+tile('ddcab','🧭','DD Training','Directional driller cabin · steer the driller, manage the mud motor · SIM')+tile('showroom','🏁','Rig showroom','Browse 9 rig types · spin, compare, use · SIM');
  else if(ST.menu=='saved')T.innerHTML=`<h3 class=svh>Saved sites (on this device)</h3>`+(ST.saved||[]).map(m=>`<div class=svrow>${tile('open:'+m.id,'🗺',esc(m.name),m.wells+' wells · '+m.sites+' sites · imported '+new Date(m.date).toLocaleDateString('en-AU')+' · '+(m.size>=1e6?(m.size/1e6).toFixed(1)+' MB':Math.max(1,Math.round(m.size/1e3))+' kB'))}<button class=svrm data-rm="${esc(m.id)}" aria-label="Remove ${esc(m.name)}">Remove</button></div>`).join('')+tile('back','↩','Back','Main menu');
  else T.innerHTML=tile('simA','🎯','SIM proposal A','Directional J-curve to T1/T2 · 3 casing points')+tile('simFree','⛏','Free drilling','Vertical SIM well, no plan loaded')+tile('back','↩','Back','Main menu');
  T.querySelectorAll('.svrm').forEach(b=>b.onclick=async e=>{e.preventDefault();e.stopPropagation();const id=b.dataset.rm,m=(ST.saved||[]).find(x=>x.id==id);if(!confirm('Remove saved site "'+(m?.name||id)+'" from this device?'))return;const S=await import('./edmstore.js?v=5941');await S.remove(id);ST.saved=await S.list();if(!ST.saved.length)ST.menu='main';render()});
@@ -63,15 +64,16 @@ function focus(k){if(!ST.items.length)return;k=(k+ST.items.length)%ST.items.leng
 function cols(){return innerWidth>=820?2:1}
 function move(d){const c=cols();if(d=='l')focus(ST.i-1);else if(d=='r')focus(ST.i+1);else if(d=='u')focus(ST.i-c);else focus(ST.i+c)}
 function back(){if(ST.menu!='main'){ST.menu='main';beep(300);render()}}
-function close(dest){ST.last=dest;const A=api();A.last=dest;if(dest!='join'&&dest!='continue'&&dest!='edm'&&dest!='monitor'&&dest!='workover')try{localStorage.setItem('dw_start_save',JSON.stringify({t:Date.now(),dest}))}catch(err){}removeEventListener('keydown',key,true);cancelAnimationFrame(ST.raf);clearInterval(ST.padT);const e=ST.el;ST.el=null;e.classList.add('out');setTimeout(()=>e.remove(),360);try{dispatchEvent(new CustomEvent('dw:start',{detail:dest}))}catch(err){}}
+function close(dest){ST.last=dest;const A=api();A.last=dest;if(dest!='join'&&dest!='continue'&&dest!='edm'&&dest!='monitor'&&dest!='workover'&&dest!='ddcab')try{localStorage.setItem('dw_start_save',JSON.stringify({t:Date.now(),dest}))}catch(err){}removeEventListener('keydown',key,true);cancelAnimationFrame(ST.raf);clearInterval(ST.padT);const e=ST.el;ST.el=null;e.classList.add('out');setTimeout(()=>e.remove(),360);try{dispatchEvent(new CustomEvent('dw:start',{detail:dest}))}catch(err){}}
 async function choose(){const go=ST.items[ST.i]?.dataset.go;beep(880,.1);
  if(go=='sim'){ST.menu='sim';return render()}
- if(go=='monitor'){close('monitor');const m=await import('./monitor.js?v=b8');m.open();return}
- if(go=='showroom'){close('showroom');const m=await import('./showroom.js?v=1');m.init();m.open();return}
- if(go=='workover'){close('workover');const m=await import('./workover.js?v=b10');m.open();return}
+ if(go=='monitor'){close('monitor');const m=await import('./monitor.js?v=b11');m.open();return}
+ if(go=='ddcab'){close('ddcab');const m=await import('./ddcab.js?v=b11');m.open();return}
+ if(go=='showroom'){close('showroom');const m=await import('./showroom.js?v=b13');m.init();m.open();return}
+ if(go=='workover'){close('workover');const m=await import('./workover.js?v=b13');m.open();return}
  if(go=='saved'){ST.menu='saved';return render()}
- if(go?.startsWith('open:')){close('edm');const m=await import('./edmui.js?v=b10');m.openSaved(go.slice(5)).catch(e=>alert('Could not open saved site: '+e.message));return}
- if(go=='edm'){close('edm');const m=await import('./edmui.js?v=b10');m.open();return}if(go=='back')return back();
+ if(go?.startsWith('open:')){close('edm');const m=await import('./edmui.js?v=b13');m.openSaved(go.slice(5)).catch(e=>alert('Could not open saved site: '+e.message));return}
+ if(go=='edm'){close('edm');const m=await import('./edmui.js?v=b13');m.open();return}if(go=='back')return back();
  if(go=='continue'||go=='simFree')return close(go);
  if(go=='simA'){close('simA');const P=await wait(()=>window.GX?.wplan);P.calc(JSON.parse(JSON.stringify(P.DEFAULT)));return}
  if(go=='well'){close('wplan');const P=await wait(()=>window.GX?.wplan);P.calc({...JSON.parse(JSON.stringify(P.DEFAULT)),name:'New well (SIM)',targets:[{name:'TD',tvd:1000,n:100,e:0,tol:30,dls:3}],casing:[],steps:[],assumed:['targets','surface','kop','dls']});P.open('inputs');return}
@@ -89,10 +91,10 @@ export function show(){api();if(ST.el)return;const st=document.createElement('st
  <div class=bar><button id=stSnd aria-pressed=false></button><span class=hint>←↑→↓ / 🎮 move · Enter / A select · Esc / B back</span><span id=stVer></span></div>`;
  document.body.appendChild(e);ST.el=e;backdrop(e.querySelector('canvas'));
  const sb=$('stSnd'),upd=()=>{sb.textContent=ST.snd?'🔊 Sound on':'🔇 Sound off';sb.setAttribute('aria-pressed',ST.snd)};upd();sb.onclick=ev=>{ev.stopPropagation();ST.snd=!ST.snd;try{localStorage.setItem(SK,ST.snd?'1':'0')}catch(err){}upd();beep(700)};
- const sv=()=>{$('stVer').textContent=ver()};sv();setTimeout(sv,500);
+ const sv=()=>{const e=$('stVer');if(e)e.textContent=ver()};sv();setTimeout(sv,500);
  addEventListener('keydown',key,true);ST.padT=setInterval(pad,50);ST.menu='main';render();
  import('./edmstore.js?v=5941').then(S=>S.list()).then(L=>{ST.saved=L;if(ST.el&&ST.menu=='main'&&L.length){const k=ST.i;render();focus(k)}}).catch(()=>{})}
 const API={ST,show,shouldShow,hasSave,last:null};function api(){window.dwStart=API;window.GX=window.GX||{};if(window.GX.start!==API)window.GX.start=API;return API}api();addEventListener('load',api);setTimeout(api,3000);
 if(shouldShow()){if(document.body)show();else addEventListener('DOMContentLoaded',show)}
 
-if(new URLSearchParams(location.search).has('workover'))import('./workover.js?v=b10');
+if(new URLSearchParams(location.search).has('workover'))import('./workover.js?v=b13');

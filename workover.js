@@ -173,7 +173,7 @@ export async function open(jobKey='workover'){if(R.el)close();const st=document.
  <canvas class=wochart id=woChart width=700 height=300></canvas><div class=wocalc id=woCalc></div><div class=wochk id=woChk></div><div class=wosteps id=woSteps></div>
  <small style="opacity:.65">SIM teaching model. Simplified methods: see the guide. Not for real well design.</small></div>`;
  document.body.appendChild(d);await build(d.querySelector('canvas'));
- $('#woX').onclick=close;$('#woMore').onclick=()=>import('./wo2.js?v=w3').then(m=>m.open({ct:'ct',fishing:'fish',pa:'pa'}[R.job]||'ct'));$('#woJob').onchange=e=>{R.play=false;setJob(e.target.value)};
+ $('#woX').onclick=close;$('#woMore').onclick=()=>import('./wo2.js?v=b13').then(m=>m.open({ct:'ct',fishing:'fish',pa:'pa'}[R.job]||'ct'));$('#woJob').onchange=e=>{R.play=false;setJob(e.target.value)};
  $('#woPlay').onclick=()=>{if(R.last?.done)R.t=0;R.play=true;if(R.hold&&checksDone(R.last.i)){step()}};
  $('#woPause').onclick=()=>{R.play=false};$('#woStop').onclick=()=>{R.play=false;R.hold=false;R.t=0;R.ticks={};R.lastI=-1;tick(0,true)};
  $('#woStep').onclick=step;$('#woSm').onchange=e=>{R.stepMode=e.target.checked;if(!R.stepMode)R.hold=false};$('#woSpd').onchange=e=>R.speed=+e.target.value;

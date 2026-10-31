@@ -18,16 +18,16 @@ for(const [nm,vp] of [['desk',{width:1440,height:900}],['phone',{width:390,heigh
  // 1. menu, version, sound off, no Continue on a fresh device
  let p=await page(vp,'/?start=1');await p.waitForSelector('#start .tile',{timeout:60000});await w(1200);
  const m=await p.evaluate(()=>({tiles:[...document.querySelectorAll('#start .tile')].map(b=>b.dataset.go),ver:document.getElementById('stVer').textContent,meta:document.querySelector('meta[name=app-version]').content,snd:document.getElementById('stSnd').textContent,sim:!!document.querySelector('#start .sim'),live:/\bLIVE\b/.test(document.getElementById('start').innerText),r:(q=>({width:q.width,height:q.height}))(document.getElementById('start').getBoundingClientRect()),over:[...document.querySelectorAll('#start .tile')].every(b=>{const q=b.getBoundingClientRect();return q.left>=0&&q.right<=innerWidth&&q.bottom<=innerHeight})}));
- ok(m.tiles.join()=='sim,well,login,edm,monitor,workover,showroom',`${nm}: fresh device shows New simulation / New well / Log in (no Continue) [${m.tiles}]`);
+ ok(m.tiles.join()=='sim,well,login,edm,monitor,workover,ddcab,showroom',`${nm}: fresh device shows New simulation / New well / Log in (no Continue) [${m.tiles}]`);
  ok(m.ver&&m.ver==m.meta&&/^v5\.(9|1[0-9])/.test(m.ver),`${nm}: version on screen = ${m.ver}`);
  ok(/Sound off/.test(m.snd),`${nm}: sound defaults OFF`);ok(m.sim&&!m.live,`${nm}: SIM label, no LIVE`);ok(m.r.width==vp.width&&m.r.height==vp.height&&m.over,`${nm}: full-screen, all tiles on screen (${m.r.width}x${m.r.height}, ${m.over})`);
  await p.screenshot({path:`${DIR}/${PRE}${nm}_1_menu.png`});
  // keyboard: Down moves focus, Enter on New simulation opens SIM picker, Esc goes back
  await p.keyboard.press('ArrowDown');let f=await p.evaluate(()=>document.querySelector('#start .tile.on')?.dataset.go);ok(f==(T?'well':'login'),`${nm}: keyboard ArrowDown moves focus (${f})`);
  await p.keyboard.press('ArrowUp');f=await p.evaluate(()=>document.querySelector('#start .tile.on')?.dataset.go);
- await p.keyboard.press('Enter');await w(300);let sub=await p.evaluate(()=>[...document.querySelectorAll('#start .tile')].map(b=>b.dataset.go).join());ok(f=='sim'&&sub=='simA,simFree,back',`${nm}: Enter on New simulation → SIM well picker (${sub})`);
+ await p.keyboard.press('Enter');await w(300);await p.waitForFunction(()=>[...document.querySelectorAll('#start .tile')].map(b=>b.dataset.go).join()=='simA,simFree,back',{timeout:30000,polling:50}).catch(()=>{});let sub=await p.evaluate(()=>[...document.querySelectorAll('#start .tile')].map(b=>b.dataset.go).join());ok(f=='sim'&&sub=='simA,simFree,back',`${nm}: Enter on New simulation → SIM well picker (${sub})`);
  await p.screenshot({path:`${DIR}/${PRE}${nm}_2_sim_picker.png`});
- await p.keyboard.press('Escape');await w(200);sub=await p.evaluate(()=>[...document.querySelectorAll('#start .tile')].map(b=>b.dataset.go).join());ok(sub=='sim,well,login,edm,monitor,workover,showroom','Esc → back to main menu');
+ await p.keyboard.press('Escape');await w(200);await p.waitForFunction(()=>[...document.querySelectorAll('#start .tile')].map(b=>b.dataset.go).join()=='sim,well,login,edm,monitor,workover,ddcab,showroom',{timeout:30000,polling:50}).catch(()=>{});sub=await p.evaluate(()=>[...document.querySelectorAll('#start .tile')].map(b=>b.dataset.go).join());ok(sub=='sim,well,login,edm,monitor,workover,ddcab,showroom','Esc → back to main menu');
  // sound toggle
  await tap(p,'#stSnd',T);ok(/Sound on/.test(await p.$eval('#stSnd',e=>e.textContent)),`${nm}: sound toggle turns on`);await tap(p,'#stSnd',T);
  // New simulation → SIM proposal A (touch/click)
@@ -50,12 +50,12 @@ for(const [nm,vp] of [['desk',{width:1440,height:900}],['phone',{width:390,heigh
  r=await p.evaluate(()=>({last:dwStart.last,join:!!document.getElementById('plJoin'),pw:!!document.querySelector('#plJoin input[type=password]')}));
  ok(g&&r.last=='join'&&r.join&&!r.pw,`${nm}: Log in as player → name join, no password field`);
  await p.screenshot({path:`${DIR}/${PRE}${nm}_5_login.png`});
- await p.$eval('#plName',e=>e.value='');await p.$eval('#plName',e=>e.focus());await p.keyboard.type('Start Tester');await p.$eval('#plJoin form',f=>f.requestSubmit());await p.waitForFunction(()=>document.getElementById('sessPanel')?.style.display=='block',{timeout:20000}).catch(()=>{});
+ await p.$eval('#plName',e=>e.value='');await p.$eval('#plName',e=>e.focus());await p.keyboard.type('Start Tester');await p.$eval('#plJoin form',f=>f.requestSubmit());await p.waitForFunction(()=>document.getElementById('sessPanel')?.style.display=='block',{timeout:60000}).catch(()=>{});
  r=await p.evaluate(()=>({n:GX.player.name,sp:document.getElementById('sessPanel')?.style.display}));ok(r.n=='Start Tester'&&r.sp=='block',`${nm}: after name → session panel (lobby / join by code) opens (${JSON.stringify(r)})`);
  await p.ctx.close();
  // Continue only with saved state
  p=await page(vp,'/?start=1',{pre:`try{localStorage.setItem('dw_start_save','{"dest":"simA"}')}catch(e){}`});await p.waitForSelector('#start .tile',{timeout:60000});
- r=await p.evaluate(()=>[...document.querySelectorAll('#start .tile')].map(b=>b.dataset.go).join());ok(r=='continue,sim,well,login,edm,monitor,workover,showroom',`${nm}: saved state → Continue tile first (${r})`);
+ r=await p.evaluate(()=>[...document.querySelectorAll('#start .tile')].map(b=>b.dataset.go).join());ok(r=='continue,sim,well,login,edm,monitor,workover,ddcab,showroom',`${nm}: saved state → Continue tile first (${r})`);
  if(nm=='desk')await p.screenshot({path:`${DIR}/${PRE}${nm}_6_continue.png`});
  await p.keyboard.press('Enter');g=await gone(p);ok(g&&await p.evaluate(()=>dwStart.last)=='continue',`${nm}: Continue → resumes saved game`);await p.ctx.close();
  // ?s=CODE skips straight to join (network aborted so no session write)

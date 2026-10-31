@@ -229,4 +229,4 @@ function goLab(){const b=$('wsGo');if(b){b.textContent=ST.target>0.5?'🔧 Colla
 export function close(){ST.open=false;$('wshop').style.display='none';cancelAnimationFrame(raf);for(const id of ['btnExpl','btnBhaB'])$(id)?.classList.remove('on')}
 export async function init(c){C=c;THREE=c.THREE;OC=(await import('./vendor/OrbitControls.js')).OrbitControls;css();build();loadBha();
  const hud=$('hud');for(const [id,t,m] of [['btnExpl','🔩 Exploded view','exp'],['btnBhaB','🧰 BHA builder','bha']]){const b=document.createElement('button');b.id=id;b.textContent=t;b.onclick=()=>{if(ST.open&&ST.mode==m)close();else open(m)};hud.appendChild(b)}
- window.GX=window.GX||{};GX.ws={ST,CAT,LIB,PRESETS,open,close,explode,reassemble,showPart,addItem,removeItem,move,preset,totals,kgOf,keyFor,itemFrom,hi,buildExp,setMode,layout,$};import('./bom.js?v=1').then(m=>m.init(GX.ws)).catch(e=>console.error('bom',e))}
+ window.GX=window.GX||{};GX.ws={ST,CAT,LIB,PRESETS,open,close,explode,reassemble,showPart,addItem,removeItem,move,preset,totals,kgOf,keyFor,itemFrom,hi,buildExp,setMode,layout,$};import('./bom.js?v=b13').then(m=>m.init(GX.ws)).catch(e=>console.error('bom',e))}

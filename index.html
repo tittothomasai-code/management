@@ -11,7 +11,7 @@ body{margin:0;overflow:hidden;font:12px system-ui,sans-serif;background:#000}
 .panel h4{margin:0 0 4px;font-size:12px;color:#8fd}.panel .r{display:flex;justify-content:space-between;gap:10px}.panel b{font-variant-numeric:tabular-nums}
 .panel button{background:#234;color:#def;border:1px solid #567;border-radius:3px;padding:2px 6px;margin:2px 2px 0 0;cursor:pointer}
 .panel input{width:90px}.tag{position:fixed;color:#fff;background:#0008;padding:1px 4px;border-radius:3px;font-size:10px;transform:translate(-50%,-50%);pointer-events:none}
-</style><meta name="app-version" content="v5.11.2 · 30e7dc8"></head><body>
+</style><meta name="app-version" content="v5.11.4 · b56c8bc"></head><body>
 <div id="sim">SIMULATED - not real rig data</div>
 <div id="hud">
 <button id="conn">Run connection</button>
@@ -24,9 +24,9 @@ body{margin:0;overflow:hidden;font:12px system-ui,sans-serif;background:#000}
 <div id="clock"></div><div id="log"></div><div id="panels"></div>
 <script type="importmap">{"imports":{"three":"./vendor/three.module.js"}}</script>
 <script src="./units.js?v=v57"></script>
-<script type="module" src="./main.js?v=b4"></script><script type="module" src="./start.js?v=b10"></script><script type="module">if(new URLSearchParams(location.search).has("monitor"))import("./monitor.js?v=b8").then(m=>{const go=()=>window.GX&&GX.wplan?m.open():setTimeout(go,200);go()})</script><script type="module">{const d=new URLSearchParams(location.search).get("demo");if(d=="bop")import("./bop.js?v=b10");if(d=="choke")import("./choke.js?v=1");if(d=="fluids"||new URLSearchParams(location.search).has("fluids"))import("./fluidsui.js?v=b4");if(d=="casing")import("./ops3d.js?v=b4");if(d=="cement")import("./cement.js?v=512");if(d=="cement3d"||d=="fit")import("./cem3d.js?v=513");if(d=="geosteer")import("./geosteer.js?v=3");if(d=="showroom")import("./showroom.js?v=1").then(m=>{m.init();m.open()})}</script>
-<script type="module">if(new URLSearchParams(location.search).has("edm"))import("./edmui.js?v=b10").then(m=>{const go=()=>window.GX&&GX.ui?(m.init(),m.open()):setTimeout(go,200);go()})</script>
+<script type="module" src="./main.js?v=b13"></script><script type="module" src="./home.js?v=h1"></script><script type="module" src="./start.js?v=b13"></script><script type="module">if(new URLSearchParams(location.search).has("monitor"))import("./monitor.js?v=b11").then(m=>{const go=()=>window.GX&&GX.wplan?m.open():setTimeout(go,200);go()})</script><script type="module">{const d=new URLSearchParams(location.search).get("demo");if(d=="bop")import("./bop.js?v=b10");if(d=="choke")import("./choke.js?v=1");if(d=="ddcab")import("./ddcab.js?v=b11");if(d=="fluids"||new URLSearchParams(location.search).has("fluids"))import("./fluidsui.js?v=b4");if(d=="casing")import("./ops3d.js?v=b11");if(d=="cement")import("./cement.js?v=512");if(d=="cement3d"||d=="fit")import("./cem3d.js?v=513");if(d=="geosteer")import("./geosteer.js?v=3");if(d=="showroom")import("./showroom.js?v=b13").then(m=>{m.init();m.open()})}</script>
+<script type="module">if(new URLSearchParams(location.search).has("edm"))import("./edmui.js?v=b13").then(m=>{const go=()=>window.GX&&GX.ui?(m.init(),m.open()):setTimeout(go,200);go()})</script>
 <script src="./mobile.js?v=v5941" defer></script>
 <script type="module" src="./strat.js?v=b6"></script>
-<div id="appVer" style="position:fixed;right:6px;bottom:calc(2px + env(safe-area-inset-bottom));font:10px system-ui;color:#9ab;opacity:.7;z-index:5;pointer-events:none">v5.11.2 · 30e7dc8</div>
+<div id="appVer" style="position:fixed;right:6px;bottom:calc(2px + env(safe-area-inset-bottom));font:10px system-ui;color:#9ab;opacity:.7;z-index:5;pointer-events:none">v5.11.4 · b56c8bc</div>
 </body></html>

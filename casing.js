@@ -2,7 +2,7 @@
 // Pipe body ratings from API 5C3-style formulas on a built-in API 5CT-style SIM table (OD, nominal weight, wall, grade min yield).
 // Simplified SIM load cases: burst = gas to surface from next-section pore pressure with saltwater backup; collapse = full evacuation
 // against the section mud; tension = buoyed hanging weight. Metric display (mm, kg/m, m, kPa, kN). No network calls.
-import * as WP from './wplan.js';
+import * as WP from './wplan.js?v=b11';
 const fin=Number.isFinite,$=id=>typeof document!='undefined'?document.getElementById(id):null,es=t=>String(t??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
 export const PSI=6.894757,LBF=4.448222,IN=25.4,LBFT=1.488164,G=9.80665,STEEL=7.85;
 export const GRADES={'J-55':55000,'K-55':55000,'N-80':80000,'L-80':80000,'C-95':95000,'P-110':110000};

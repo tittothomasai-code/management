@@ -2,7 +2,7 @@
 // Offsets (CSV / EDM XML) -> IndexedDB 'dw_wplan'.offsets. Simplified ISCWSA-style MWD error model (systematic terms: inclination,
 // azimuth, depth scale, depth reference). Closest approach, traveling cylinder, separation factor (SF) with alert/stop, ladder, TC,
 // min-SF report, beam of light ahead of the bit. Metric. Everything assumed is tagged SIM. No network calls.
-import * as WP from './wplan.js';
+import * as WP from './wplan.js?v=b11';
 const D2R=Math.PI/180,R2D=180/Math.PI,$=id=>document.getElementById(id),es=t=>String(t??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
 const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2],sub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]],len=a=>Math.hypot(...a),sc=(a,k)=>a.map(x=>x*k),nrm=a=>{const l=len(a);return l?sc(a,1/l):a};
 export const EM_LABEL='Error model: concept only, not certified (simplified ISCWSA-style)';

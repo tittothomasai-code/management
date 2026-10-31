@@ -1,7 +1,7 @@
 // broomstick.js (feat/casing-broomstick): broomstick chart for the 9-5/8" casing run + HUD hookload.
 // Model curves: casingtd.js broomstick() (Johancsik soft-string T&D, SPE 11380) for μ 0.1–0.4. Measured points: casingtd output td.so
 // from the ops3d.js run timeline (stateAt / window.dwOps.last). No new T&D engine. Everything SIM, never LIVE. Sources: docs/casing-broomstick.md.
-import {broomstick} from './casingtd.js';import {well,casingPlan,stateAt,G} from './ops3d.js?v=b4';
+import {broomstick} from './casingtd.js';import {well,casingPlan,stateAt,G} from './ops3d.js?v=b11';
 export const MUS=[0.1,0.2,0.3,0.4];const $=id=>document.getElementById(id),f0=v=>Number.isFinite(v)?Math.round(v).toString():'–';
 export function tdOpts(P){return {kgm:P.kgm,mudSG:P.s.mudSG,odM:P.Dp,prevShoeMD:P.prev.shoeMD}}
 export function curves(w,P,step=50){return broomstick(w,P.s.shoeMD,tdOpts(P),MUS,step)}
