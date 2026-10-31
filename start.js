@@ -69,7 +69,7 @@ async function choose(){const go=ST.items[ST.i]?.dataset.go;beep(880,.1);
  if(go=='sim'){ST.menu='sim';return render()}
  if(go=='monitor'){close('monitor');const m=await import('./monitor.js?v=b11');m.open();return}
  if(go=='ddcab'){close('ddcab');const m=await import('./ddcab.js?v=r1');m.open();return}
- if(go=='showroom'){close('showroom');const m=await import('./showroom.js?v=b14');m.init();m.open();return}
+ if(go=='showroom'){close('showroom');const m=await import('./showroom.js?v=b15');m.init();m.open();return}
  if(go=='workover'){close('workover');const m=await import('./workover.js?v=b13');m.open();return}
  if(go=='saved'){ST.menu='saved';return render()}
  if(go?.startsWith('open:')){close('edm');const m=await import('./edmui.js?v=b13');m.openSaved(go.slice(5)).catch(e=>alert('Could not open saved site: '+e.message));return}
