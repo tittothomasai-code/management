@@ -10,7 +10,7 @@ async function loader(){if(LD)return LD;LD=(async()=>{const [{GLTFLoader},{DRACO
 export const url=(id,lod)=>new URL(`./assets/rigs/${id}_${LODF[lod]||'med'}.glb?v=${VER}`,import.meta.url).href;
 export function enabled(){try{const u=new URLSearchParams(location.search).get('sr3d');if(u!=null)return u!='0';return localStorage.getItem('dw_sr3d')!='0'}catch(e){return true}}
 // Returns a fresh clone of the scene for rig id at lod (q: low|medium|high).
-export async function load(id,lod){const k=id+'_'+lod;if(!cache.has(k))cache.set(k,loader().then(l=>l.loadAsync(url(id,lod))).then(g=>g.scene).catch(e=>{cache.delete(k);throw e}));
+export async function load(id,lod){const k=id+'_'+lod;if(!cache.has(k))cache.set(k,loader().then(l=>l.loadAsync(url(id,lod))).then(g=>{g.scene.traverse(o=>{if(!o.isMesh)return;const G=o.geometry;G.computeBoundingBox();const c=G.boundingBox.getCenter(new THREE.Vector3());if(c.lengthSq()<1e-8)return;G.translate(-c.x,-c.y,-c.z);o.position.add(c.applyQuaternion(o.quaternion).multiply(o.scale))});return g.scene}).catch(e=>{cache.delete(k);throw e}));
  const s=await cache.get(k);return s.clone(true)}
 // Tag meshes: userData.part (showroom key), bom (asset id), comp (component id). inv maps BOM asset id -> showroom key.
 export function tag(root,inv,keys){const parts=[];root.traverse(o=>{if(!o.isMesh)return;o.castShadow=true;o.receiveShadow=true;let n=o,nm='';while(n&&n!==root){if(/^[a-z0-9]+(__[a-z0-9]+)?$/i.test(n.name)){nm=n.name;break}n=n.parent}

@@ -20,11 +20,11 @@ for(const nm of ['desk','phone']){const {p,ctx}=await page(nm);await ready(p);
   ok(need.every(a=>r.names.includes(a)&&as.has(a)),nm+' '+rigs[i]+': nodes '+[...as].join(','));
   if(rigs[i]=='triple')ok(Object.keys(BOM).filter(a=>a!='block').every(a=>as.has(a))&&['topdrive__motor','drawworks__drum','bop__annular','mast__monkeyboard','block__crown','block__travelling'].every(n=>r.names.includes(n)),nm+' triple: all 10 BOM assets + derrick parts present');
   // card never covers the rig
-  for(const col of [false,true]){await p.evaluate(c=>{GX.showroom.ST.rcCol=c;GX.showroom.rigCard(true)},col);await w(350);
+  for(const col of [false,true]){await p.evaluate(c=>{GX.showroom.ST.rcCol=c;GX.showroom.rigCard(true)},col);await w(500);for(let smp=0;smp<3;smp++){if(smp)await w(700);
    const o=await p.evaluate(()=>{const c=srRC.getBoundingClientRect(),R=GX.showroom.rigRect(GX.showroom.ST.grp),cl=v=>Math.max(0,v);const iw=cl(Math.min(c.right,Math.min(R.r,innerWidth))-Math.max(c.left,Math.max(R.l,0))),ih=cl(Math.min(c.bottom,Math.min(R.b,innerHeight))-Math.max(c.top,Math.max(R.t,0)));return {a:iw*ih,mode:srRC.dataset.mode,c:[c.left,c.top,c.right,c.bottom].map(Math.round)}});
-   ok(o.a<1,nm+' '+rigs[i]+(col?' collapsed':'')+': rig card does not overlap rig ('+o.mode+', overlap '+Math.round(o.a)+'px²)');
+   const exp=await p.evaluate(()=>!srRC.classList.contains('col'));ok(o.a<1&&(col||exp),nm+' '+rigs[i]+(col?' collapsed':' expanded')+' t'+smp+': rig card does not overlap rig ('+o.mode+', overlap '+Math.round(o.a)+'px², card '+o.c+')');}
    if(!col&&['triple','ship','frac'].includes(rigs[i]))await p.screenshot({path:SH+nm+'_'+rigs[i]+'_card.png'})}
-  await p.evaluate(()=>{GX.showroom.ST.rcCol=false;GX.showroom.rigCard(false)});
+  await p.evaluate(()=>{GX.showroom.ST.rcCol=null;GX.showroom.rigCard(false)});
   if(rigs[i]=='triple'){await p.screenshot({path:SH+nm+'_triple.png'});
    // A/B/C: asset > component zoom on GLB mesh
    const z=await p.evaluate(async()=>{const S=GX.showroom;S.drawer(true,'topdrive');const cs=S.comps('topdrive');const i=cs.findIndex(c=>c.id=='motor');S.selC(i);const ms=S.ST.parts.filter(m=>m.userData.comp=='motor'&&m.userData.bom=='topdrive');return {i,n:ms.length,cam:!!S.ST.camT}});
