@@ -4,7 +4,7 @@
 // HONESTY: generic SIM rig, not a specific real rig. Labelled SIM. No network writes.
 // Hooks (guarded): GX.showroomAB.register('C',...) from srpick.js (feat/showroom-b); srperf.js attach({id:'C',el,lod,ready,match}) on open / detach('C') on close (feat/showroom-b, key P).
 import * as THREE from 'three';
-export const VER='c1';
+export const VER='c2';
 export const CFG={pack:'pass2'};
 const $=id=>document.getElementById(id),es=t=>String(t??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const phone=()=>Math.min(innerWidth,innerHeight)<600||matchMedia('(pointer:coarse)').matches&&innerWidth<900;
@@ -35,14 +35,14 @@ function css(){if($('srcCss'))return;const s=document.createElement('style');s.i
 #srcCard .lv{display:inline-block;border:1px solid #c9a46a;color:#e8d3ad;border-radius:4px;font-size:11px;padding:0 4px;margin-right:4px}#srcCard .bom{font:11px ui-monospace,monospace;color:#9aa6b3;word-break:break-all}
 #srcCard ul{list-style:none;margin:4px 0 0;padding:0}#srcCard li button{width:100%;text-align:left;margin:2px 0;min-height:32px;font-size:13px}
 #srcCard.min ul,#srcCard.min .cr{display:none}
-#srcBom{position:absolute;top:52px;right:10px;bottom:62px;width:330px;overflow:auto;background:rgba(12,15,19,.94);border:1px solid #3a4450;border-radius:6px;padding:6px 8px}
-#srcBom table{width:100%;border-collapse:collapse;font-size:12px}#srcBom td{padding:3px 4px;border-bottom:1px solid #222a33;cursor:pointer}#srcBom td.b{font:11px ui-monospace,monospace;color:#9aa6b3}#srcBom tr.on td{background:#2a2316}
+#srcBom,#srcFleet{position:absolute;top:52px;right:10px;bottom:62px;width:330px;overflow:auto;background:rgba(12,15,19,.94);border:1px solid #3a4450;border-radius:6px;padding:6px 8px}
+#srcBom table{width:100%;border-collapse:collapse;font-size:12px}#srcBom td{padding:3px 4px;border-bottom:1px solid #222a33;cursor:pointer}#srcFleet .r{padding:6px 2px;border-bottom:1px solid #222a33;font-size:12px}#srcFleet .r b{font-size:13px}#srcFleet .r small{display:block;color:#9aa6b3;margin-top:2px}#srcFleet .r button{float:right;min-height:30px}#srcFleet h3{font-size:12px;margin:8px 0 2px;color:#c9a46a;font-weight:600}#srcFleet .r.on{background:#2a2316}#srcBom td.b{font:11px ui-monospace,monospace;color:#9aa6b3}#srcBom tr.on td{background:#2a2316}
 #srcMsg{position:absolute;left:50%;top:46%;transform:translate(-50%,-50%);font-size:14px;color:#aab4c0}
-@media (max-width:600px){#srcCard{left:6px!important;right:6px;width:auto;top:auto!important;bottom:104px;max-height:32vh}#srcBom{left:6px;right:6px;width:auto;top:auto;bottom:104px;height:36vh}#srcBar button{min-height:40px;padding:4px 8px}#srcTop h2{font-size:13px}}`;document.head.appendChild(s)}
+@media (max-width:600px){#srcCard{left:6px!important;right:6px;width:auto;top:auto!important;bottom:104px;max-height:32vh}#srcBom,#srcFleet{left:6px;right:6px;width:auto;top:auto;bottom:104px;height:36vh}#srcBar button{min-height:40px;padding:4px 8px}#srcTop h2{font-size:13px}}`;document.head.appendChild(s)}
 function ui(){const el=ST.el=document.createElement('section');el.id='showroomC';el.setAttribute('role','dialog');el.setAttribute('aria-label','Showroom C');
- el.innerHTML=`<canvas></canvas><div id=srcTop><h2 id=srcName>Showroom C</h2><button id=srcBomB aria-pressed=false title="Parts list (B)">BOM</button><button id=srcNight aria-pressed=false title="Night (N)">Night</button><button id=srcX aria-label="Close showroom (Esc)">✕</button></div>
- <div id=srcMsg>Loading model…</div><div id=srcBar>${PRESETS.map(([k,t],i)=>`<button data-pre=${k} title="${t} (${i+1})">${t}</button>`).join('')}<button id=srcExp aria-pressed=false title="Explode (X)">Explode</button></div><div id=srcCard hidden></div><div id=srcBom hidden></div>`;
- document.body.appendChild(el);el.querySelectorAll('[data-pre]').forEach(b=>b.onclick=()=>preset(b.dataset.pre));$('srcExp').onclick=()=>explode();$('srcNight').onclick=()=>night();$('srcX').onclick=()=>close();$('srcBomB').onclick=()=>bom()}
+ el.innerHTML=`<canvas></canvas><div id=srcTop><h2 id=srcName>Showroom C</h2><button id=srcFleetB aria-pressed=false title="Rig catalogue (R)">Rigs</button><button id=srcBomB aria-pressed=false title="Parts list (B)">BOM</button><button id=srcNight aria-pressed=false title="Night (N)">Night</button><button id=srcX aria-label="Close showroom (Esc)">✕</button></div>
+ <div id=srcMsg>Loading model…</div><div id=srcBar>${PRESETS.map(([k,t],i)=>`<button data-pre=${k} title="${t} (${i+1})">${t}</button>`).join('')}<button id=srcExp aria-pressed=false title="Explode (X)">Explode</button></div><div id=srcCard hidden></div><div id=srcBom hidden></div><div id=srcFleet hidden></div>`;
+ document.body.appendChild(el);el.querySelectorAll('[data-pre]').forEach(b=>b.onclick=()=>preset(b.dataset.pre));$('srcExp').onclick=()=>explode();$('srcNight').onclick=()=>night();$('srcX').onclick=()=>close();$('srcBomB').onclick=()=>bom();$('srcFleetB').onclick=()=>fleet()}
 async function setupGL(){const cv=ST.el.querySelector('canvas'),P=phone(),ren=ST.ren=new THREE.WebGLRenderer({canvas:cv,antialias:!P,powerPreference:'high-performance'});
  ren.setPixelRatio(Math.min(devicePixelRatio,P?1.25:1.5));ren.setSize(innerWidth,innerHeight,false);ren.outputColorSpace=THREE.SRGBColorSpace;ren.toneMapping=THREE.ACESFilmicToneMapping;ren.toneMappingExposure=1;
  const sc=ST.scene=new THREE.Scene();ST.cam=new THREE.PerspectiveCamera(40,innerWidth/innerHeight,.1,2000);ST.cam.position.set(70,45,80);
@@ -65,18 +65,20 @@ async function loadRig(){const t0=performance.now(),lod=ST.lod=pickLod(),r=ST.ri
  const lampN=Object.keys(ST.nodes).filter(p=>/light_/.test(p.split('/').pop())),max=phone()?3:8;ST.lamps=[];for(const p of lampN.slice(0,max)){const L=new THREE.PointLight(0xffe2b8,0,38,1.6);ST.nodes[p].getWorldPosition(L.position);L.position.y-=.6;ST.scene.add(L);ST.lamps.push(L)}
  $('srcMsg').hidden=true;$('srcName').innerHTML=es(r.name.replace(/\s+—.*$/,''))+'<span class=sim>SIM</span>';preset('overview',true)}
 function boxOf(paths){const b=new THREE.Box3();for(const p of paths){if(p=='*'){b.copy(ST.bb);continue}const n=ST.nodes[p];if(n)b.expandByObject(n)}return b}
-export function preset(k,instant){const P=PRESETS.find(x=>x[0]==k)||PRESETS[0];ST.preset=P[0];document.querySelectorAll('#srcBar [data-pre]').forEach(b=>{const on=b.dataset.pre==P[0];b.classList.toggle('on',on);b.setAttribute('aria-pressed',on)});
+export function preset(k,instant){unA();const P=PRESETS.find(x=>x[0]==k)||PRESETS[0];ST.preset=P[0];document.querySelectorAll('#srcBar [data-pre]').forEach(b=>{const on=b.dataset.pre==P[0];b.classList.toggle('on',on);b.setAttribute('aria-pressed',on)});
  const b=boxOf(P[2]),c=b.getCenter(new THREE.Vector3()),s=b.getSize(new THREE.Vector3()),r=Math.max(s.x,s.y,s.z)*.5,f=ST.cam.fov*Math.PI/360,dist=r/Math.sin(f)*(phone()?1.25:.95);let pos;
  if(k=='cabin'){const con=ST.nodes['doghouse/driller_console']||ST.nodes.doghouse,cb=new THREE.Box3().setFromObject(con),cc=cb.getCenter(new THREE.Vector3()),dir=cc.clone().sub(c).setY(0);if(dir.lengthSq()<1e-4)dir.set(1,0,0);dir.normalize();pos=cc.clone().addScaledVector(dir,-Math.max(1.4,s.x*.35)).add(new THREE.Vector3(0,.6,0));c.copy(cc);ST.ctl.minDistance=.3}
  else{ST.ctl.minDistance=2;const dir=new THREE.Vector3(1,.45,1.1).normalize();if(k=='overview')dir.set(1,.38,1.3).normalize();pos=c.clone().addScaledVector(dir,dist)}
  if(k!='overview'&&k!='cabin'&&ST.sel?.split('/')[0]!=P[2][0])select(P[2][0]);if(k=='cabin')select('doghouse/driller_console');
  ST.anim={p0:ST.cam.position.clone(),p1:pos,t0:ST.ctl.target.clone(),t1:c,s:performance.now(),d:instant?1:1100};return k}
-export function explode(v){ST.expT=v==null?(ST.expT?0:1):(v?1:0);const b=$('srcExp');if(b){b.classList.toggle('on',!!ST.expT);b.setAttribute('aria-pressed',!!ST.expT)}return ST.expT}
+function unA(){if(!ST.alt)return;if(ST.altObj)ST.scene.remove(ST.altObj);ST.altObj=null;ST.alt=null;if(ST.root)ST.root.visible=true;setName(ST.rig?.name)}
+function setName(t,keep){const n=$('srcName');if(n)n.innerHTML=es(keep?String(t):String(t||'Showroom C').replace(/\s+—.*$/,''))+'<span class=sim>SIM</span>'}
+export function explode(v){if(ST.alt&&v!==false)unA();ST.expT=v==null?(ST.expT?0:1):(v?1:0);const b=$('srcExp');if(b){b.classList.toggle('on',!!ST.expT);b.setAttribute('aria-pressed',!!ST.expT)}return ST.expT}
 function applyExplode(dt){ST.exp+=(ST.expT-ST.exp)*Math.min(1,dt*4);if(Math.abs(ST.exp-ST.expT)<1e-3)ST.exp=ST.expT;for(const p of ST.top){const n=ST.nodes[p],h=ST.home[p],b=ST.cb?.[p];if(!b)continue;const d=b.clone().sub(ST.ctr);d.y=Math.max(0,d.y)*.35;if(d.lengthSq()<1)d.set(0,1,0);d.normalize();n.position.copy(h).addScaledVector(d,ST.exp*9)}}
 export function night(v){ST.night=v==null?!ST.night:!!v;const N=ST.night;ST.sky.material.uniforms.n.value=N?1:0;ST.hemi.intensity=N?.05:.7;ST.sun.intensity=N?.06:2.2;ST.sun.color.set(N?0x9fb3d6:0xfff2e0);if(ST.scene)ST.scene.environmentIntensity=N?.08:.6;ST.ren.toneMappingExposure=N?1.25:1;
  for(const m of ST.lights){m.emissive?.set(0xffe2b8);m.emissiveIntensity=N?6:.4}for(const m of ST.screens)m.emissiveIntensity=N?2.2:1.2;for(const L of ST.lamps)L.intensity=N?(phone()?90:60):0;ST.ground.material.color.set(N?0x3a362f:0x6b6152);
  ST.el.classList.toggle('night',N);const b=$('srcNight');if(b){b.classList.toggle('on',N);b.setAttribute('aria-pressed',N)}return N}
-export function bom(v){ST.bom=v==null?!ST.bom:!!v;const el=$('srcBom'),b=$('srcBomB');b.classList.toggle('on',ST.bom);b.setAttribute('aria-pressed',ST.bom);el.hidden=!ST.bom;if(ST.bom){const rows=Object.values(ST.T);
+export function bom(v){if(v!==false&&ST.fl&&(v==null?!ST.bom:v))fleet(false);ST.bom=v==null?!ST.bom:!!v;const el=$('srcBom'),b=$('srcBomB');b.classList.toggle('on',ST.bom);b.setAttribute('aria-pressed',ST.bom);el.hidden=!ST.bom;if(ST.bom){const rows=Object.values(ST.T);
  el.innerHTML=`<b>Parts list (BOM)</b> <span class=sim style="font-size:11px;color:#aab4c0">SIM · ${rows.length} items</span><table>${rows.map(n=>`<tr data-p="${es(n.path)}"${n.path==ST.sel?' class=on':''}><td style="padding-left:${(n.path.split('/').length-1)*12+4}px"><span class=lv>${n.level}</span>${es(nice(n.path))}</td><td class=b>${es(n.bom)}</td></tr>`).join('')}</table>`;
  el.querySelectorAll('tr[data-p]').forEach(t=>t.onclick=()=>select(t.dataset.p,true))}if(ST.bom&&phone())card(false);return ST.bom}
 // highlight: tint selected component meshes via emissive on cloned materials.
@@ -97,10 +99,26 @@ function pick(e){if(ST.drag>6)return;const r=ST.ren.domElement.getBoundingClient
  if(p){const parts=p.split('/'),cur=ST.sel?ST.sel.split('/'):[];let d=1;while(d<parts.length&&cur.slice(0,d).join('/')==parts.slice(0,d).join('/')&&cur.length>=d)d++;select(parts.slice(0,Math.min(d,parts.length)).join('/'))}}
 // input
 const KEYS={};function key(e){if(!ST.open)return;const k=e.key;if(k=='Escape'){e.preventDefault();e.stopImmediatePropagation();if(ST.bom)bom(false);else if(ST.sel)select(null);else close();return}
- if(e.target&&/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;let u=1;if(/^[1-5]$/.test(k))preset(PRESETS[+k-1][0]);else if(k=='x'||k=='X')explode();else if(k=='n'||k=='N')night();else if(k=='b'||k=='B')bom();else if(k=='c'||k=='C'){if(ST.sel)select(null)}
+ if(e.target&&/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;let u=1;if(/^[1-5]$/.test(k))preset(PRESETS[+k-1][0]);else if(k=='x'||k=='X')explode();else if(k=='n'||k=='N')night();else if(k=='b'||k=='B')bom();else if(k=='r'||k=='R')fleet();else if(k=='c'||k=='C'){if(ST.sel)select(null)}
  else if(k=='ArrowLeft')orbit(-.12,0);else if(k=='ArrowRight')orbit(.12,0);else if(k=='ArrowUp')orbit(0,-.08);else if(k=='ArrowDown')orbit(0,.08);else if(k=='+'||k=='=')zoom(.85);else if(k=='-'||k=='_')zoom(1.18);else u=0;if(u){e.preventDefault();e.stopImmediatePropagation()}}
 export function orbit(a,b){ST.anim=null;const c=ST.ctl,o=ST.cam.position.clone().sub(c.target),s=new THREE.Spherical().setFromVector3(o);s.theta-=a;s.phi=Math.min(Math.PI*.495,Math.max(.05,s.phi+b));ST.cam.position.copy(c.target).add(new THREE.Vector3().setFromSpherical(s))}
 export function zoom(f){ST.anim=null;const c=ST.ctl,o=ST.cam.position.clone().sub(c.target),l=Math.min(c.maxDistance,Math.max(c.minDistance,o.length()*f));ST.cam.position.copy(c.target).addScaledVector(o.normalize(),l)}
+
+// Rig catalogue: every rig, spec and equipment entry of Showroom A, viewable here (A's own GLBs, LOD-matched). SIM data.
+const BIN={triple:1,workover:1,ctu:1,frac:1,jackup:1,semi:1,ship:1};
+async function adata(){if(!ST.A){const [a,t]=await Promise.all([import('./showroom.js?v=b16'),import('./showroom3d.js?v=5115')]);ST.A={RIGS:a.RIGS,ASSET:a.ASSET,t}}return ST.A}
+export async function fleet(v){ST.fl=v==null?!ST.fl:!!v;const el=$('srcFleet'),b=$('srcFleetB');if(!el)return;b.classList.toggle('on',ST.fl);b.setAttribute('aria-pressed',ST.fl);el.hidden=!ST.fl;if(!ST.fl)return;if(ST.fl&&ST.bom)bom(false);
+ const {RIGS,ASSET}=await adata(),r0=RIGS.find(r=>r.id==ST.alt)||RIGS[0],esc=x=>String(x??'').replace(/[<&>"]/g,c=>'&#'+c.charCodeAt(0)+';');
+ el.innerHTML=`<h3>Detailed rig</h3><div class="r${ST.alt?'':' on'}" data-fid=""><button data-arig="">View</button><b>${esc(ST.rig?.name||'Detailed rig')}</b><small>Full drill-down and parts list</small></div><h3>Rig catalogue (SIM specs)</h3>`+RIGS.map(r=>`<div class="r${ST.alt==r.id?' on':''}" data-fid=${r.id}><button data-arig=${r.id}>View</button><b>${esc(r.name)}</b><small>${esc(r.type)} · hook ${esc(r.hook)} · drawworks ${esc(r.dw)} · mast ${esc(r.mast)} · ${esc(r.pumps)} · BOP ${esc(r.bop)}</small></div>`).join('')
+ +`<h3>Equipment catalogue · ${esc(r0.name)}</h3>`+Object.entries(ASSET).map(([k,a])=>{let sp='';try{sp=typeof a.spec=='function'?a.spec(r0):a.spec}catch(e){}return `<div class=r data-aeq=${k}><b>${esc(a.name)}</b><small>${esc(a.type)}${sp?' · '+esc(sp):''}${a.comp?' · '+esc(a.comp.map(c=>c.n).join(', ')):''}</small></div>`}).join('');
+ el.querySelectorAll('[data-arig]').forEach(x=>x.onclick=()=>viewA(x.dataset.arig))}
+export async function viewA(id){if(!ST.open||!ST.root)return;if(ST.altObj){ST.scene.remove(ST.altObj);ST.altObj=null}ST.alt=id||null;
+ if(!id){ST.root.visible=true;unA();preset('overview');if(ST.fl)fleet(true);return}
+ const {RIGS,t}=await adata(),r=RIGS.find(x=>x.id==id);if(!r)return;const m=$('srcMsg');m.hidden=false;m.textContent='Loading model…';
+ try{if(ST.sel)select(null);if(ST.exp)explode(false);const g=(await t.load(id,{H:'high',M:'medium',L:'low'}[ST.lod]||'medium')).clone();if(!ST.open||ST.alt!=id)return;
+  const bx=new THREE.Box3().setFromObject(g),c=bx.getCenter(new THREE.Vector3()),sz=bx.getSize(new THREE.Vector3());g.position.x-=c.x;g.position.z-=c.z;g.position.y-=bx.min.y;
+  ST.root.visible=false;ST.scene.add(g);ST.altObj=g;setName(r.name,1);const d=Math.max(sz.x,sz.y,sz.z)*1.5+4;ST.anim=null;ST.ctl.target.set(0,sz.y*.42,0);ST.cam.position.set(d*.7,sz.y*.55+d*.25,d*.8);m.hidden=true}
+ catch(e){m.textContent='Model did not load.'}if(ST.fl)fleet(true)}
 const PAD={prev:[]};function pad(){const n=performance.now(),dt=Math.min(.1,(n-(PAD.t||n))/1000)||.05;PAD.t=n;if(!ST.open)return;const p=[...(navigator.getGamepads?.()||[])].find(Boolean);if(!p)return;const ax=i=>{const v=p.axes[i]||0;return Math.abs(v)<.15?0:v},bt=i=>!!p.buttons[i]?.pressed,ed=i=>bt(i)&&!PAD.prev[i];
  if(ax(0)||ax(1))orbit(ax(0)*1.6*dt,ax(1)*1.1*dt);if(ax(3))zoom(1+ax(3)*1.4*dt);if(ed(5))cyc(1);if(ed(4))cyc(-1);if(ed(3))explode();if(ed(2))night();if(ed(6))bom();
  if(ed(0)){const T=ST.sel?ST.T[ST.sel]:null;select(T?.kids[0]||ST.top[0],true)}if(ed(15)||ed(14)){const L=ST.sel&&ST.T[ST.sel].parent?ST.T[ST.T[ST.sel].parent].kids:ST.top,i=L.indexOf(ST.sel);select(L[(i+(ed(15)?1:-1)+L.length)%L.length],true)}
@@ -117,7 +135,7 @@ export async function open(){if(ST.open)return;css();ST.open=true;ui();addEventL
  const cv=ST.el.querySelector('canvas');cv.addEventListener('pointerdown',e=>{ST.drag=0;ST.pd=[e.clientX,e.clientY]});cv.addEventListener('pointermove',e=>{if(ST.pd)ST.drag=Math.max(ST.drag,Math.hypot(e.clientX-ST.pd[0],e.clientY-ST.pd[1]))});cv.addEventListener('pointerup',e=>{if(ST.pd)pick(e);ST.pd=null});
  try{await manifest();await setupGL();ST.last=0;ST.fpsT=performance.now();PAD.t=0;PAD.prev=[...(navigator.getGamepads?.()||[])].find(Boolean)?.buttons.map(b=>b.pressed)||[];ST.pi=setInterval(pad,50);ST.raf=requestAnimationFrame(loop);ST.loadMs=0;/* srperf hook */import('./srperf.js?v=p1').then(m=>ST.open&&m.attach({id:'C',el:ST.el,at:performance.now(),lod:()=>ST.lod||'–',ready:()=>!!ST.loadMs,match:/assets\/rigsc\//})).catch(()=>{});await loadRig();night(false)}catch(e){console.error('showroomc',e);const m=$('srcMsg');if(m){m.hidden=false;m.textContent='Model did not load. Close and try again.'}}}
 export function close(){if(!ST.open)return;ST.open=false;import('./srperf.js?v=p1').then(m=>m.detach('C')).catch(()=>{});cancelAnimationFrame(ST.raf);clearInterval(ST.pi);removeEventListener('keydown',key,true);removeEventListener('resize',resize);try{ST.ctl?.dispose();ST.ren?.dispose();ST.ren?.forceContextLoss?.()}catch(e){}
- ST.el?.remove();Object.assign(ST,{el:null,ren:null,root:null,nodes:null,meshes:null,cb:null,sel:null,anim:null,exp:0,expT:0,bom:false,night:false,last:0,lamps:[]});try{window.GX?.srperf?.unregister?.('C')}catch(e){}}
-const API={open,close,preset,explode,night,bom,select,orbit,zoom,perf,idle,tree,nice,ST,PRESETS,VER};
+ ST.el?.remove();Object.assign(ST,{el:null,ren:null,root:null,nodes:null,meshes:null,cb:null,sel:null,anim:null,exp:0,expT:0,bom:false,fl:false,alt:null,altObj:null,night:false,last:0,lamps:[]});try{window.GX?.srperf?.unregister?.('C')}catch(e){}}
+const API={open,close,fleet,viewA,preset,explode,night,bom,select,orbit,zoom,perf,idle,tree,nice,ST,PRESETS,VER};
 function reg(){window.GX=window.GX||{};window.GX.showroomC=API;try{window.GX.showroomAB?.register?.('C',{label:'C · Detail',aria:'Showroom C, detailed rig',open:()=>open(),close,el:'showroomC',header:'srcTop'})}catch(e){}}
 if(typeof window!='undefined'){reg();let n=0;const t=setInterval(()=>{if(window.GX?.showroomC!==API)window.GX=Object.assign(window.GX||{},{showroomC:API});if(window.GX?.showroomAB?.register&&!API._reg){API._reg=1;reg()}if(++n>120)clearInterval(t)},500)}
