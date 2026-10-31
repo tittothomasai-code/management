@@ -5,6 +5,9 @@ import * as THREE from 'three';
 export const VER='5115';
 export const LODF={low:'low',medium:'med',high:'high'};
 const cache=new Map();let LD=null;
+export function gltf(){return loader()}
+// Shared GLB-by-URL cache (Rig Builder parts, B/C packs). Returns the cached scene; callers clone.
+const UC=new Map();export function loadUrl(u){if(!UC.has(u))UC.set(u,loader().then(l=>l.loadAsync(u)).then(g=>{g.scene.updateMatrixWorld(true);return g.scene}).catch(e=>{UC.delete(u);throw e}));return UC.get(u)}
 async function loader(){if(LD)return LD;LD=(async()=>{const [{GLTFLoader},{DRACOLoader}]=await Promise.all([import('./vendor/loaders/GLTFLoader.js'),import('./vendor/loaders/DRACOLoader.js')]);
  const d=new DRACOLoader();d.setDecoderPath(new URL('./vendor/libs/draco/',import.meta.url).href);d.setDecoderConfig({type:'wasm'});const l=new GLTFLoader();l.setDRACOLoader(d);return l})();return LD}
 export const url=(id,lod)=>new URL(`./assets/rigs/${id}_${LODF[lod]||'med'}.glb?v=${VER}`,import.meta.url).href;

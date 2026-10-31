@@ -3,7 +3,7 @@
 // or its BOM tab when bom.js is loaded. "Use this rig" applies the rig design to the scene (GX.setDesign, ext2.js).
 // HONESTY: all rigs and numbers are GENERIC SIM values (typical class values), not a specific real rig. Labelled SIM.
 import * as THREE from 'three';
-import * as M3 from './showroom3d.js?v=5115';
+import * as M3 from './showroom3d.js?v=5116';
 const $=id=>document.getElementById(id),es=t=>String(t??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const PT={s:'Triplex 1000 HP (10in)',m:'Triplex 1600 HP (12in)',l:'Triplex 2200 HP (14in)',q:'Quintuplex 2500 HP (11in)'};
 const pumps=(n,t,l)=>Array.from({length:n},()=>({type:PT[t],liner_in:l}));

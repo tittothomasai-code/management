@@ -70,7 +70,7 @@ async function choose(){const go=ST.items[ST.i]?.dataset.go;beep(880,.1);
  if(go=='monitor'){close('monitor');const m=await import('./monitor.js?v=b11');m.open();return}
  if(go=='ddcab'){close('ddcab');const m=await import('./ddcab.js?v=r2');m.open();return}
  if(go=='safety'){close('safety');const m=await import('./safety.js?v=s1');m.open();return}/* safety hook */
- if(go=='showroom'){close('showroom');const P=await import('./srpick.js?v=b7').catch(()=>null);if(P){await P.open();return}const m=await import('./showroom.js?v=b17');m.init();m.open();return}
+ if(go=='showroom'){close('showroom');const P=await import('./srpick.js?v=b8').catch(()=>null);if(P){await P.open();return}const m=await import('./showroom.js?v=b18');m.init();m.open();return}
  if(go=='workover'){close('workover');const m=await import('./workover.js?v=b13');m.open();return}
  if(go=='saved'){ST.menu='saved';return render()}
  if(go?.startsWith('open:')){close('edm');const m=await import('./edmui.js?v=b15');m.openSaved(go.slice(5)).catch(e=>alert('Could not open saved site: '+e.message));return}
@@ -80,9 +80,9 @@ async function choose(){const go=ST.items[ST.i]?.dataset.go;beep(880,.1);
  if(go=='well'){close('wplan');const P=await wait(()=>window.GX?.wplan);P.calc({...JSON.parse(JSON.stringify(P.DEFAULT)),name:'New well (SIM)',targets:[{name:'TD',tvd:1000,n:100,e:0,tol:30,dls:3}],casing:[],steps:[],assumed:['targets','surface','kop','dls']});P.open('inputs');return}
  if(go=='login'){close('join');await wait(()=>window.GX?.player);const m=await import('./player.js?v=592');m.join(true);
   addEventListener('dw:player',()=>{wait(()=>window.GX?.session).then(s=>s.open(true)).catch(()=>{})},{once:true})}}
-function key(e){if(!ST.el)return;if(document.getElementById('syncP'))return;const k=e.key;const m={ArrowLeft:'l',ArrowRight:'r',ArrowUp:'u',ArrowDown:'d',a:'l',d:'r',w:'u',s:'d'}[k];
+function key(e){if(!ST.el)return;if(document.getElementById('syncP'))return;if(document.getElementById('rigBuilder'))return;/* rig-builder hook */const k=e.key;const m={ArrowLeft:'l',ArrowRight:'r',ArrowUp:'u',ArrowDown:'d',a:'l',d:'r',w:'u',s:'d'}[k];
  if(m){move(m)}else if(k=='Enter'||k==' '){choose()}else if(k=='Escape'||k=='Backspace'){back()}else return;e.preventDefault();e.stopPropagation()}
-function pad(){if(!ST.el)return;const gps=navigator.getGamepads?.()||[];for(const g of gps){if(!g)continue;const b=i=>!!g.buttons[i]?.pressed,ax=g.axes||[];
+function pad(){if(document.getElementById('rigBuilder'))return;/* rig-builder hook */if(!ST.el)return;const gps=navigator.getGamepads?.()||[];for(const g of gps){if(!g)continue;const b=i=>!!g.buttons[i]?.pressed,ax=g.axes||[];
   const s={u:b(12)||ax[1]<-.5,d:b(13)||ax[1]>.5,l:b(14)||ax[0]<-.5,r:b(15)||ax[0]>.5,a:b(0)||b(9),b:b(1)};const P=ST.gp.prev[g.index]||{};
   for(const d of ['u','d','l','r'])if(s[d]&&!P[d])move(d);if(s.a&&!P.a)choose();if(s.b&&!P.b)back();ST.gp.prev[g.index]=s}
  }

@@ -1,0 +1,77 @@
+{
+ "note": "Documented existing gaps. New assets get no entries: any missing feature fails. Remove an entry when the gap is fixed.",
+ "gaps": {
+  "A:ctu": {
+   "attach": "Whole rig, no attach anchors in manifest/GLB (no anchors). Needs modelled anchor empties from Codex (request 2026-11-01-parity, item 1).",
+   "ground": "Model sits below y=0 (min.y -0.30 m, size 50.0x19.3x34.0 m). Showroom places by bbox so it looks right, but the asset origin is off. Needs re-export with ground/waterline at y=0 (request item 2)."
+  },
+  "A:frac": {
+   "attach": "Whole rig, no attach anchors in manifest/GLB (no anchors). Needs modelled anchor empties from Codex (request 2026-11-01-parity, item 1).",
+   "ground": "Model sits below y=0 (min.y -0.30 m, size 90.0x15.3x56.0 m). Showroom places by bbox so it looks right, but the asset origin is off. Needs re-export with ground/waterline at y=0 (request item 2)."
+  },
+  "A:heli": {
+   "attach": "Whole rig, no attach anchors in manifest/GLB (no anchors). Needs modelled anchor empties from Codex (request 2026-11-01-parity, item 1).",
+   "ground": "Model sits below y=0 (min.y -0.30 m, size 64.0x58.2x50.0 m). Showroom places by bbox so it looks right, but the asset origin is off. Needs re-export with ground/waterline at y=0 (request item 2)."
+  },
+  "A:jackup": {
+   "attach": "Whole rig, no attach anchors in manifest/GLB (no anchors). Needs modelled anchor empties from Codex (request 2026-11-01-parity, item 1).",
+   "ground": "Model sits below y=0 (min.y -10.08 m, size 120.0x96.6x110.0 m). Showroom places by bbox so it looks right, but the asset origin is off. Needs re-export with ground/waterline at y=0 (request item 2)."
+  },
+  "A:semi": {
+   "attach": "Whole rig, no attach anchors in manifest/GLB (no anchors). Needs modelled anchor empties from Codex (request 2026-11-01-parity, item 1).",
+   "ground": "Model sits below y=0 (min.y -2.00 m, size 150.0x99.8x120.0 m). Showroom places by bbox so it looks right, but the asset origin is off. Needs re-export with ground/waterline at y=0 (request item 2)."
+  },
+  "A:ship": {
+   "attach": "Whole rig, no attach anchors in manifest/GLB (no anchors). Needs modelled anchor empties from Codex (request 2026-11-01-parity, item 1).",
+   "ground": "Model sits below y=0 (min.y -4.00 m, size 220.0x92.7x90.0 m). Showroom places by bbox so it looks right, but the asset origin is off. Needs re-export with ground/waterline at y=0 (request item 2)."
+  },
+  "A:single": {
+   "attach": "Whole rig, no attach anchors in manifest/GLB (no anchors). Needs modelled anchor empties from Codex (request 2026-11-01-parity, item 1).",
+   "ground": "Model sits below y=0 (min.y -1.15 m, size 60.0x50.5x40.0 m). Showroom places by bbox so it looks right, but the asset origin is off. Needs re-export with ground/waterline at y=0 (request item 2)."
+  },
+  "A:triple": {
+   "attach": "Whole rig, no attach anchors in manifest/GLB (no anchors). Needs modelled anchor empties from Codex (request 2026-11-01-parity, item 1).",
+   "ground": "Model sits below y=0 (min.y -0.30 m, size 80.0x64.5x56.0 m). Showroom places by bbox so it looks right, but the asset origin is off. Needs re-export with ground/waterline at y=0 (request item 2)."
+  },
+  "A:workover": {
+   "attach": "Whole rig, no attach anchors in manifest/GLB (no anchors). Needs modelled anchor empties from Codex (request 2026-11-01-parity, item 1).",
+   "ground": "Model sits below y=0 (min.y -0.85 m, size 50.0x53.1x34.0 m). Showroom places by bbox so it looks right, but the asset origin is off. Needs re-export with ground/waterline at y=0 (request item 2)."
+  },
+  "B:land_1500_ac_double": {
+   "attach": "Whole rig, no attach anchors in manifest/GLB (no anchors). Needs modelled anchor empties from Codex (request 2026-11-01-parity, item 1)."
+  },
+  "B:land_3000_triple_walking": {
+   "attach": "Whole rig, no attach anchors in manifest/GLB (no anchors). Needs modelled anchor empties from Codex (request 2026-11-01-parity, item 1)."
+  },
+  "B:workover_truck": {
+   "attach": "Whole rig, no attach anchors in manifest/GLB (no anchors). Needs modelled anchor empties from Codex (request 2026-11-01-parity, item 1)."
+  },
+  "B:coiled_tubing": {
+   "attach": "Whole rig, no attach anchors in manifest/GLB (no anchors). Needs modelled anchor empties from Codex (request 2026-11-01-parity, item 1)."
+  },
+  "B:jackup": {
+   "attach": "Whole rig, no attach anchors in manifest/GLB (no anchors). Needs modelled anchor empties from Codex (request 2026-11-01-parity, item 1)."
+  },
+  "B:semi_submersible": {
+   "attach": "Whole rig, no attach anchors in manifest/GLB (no anchors). Needs modelled anchor empties from Codex (request 2026-11-01-parity, item 1)."
+  },
+  "B:drillship": {
+   "attach": "Whole rig, no attach anchors in manifest/GLB (no anchors). Needs modelled anchor empties from Codex (request 2026-11-01-parity, item 1)."
+  },
+  "B:platform_modular": {
+   "attach": "Whole rig, no attach anchors in manifest/GLB (no anchors). Needs modelled anchor empties from Codex (request 2026-11-01-parity, item 1).",
+   "ground": "Model sits below y=0 (min.y -0.20 m, size 58.3x66.8x65.2 m). Showroom places by bbox so it looks right, but the asset origin is off. Needs re-export with ground/waterline at y=0 (request item 2)."
+  },
+  "B:snubbing_unit": {
+   "attach": "Whole rig, no attach anchors in manifest/GLB (no anchors). Needs modelled anchor empties from Codex (request 2026-11-01-parity, item 1).",
+   "ground": "Model sits below y=0 (min.y -0.27 m, size 22.2x19.4x15.9 m). Showroom places by bbox so it looks right, but the asset origin is off. Needs re-export with ground/waterline at y=0 (request item 2)."
+  },
+  "B:frac_spread": {
+   "attach": "Whole rig, no attach anchors in manifest/GLB (no anchors). Needs modelled anchor empties from Codex (request 2026-11-01-parity, item 1)."
+  },
+  "C:land_1500_ac_double_detailed": {
+   "attach": "Whole rig, no attach anchors in manifest/GLB (no anchors). Needs modelled anchor empties from Codex (request 2026-11-01-parity, item 1).",
+   "tris": "Over LOD triangle budget (L 17501/25000, M 62113/80000, H 200224/200000). Needs a real decimated LOD from Codex (request item 3)."
+  }
+ }
+}

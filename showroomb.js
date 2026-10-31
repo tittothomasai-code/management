@@ -3,6 +3,7 @@
 // Drop a new pack folder (same manifest schema) and change CFG.pack to swap models. Rig ids missing from STATS get stats from manifest dimensions.
 // HONESTY: all rigs and numbers are GENERIC SIM class values, not a specific real rig. Labelled SIM. No network writes.
 import * as THREE from 'three';
+import * as M3 from './showroom3d.js?v=5116';
 export const VER='b1';
 export const CFG={pack:'pass1'};
 // Extra polish (light rays, lens flare, confetti/sparks) is deferred: off unless ?srbfx=1 or localStorage dw_srb_fx=1.
@@ -40,12 +41,12 @@ function cPack(){try{return new URLSearchParams(location.search).get('srcpack')|
 // C rig uses C's LOD rule (phones M/L, desktop H); B rigs use B's.
 function cLod(){try{const o=(new URLSearchParams(location.search).get('srclod')||'').toUpperCase();if(/^[HML]$/.test(o))return o}catch(e){}return phone()?(devicePixelRatio>2.5||innerWidth<400?'L':'M'):'H'}
 export function lodOf(r){const l=r.src=='C'?cLod():ST.lod;return r.lods?.[l]?l:'M'}
-let LDp=null;function loader(){return LDp||(LDp=(async()=>{const [{GLTFLoader},{DRACOLoader}]=await Promise.all([import('./vendor/loaders/GLTFLoader.js'),import('./vendor/loaders/DRACOLoader.js')]);
- const d=new DRACOLoader();d.setDecoderPath(new URL('./vendor/libs/draco/',import.meta.url).href);d.setDecoderConfig({type:'wasm'});const l=new GLTFLoader();l.setDRACOLoader(d);return l})())}
+function loader(){return M3.gltf()}/* D2: showroom3d.js is the single GLB loader */
 // Map: bomId -> manifest path (e.g. mud_system/mud_pump_1/power_end). Uses node extras.bomId (names can be made unique by the loader).
 function bomIndex(r,lod){const m=(r.lods?.[lod]?.nodeToBom)||r.nodeToBom||{},inv={};for(const [p,b] of Object.entries(m))inv[b]=p;return {map:m,inv}}
-export async function loadRig(i){const r=ST.rigs[i],lod=lodOf(r),k=r.id+'_'+lod;
- if(!ST.cache.has(k))ST.cache.set(k,loader().then(l=>l.loadAsync(new URL(r.lods[lod].file,r.base||ST.base).href+'?v='+VER)).then(g=>g.scene).catch(e=>{ST.cache.delete(k);throw e}));
+export async function loadRig(i){const r=ST.rigs[i],lod=lodOf(r),k=r.id+'_'+lod+(r.rb?'_'+(r.rb.updated||0):'');/* rig-builder hook: key */
+ if(r.custom&&r.rb&&window.GX?.rigBuilder?.assemble3d){const lk=lod=='H'?'M':lod;if(!ST.cache.has(k))ST.cache.set(k,window.GX.rigBuilder.assemble3d(r.rb,lk).catch(e=>{ST.cache.delete(k);throw e}))}/* rig-builder hook: assembled 3D custom rig */
+ else if(!ST.cache.has(k))ST.cache.set(k,loader().then(l=>l.loadAsync(new URL(r.lods[lod].file,r.base||ST.base).href+'?v='+VER)).then(g=>g.scene).catch(e=>{ST.cache.delete(k);throw e}));
  const src=await ST.cache.get(k),root=src.clone(true),{map,inv}=bomIndex(r,lod),meshes=[],lights=[];
  root.traverse(o=>{if(o.isMesh){const b=o.userData.bomId||o.parent?.userData?.bomId;o.userData.path=inv[b]||null;o.userData.bom=b||null;meshes.push(o);const mats=Array.isArray(o.material)?o.material:[o.material];if(mats.some(x=>/light/i.test(x.name)))lights.push(o)}});
  // normalise: max size 40 units, base on podium top, centred.
@@ -262,6 +263,7 @@ let ASm=null;async function assetsMount(){try{ASm=ASm||await import('./srassets.
  ST.AS=ASm.mount(ST.el,{id:'srbAs',rig:()=>ST.rigs[ST.i],assets:assetList,narrow:()=>phone()||innerWidth<700,onSel:k=>{if(ST.cardOn)cardShow(false);focusPath(k);sfx('tick')},onComp:(k,i)=>{const c=assetList().find(a=>a.k==k)?.comps[i];focusPath(c?.path||k)}})}catch(e){console.warn('showroomB assets',e)}}
 export async function open(i){if(ST.el)return;window.GX=window.GX||{};window.GX.showroomB=ST.api=ST.api||api();if(!$('srbCss')){const s=document.createElement('style');s.id='srbCss';s.textContent=CSS;document.head.appendChild(s)}
  try{await manifest()}catch(e){console.warn('showroomB manifest',e);alert('Showroom B models are not available. Opening Showroom C.');try{await window.GX?.showroomC?.open?.()}catch(e){}return}
+ try{ST.rigs=ST.rigs.filter(r=>!r.custom);const x=window.GX?.rigBuilder?.showroomRigs?.(ST.rigs);if(Array.isArray(x))for(const r of x)ST.rigs.push({...r,st:r.st||statsFor(r)})}catch(e){}/* rig-builder hook */
  ST.lod=lodPick();try{ST.mute=localStorage.getItem('dw_srb_mute')=='1'}catch(e){}
  const el=ST.el=document.createElement('div');el.id='showroomB';el.setAttribute('role','dialog');el.setAttribute('aria-label','Rig select, showroom B');el.innerHTML=html();document.body.appendChild(el);
  $('srbX').onclick=close;$('srbPrev').onclick=()=>go(-1);$('srbNext').onclick=()=>go(1);$('srbSel').onclick=select;$('srbNight').onclick=()=>nightSet(!ST.night);$('srbZin').onclick=()=>zoomBy(.7);$('srbZout').onclick=()=>zoomBy(1.4);$('srbMute').onclick=()=>setMute(!ST.mute);$('srbInfo').onclick=()=>cardShow(!ST.cardOn);

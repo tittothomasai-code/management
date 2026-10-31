@@ -4,6 +4,7 @@
 // HONESTY: generic SIM rig, not a specific real rig. Labelled SIM. No network writes.
 // Hooks (guarded): GX.showroomAB.register('C',...) from srpick.js (feat/showroom-b); srperf.js attach({id:'C',el,lod,ready,match}) on open / detach('C') on close (feat/showroom-b, key P).
 import * as THREE from 'three';
+import * as M3 from './showroom3d.js?v=5116';
 export const VER='c2';
 export const CFG={pack:'pass2'};
 const $=id=>document.getElementById(id),es=t=>String(t??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -15,8 +16,7 @@ const NAMES={substructure:'Substructure',drill_floor:'Drill floor',handrails:'Ha
 export const nice=p=>{const s=String(p).split('/').pop();return NAMES[s]||s.replace(/^light_/,'Light ').replace(/_/g,' ').replace(/^./,c=>c.toUpperCase())};
 export const PRESETS=[['overview','Overview',['*']],['top_drive','Top drive',['top_drive']],['bop','BOP',['bop_stack']],['pumps','Pumps',['mud_pump_1','mud_pump_2','mud_pump_3']],['cabin','Cabin',['doghouse']]];
 export async function manifest(){if(ST.man)return ST.man;ST.base=new URL(`./assets/rigsc/${pack()}/`,import.meta.url).href;const r=await fetch(ST.base+'manifest.json?v='+VER);if(!r.ok)throw new Error('manifest '+r.status);ST.man=await r.json();ST.rig=ST.man.rigs[0];return ST.man}
-let LDp=null;function loader(){return LDp||(LDp=(async()=>{const [{GLTFLoader},{DRACOLoader}]=await Promise.all([import('./vendor/loaders/GLTFLoader.js'),import('./vendor/loaders/DRACOLoader.js')]);
- const d=new DRACOLoader();d.setDecoderPath(new URL('./vendor/libs/draco/',import.meta.url).href);d.setDecoderConfig({type:'wasm'});const l=new GLTFLoader();l.setDRACOLoader(d);return l})())}
+function loader(){return M3.gltf()}/* D2: showroom3d.js is the single GLB loader */
 export function pickLod(){const o=(q().get('srclod')||'').toUpperCase();if(/^[HML]$/.test(o))return o;return phone()?(devicePixelRatio>2.5||innerWidth<400?'L':'M'):'H'}
 // tree of component paths from manifest nodeToBom (per LOD).
 export function tree(lod){const nb=ST.rig.lods[lod]?.nodeToBom||ST.rig.nodeToBom,T={};for(const p of Object.keys(nb)){const parts=p.split('/');T[p]={path:p,bom:nb[p],level:'ABC'[Math.min(parts.length,3)-1],parent:parts.length>1?parts.slice(0,-1).join('/'):null,kids:[]}}
@@ -111,19 +111,21 @@ export function zoom(f){ST.anim=null;const c=ST.ctl,o=ST.cam.position.clone().su
 
 // Rig catalogue: every rig, spec and equipment entry of Showroom A, viewable here (A's own GLBs, LOD-matched). SIM data.
 const BIN={triple:1,workover:1,ctu:1,frac:1,jackup:1,semi:1,ship:1};
-async function adata(){if(!ST.A){const [a,t]=await Promise.all([import('./showroom.js?v=b17'),import('./showroom3d.js?v=5115')]);ST.A={RIGS:a.RIGS,ASSET:a.ASSET,comps:a.comps,t}}return ST.A}
+async function adata(){if(!ST.A){const [a,t]=await Promise.all([import('./showroom.js?v=b18'),import('./showroom3d.js?v=5116')]);ST.A={RIGS:a.RIGS,ASSET:a.ASSET,comps:a.comps,t}}return ST.A}
 export async function fleet(v){ST.fl=v==null?!ST.fl:!!v;if(ST.fl&&ST.AS?.open)ST.AS.drawer(false);const el=$('srcFleet'),b=$('srcFleetB');if(!el)return;b.classList.toggle('on',ST.fl);b.setAttribute('aria-pressed',ST.fl);el.hidden=!ST.fl;if(!ST.fl)return;if(ST.fl&&ST.bom)bom(false);
  const {RIGS,ASSET}=await adata(),r0=RIGS.find(r=>r.id==ST.alt)||RIGS[0],esc=x=>String(x??'').replace(/[<&>"]/g,c=>'&#'+c.charCodeAt(0)+';');
  el.innerHTML=`<h3>Detailed rig</h3><div class="r${ST.alt?'':' on'}" data-fid=""><button data-arig="">View</button><b>${esc(ST.rig?.name||'Detailed rig')}</b><small>Full drill-down and parts list</small></div><h3>Rig catalogue (SIM specs)</h3>`+RIGS.map(r=>`<div class="r${ST.alt==r.id?' on':''}" data-fid=${r.id}><button data-arig=${r.id}>View</button><b>${esc(r.name)}</b><small>${esc(r.type)} · hook ${esc(r.hook)} · drawworks ${esc(r.dw)} · mast ${esc(r.mast)} · ${esc(r.pumps)} · BOP ${esc(r.bop)}</small></div>`).join('')
  +(await bdata().then(B=>`<h3>Arcade rigs (SIM specs)</h3>`+B.rigs.map(r=>`<div class="r${ST.alt=='b:'+r.id?' on':''}" data-fid="b:${r.id}"><button data-arig="b:${r.id}">View</button><b>${esc(r.name)}</b><small>${esc(r.st?.short||r.st?.type||'')}</small></div>`).join('')).catch(()=>''))+`<h3>Equipment catalogue · ${esc(r0.name)}</h3>`+Object.entries(ASSET).map(([k,a])=>{let sp='';try{sp=typeof a.spec=='function'?a.spec(r0):a.spec}catch(e){}return `<div class=r data-aeq=${k}><b>${esc(a.name)}</b><small>${esc(a.type)}${sp?' · '+esc(sp):''}${a.comp?' · '+esc(a.comp.map(c=>c.n).join(', ')):''}</small></div>`}).join('');
  el.querySelectorAll('[data-arig]').forEach(x=>x.onclick=()=>viewA(x.dataset.arig))}
 // B's arcade rigs (assets/rigsb, nodeToBom-tagged) shown in this showroom's look. SIM specs.
-async function bdata(){if(!ST.B){const m=await import('./showroomb.js?v=b6');await m.manifest();try{m.ST.mute=localStorage.getItem('dw_srb_mute')=='1'}catch(e){}ST.B={m,rigs:m.ST.rigs.filter(r=>r.src!='C'),c:m.ST.rigs.find(r=>r.src=='C')}}return ST.B}
+async function bdata(){if(!ST.B){const m=await import('./showroomb.js?v=b7');await m.manifest();try{m.ST.mute=localStorage.getItem('dw_srb_mute')=='1'}catch(e){}ST.B={m,base:m.ST.rigs.filter(r=>r.src!='C'&&!r.custom),c:m.ST.rigs.find(r=>r.src=='C')}}
+ /* rig-builder hook: saved custom builds join the one showroom's rig list (assembled from catalogue parts, no extra GLB copies) */
+ let cx=[];try{const x=window.GX?.rigBuilder?.showroomRigs?.(ST.B.base);if(Array.isArray(x))cx=x}catch(e){}ST.B.rigs=[...ST.B.base,...cx];return ST.B}
 export function rigList(){const A=ST.A?.RIGS||[],B=ST.B?.rigs||[];return ['',...B.map(r=>'b:'+r.id),...A.map(r=>r.id)]}
 export async function go(d){await Promise.all([adata(),bdata().catch(()=>null)]);const L=rigList(),i=Math.max(0,L.indexOf(ST.alt||''));try{ST.B?.m.sfx?.('whoosh')}catch(e){}return viewA(L[(i+d+L.length)%L.length])}
 async function viewB(id){const {m,rigs}=await bdata(),r=rigs.find(x=>x.id==id);if(!r)return;const msg=$('srcMsg');msg.hidden=false;msg.textContent='Loading model…';
- try{if(ST.sel)select(null);if(ST.exp)explode(false);const lod=m.lodOf(r),l=await loader(),g=(await l.loadAsync(new URL(r.lods[lod].file,r.base||m.ST.base).href+'?v='+m.VER)).scene;if(!ST.open||ST.alt!='b:'+id)return;
-  const nb=(r.lods?.[lod]?.nodeToBom)||r.nodeToBom||{},inv={};for(const [p,b] of Object.entries(nb))inv[b]=p;g.traverse(o=>{if(o.isMesh){const b=o.userData.bomId||o.parent?.userData?.bomId;o.userData.path=inv[b]||null}});
+ try{if(ST.sel)select(null);if(ST.exp)explode(false);const lod=m.lodOf(r);let g;if(r.custom&&r.rb&&window.GX?.rigBuilder?.assemble3d)g=await window.GX.rigBuilder.assemble3d(r.rb,lod=='H'?'M':lod);else{const l=await loader();g=(await l.loadAsync(new URL(r.lods[lod].file,r.base||m.ST.base).href+'?v='+m.VER)).scene}if(!ST.open||ST.alt!='b:'+id)return;
+  const nb=r.custom?{}:((r.lods?.[lod]?.nodeToBom)||r.nodeToBom||{}),inv={};for(const [p,b] of Object.entries(nb))inv[b]=p;g.traverse(o=>{if(o.isMesh){const b=o.userData.bomId||o.parent?.userData?.bomId;o.userData.path=inv[b]||null}});
   ST.altMap=nb;ST.altSt=r.st;placeAlt(g,r.name)}catch(e){msg.textContent='Model did not load.'}if(ST.fl)fleet(true);ST.AS?.refresh()}
 function placeAlt(g,name){const bx=new THREE.Box3().setFromObject(g),c=bx.getCenter(new THREE.Vector3()),sz=bx.getSize(new THREE.Vector3());g.position.x-=c.x;g.position.z-=c.z;g.position.y-=bx.min.y;
  ST.root.visible=false;ST.scene.add(g);ST.altObj=g;setName(name,1);const d=Math.max(sz.x,sz.y,sz.z)*1.5+4;ST.anim=null;ST.ctl.target.set(0,sz.y*.42,0);ST.cam.position.set(d*.7,sz.y*.55+d*.25,d*.8);ST.altHome={p:ST.cam.position.clone(),t:ST.ctl.target.clone()};$('srcMsg').hidden=true}
