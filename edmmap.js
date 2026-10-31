@@ -1,4 +1,4 @@
-// edmmap.js v5.12.4: + Map toggle (free Satellite/Street tiles draped at ground level), GL per wellhead, TD markers (MD/TVD/TVDSS + datum) on every wellbore and plan.
+// edmmap.js v5.12.3: + Map toggle (free Street tiles; Satellite kept behind SAT_ENABLED flag, off draped at ground level), GL per wellhead, TD markers (MD/TVD/TVDSS + datum) on every wellbore and plan.
 // was v5.9.4.2: + per-well stats, field stats and filters (persisted per saved site).
 // was v5.9.4.1: every imported EDM site and well at its real position in 3D (local metres about the data centroid, from lat/long).
 // Tap/click any wellhead or well path for all its details; decluttered labels (sites when zoomed out, wells when zoomed in); hover card on desktop.
@@ -108,7 +108,7 @@ export function open(W,{onClose,saved,fkey}={}){close();css();const el=document.
   if(MAP.mesh){pgrp.remove(MAP.mesh);MAP.mesh.geometry.dispose();MAP.mesh.material.map?.dispose();MAP.mesh.material.dispose()}MAP.mesh=m2;pgrp.add(m2);st.dirty=true;
   for(let ty=ty0;ty<=ty1;ty++)for(let tx=tx0;tx<=tx1;tx++){const u=G.tileUrl(mode,z,tx,ty);const draw=im=>{if(gen!=MAP.gen)return;cx2.drawImage(im,(tx-tx0)*256,(ty-ty0)*256);tex2.needsUpdate=true;st.dirty=true};
    const c3=MAP.img.get(u);if(c3?.complete&&c3.naturalWidth){MAP.ok++;draw(c3);continue}const im=new Image();im.crossOrigin='anonymous';MAP.req++;im.onload=()=>{MAP.ok++;draw(im)};im.onerror=()=>{MAP.err++;if(gen==MAP.gen){$('#emattr').textContent=G.LAYERS[mode].attr+' · some map tiles did not load'}};im.src=u;MAP.img.set(u,im);if(MAP.img.size>400)MAP.img.delete(MAP.img.keys().next().value)}}
- function setMap(mode,save=true){if(!W.crs)return;MAP.mode=mode;const b3=$('#emmapb');b3.textContent='Map: '+(mode=='off'?'Off':G.LAYERS[mode].name);b3.setAttribute('aria-pressed',mode!='off');grid.visible=mode=='off';
+ function setMap(mode,save=true){if(!W.crs)return;if(mode!='off'&&!G.ACTIVE.includes(mode))mode=G.ACTIVE[0];MAP.mode=mode;const b3=$('#emmapb');b3.textContent='Map: '+(mode=='off'?'Off':G.LAYERS[mode].name);b3.setAttribute('aria-pressed',mode!='off');grid.visible=mode=='off';
   const at=$('#emattr');at.style.display=mode=='off'?'none':'block';at.textContent=mode=='off'?'':G.LAYERS[mode].attr+(glI.length?'':' · no ground level in file: map at sea level');
   if(mode=='off'){if(MAP.mesh){pgrp.remove(MAP.mesh);MAP.mesh.geometry.dispose();MAP.mesh.material.map?.dispose();MAP.mesh.material.dispose();MAP.mesh=null}MAP.key=''}else{MAP.key='';if(save)fit(W.bounds);mapBuild()}
   if(save)try{localStorage.setItem(LSK,mode)}catch{}st.dirty=true}
@@ -227,7 +227,7 @@ export function open(W,{onClose,saved,fkey}={}){close();css();const el=document.
  $('#emfclr').onclick=()=>{st.F=ES.emptyFilter();applyF();fForm()};
  $('#emffit').onclick=()=>{if(!fon())return fit(W.bounds);let b=null;W.wells.forEach((w,i)=>{if(st.m[i]&&!w.outlier){b=b||{e0:w.E,e1:w.E,n0:w.N,n1:w.N};b.e0=Math.min(b.e0,w.E);b.e1=Math.max(b.e1,w.E);b.n0=Math.min(b.n0,w.N);b.n1=Math.max(b.n1,w.N)}});if(b)fit({...b,e0:b.e0-150,e1:b.e1+150,n0:b.n0-150,n1:b.n1+150});else note('No wells match the filter.')};
  applyF(false);
- if(W.crs){$('#emmapb').onclick=()=>{const o=['off','sat','street'];setMap(o[(o.indexOf(MAP.mode)+1)%3])};let m0='off';try{m0=localStorage.getItem(LSK)||'off'}catch{}if(G.LAYERS[m0])MAP.pend=m0}
+ if(W.crs){$('#emmapb').onclick=()=>{const o=['off',...G.ACTIVE];setMap(o[(o.indexOf(MAP.mode)+1)%o.length])};let m0='off';try{m0=localStorage.getItem(LSK)||'off'}catch{}if(G.ACTIVE.includes(m0))MAP.pend=m0}
  st.ro=new ResizeObserver(size);st.ro.observe(c);size();setVE(ve0);cam.position.set(0,ext,ext);ctl.target.set(0,0,0);fit(W.bounds);if(MAP.pend)setMap(MAP.pend,false);
  if(!W.sites.length)note('No sites found in this file.');else if(W.outliers)note(`${W.outliers} well(s) have coordinates far from the rest — tap "Outliers" to see them.`);
  const loop=()=>{if(!st.on)return;if(anim)anim();if(st.dirty){st.dirty=false;ctl.update();r.render(s,cam);const n=performance.now();if(n-st.lastLab>110){st.lastLab=n;labels()}else st.labDue=true}else if(st.labDue&&performance.now()-st.lastLab>110){st.labDue=false;st.lastLab=performance.now();labels()}if(MAP.mode!='off'&&!anim){const n=performance.now();if(n-MAP.t>400){MAP.t=n;mapBuild()}}requestAnimationFrame(loop)};loop();

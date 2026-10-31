@@ -1,4 +1,4 @@
-// v5.12.4 EDM Map toggle + GL + TD markers. Synthetic fixtures only (made-up pads, NOT real data). Tile requests are answered locally with a plain PNG
+// v5.12.3 EDM Map toggle + GL + TD markers. Synthetic fixtures only (made-up pads, NOT real data). Tile requests are answered locally with a plain PNG
 // so the test needs no network; it also checks that only map-tile GETs leave the page (EDM data stays on the device).
 import puppeteer from 'puppeteer-core';import fs from 'fs';import {pad} from './fixtures/mkedm.mjs';import {fwd,inv} from './edmgeo.js';
 const BASE=(process.argv[2]||'http://localhost:8777').replace(/\/$/,''),SH='shots_live/128_edmmap_';const w=ms=>new Promise(r=>setTimeout(r,ms));let fails=0,pass=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);c?pass++:fails++};
@@ -40,11 +40,11 @@ for(const [nm,vp] of [['phone',{width:390,height:844,deviceScaleFactor:2,isMobil
  await p.screenshot({path:SH+nm+'_1_td_gl.png'});
  await p.click('#emmapb');await w(800);await p.waitForFunction(()=>GX.edmmap.map().ok>0&&GX.edmmap.map().mesh,{timeout:30000}).catch(()=>{});await w(600);
  r=await p.evaluate(()=>{const M=GX.edmmap;return {m:M.map(),btn:document.getElementById('emmapb').innerText,attr:document.getElementById('emattr').innerText,ls:localStorage.getItem('dw_edm_map'),g:M.glAt(M.W.wells[0].E,M.W.wells[0].N)}});
- ok(r.m.mode=='sat'&&r.m.mesh&&r.m.ok>0&&r.btn=='Map: Satellite'&&/Esri/.test(r.attr)&&r.ls=='sat',`${nm}: Map on → satellite tiles (${r.m.ok} tiles z${r.m.z}), attribution "${r.attr}", saved`);
+ ok(r.m.mode=='street'&&r.m.mesh&&r.m.ok>0&&r.btn=='Map: Street'&&/OpenStreetMap/.test(r.attr)&&r.ls=='street',`${nm}: Map on → Street tiles (OSM, ${r.m.ok} tiles z${r.m.z}), attribution "${r.attr}", saved`);
  ok(Math.abs(r.g-120)<0.01&&r.m.glWells==2,`${nm}: ground at real GL under SYN-1 (${r.g.toFixed(2)} m, from ${r.m.glWells} wells)`);
- ok(ext.length>0&&ext.every(u=>/arcgisonline|openstreetmap/.test(u))&&!bad.length,`${nm}: only tile GETs leave the page (${ext.length} tiles; other ${bad.length}${bad.length?': '+bad[0]:''})`);
- await p.screenshot({path:SH+nm+'_2_map_sat.png'});
- await p.click('#emmapb');await w(1200);r=await p.evaluate(()=>({m:GX.edmmap.map(),ls:localStorage.getItem('dw_edm_map')}));ok(r.m.mode=='street'&&r.ls=='street'&&ext.some(u=>/openstreetmap/.test(u)),`${nm}: Street layer (OSM)`);
+ ok(ext.length>0&&ext.every(u=>/openstreetmap/.test(u))&&!bad.length,`${nm}: only OSM tile GETs (no Esri) leave the page (${ext.length} tiles; other ${bad.length}${bad.length?': '+bad[0]:''})`);
+ await p.screenshot({path:SH+nm+'_2_map_street.png'});
+ r=await p.evaluate(()=>{try{localStorage.setItem('dw_edm_map','sat')}catch{}const b=document.getElementById('emmapb');return {} });await p.evaluate(()=>GX.edmmap.close());await p.evaluate(()=>GX.edm.openMap());await p.waitForFunction(()=>GX.edmmap?.open,{timeout:30000});await w(1500);r=await p.evaluate(()=>({m:GX.edmmap.map().mode}));ok(r.m!='sat'&&!ext.some(u=>/arcgisonline/.test(u)),`${nm}: Satellite flag off: a saved 'sat' setting does not load Esri tiles (mode ${r.m})`);await p.evaluate(()=>GX.edmmap.setMap('street'));await w(800);
  await p.evaluate(()=>GX.edmmap.close());await p.evaluate(()=>GX.edm.openMap());await p.waitForFunction(()=>GX.edmmap?.open,{timeout:30000});await w(1500);
  r=await p.evaluate(()=>({m:GX.edmmap.map().mode,btn:document.getElementById('emmapb').innerText}));ok(r.m=='street'&&r.btn=='Map: Street',`${nm}: Map setting kept on reopen (${r.btn})`);
  await p.screenshot({path:SH+nm+'_3_map_street.png'});

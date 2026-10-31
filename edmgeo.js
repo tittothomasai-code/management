@@ -18,6 +18,9 @@ export function parseZone(z,datum){if(!z)return null;const s=String(z).toUpperCa
  m=s.match(/MGA[^0-9]*(?:ZONE\s*)?(\d{1,2})\b/)||(/MGA/.test(String(datum||'').toUpperCase())&&s.match(/(\d{1,2})/));if(m)return {zone:+m[1],south:true};return null}
 export const LAYERS={sat:{name:'Satellite',url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',max:19,attr:'Imagery © Esri, Maxar, Earthstar Geographics'},
  street:{name:'Street',url:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',max:19,attr:'© OpenStreetMap contributors'}};
+/* Esri Satellite: commercial terms under review. Layer code is kept but OFF until approved: set SAT_ENABLED=true. */
+export const SAT_ENABLED=false;
+export const ACTIVE=SAT_ENABLED?['sat','street']:['street'];
 export const tileUrl=(k,z,x,y)=>LAYERS[k].url.replace('{z}',z).replace('{x}',x).replace('{y}',y);
 // Web Mercator world pixel (256 px tiles) at zoom z
 export function merc(lat,lon,z){const s=256*2**z,la=Math.max(-85.05,Math.min(85.05,lat))*r;return [(lon+180)/360*s,(1-Math.log(Math.tan(la)+1/Math.cos(la))/Math.PI)/2*s]}
