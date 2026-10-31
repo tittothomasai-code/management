@@ -47,7 +47,7 @@ export function drill(r,len,dt=0.05){let made=0;while(made<len-1e-9&&!r.done){co
   if(!rot){const tfA=n360(s.tf+r.tfDrift-E.rtPerBar*(ms.dP||0));r.tfAct=tfA;const n=C.steer(inc,azi,(ms.yield||C.yieldDLS(C.MOTOR))*r.yieldF,tfA,dl);inc=n.inc;azi=n.azi;r.slid+=dl}
   else{azi+=E.bitWalk*dl/30;r.tfAct=null}
   inc=cl(inc+E.walkInc*dl/30,0,120);azi=n360(azi+E.walkAzi*dl/30);const nb=C.minCurve(b,b.md+dl,inc,azi);r.bit={md:nb.md,inc:nb.inc,azi:nb.azi,E:nb.E,N:nb.N,tvd:nb.tvd};r.truth.push({...r.bit});
-  r.hours+=dl/Math.max(rop,0.1);made+=dl;r.standMd+=dl;if(r.standMd>=STAND-1e-6)survey(r);if(r.bit.md>=r.td-0.01){r.done=true;r.running=false;r.log.push('Run complete at TD (SIM).')}}
+  r.hours+=dl/Math.max(rop,0.1);made+=dl;r.standMd+=dl;if(r.standMd>=STAND-1e-6)survey(r);if(r.bit.md>=r.td-0.01){r.done=true;r.running=false;r.log.push('Run complete at TD (SIM).');fin(r)}}
  return made}
 export function score(r){const d=r.devs,avg=d.length?d.reduce((a,b)=>a+b,0)/d.length:offsets(r).dist,ls=r.surveys.slice(1).map(s=>s.dls),m=ls.length?ls.reduce((a,b)=>a+b,0)/ls.length:0,sd=ls.length>1?Math.sqrt(ls.reduce((a,b)=>a+(b-m)**2,0)/(ls.length-1)):0;
  return {avgDev:+avg.toFixed(1),dlsSd:+sd.toFixed(2),stalls:r.stalls,score:Math.round(cl(100-1.5*avg-8*sd-5*r.stalls,0,100)),done:r.done,src:'SIM'}}
@@ -101,7 +101,12 @@ function draw(){const r=RUN;{const c=$('drVS');if(!c)return;const x=c.getContext
   x.lineWidth=2;x.strokeStyle='#6aa9ff';x.beginPath();r.plan.forEach(p=>x.lineTo(...P(p)));x.stroke();x.strokeStyle='#ffb347';x.beginPath();r.truth.forEach(p=>x.lineTo(...P(p)));x.stroke();const bp=P(r.bit);x.fillStyle='#fff';x.beginPath();x.arc(bp[0],bp[1],4,0,7);x.fill();
   x.fillStyle='#9ab';x.font='11px system-ui';x.fillText('3D: target line (blue) vs actual (orange) · SIM',8,H-6)}}
 function tick(){const r=RUN;if(!r||!r.running)return;r.ticks++;ang+=0.004;if(r.ramp&&!r.stalled)r.set.wob=Math.min(40,r.set.wob+0.75);drill(r,Math.max(0.2,(r.rop||8)*0.05)*spd,0.05*spd);ui();try{syncCab()}catch(e){}}
-export function start(){if(!RUN)reset();if(RUN.done)return;RUN.running=true;RUN.ramp=!!SCN[RUN.scen].ramp&&!RUN.stalls;if(!timer)timer=setInterval(tick,150);ui()}
+const FIN=new Set();let W0=0;
+function fin(r){if(r!==RUN||r.finFired)return;r.finFired=true;const sc=score(r),res={score:sc.score,time:{simHours:+r.hours.toFixed(2),wallSec:+((Date.now()-W0)/1000).toFixed(1)},avgDev:sc.avgDev,dlsSd:sc.dlsSd,stalls:r.stalls,diff:r.diff,seed:r.seed,plan:r.planSrc,src:'SIM'};FIN.forEach(f=>{try{f(res)}catch(e){console.warn('ddrun onFinish',e)}})}
+// Plug-in API (track select etc.): load({plan,errors,difficulty,seed,scenario}) -> run; start(); onFinish(cb) -> unsubscribe, cb({score,time,...}).
+export function load(o={}){if(RUN)RUN.running=false;RUN=newRun({plan:o.plan,diff:o.difficulty||o.diff||'normal',seed:o.seed??42,scen:o.scenario||o.scen||'build'});if(o.errors)Object.assign(RUN.E,o.errors);if(o.name)RUN.planSrc=o.name;RUN.log.push('Loaded: '+RUN.planSrc+' · '+RUN.diff+' (SIM)');ui();return RUN}
+export function onFinish(cb){FIN.add(cb);return()=>FIN.delete(cb)}
+export function start(){W0=W0&&RUN?.running?W0:Date.now();if(!RUN)reset();if(RUN.done)return;RUN.running=true;RUN.ramp=!!SCN[RUN.scen].ramp&&!RUN.stalls;if(!timer)timer=setInterval(tick,150);ui()}
 export function pause(){if(RUN)RUN.running=false;ui()}
 export function toggle(){RUN?.running?pause():start()}
 export function reset(o={}){const run=!!RUN?.running;RUN=newRun({scen:o.scen||RUN?.scen,diff:o.diff||RUN?.diff,seed:o.seed??RUN?.seed});RUN.log.push('Reset: '+SCN[RUN.scen].name+' · '+RUN.diff+' · plan '+RUN.planSrc+' (SIM).');try{syncCab(true)}catch(e){}ui();return RUN}
@@ -111,6 +116,6 @@ function gp(){const g=(navigator.getGamepads?.()||[]).find(x=>x);const vis=$('dd
  if(p&&!pad.down){pad.down=true;pad.t=t;pad.fired=false}else if(p&&pad.down&&!pad.fired&&t-pad.t>1000){pad.fired=true;reset()}else if(!p&&pad.down){pad.down=false;if(!pad.fired)toggle()}}
 export function active(){return !!($('ddc')&&$('ddc').style.display!='none')}
 export function mount(cabApi){cab=cabApi;css();if(!RUN)RUN=newRun({});if(!el)build();const host=$('ddc');if(host&&el.parentNode!==host){const bd=host.querySelector('.bd');host.insertBefore(el,bd||null)}ui();if(!pad.iv)pad.iv=setInterval(gp,60);return API}
-const API={mount,start,pause,toggle,reset,ui,active,get run(){return RUN},newRun,drill,survey:r=>survey(r),offsets,score,errors,errMag,applyRec,defaultPlan,wplanPlan,DIFF,SCN,src:'SIM'};
+const API={load,onFinish,mount,start,pause,toggle,reset,ui,active,get run(){return RUN},newRun,drill,survey:r=>survey(r),offsets,score,errors,errMag,applyRec,defaultPlan,wplanPlan,DIFF,SCN,src:'SIM'};
 if(typeof window!='undefined'){window.GX=window.GX||{};GX.ddrun=API}
 export default API;

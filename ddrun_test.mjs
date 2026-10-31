@@ -39,6 +39,8 @@ for(const [nm,vp] of [['desk',{width:1440,height:900}],['phone',{width:390,heigh
  ok(sq.mag[0]<sq.mag[1]&&sq.mag[1]<sq.mag[2],nm+': difficulty scales error magnitude '+sq.mag.map(x=>x.toFixed(1)).join(' < '));
  await p.select('#drDiff','hard');await w(300);ok(await E(()=>GX.ddrun.run.diff=='hard'&&GX.ddrun.run.E.k==2),nm+': Difficulty select applies (Hard)');await p.select('#drDiff','normal');
  ok(await E(()=>{const D=GX.ddrun,r=D.run;D.drill(r,5000);D.ui();const e=document.getElementById('drEnd');return r.done&&!e.hidden&&/Score \d+\/100/.test(e.textContent)}),nm+': end-of-run score shown at TD');
+ ok(await E(()=>{const D=GX.ddrun;let got=null;const un=D.onFinish(x=>got=x);const r=D.load({plan:D.defaultPlan(),difficulty:'easy',seed:7,errors:{bitWalk:0}});const okL=r.diff=='easy'&&r.seed==7&&r.E.bitWalk==0;D.start();D.drill(r,5000);un();D.pause();return okL&&got&&Number.isFinite(got.score)&&got.time.simHours>0&&got.src=='SIM'}),nm+': plug-in API load()/start()/onFinish() -> {score,time}');
+ await p.click('#drReset');await w(300);
  // stall drill
  await p.select('#drScen','stall');await w(300);await p.click('#drGo');const s0=Date.now();while(Date.now()-s0<20000&&!(await E(()=>GX.ddrun.run.stalled)))await w(300);
  ok(await E(()=>{const e=document.getElementById('drStall');return GX.ddrun.run.stalls>=1&&!e.hidden&&/STALL/.test(e.textContent)}),nm+': Motor stall drill ramps WOB to stall and shows the warning (WOB '+(await R()).wob+' t)');
