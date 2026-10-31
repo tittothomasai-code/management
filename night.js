@@ -30,6 +30,10 @@ function build(s){const q=s.quality,T=tex(),G=new THREE.Group();G.name='nightRoo
  if(NS){NS.use(THREE);NS.css();nS=q=='low'?900:q=='medium'?3000:5000;sk.add(NS.sky(1400,q));sk.add(NS.stars(nS,1300));moon=NS.moon();sk.add(moon)}
  else{sk.add(sky(1400));nS=q=='low'?600:q=='medium'?1200:2000;sk.add(stars(nS,1300));moon=new THREE.Sprite(addMat(T.moon,0xffffff,0));moon.material.blending=THREE.NormalBlending;moon.position.set(-520,760,-700);moon.scale.setScalar(110);moon.name='nightMoon';moon.renderOrder=-8;sk.add(moon)}
  s.sky=sk;s.nStars=nS;G.add(sk);s.items.push({o:sk.children[0],k:1},{o:sk.children[1],k:1},{o:moon,k:1});
+ if(s.opts.skyOnly){ // showrooms: sky, stars, moon + moonlight only; the showroom keeps its own rig lights (they turn with the podium)
+  s.beacon=new THREE.Sprite(addMat(T.glow,0xff2a14,0));s.beaconItem=null;s.nWin=0;
+  if(NS&&q!='low'){const ml=NS.moonLight();G.add(ml);s.lights.push({o:ml,k:1,base:ml.intensity});ml.intensity=0}
+  s.scene.add(G);return}
  // rig geometry from rigRoot bounding box (world space)
  const b=new THREE.Box3();if(s.rig){s.rig.updateMatrixWorld(true);b.setFromObject(s.rig)}if(b.isEmpty())b.set(new THREE.Vector3(-6,0,-6),new THREE.Vector3(6,48,6));
  const H=b.max.y-b.min.y,cx=(b.min.x+b.max.x)/2,cz=(b.min.z+b.max.z)/2,top=b.max.y,gy=b.min.y,fl=s.opts.floorY!=null?s.opts.floorY:gy+H*0.17,hw=Math.max(1,(b.max.x-b.min.x)/2);
@@ -56,6 +60,7 @@ function build(s){const q=s.quality,T=tex(),G=new THREE.Group();G.name='nightRoo
   mk(cx+hw*0.6,gy+H*0.6,cz+hw*0.6,q=='high'?900:700,q=='high');mk(cx-hw*0.6,gy+H*0.6,cz-hw*0.6,600,false);
   const bl=new THREE.PointLight(0xff2010,40,25,1.5);bl.position.copy(s.beacon.position);bl.name='nightBeaconLight';L(bl,1);s.beaconLight=bl;
   if(q=='high'){[[-1,-1],[1,1]].forEach(([sx,sz])=>{const p=new THREE.PointLight(0xfff6e0,120,30,1.5);p.position.set(cx+sx*hw*0.8,fl+3.2,cz+sz*hw*0.8);L(p,1)});const m2=new THREE.SpotLight(0xfff0d0,500,H*2,0.8,0.6,1.2);m2.position.set(cx-hw*0.6,gy+H*0.75,cz+hw*0.6);m2.target.position.set(cx,fl,cz);G.add(m2.target);L(m2,1)}}
+ if(NS&&q!='low'){const ml=NS.moonLight();L(ml,1)} // soft cool moonlight (Low: base lights are tinted instead)
  s.scene.add(G)}
 function capture(s){s.base=[];s.scene.traverse(o=>{if(o.isLight&&!o.name.startsWith('night')&&!(s.g&&isIn(o,s.g))&&(o.isDirectionalLight||o.isHemisphereLight||o.isAmbientLight)){s.base.push({o,i:o.intensity,c:o.color.clone()})}});
  s.fog0=s.scene.fog?s.scene.fog.color.clone():null;s.env0=s.scene.environmentIntensity!=null?s.scene.environmentIntensity:1}
@@ -92,8 +97,19 @@ function label(){if(!btn)return;const on=MAIN&&ST.get(MAIN.scene)&&ST.get(MAIN.s
 const API={set,toggle:(scene,rig,opts)=>{const s=ST.get(scene||(MAIN&&MAIN.scene));return set(!(s&&s.target==1),scene,rig,opts)},isOn:scene=>{const s=ST.get(scene||(MAIN&&MAIN.scene));return !!(s&&s.target==1)},
  t:scene=>{const s=ST.get(scene||(MAIN&&MAIN.scene));return s?curT(s):0},stats,dispose:scene=>{const s=ST.get(scene);if(!s)return;s.t=0;apply(s);s.scene.remove(s.g);ALL.delete(s);ST.delete(scene)},
  useThree:T=>{THREE=T}};
-window.GX=window.GX||{};window.GX.night=API;
-export {API as night};
+// GX.nightReal (v5.12.1.3): one adapter so any scene (Showroom A/B/C, main) gets the same physically based sky as the drilling scene.
+// apply({scene,renderer,camera,rig,on,src,instant,quality}) -> Promise. Phones use the Low sky (LOWQ shader, fewer stars, no real lights).
+const isPhone=()=>{try{return document.body.classList.contains('mob')||matchMedia('(pointer:coarse)').matches||innerWidth<760}catch(e){return false}};
+const realQ=o=>(o&&o.quality)||(isPhone()?'low':(QL()=='low'?'low':'medium'));
+const REAL={get real(){return !!NS},quality:realQ,
+ apply(o={}){if(!o.scene)return Promise.resolve(false);if(!THREE&&window.THREE_NIGHT)THREE=window.THREE_NIGHT;if(!THREE&&o.three)THREE=o.three;if(!THREE)return Promise.resolve(false);
+  const q=realQ(o),s0=ST.get(o.scene);if(s0)s0.ek=null; // re-dim image-based light on newly loaded models
+  return set(!!o.on,o.scene,o.rig||null,{ren:o.renderer||o.ren,quality:q,instant:!!o.instant,dur:o.dur!=null?o.dur:900,floorY:o.floorY,skyOnly:!!o.skyOnly}).then(()=>true)},
+ active:scene=>{const s=ST.get(scene);return !!(s&&s.target==1)},
+ objects:scene=>{const s=ST.get(scene);if(!s)return null;const g=s.g;return {root:!!g&&g.visible,sky:!!g.getObjectByName('nightSky'),shader:!!g.getObjectByName('nightSky')?.material?.isShaderMaterial,stars:!!g.getObjectByName('nightStars'),aMag:!!g.getObjectByName('nightStars')?.geometry?.attributes?.aMag,moon:!!g.getObjectByName('nightMoon'),moonLight:!!g.getObjectByName('nightMoonLight'),lowq:!!g.getObjectByName('nightSky')?.material?.defines?.LOWQ,quality:s.quality}},
+ stats:scene=>stats(scene),dispose:scene=>API.dispose(scene),useThree:T=>{THREE=T}};
+window.GX=window.GX||{};window.GX.night=API;window.GX.nightReal=REAL;
+export {API as night,REAL as nightReal};
 // main-scene hook: ext3.js calls init(C)
 export function init(C){THREE=C.THREE;MAIN={scene:C.scene,ren:C.ren,floorY:(C.FLOOR||8)+0.4,rig:()=>C.rigG||null,cabins:()=>(C.ents||[]).filter(e=>/doghouse|office|cabin/i.test(e.name)).map(e=>e.obj)};
  btn=document.createElement('button');btn.id='nightBtn';btn.title='Day or night. Night turns on the rig lights.';btn.onclick=()=>API.toggle();(document.getElementById('hud')||document.body).appendChild(btn);label();

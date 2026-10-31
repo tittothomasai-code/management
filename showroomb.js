@@ -92,21 +92,35 @@ export function freeRect(){const W=innerWidth,H=innerHeight,P=phone(),cr=ST.card
  if(cr&&cr.width){if(P)r.y0=Math.max(r.y0,cr.bottom+10);else r.x1=Math.min(r.x1,cr.left-40)}if(r.y1-r.y0<120)r.y1=r.y0+120;return r}
 function frame(push){const g=ST.grp;if(!g)return;const s=g.userData.size,R=.5*Math.hypot(s.x,s.y,s.z),F=freeRect(),W=innerWidth,H=innerHeight,rpx=Math.min(F.x1-F.x0,F.y1-F.y0)/2*.86,t=Math.tan(THREE.MathUtils.degToRad(ST.cam.fov/2));
  const al=Math.atan(rpx*2*t/H),d=R/Math.sin(al);Object.assign(ST.cd,{d:push?d*.55:d,ty:s.y/2,ox:W/2-(F.x0+F.x1)/2,oy:H/2-(F.y0+F.y1)/2})}
+// ---------- user zoom (v5.12.1.3): wheel, trackpad pinch, phone pinch, +/- keys, gamepad triggers/right stick, on-screen +/- ----------
+export const ZMIN=2;const ZMAX=1.6;// metres to rig centre (same as Showroom C, closer than A's part close-up of about 4.4 m)
+export function zoomBy(f){const D=ST.cd.d||100;ST.zt=Math.min(ZMAX,Math.max(ZMIN/D,(ST.zt||1)*f))}
+export const zoomInfo=()=>({min:ZMIN,zt:ST.zt||1,zf:ST.zf||1,dist:ST.cam?+ST.cam.position.distanceTo(new THREE.Vector3(0,ST.cs.ty,0)).toFixed(2):null,base:+(ST.cd.d||0).toFixed(2)});
 function applyCam(dt){const C=ST.cs,D=ST.cd,k=1-Math.exp(-dt*(ST.intro?1.6:4.5));let moving=0;for(const n of ['az','el','d','ty','ox','oy']){const e=D[n]-C[n];if(Math.abs(e)>(n=='d'?.05:n[0]=='o'?.5:.001))moving=1;C[n]+=e*k}ST.camMoving=moving;if(!moving)ST.intro=0;
- const sh=ST.shake>0?(ST.shake*=.88,ST.shake):0;const cam=ST.cam;cam.position.set(Math.sin(C.az)*Math.cos(C.el)*C.d+(Math.random()-.5)*sh,C.ty+Math.sin(C.el)*C.d+(Math.random()-.5)*sh,Math.cos(C.az)*Math.cos(C.el)*C.d);cam.lookAt(0,C.ty,0);
+ const sh=ST.shake>0?(ST.shake*=.88,ST.shake):0;ST.zf=(ST.zf||1)+((ST.zt||1)-(ST.zf||1))*Math.min(1,dt*8);const zd=Math.max(ZMIN,C.d*ST.zf);const cam=ST.cam;cam.position.set(Math.sin(C.az)*Math.cos(C.el)*zd+(Math.random()-.5)*sh,C.ty+Math.sin(C.el)*zd+(Math.random()-.5)*sh,Math.cos(C.az)*Math.cos(C.el)*zd);cam.lookAt(0,C.ty,0);
  cam.setViewOffset(innerWidth,innerHeight,C.ox,C.oy,innerWidth,innerHeight)}
 // screen rect of the rig (projected bbox corners), for tests and card placement
 export function rigRect(){const g=ST.grp;if(!g)return null;g.updateMatrixWorld(true);ST.cam.updateMatrixWorld();const b=new THREE.Box3();for(const m of g.userData.meshes)if(m.visible)b.expandByObject(m);const v=new THREE.Vector3(),W=innerWidth,H=innerHeight;let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
  for(let k=0;k<8;k++){v.set(k&1?b.max.x:b.min.x,k&2?b.max.y:b.min.y,k&4?b.max.z:b.min.z).project(ST.cam);const X=(v.x+1)/2*W,Y=(1-v.y)/2*H;x0=Math.min(x0,X);x1=Math.max(x1,X);y0=Math.min(y0,Y);y1=Math.max(y1,Y)}return {left:x0,top:y0,right:x1,bottom:y1}}
 // ---------- night ----------
-export function nightSet(on){ST.night=!!on;try{localStorage.setItem('dw_night',on?'1':'0')}catch(e){}const b=$('srbNight');if(b){b.textContent=on?'☀ Day':'☾ Night';b.setAttribute('aria-pressed',!!on)}ST.el?.classList.toggle('night',!!on);lightsApply();try{const h=window.GX?.nightReal;if(h?.apply)h.apply({scene:ST.scene,renderer:ST.ren,camera:ST.cam,on:!!on,src:'showroomB'});dispatchEvent(new CustomEvent('dw-night',{detail:{on:!!on,src:'showroomB',scene:ST.scene}}))}catch(e){}}
-function lightsApply(){if(!ST.scene)return;const n=ST.night;ST.hemi.intensity=n?.12:.9;ST.key.intensity=n?.15:1.6;ST.scene.background.set(n?0x050607:0x0b0d10);ST.scene.fog.color.set(n?0x050607:0x0b0d10);ST.ren.toneMappingExposure=n?1.25:1.05;
- for(const s of ST.spots)s.sp.intensity=(phone()?900:1200)*(n?1.6:1);const g=ST.grp;if(!g)return;
- for(const m of g.userData.lights){const ms=Array.isArray(m.material)?m.material:[m.material];for(const x of ms)if(/light/i.test(x.name)){if(!x.userData.srb){x.userData.srb=1;x.userData.e0=x.emissiveIntensity}x.emissive?.set?.(0xfff0c0);x.emissiveIntensity=n?6:Math.max(1,x.userData.e0||1)}}
+export function nightSet(on){ST.night=!!on;try{localStorage.setItem('dw_night',on?'1':'0')}catch(e){}const b=$('srbNight');if(b){b.textContent=on?'☀ Day':'☾ Night';b.setAttribute('aria-pressed',!!on)}ST.el?.classList.toggle('night',!!on);if(window.GX?.nightReal)ST.real=true;lightsApply();realApply();try{dispatchEvent(new CustomEvent('dw-night',{detail:{on:!!on,src:'showroomB',scene:ST.scene}}))}catch(e){}}
+// v5.12.1.3: realistic sky from night.js (GX.nightReal), same as the drilling scene. Phones get the Low sky.
+async function realMod(){let R=window.GX?.nightReal;if(!R){try{R=(await import('./night.js?v=nr3')).nightReal}catch(e){R=null}}try{R?.useThree?.(THREE)}catch(e){}return R}
+function realApply(instant){const sc=ST.scene;if(!sc)return;realMod().then(R=>{if(!R||ST.scene!==sc)return;const was=ST.real;ST.real=true;if(!was)lightsApply();
+ R.apply({scene:sc,renderer:ST.ren,camera:ST.cam,on:ST.night,src:'showroomB',skyOnly:true,instant:instant??!ST.realInit}).then(()=>{ST.realInit=true;lightsApply()}).catch(e=>console.warn('nightReal',e))})}
+function lightsApply(){if(!ST.scene)return;const n=ST.night,RL=!!ST.real,on=n&&RL;
+ // real mode: night.js dims hemi/key, fog and exposure from the day values, so keep the day values here
+ if(!RL){ST.hemi.intensity=n?.12:.9;ST.key.intensity=n?.15:1.6;ST.scene.fog.color.set(n?0x050607:0x0b0d10);ST.ren.toneMappingExposure=n?1.25:1.05}
+ else if(!ST.realInit){ST.hemi.intensity=.9;ST.key.intensity=1.6;ST.scene.fog.color.set(0x0b0d10);ST.ren.toneMappingExposure=1.05}
+ ST.scene.background.set(n?0x020308:0x0b0d10);
+ // old cartoon night (dot stars, flare blob, lens ghosts) off while the real sky is on
+ if(ST.layers)ST.layers[0].visible=!on;ST.oldOff=on;for(const s of ST.spots){s.fl.visible=ST.fx&&!on;s.ray.visible=ST.fx&&!on}
+ for(const s of ST.spots)s.sp.intensity=(phone()?900:1200)*(n?(RL?.7:1.6):1);const g=ST.grp;if(!g)return;
+ for(const m of g.userData.lights){const ms=Array.isArray(m.material)?m.material:[m.material];for(const x of ms)if(/light/i.test(x.name)){if(!x.userData.srb){x.userData.srb=1;x.userData.e0=x.emissiveIntensity}x.emissive?.set?.(0xfff0c0);x.emissiveIntensity=n?(RL?3:6):Math.max(1,x.userData.e0||1)}}
  // a few real point lights at rig light positions (night only; capped for phones)
  if(!g.userData.pl){g.userData.pl=[];const W=new THREE.Vector3(),picks=g.userData.lights.filter((m,k,a)=>k%Math.max(1,Math.ceil(a.length/(phone()?2:4)))==0).slice(0,phone()?2:4);g.updateMatrixWorld(true);
   for(const m of picks){const p=new THREE.PointLight(0xffe2a8,0,60,1.4);m.getWorldPosition(W);g.worldToLocal(W);p.position.copy(W);g.add(p);g.userData.pl.push(p)}}
- for(const p of g.userData.pl)p.intensity=n?700:0}
+ for(const p of g.userData.pl)p.intensity=n?(RL?380:700):0}
 export const nightState=()=>({on:ST.night,emissive:ST.grp?Math.max(0,...ST.grp.userData.lights.flatMap(m=>(Array.isArray(m.material)?m.material:[m.material]).filter(x=>/light/i.test(x.name)).map(x=>x.emissiveIntensity))):0,points:ST.grp?.userData.pl?.filter(p=>p.intensity>0).length||0,lightMeshes:ST.grp?.userData.lights.length||0});
 // ---------- UI ----------
 const CSS=`body #showroomB,body.mob #showroomB.msheet{position:fixed!important;inset:0!important;left:0!important;right:0!important;top:0!important;bottom:0!important;width:auto!important;height:auto!important;max-height:none!important;z-index:100003!important;transform:none!important;border-radius:0!important;margin:0!important;padding:0!important}/* mobile.js .msheet guard */#showroomB{position:fixed;inset:0;z-index:100003;background:#070b16;color:#f2f7ff;font:14px system-ui,-apple-system,Segoe UI,sans-serif;user-select:none;-webkit-user-select:none;touch-action:none;overflow:hidden}
@@ -159,7 +173,7 @@ const CSS=`body #showroomB,body.mob #showroomB.msheet{position:fixed!important;i
 #srbDots i{background:#3a4149!important;box-shadow:none!important}#srbDots i.on{background:#c9a46a!important}
 #srbHint{color:#7d868f}
 `;
-function html(){const n=ST.rigs.length;return `<canvas></canvas><div id=srbTop><span class=tt>RIG SELECT<span class=srbSim>SIM</span></span><button id=srbInfo aria-label="Parts card (I)" title="Parts card (I)">ⓘ</button><button id=srbNight aria-label="Day or night (N)">☾ Night</button><button id=srbMute aria-label="Sound (M)">🔊</button><button id=srbX aria-label="Close (Esc)">✕</button></div>
+function html(){const n=ST.rigs.length;return `<canvas></canvas><div id=srbTop><span class=tt>RIG SELECT<span class=srbSim>SIM</span></span><button id=srbInfo aria-label="Parts card (I)" title="Parts card (I)">ⓘ</button><button id=srbZin aria-label="Zoom in (+)" title="Zoom in (+)">＋</button><button id=srbZout aria-label="Zoom out (-)" title="Zoom out (-)">－</button><button id=srbNight aria-label="Day or night (N)">☾ Night</button><button id=srbMute aria-label="Sound (M)">🔊</button><button id=srbX aria-label="Close (Esc)">✕</button></div>
 <div id=srbBanner><b id=srbName></b><small id=srbSub></small></div><div id=srbLoad hidden>LOADING…</div>
 <div id=srbStats aria-label="Rig stats (SIM)">${BARS.map(([k,l])=>`<div class=row data-k=${k}><span>${l}</span><div class=bar><div class=fill></div></div><span class=v></span></div>`).join('')}</div>
 <div id=srbDots>${ST.rigs.map(()=>'<i></i>').join('')}</div><div id=srbCard role=dialog aria-label="Rig parts card" hidden></div>
@@ -191,7 +205,7 @@ function tapAt(x,y){const o=pick(x,y);if(!o){if(ST.cardOn&&ST.path)cardShow(true
 export async function show(i,dir=1){const n=ST.rigs.length;i=((i%n)+n)%n;const tok=ST.tok=(ST.tok||0)+1;ST.i=i;ST.anim++;hud();sfx('whoosh');
  const old=ST.grp;if(old?.userData.in){delete old.userData.in;ST.anim--}if(ST.out){ST.pod.remove(ST.out.g)}ST.out=old?{g:old,t:0,dir}:null;ST.grp=null;ST.para=(ST.para||0)+dir;
  if(ST.cardOn)ST.path=null;let g;try{$('srbLoad').hidden=!!ST.cache.get(ST.rigs[i].id+'_'+ST.lod);g=await loadRig(i)}catch(e){console.warn('showroomB load',e);$('srbLoad').textContent='MODEL NOT LOADED';ST.anim--;return}finally{if($('srbLoad'))$('srbLoad').hidden=true}
- if(tok!=ST.tok||!ST.el){ST.anim--;return}g.position.y=70;g.position.x=dir*12;g.userData.in={t:0};ST.pod.add(g);ST.grp=g;lightsApply();frame();if(ST.cardOn)cardShow(true,null);
+ if(tok!=ST.tok||!ST.el){ST.anim--;return}g.position.y=70;g.position.x=dir*12;g.userData.in={t:0};ST.pod.add(g);ST.grp=g;ST.zf=1;ST.zt=1;lightsApply();if(ST.night&&ST.real)realApply(true);frame();if(ST.cardOn)cardShow(true,null);
  const pre=(k)=>{const r=ST.rigs[((k%n)+n)%n];if(r&&!ST.cache.get(r.id+'_'+ST.lod))loadRig(((k%n)+n)%n).catch(()=>{})};setTimeout(()=>{pre(i+1);pre(i-1)},600)}
 export function go(d){if(ST.sel)return;show(ST.i+d,d)}
 export function select(){if(!ST.grp||ST.sel)return false;const r=ST.rigs[ST.i];ST.sel=1;ST.anim++;sfx('select');burst(true);ST.shake=2.5;frame(true);const B=$('srbBoom');B.classList.remove('go');void B.offsetWidth;B.classList.add('go');const F=$('srbFlash');F.classList.remove('go');void F.offsetWidth;F.classList.add('go');
@@ -201,11 +215,15 @@ export function select(){if(!ST.grp||ST.sel)return false;const r=ST.rigs[ST.i];S
 // ---------- input ----------
 function key(e){if(!ST.el)return;const k=e.key;if(/INPUT|TEXTAREA/.test(e.target?.tagName))return;let h=1;
  if(k=='ArrowRight'||k=='d'||k=='D')go(1);else if(k=='ArrowLeft'||k=='a'||k=='A')go(-1);else if(k=='Enter'||k==' ')select();else if(k=='Escape'){if(ST.cardOn)cardShow(false);else close()}
- else if(k=='n'||k=='N')nightSet(!ST.night);else if(k=='m'||k=='M')setMute(!ST.mute);else if(k=='i'||k=='I'||k=='c'||k=='C')cardShow(!ST.cardOn);else h=0;if(h){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation()}}
+ else if(k=='+'||k=='='||k=='PageUp')zoomBy(.8);else if(k=='-'||k=='_'||k=='PageDown')zoomBy(1.25);else if(k=='0')ST.zt=1;else if(k=='n'||k=='N')nightSet(!ST.night);else if(k=='m'||k=='M')setMute(!ST.mute);else if(k=='i'||k=='I'||k=='c'||k=='C')cardShow(!ST.cardOn);else h=0;if(h){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation()}}
 function pad(){const g=[...(navigator.getGamepads?.()||[])].find(Boolean);if(!g)return;const b=g.buttons.map(x=>!!x?.pressed),P=ST.prev||{},ed=i=>b[i]&&!P[i];const ax=g.axes[0]||0,axd=ax>.6?1:ax<-.6?-1:0;
- if(ed(5)||ed(15)||(axd==1&&ST.ax!=1))go(1);if(ed(4)||ed(14)||(axd==-1&&ST.ax!=-1))go(-1);if(ed(0))select();if(ed(1)){if(ST.cardOn)cardShow(false);else close()}if(ed(3))cardShow(!ST.cardOn);if(ed(2))nightSet(!ST.night);ST.prev=b;ST.ax=axd}
-function ptr(cv){let s=null;cv.addEventListener('pointerdown',e=>{s={x:e.clientX,y:e.clientY,t:performance.now()};try{cv.setPointerCapture(e.pointerId)}catch(_){}});
- cv.addEventListener('pointerup',e=>{if(!s)return;const dx=e.clientX-s.x,dy=e.clientY-s.y;if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy))go(dx<0?1:-1);else if(Math.hypot(dx,dy)<10)tapAt(e.clientX,e.clientY);s=null});cv.addEventListener('pointercancel',()=>s=null)}
+ if(ed(5)||ed(15)||(axd==1&&ST.ax!=1))go(1);if(ed(4)||ed(14)||(axd==-1&&ST.ax!=-1))go(-1);if(ed(0))select();if(ed(1)){if(ST.cardOn)cardShow(false);else close()}if(ed(3))cardShow(!ST.cardOn);if(ed(2))nightSet(!ST.night);const zt=(g.buttons[7]?.value||0)-(g.buttons[6]?.value||0),ry=g.axes[3]||0,zz=Math.abs(ry)>.25?-ry:zt;if(Math.abs(zz)>.1)zoomBy(1-zz*.06);ST.prev=b;ST.ax=axd}
+function ptr(cv){let s=null;const P=new Map();let pd=0;const pdist=()=>{const a=[...P.values()];return a.length<2?0:Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y)};
+ cv.addEventListener('wheel',e=>{e.preventDefault();const k=e.ctrlKey?.01:.0015;zoomBy(Math.exp(e.deltaY*k))},{passive:false}); // ctrlKey = trackpad pinch
+ cv.addEventListener('pointermove',e=>{if(!P.has(e.pointerId))return;P.set(e.pointerId,{x:e.clientX,y:e.clientY});if(P.size==2){const d=pdist();if(pd&&d)zoomBy(pd/d);pd=d;s=null}});
+ const rm=e=>{P.delete(e.pointerId);if(P.size<2)pd=0};cv.addEventListener('pointercancel',rm);
+ cv.addEventListener('pointerdown',e=>{P.set(e.pointerId,{x:e.clientX,y:e.clientY});if(P.size==2){pd=pdist();s=null;return}s={x:e.clientX,y:e.clientY,t:performance.now()};try{cv.setPointerCapture(e.pointerId)}catch(_){}});
+ cv.addEventListener('pointerup',e=>{rm(e);if(!s)return;const dx=e.clientX-s.x,dy=e.clientY-s.y;if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy))go(dx<0?1:-1);else if(Math.hypot(dx,dy)<10)tapAt(e.clientX,e.clientY);s=null});cv.addEventListener('pointercancel',()=>s=null)}
 // ---------- loop ----------
 function loop(now){if(!ST.el)return;ST.raf=requestAnimationFrame(loop);const dt=Math.min(.05,(now-(ST.last||now))/1000);ST.last=now;ST.t+=dt;ST.frames++;
  if(now-(ST.fT||0)>1000){if(window.GX?.showroomB!==ST.api){window.GX=window.GX||{};window.GX.showroomB=ST.api}ST.fps=ST.frames*1000/(now-(ST.fT||now-1000));ST.frames=0;ST.fT=now}
@@ -218,18 +236,18 @@ function loop(now){if(!ST.el)return;ST.raf=requestAnimationFrame(loop);const dt=
  const g=ST.grp;if(g?.userData.in){const I=g.userData.in;I.t+=dt;const k=Math.min(1,Math.max(0,(I.t-.15)/.3));g.position.y=70*(1-k*k);g.position.x*=1-k;if(k>=1){g.position.set(0,0,0);delete g.userData.in;ST.shake=1.6;burst(false);sfx('slam');ST.anim--}}
  applyCam(dt);stepFx(dt);
  // lens-flare ghosts along the line from the brightest flare to the screen centre
- const f=ST.spots[0].fl.position.clone().project(ST.cam),vis=ST.fx&&f.z<1&&Math.abs(f.x)<1.3&&Math.abs(f.y)<1.3;for(const s of ST.ghosts){s.visible=vis;if(!vis)continue;const p=new THREE.Vector3(f.x*(1-s.userData.d*2),f.y*(1-s.userData.d*2),.5).unproject(ST.cam);s.position.copy(p).sub(ST.cam.position).setLength(60).add(ST.cam.position);s.material.opacity=.18*(ST.night?1.5:1)}
+ const f=ST.spots[0].fl.position.clone().project(ST.cam),vis=ST.fx&&!ST.oldOff&&f.z<1&&Math.abs(f.x)<1.3&&Math.abs(f.y)<1.3;for(const s of ST.ghosts){s.visible=vis;if(!vis)continue;const p=new THREE.Vector3(f.x*(1-s.userData.d*2),f.y*(1-s.userData.d*2),.5).unproject(ST.cam);s.position.copy(p).sub(ST.cam.position).setLength(60).add(ST.cam.position);s.material.opacity=.18*(ST.night?1.5:1)}
  ST.ren.render(ST.scene,ST.cam)}
 export function idle(){return !!ST.el&&!!ST.grp&&!ST.anim&&!ST.camMoving&&!ST.out&&!ST.grp.userData.in&&!ST.sel}
 function size(){if(!ST.ren)return;ST.ren.setSize(innerWidth,innerHeight,false);ST.cam.aspect=innerWidth/innerHeight;ST.cam.updateProjectionMatrix();frame()}
-function api(){return {ST,STATS,BARS,CFG,open,close,show,go,select,sfx,setMute,nightSet,nightState,cardShow,pick,rigRect,freeRect,idle,pack,lodPick,manifest,isOpen:()=>!!ST.el}}
+function api(){return {ST,zoomBy,zoomInfo,ZMIN,STATS,BARS,CFG,open,close,show,go,select,sfx,setMute,nightSet,nightState,cardShow,pick,rigRect,freeRect,idle,pack,lodPick,manifest,isOpen:()=>!!ST.el}}
 export async function open(i){if(ST.el)return;window.GX=window.GX||{};window.GX.showroomB=ST.api=ST.api||api();if(!$('srbCss')){const s=document.createElement('style');s.id='srbCss';s.textContent=CSS;document.head.appendChild(s)}
- try{await manifest()}catch(e){console.warn('showroomB manifest',e);alert('Showroom B models are not available. Opening Showroom A.');const m=await import('./showroom.js?v=b16');m.init();m.open();return}
+ try{await manifest()}catch(e){console.warn('showroomB manifest',e);alert('Showroom B models are not available. Opening Showroom A.');const m=await import('./showroom.js?v=b17');m.init();m.open();return}
  ST.lod=lodPick();try{ST.mute=localStorage.getItem('dw_srb_mute')=='1'}catch(e){}
  const el=ST.el=document.createElement('div');el.id='showroomB';el.setAttribute('role','dialog');el.setAttribute('aria-label','Rig select, showroom B');el.innerHTML=html();document.body.appendChild(el);
- $('srbX').onclick=close;$('srbPrev').onclick=()=>go(-1);$('srbNext').onclick=()=>go(1);$('srbSel').onclick=select;$('srbNight').onclick=()=>nightSet(!ST.night);$('srbMute').onclick=()=>setMute(!ST.mute);$('srbInfo').onclick=()=>cardShow(!ST.cardOn);
+ $('srbX').onclick=close;$('srbPrev').onclick=()=>go(-1);$('srbNext').onclick=()=>go(1);$('srbSel').onclick=select;$('srbNight').onclick=()=>nightSet(!ST.night);$('srbZin').onclick=()=>zoomBy(.7);$('srbZout').onclick=()=>zoomBy(1.4);$('srbMute').onclick=()=>setMute(!ST.mute);$('srbInfo').onclick=()=>cardShow(!ST.cardOn);
  setupGL();ptr(el.querySelector('canvas'));setMute(ST.mute);let on=false;try{on=window.GX?.night?.isOn?.()??localStorage.getItem('dw_night')=='1'}catch(e){}nightSet(on);
  let st=i;if(st==null)try{st=Math.max(0,ST.rigs.findIndex(r=>r.id==localStorage.getItem('dw_showroom_rig_b')))}catch(e){st=0}
  ST.intro=1;ST.para=0;ST.prev=null;show(st||0,1);addEventListener('keydown',key,true);addEventListener('resize',size);addEventListener('dw:home',close);ST.last=0;ST.raf=requestAnimationFrame(loop);const at=performance.now();import('./srperf.js?v=p1').then(m=>{if(ST.el)m.attach({id:'B',el:ST.el,at,lod:()=>ST.lod,ready:()=>!!ST.grp,match:/assets\/rigsb\/.*\.glb/})}).catch(()=>{})}
-export function close(){if(!ST.el)return;import('./srperf.js?v=p1').then(m=>m.detach('B')).catch(()=>{});cancelAnimationFrame(ST.raf);clearTimeout(ST.selT);clearTimeout(ST.fillT);removeEventListener('keydown',key,true);removeEventListener('resize',size);removeEventListener('dw:home',close);
+export function close(){if(!ST.el)return;try{if(ST.scene)window.GX?.nightReal?.dispose?.(ST.scene)}catch(e){}ST.real=false;ST.realInit=false;ST.oldOff=false;import('./srperf.js?v=p1').then(m=>m.detach('B')).catch(()=>{});cancelAnimationFrame(ST.raf);clearTimeout(ST.selT);clearTimeout(ST.fillT);removeEventListener('keydown',key,true);removeEventListener('resize',size);removeEventListener('dw:home',close);
  try{for(const c of [...ST.pod.children])if(c.userData?.meshes)ST.pod.remove(c);ST.scene.traverse(o=>{if(o.geometry&&!o.isSprite)o.geometry.dispose?.()});ST.env?.dispose();ST.ren.dispose()}catch(e){}ST.el.remove();Object.assign(ST,{el:null,grp:null,out:null,scene:null,ren:null,env:null,cardOn:false,path:null,hi:[],anim:0,sel:0,tok:(ST.tok||0)+1})}

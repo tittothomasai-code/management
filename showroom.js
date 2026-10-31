@@ -222,7 +222,7 @@ function api(){return {ST,RIGS,ASSET,open,close,go,show,use,tapPart,pick,isOpen:
 if(typeof window!='undefined'){window.GX=window.GX||{};window.GX.showroom=window.GX.showroom||api()}
 
 // ---------- Day / night (feat/night). Guarded: does nothing if night.js is not there. ----------
-async function nightMod(){let N=window.GX?.night;if(!N){try{N=(await import('./night.js?v=b13')).night}catch(e){N=null}}if(N){try{N.useThree?.(THREE)}catch(e){}}return N}
+async function nightMod(){let N=window.GX?.night;if(!N){try{N=(await import('./night.js?v=nr3')).night}catch(e){N=null}}if(N){try{N.useThree?.(THREE)}catch(e){}}return N}
 export async function nightSet(on,instant){const N=await nightMod();ST.night=!!on;const b=$('srNight');if(b){b.textContent=on?'☀ Day':'☾ Night';b.classList.toggle('on',!!on)}
  if(!N||!ST.scene||!ST.grp)return false;ST.N=N;try{if(instant)N.dispose(ST.scene);await N.set(!!on,ST.scene,ST.grp,{ren:ST.ren,quality:q(),instant:!!instant})}catch(e){console.error('showroom night',e);return false}return true}
 export function nightInit(){let on=false;try{const N=window.GX?.night;on=N?.isOn?N.isOn():localStorage.getItem('dw_night')=='1'}catch(e){}if(on)nightSet(true,true)}

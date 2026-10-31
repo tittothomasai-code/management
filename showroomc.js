@@ -106,7 +106,7 @@ export function zoom(f){ST.anim=null;const c=ST.ctl,o=ST.cam.position.clone().su
 
 // Rig catalogue: every rig, spec and equipment entry of Showroom A, viewable here (A's own GLBs, LOD-matched). SIM data.
 const BIN={triple:1,workover:1,ctu:1,frac:1,jackup:1,semi:1,ship:1};
-async function adata(){if(!ST.A){const [a,t]=await Promise.all([import('./showroom.js?v=b16'),import('./showroom3d.js?v=5115')]);ST.A={RIGS:a.RIGS,ASSET:a.ASSET,t}}return ST.A}
+async function adata(){if(!ST.A){const [a,t]=await Promise.all([import('./showroom.js?v=b17'),import('./showroom3d.js?v=5115')]);ST.A={RIGS:a.RIGS,ASSET:a.ASSET,t}}return ST.A}
 export async function fleet(v){ST.fl=v==null?!ST.fl:!!v;const el=$('srcFleet'),b=$('srcFleetB');if(!el)return;b.classList.toggle('on',ST.fl);b.setAttribute('aria-pressed',ST.fl);el.hidden=!ST.fl;if(!ST.fl)return;if(ST.fl&&ST.bom)bom(false);
  const {RIGS,ASSET}=await adata(),r0=RIGS.find(r=>r.id==ST.alt)||RIGS[0],esc=x=>String(x??'').replace(/[<&>"]/g,c=>'&#'+c.charCodeAt(0)+';');
  el.innerHTML=`<h3>Detailed rig</h3><div class="r${ST.alt?'':' on'}" data-fid=""><button data-arig="">View</button><b>${esc(ST.rig?.name||'Detailed rig')}</b><small>Full drill-down and parts list</small></div><h3>Rig catalogue (SIM specs)</h3>`+RIGS.map(r=>`<div class="r${ST.alt==r.id?' on':''}" data-fid=${r.id}><button data-arig=${r.id}>View</button><b>${esc(r.name)}</b><small>${esc(r.type)} · hook ${esc(r.hook)} · drawworks ${esc(r.dw)} · mast ${esc(r.mast)} · ${esc(r.pumps)} · BOP ${esc(r.bop)}</small></div>`).join('')
