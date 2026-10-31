@@ -32,7 +32,7 @@ export function key(e){if(typing(e)||document.getElementById('start'))return;con
  else if(k=='+'||k=='=')zoom(0.85);else if(k=='-'||k=='_')zoom(1/0.85);else if(k==']')wob(ST.wobStep);else if(k=='[')wob(-ST.wobStep);
  else if(k=='PageUp')rpm(ST.rpmStep);else if(k=='PageDown')rpm(-ST.rpmStep);else if(k=='Escape'){closeAll();if(ST.legend)legend(false)}else if(k=='?')legend();else h=false;
  if(h){e.preventDefault();e.stopPropagation()}}
-export function poll(now=performance.now()){const pads=navigator.getGamepads?.()||[];const p=[...pads].find(Boolean);if(!p){if(ST.pad){ST.pad=null}return}
+export function poll(now=performance.now()){if(window.GX?.ddtracks?.isOpen?.())return;/* ddtracks hook */const pads=navigator.getGamepads?.()||[];const p=[...pads].find(Boolean);if(!p){if(ST.pad){ST.pad=null}return}
  if(!ST.pad){ST.pad=p.id||'gamepad';toast('Gamepad connected — press Start for controls')}
  const dt=Math.min(0.1,(now-(ST.last||now))/1000)||1/60;ST.last=now;const ax=i=>dz(p.axes[i]||0),bt=i=>p.buttons[i]?.pressed?1:0,bv=i=>p.buttons[i]?.value??bt(i),edge=i=>bt(i)&&!ST.prev[i];
  const lx=ax(0),ly=ax(1),rx=ax(2),ry=ax(3);if(!document.getElementById('start')&&!document.getElementById('showroom')){if(lx||ly)orbit(lx*1.6*dt,ly*1.2*dt);if(rx)look(rx*1.2*dt);if(ry)zoom(1+ry*1.5*dt);

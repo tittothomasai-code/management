@@ -80,7 +80,7 @@ function render(){if(!ST.el||!ST.sess)return;const a=document.activeElement?.id,
  $('ddRec').onclick=()=>{const r=ST.rec;if(r.slide>0.5)cmd(`Slide ${r.slide} m at TF ${r.tf}`);if(r.rotate>0.5)cmd(`Rotate ${r.rotate} m`);cmd('Take a survey')};
  try{hook()?.bind?.($('ddMotorSlot'),ST.sess,render)}catch(e){console.error('ddmotor',e)}const lg=$('ddLog');lg.scrollTop=lg.scrollHeight;draw();runMount()}
 // v5.11.4.1: Start / Pause / Reset steering run (ddrun.js) docked at the top of the cabin
-let RUNM=null;function runMount(){if(RUNM){try{RUNM.mount(API)}catch(e){console.error('ddrun',e)}return}import('./ddrun.js?v=r1').then(m=>{RUNM=m.default;RUNM.mount(API)}).catch(e=>console.error('ddrun',e))}
+let RUNM=null;function runMount(){if(RUNM){try{RUNM.mount(API)}catch(e){console.error('ddrun',e)}return}import('./ddrun.js?v=r1').then(m=>{RUNM=m.default;RUNM.mount(API);import('./ddtracks.js?v=t1').catch(e=>console.error('ddtracks',e))/* ddtracks hook */}).catch(e=>console.error('ddrun',e))}
 function draw(){const s=ST.sess;
  {const c=$('ddTF'),x=c.getContext('2d'),W=c.width,cx=W/2,r=W/2-18;x.clearRect(0,0,W,W);x.strokeStyle='#567';x.lineWidth=2;x.beginPath();x.arc(cx,cx,r,0,7);x.stroke();x.fillStyle='#9ab';x.font='11px system-ui';x.textAlign='center';
   for(let a=0;a<360;a+=30){const t=(a-90)*Math.PI/180;x.fillText(a==0?(s.bit.inc<5?'N':'HS'):a,cx+(r+10)*Math.cos(t),cx+(r+10)*Math.sin(t)+4)}
