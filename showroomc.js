@@ -22,7 +22,7 @@ export function pickLod(){const o=(q().get('srclod')||'').toUpperCase();if(/^[HM
 export function tree(lod){const nb=ST.rig.lods[lod]?.nodeToBom||ST.rig.nodeToBom,T={};for(const p of Object.keys(nb)){const parts=p.split('/');T[p]={path:p,bom:nb[p],level:'ABC'[Math.min(parts.length,3)-1],parent:parts.length>1?parts.slice(0,-1).join('/'):null,kids:[]}}
  for(const n of Object.values(T))if(n.parent&&T[n.parent])T[n.parent].kids.push(n.path);return T}
 function css(){if($('srcCss'))return;const s=document.createElement('style');s.id='srcCss';s.textContent=`
-#showroomC{position:fixed;inset:0;z-index:60;background:#0c0f13;color:#dde3ea;font:13px system-ui,sans-serif;touch-action:none;user-select:none}
+#showroomC{position:fixed;inset:0;z-index:100003;background:#0c0f13;color:#dde3ea;font:13px system-ui,sans-serif;touch-action:none;user-select:none}
 #showroomC canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 #showroomC button{font:inherit;color:#e4e9ef;background:rgba(18,22,28,.86);border:1px solid #3a4450;border-radius:6px;min-height:36px;padding:4px 10px;cursor:pointer}
 #showroomC button.on{border-color:#c9a46a;color:#f3e3c6;background:rgba(40,32,20,.9)}#showroomC button:focus-visible{outline:2px solid #c9a46a}
