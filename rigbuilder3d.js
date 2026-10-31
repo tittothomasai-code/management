@@ -18,6 +18,11 @@ function scene(url){if(!FILES.has(url))FILES.set(url,loader().then(l=>l.loadAsyn
 function findTop(sc,name){let hit=null;const q=[...sc.children];while(q.length){const o=q.shift();if(o.name==name){hit=o;break}q.push(...o.children)}return hit}
 // Returns {obj, size:[x,y,z], unit:'unit'|'bank'|'single', tris} or null. obj is pivoted: x,z centre at 0, base at y 0.
 const PARTS=new Map();
+let BGU=null;async function mergeByMat(p){BGU=BGU||await import('./vendor/utils/BufferGeometryUtils.js');p.updateMatrixWorld(true);const inv=new THREE.Matrix4().copy(p.matrixWorld).invert(),by=new Map(),old=[];
+ p.traverse(o=>{if(!o.isMesh||Array.isArray(o.material))return;const g=o.geometry.clone();g.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv,o.matrixWorld));for(const k of Object.keys(g.attributes))if(!['position','normal','uv','color'].includes(k))g.deleteAttribute(k);
+  const key=o.material.uuid+'|'+Object.keys(g.attributes).sort().join()+'|'+!!g.index;(by.get(key)||by.set(key,{m:o.material,g:[]}).get(key)).g.push(g.index?g:g);old.push(o)});
+ const out=[];for(const {m,g} of by.values()){const mg=BGU.mergeGeometries(g,false);if(!mg)return;const me=new THREE.Mesh(mg,m);me.name='merged';out.push(me)}
+ for(const o of old)o.parent?.remove(o);for(const me of out)p.add(me)}
 export async function part(it,lod,man){const url=fileFor(it,lod,man);if(!url)return null;const key=url+'|'+it.node;
  if(!PARTS.has(key))PARTS.set(key,(async()=>{const sc=await scene(url);let n=findTop(sc,it.node);if(!n)return null;let unit=it.src=='P3'?'unit':'single';const U=it.src=='P3'?null:UNIT[it.slot];
   if(U){const u=[];n.traverse(o=>{if(o!==n&&U.test(o.name)&&!u.length)u.push(o)});if(u.length){n=u[0];unit='unit'}else if(/generators|pump_trucks|mudpumps/.test(it.node))unit='bank'}
@@ -26,6 +31,7 @@ export async function part(it,lod,man){const url=fileFor(it,lod,man);if(!url)ret
   g.updateMatrixWorld(true);const bb=new THREE.Box3().setFromObject(g),sz=bb.getSize(new THREE.Vector3()),ce=bb.getCenter(new THREE.Vector3());
   const wc=findTop(g,'attach_wellcentre');let fy=null;if(wc){const v=wc.getWorldPosition(new THREE.Vector3());ce.x=v.x;ce.z=v.z;if(it.slot=='sub')fy=v.y-bb.min.y}/* pass 3: pivot on the well centre */
   const p=new THREE.Group();g.position.set(-ce.x,-bb.min.y,-ce.z);p.add(g);let tris=0;p.traverse(o=>{if(o.isMesh){tris+=(o.geometry.index?o.geometry.index.count:o.geometry.attributes.position.count)/3;o.castShadow=o.receiveShadow=false}});
+  if(it.src=='P3'&&lod=='L')await mergeByMat(p);/* phone draw-call budget: one mesh per material */
   return {obj:p,size:[sz.x,fy??sz.y,sz.z],unit,tris:Math.round(tris)}})().catch(e=>{PARTS.delete(key);console.warn('rig builder part',it.id,e);return null}));
  return PARTS.get(key)}
 function inst(p,it,slot,i){const o=p.obj.clone(true);o.traverse(m=>{if(m.isMesh){m.material=Array.isArray(m.material)?m.material.map(x=>x.clone()):m.material.clone();m.userData.rb={slot,id:it.id,i}}});

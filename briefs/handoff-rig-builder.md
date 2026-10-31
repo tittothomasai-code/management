@@ -29,4 +29,6 @@ NOT DEPLOYED. Ships after v5.12.1.2 (A/B/C switch hotfix), v5.12.2 (Showroom C) 
 - Catalogue src 'P3': genset_single→power, mud_tank_single→tanks, mud_pump_single and frac_pump_truck_single→pumps, offshore_derrick→mast, substructure_drill_floor→sub. New rig defaults use the P3 pump, genset and tank.
 - The P3 substructure pivots on attach_wellcentre and the floor is at its 9 m datum, so the mast sits on the rotary.
 - Showroom B and C: not changed. Pass 3 contains single parts only, no full rigs. Custom rigs in B use them through assemble3d.
+- Phone LOD L merges each pass-3 part to one mesh per material (draw calls 296→159).
+- Tests: desk 36/0 (first run had 2 pad-timing flakes, rerun clean), phone 39/0.
 - Open request: docs-out/Codex-Component-Request-2026-10-31.md (offshore drill floor, A-style substructure, frac M/L 7 mm float).
