@@ -70,7 +70,7 @@ async function choose(){const go=ST.items[ST.i]?.dataset.go;beep(880,.1);
  if(go=='monitor'){close('monitor');const m=await import('./monitor.js?v=b11');m.open();return}
  if(go=='ddcab'){close('ddcab');const m=await import('./ddcab.js?v=r2');m.open();return}
  if(go=='safety'){close('safety');const m=await import('./safety.js?v=s1');m.open();return}/* safety hook */
- if(go=='showroom'){close('showroom');const P=await import('./srpick.js?v=b5').catch(()=>null);if(P&&P.get()!='A'){await P.open();return}const m=await import('./showroom.js?v=b17');m.init();m.open();return}
+ if(go=='showroom'){close('showroom');const P=await import('./srpick.js?v=b7').catch(()=>null);if(P){await P.open();return}const m=await import('./showroom.js?v=b17');m.init();m.open();return}
  if(go=='workover'){close('workover');const m=await import('./workover.js?v=b13');m.open();return}
  if(go=='saved'){ST.menu='saved';return render()}
  if(go?.startsWith('open:')){close('edm');const m=await import('./edmui.js?v=b13');m.openSaved(go.slice(5)).catch(e=>alert('Could not open saved site: '+e.message));return}

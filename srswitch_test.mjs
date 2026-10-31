@@ -15,19 +15,17 @@ const lay=sel=>p.evaluate(sel=>{const h=document.querySelector(sel+' .srabH');if
  const c=document.getElementById('srabHC');return {vis,bad,r:[r.left,r.top,r.width,r.height].map(Math.round),cDis:!!c?.disabled,cTxt:c?.textContent}},sel);
 let L=await lay('#srbTop');ck(L.vis,'B header switch visible '+JSON.stringify(L.r));ck(!L.bad.length,'B switch no overlap '+L.bad);ck(!L.cDis&&!/soon/.test(L.cTxt),'C enabled, not soon ('+L.cTxt+')');
 await p.screenshot({path:SHOT+'_B.png'});
-await p.tap('#srabHA');await p.waitForFunction(()=>document.getElementById('showroom')&&!document.getElementById('showroomB'),{timeout:180000}).catch(()=>{});
-ck(await p.evaluate(()=>!!document.getElementById('showroom')&&!document.getElementById('showroomB')&&GX.showroomAB.get()=='A'),'tap A -> showroom A');
-await p.waitForSelector('#srTop .srabH',{visible:true,timeout:60000}).catch(()=>{});
-L=await lay('#srTop');ck(L.vis,'A header switch visible '+JSON.stringify(L.r));ck(!L.bad.length,'A switch no overlap '+L.bad);ck(!L.cDis,'C enabled in A');
-await p.screenshot({path:SHOT+'_A.png'});
-await p.tap('#srabHC');await p.waitForFunction(()=>document.getElementById('showroomC')&&!document.getElementById('showroom'),{timeout:180000}).catch(()=>{});
-ck(await p.evaluate(()=>!!document.getElementById('showroomC')&&!document.getElementById('showroom')&&GX.showroomAB.get()=='C'),'tap C -> showroom C');
+ck(await p.evaluate(()=>!document.querySelector('#srabHA')&&[...document.querySelectorAll('.srabH')].every(h=>[...h.querySelectorAll('button[data-abh]')].map(b=>b.dataset.abh).join('')=='BC')),'headers are B | C only (no A)');
+ck(await p.evaluate(()=>{const o=localStorage.getItem('dw_showroom_ab');localStorage.setItem('dw_showroom_ab','A');const g=GX.showroomAB.get();localStorage.setItem('dw_showroom_ab',o);return g=='C'}),'saved A -> C');
+await p.tap('#srabHC');await p.waitForFunction(()=>document.getElementById('showroomC'),{timeout:180000}).catch(()=>{});
+ck(await p.evaluate(()=>!!document.getElementById('showroomC')&&GX.showroomAB.get()=='C'),'tap C -> showroom C');
 await p.waitForSelector('#srcTop .srabH',{visible:true,timeout:60000}).catch(()=>{});
 L=await lay('#srcTop');ck(L.vis,'C header switch visible '+JSON.stringify(L.r));ck(!L.bad.length,'C switch no overlap '+L.bad);
 ck(await p.evaluate(()=>document.querySelector('#srcTop #srabHC')?.classList.contains('on')),'C segment active in C header');
 await new Promise(r=>setTimeout(r,4000));await p.screenshot({path:SHOT+'_C.png'});
 await p.tap('#srabHB');await p.waitForFunction(()=>document.getElementById('showroomB')&&!document.getElementById('showroom'),{timeout:180000}).catch(()=>{});
 ck(await p.evaluate(()=>!!document.getElementById('showroomB')&&GX.showroomAB.get()=='B'),'tap B -> showroom B');
+await p.goto(URL+'/?showroom=a',{waitUntil:'load',timeout:180000});await new Promise(r=>setTimeout(r,3000));ck(await p.evaluate(()=>GX.showroomAB.get()=='C'),'?showroom=a link -> C');
 ck(!errs.length,'no page errors '+errs.slice(0,2).join(' | '));
 }catch(e){ck(0,'exception '+e.message)}
 await b.close();console.log(fail?'FAILED '+fail:'ALL PASS');process.exit(fail?1:0)

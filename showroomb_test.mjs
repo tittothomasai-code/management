@@ -16,20 +16,12 @@ for(const nm of ['desk','phone']){if(only&&only!=nm)continue;const vp=VP[nm];
  // 1) start screen toggle, default A
  await p.goto(BASE+'/?start=1',{waitUntil:'load',timeout:120000});await p.waitForSelector('#st_showroom',{timeout:60000}).catch(()=>{});await p.waitForSelector('#srabStart',{timeout:20000}).catch(()=>{});
  ok(await p.evaluate(()=>!!document.getElementById('srabStart')),nm+': start screen has Showroom A/B toggle');
- ok(await p.evaluate(()=>srabSA.classList.contains('on')&&!srabSB.classList.contains('on')&&GX.showroomAB.get()=='A'),nm+': default is A');
- await p.evaluate(()=>st_showroom.click());await p.waitForSelector('#showroom canvas',{timeout:30000}).catch(()=>{});
- ok(await p.evaluate(()=>!!document.getElementById('showroom')&&!document.getElementById('showroomB')),nm+': A tile opens Showroom A');
- await w(4000);FPS[nm+'_A']=await rate(5000);
- ok(await p.evaluate(()=>!!document.getElementById('srpBtn')&&document.getElementById('srpBox').hidden),nm+': A perf readout present, off by default');
- await p.keyboard.press('p');await w(2500);let pf=await p.evaluate(()=>({s:GX.srperf.stats(),t:srpBox.textContent,vis:!srpBox.hidden}));ok(pf.vis&&pf.s.id=='A'&&/FPS/.test(pf.t)&&/MB/.test(pf.t)&&/LOD/.test(pf.t),nm+': P shows A perf ('+JSON.stringify(pf.s)+')');
- await p.screenshot({path:SH+nm+'_A_perf.png'});await p.keyboard.press('p');ok(await p.evaluate(()=>srpBox.hidden&&localStorage.getItem('dw_srperf')=='0'),nm+': P hides it (saved)');await p.screenshot({path:SH+nm+'_A_day.png'});
- await p.evaluate(()=>srNight.click());await w(3500);await p.screenshot({path:SH+nm+'_A_night.png'});await p.evaluate(()=>srNight.click());await w(500);
- await p.evaluate(()=>GX.showroom.close());
+ ok(await p.evaluate(()=>!document.getElementById('srabSA')&&srabSC.classList.contains('on')&&GX.showroomAB.get()=='C'),nm+': no A on start, default is C (v5.12.2.1)');FPS[nm+'_A']=0;
  // 2) switch to B in Settings (Tools group) and open via HUD button
  await p.waitForFunction(()=>!!document.getElementById('srabSet'),{timeout:30000}).catch(()=>{});ok(await p.evaluate(()=>!!document.getElementById('srabSet')),nm+': Settings has Showroom A/B toggle');
  const hasC=await p.evaluate(()=>!!window.GX?.showroomC||GX.showroomAB.keys().includes('C'));/* showroom-c: C registers once shipped */
- ok(await p.evaluate(h=>h?GX.showroomAB.keys().join()=='A,B,C':(GX.showroomAB.keys().join()=='A,B'&&[...document.querySelectorAll('#srabTC,#srabSC')].every(b=>b.disabled&&/soon/.test(b.textContent))),hasC),nm+(hasC?': selector A/B/C, C registered':': selector A/B, C disabled (soon) until it registers'));
- ok(await p.evaluate(()=>{localStorage.setItem('dw_showroom_ab','C');const g=GX.showroomAB.get();localStorage.setItem('dw_showroom_ab','A');return g==(GX.showroomAB.keys().includes('C')?'C':'A')}),nm+': stored C resolves (C if registered, else A)');
+ ok(await p.evaluate(h=>h?GX.showroomAB.keys().join()=='B,C':(GX.showroomAB.keys().join()=='B'&&[...document.querySelectorAll('#srabTC,#srabSC')].every(b=>b.disabled&&/soon/.test(b.textContent))),hasC),nm+(hasC?': selector B/C (no A), C registered':': selector B only, C disabled (soon) until it registers'));
+ ok(await p.evaluate(()=>{localStorage.setItem('dw_showroom_ab','C');const g=GX.showroomAB.get();localStorage.setItem('dw_showroom_ab','B');return g==(GX.showroomAB.keys().includes('C')?'C':'B')}),nm+': stored C resolves (C if registered, else B)');
  await p.evaluate(()=>srabTB.click());ok(await p.evaluate(()=>localStorage.getItem('dw_showroom_ab')=='B'&&srabTB.classList.contains('on')),nm+': Settings toggle sets B (saved)');
  await p.waitForSelector('#btnShow',{timeout:30000}).catch(()=>{});await p.evaluate(()=>btnShow.click());await p.waitForSelector('#showroomB canvas',{timeout:30000}).catch(()=>{});
  ok(await p.evaluate(()=>!!document.getElementById('showroomB')&&!document.getElementById('showroom')),nm+': HUD Showroom button opens B when B is on');
@@ -79,16 +71,15 @@ for(const nm of ['desk','phone']){if(only&&only!=nm)continue;const vp=VP[nm];
  await idle();const sel=await p.evaluate(()=>new Promise(r=>{const ev=[];addEventListener('dw-rig',e=>ev.push(e.detail));srbSel.click();setTimeout(()=>r({ev,boom:srbBoom.classList.contains('go'),push:GX.showroomB.ST.cd.d<GX.showroomB.ST.cs.d}),300)}));
  ok(sel.boom&&sel.ev[0]?.src=='B',nm+': SELECT! confirm, emits rig '+sel.ev[0]?.id);ok(sel.push,nm+': camera push-in');ok(sel.ev[0]?.applied,nm+': rig design applied (GX.setDesign)');
  await p.waitForFunction(()=>!document.getElementById('showroomB'),{timeout:20000}).catch(()=>{});ok(await p.evaluate(()=>!document.getElementById('showroomB')&&!!localStorage.getItem('dw_showroom_rig_b')),nm+': closes after select, choice saved');
- // 8) toggle back to A
- await p.evaluate(()=>srabTA.click());await p.evaluate(()=>btnShow.click());await w(1500);ok(await p.evaluate(()=>!!document.getElementById('showroom')&&!document.getElementById('showroomB')&&localStorage.getItem('dw_showroom_ab')=='A'),nm+': toggle back to A opens Showroom A');
- await p.evaluate(()=>GX.showroom.close());
+ // 8) old saved A redirects (A removed from UI)
+ ok(await p.evaluate(()=>{localStorage.setItem('dw_showroom_ab','A');const g=GX.showroomAB.get();localStorage.setItem('dw_showroom_ab','B');return !document.getElementById('srabTA')&&g==(GX.showroomAB.keys().includes('C')?'C':'B')}),nm+': saved A -> C, no A in Settings');
  // 9) start tile with B + pack override fallback
  await p.evaluate(()=>localStorage.setItem('dw_showroom_ab','B'));await p.goto(BASE+'/?start=1',{waitUntil:'load',timeout:120000});await p.waitForSelector('#srabStart',{timeout:60000}).catch(()=>{});
  ok(await p.evaluate(()=>srabSB.classList.contains('on')),nm+': start toggle shows B after reload');await p.evaluate(()=>st_showroom.click());await p.waitForSelector('#showroomB',{timeout:30000}).catch(()=>{});
  ok(await p.evaluate(()=>!!document.getElementById('showroomB')),nm+': start tile opens B');await idle();await p.keyboard.press('Escape');await w(300);ok(await p.evaluate(()=>!document.getElementById('showroomB')),nm+': Esc closes B');
  await p.evaluate(()=>{window.__copen=0;GX.showroomAB.register('C',{label:'C · Test',open:()=>{window.__copen++}})});await w(800);
- await p.waitForSelector('#srabTC',{timeout:15000}).catch(()=>{});ok(await p.evaluate(()=>!!document.getElementById('srabTC')&&GX.showroomAB.keys().join()=='A,B,C'),nm+': register C shows a third button');
+ await p.waitForSelector('#srabTC',{timeout:15000}).catch(()=>{});ok(await p.evaluate(()=>!!document.getElementById('srabTC')&&GX.showroomAB.keys().join()=='B,C'),nm+': register C shows the C button');
  await p.evaluate(()=>srabTC.click());await p.evaluate(()=>GX.showroomAB.open());await w(800);ok(await p.evaluate(()=>window.__copen==1&&localStorage.getItem('dw_showroom_ab')=='C'),nm+': C chosen opens registered C');
- await p.evaluate(()=>localStorage.setItem('dw_showroom_ab','A'));await ctx.close()}
+ await p.evaluate(()=>localStorage.setItem('dw_showroom_ab','B'));await ctx.close()}
 ok(!errs.length,'no page errors '+errs.slice(0,3).join(' | '));fs.writeFileSync(SH+'fps.json',JSON.stringify(FPS,null,1));
 console.log(`\n${pass} passed, ${fails} failed`);await b.close();process.exit(fails?1:0)

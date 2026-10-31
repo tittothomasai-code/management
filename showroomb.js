@@ -23,7 +23,7 @@ export const STATS={
  snubbing_unit:{hook:270,depth:6000,kw:560,bop:10000,short:'Snubber',design:{derrick_klbf:600,dw_hp:750,lines:4,bop_psi:10000,pumps:pumps(1,'s',4.5)}},
  frac_spread:{hook:0,depth:7000,kw:37000,bop:15000,short:'Frac',hookNote:'n/a',design:{derrick_klbf:300,dw_hp:400,lines:6,bop_psi:15000,pumps:pumps(4,'q',4.5)}}};
 export const BARS=[['hook','Hook load',1200,v=>v?v.toLocaleString('en-AU')+' t':'n/a'],['depth','Depth',12500,v=>v.toLocaleString('en-AU')+' m'],['kw','Power',4000,v=>v>=10000?(v/1000).toFixed(0)+' MW':v.toLocaleString('en-AU')+' kW'],['bop','BOP',20000,v=>v.toLocaleString('en-AU')+' psi']];
-function statsFor(r){const s=STATS[r.id];if(s)return s;const h=(r.dimensions?.floorHeight||5)+(r.dimensions?.mastHeightAboveFloor||0);return {hook:Math.round(h*12),depth:Math.round(h*130),kw:Math.round(h*30),bop:10000,short:r.id,design:{derrick_klbf:500,dw_hp:1000,lines:8,bop_psi:10000,pumps:pumps(2,'m',6)}}}
+function statsFor(r){const s=STATS[r.statsId||r.id];if(s)return s;const h=(r.dimensions?.floorHeight||5)+(r.dimensions?.mastHeightAboveFloor||0);return {hook:Math.round(h*12),depth:Math.round(h*130),kw:Math.round(h*30),bop:10000,short:r.id,design:{derrick_klbf:500,dw_hp:1000,lines:8,bop_psi:10000,pumps:pumps(2,'m',6)}}}
 export const bar=(k,v)=>{const B=BARS.find(b=>b[0]==k);return Math.max(0,Math.min(1,v/B[2]))};
 export const pretty=s=>{s=String(s).split('/').pop().replace(/_/g,' ');return s.charAt(0).toUpperCase()+s.slice(1)};
 export const ST={el:null,i:0,man:null,rigs:[],base:'',lod:'M',cache:new Map(),mute:false,night:false,sfxLog:[],cardOn:false,cardCol:false,path:null,hi:[],anim:0,frames:0,fps:0};
@@ -31,13 +31,21 @@ const phone=()=>Math.min(innerWidth,innerHeight)<600||(matchMedia?.('(pointer:co
 export function pack(){try{const u=new URLSearchParams(location.search).get('srbpack');if(u&&/^[\w-]+$/.test(u))return u;const l=localStorage.getItem('dw_srb_pack');if(l&&/^[\w-]+$/.test(l))return l}catch(e){}return CFG.pack}
 export function lodPick(){try{const u=new URLSearchParams(location.search).get('srblod');if(/^[HML]$/.test(u||''))return u}catch(e){}return phone()?(devicePixelRatio>2.5?'L':'L'):'M'}
 export async function manifest(){if(ST.man)return ST.man;ST.base=new URL(`./assets/rigsb/${pack()}/`,import.meta.url).href;const r=await fetch(ST.base+'manifest.json?v='+VER);if(!r.ok)throw new Error('manifest '+r.status);const m=await r.json();
- if(!Array.isArray(m.rigs)||!m.rigs.length)throw new Error('manifest has no rigs');ST.man=m;ST.rigs=m.rigs.map(r=>({...r,st:statsFor(r)}));return m}
+ if(!Array.isArray(m.rigs)||!m.rigs.length)throw new Error('manifest has no rigs');
+ // v5.12.2.1: Showroom C's high-detail rig is rig #1 (assets/rigsc/<pack>, reused in place, not copied). Missing C pack = B's rigs only.
+ let cr=[];try{const cb=new URL(`./assets/rigsc/${cPack()}/`,import.meta.url).href,cm=await (await fetch(cb+'manifest.json?v='+VER)).json(),c0=(cm.rigs||[])[0];
+  if(c0)cr=[{...c0,name:'Land rig · 1,500 hp AC double · C detail',src:'C',base:cb,statsId:'land_1500_ac_double'}]}catch(e){console.warn('showroomB C rig',e)}
+ ST.man=m;ST.rigs=[...cr,...m.rigs].map(r=>({...r,st:statsFor(r)}));return m}
+function cPack(){try{return new URLSearchParams(location.search).get('srcpack')||localStorage.getItem('dw_src_pack')||'pass2'}catch(e){return 'pass2'}}
+// C rig uses C's LOD rule (phones M/L, desktop H); B rigs use B's.
+function cLod(){try{const o=(new URLSearchParams(location.search).get('srclod')||'').toUpperCase();if(/^[HML]$/.test(o))return o}catch(e){}return phone()?(devicePixelRatio>2.5||innerWidth<400?'L':'M'):'H'}
+export function lodOf(r){const l=r.src=='C'?cLod():ST.lod;return r.lods?.[l]?l:'M'}
 let LDp=null;function loader(){return LDp||(LDp=(async()=>{const [{GLTFLoader},{DRACOLoader}]=await Promise.all([import('./vendor/loaders/GLTFLoader.js'),import('./vendor/loaders/DRACOLoader.js')]);
  const d=new DRACOLoader();d.setDecoderPath(new URL('./vendor/libs/draco/',import.meta.url).href);d.setDecoderConfig({type:'wasm'});const l=new GLTFLoader();l.setDRACOLoader(d);return l})())}
 // Map: bomId -> manifest path (e.g. mud_system/mud_pump_1/power_end). Uses node extras.bomId (names can be made unique by the loader).
 function bomIndex(r,lod){const m=(r.lods?.[lod]?.nodeToBom)||r.nodeToBom||{},inv={};for(const [p,b] of Object.entries(m))inv[b]=p;return {map:m,inv}}
-export async function loadRig(i){const r=ST.rigs[i],lod=r.lods?.[ST.lod]?ST.lod:'M',k=r.id+'_'+lod;
- if(!ST.cache.has(k))ST.cache.set(k,loader().then(l=>l.loadAsync(new URL(r.lods[lod].file,ST.base).href+'?v='+VER)).then(g=>g.scene).catch(e=>{ST.cache.delete(k);throw e}));
+export async function loadRig(i){const r=ST.rigs[i],lod=lodOf(r),k=r.id+'_'+lod;
+ if(!ST.cache.has(k))ST.cache.set(k,loader().then(l=>l.loadAsync(new URL(r.lods[lod].file,r.base||ST.base).href+'?v='+VER)).then(g=>g.scene).catch(e=>{ST.cache.delete(k);throw e}));
  const src=await ST.cache.get(k),root=src.clone(true),{map,inv}=bomIndex(r,lod),meshes=[],lights=[];
  root.traverse(o=>{if(o.isMesh){const b=o.userData.bomId||o.parent?.userData?.bomId;o.userData.path=inv[b]||null;o.userData.bom=b||null;meshes.push(o);const mats=Array.isArray(o.material)?o.material:[o.material];if(mats.some(x=>/light/i.test(x.name)))lights.push(o)}});
  // normalise: max size 40 units, base on podium top, centred.
@@ -97,7 +105,9 @@ export const ZMIN=2;const ZMAX=1.6;// metres to rig centre (same as Showroom C, 
 export function zoomBy(f){const D=ST.cd.d||100;ST.zt=Math.min(ZMAX,Math.max(ZMIN/D,(ST.zt||1)*f))}
 export const zoomInfo=()=>({min:ZMIN,zt:ST.zt||1,zf:ST.zf||1,dist:ST.cam?+ST.cam.position.distanceTo(new THREE.Vector3(0,ST.cs.ty,0)).toFixed(2):null,base:+(ST.cd.d||0).toFixed(2)});
 function applyCam(dt){const C=ST.cs,D=ST.cd,k=1-Math.exp(-dt*(ST.intro?1.6:4.5));let moving=0;for(const n of ['az','el','d','ty','ox','oy']){const e=D[n]-C[n];if(Math.abs(e)>(n=='d'?.05:n[0]=='o'?.5:.001))moving=1;C[n]+=e*k}ST.camMoving=moving;if(!moving)ST.intro=0;
- const sh=ST.shake>0?(ST.shake*=.88,ST.shake):0;ST.zf=(ST.zf||1)+((ST.zt||1)-(ST.zf||1))*Math.min(1,dt*8);const zd=Math.max(ZMIN,C.d*ST.zf);const cam=ST.cam;cam.position.set(Math.sin(C.az)*Math.cos(C.el)*zd+(Math.random()-.5)*sh,C.ty+Math.sin(C.el)*zd+(Math.random()-.5)*sh,Math.cos(C.az)*Math.cos(C.el)*zd);cam.lookAt(0,C.ty,0);
+ const sh=ST.shake>0?(ST.shake*=.88,ST.shake):0;ST.zf=(ST.zf||1)+((ST.zt||1)-(ST.zf||1))*Math.min(1,dt*8);const zd=Math.max(ZMIN,C.d*ST.zf);const cam=ST.cam;// asset focus (v5.12.2.1): look at the selected asset and come in close; podium turn is followed.
+ const L=ST.look||(ST.look=new THREE.Vector3(0,C.ty,0)),F=ST.focus&&ST.grp;let fd=zd;if(F){const c=ST.grp.localToWorld(ST.focus.lc.clone());L.lerp(c,Math.min(1,dt*5));ST.fdc=ST.fdc==null?zd:ST.fdc+(ST.focus.d*ST.zf-ST.fdc)*Math.min(1,dt*4);fd=Math.max(.6,ST.fdc)}else{L.lerp(new THREE.Vector3(0,C.ty,0),Math.min(1,dt*5));if(ST.fdc!=null){ST.fdc+=(zd-ST.fdc)*Math.min(1,dt*4);if(Math.abs(ST.fdc-zd)<.05)ST.fdc=null;else fd=ST.fdc}}
+ cam.position.set(L.x+Math.sin(C.az)*Math.cos(C.el)*fd+(Math.random()-.5)*sh,L.y+Math.sin(C.el)*fd+(Math.random()-.5)*sh,L.z+Math.cos(C.az)*Math.cos(C.el)*fd);cam.lookAt(L);
  cam.setViewOffset(innerWidth,innerHeight,C.ox,C.oy,innerWidth,innerHeight)}
 // screen rect of the rig (projected bbox corners), for tests and card placement
 export function rigRect(){const g=ST.grp;if(!g)return null;g.updateMatrixWorld(true);ST.cam.updateMatrixWorld();const b=new THREE.Box3();for(const m of g.userData.meshes)if(m.visible)b.expandByObject(m);const v=new THREE.Vector3(),W=innerWidth,H=innerHeight;let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
@@ -130,7 +140,7 @@ const CSS=`body #showroomB,body.mob #showroomB.msheet{position:fixed!important;i
 .srbSim{background:#8a8f98;color:#fff;border-radius:6px;padding:1px 7px;font-size:11px;font-weight:700;letter-spacing:.1em;font-style:normal;margin-left:6px;text-shadow:none}
 #srbBanner{position:absolute;left:50%;top:calc(56px + env(safe-area-inset-top));transform:translateX(-50%) skewX(-12deg);z-index:3;text-align:center;padding:6px 26px 8px;background:linear-gradient(90deg,#ff3d6e,#ffb627);border:3px solid #fff;border-radius:6px;box-shadow:0 6px 0 #7a1d3a,0 10px 30px #0008;max-width:calc(100vw - 30px);box-sizing:border-box;pointer-events:none}
 #srbBanner b{display:block;transform:skewX(12deg);font-size:clamp(17px,4.6vw,34px);font-weight:900;font-style:italic;letter-spacing:.04em;text-transform:uppercase;color:#fff;text-shadow:0 3px 0 #7a1d3a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#srbBanner small{display:block;transform:skewX(12deg);font-size:12px;font-weight:700;color:#2a0a14}
-#srbBanner.slam{animation:srbSlam .45s cubic-bezier(.2,1.6,.4,1)}@keyframes srbSlam{0%{transform:translateX(-50%) skewX(-12deg) scale(2.2);opacity:0}60%{opacity:1}100%{transform:translateX(-50%) skewX(-12deg) scale(1)}}
+#srbBanner.slam{animation:srbSlam .45s cubic-bezier(.2,1.6,.4,1)}@keyframes srbSlam{0%{transform:translateX(-50%) skewX(-12deg) scale(.6);opacity:0}60%{opacity:1}100%{transform:translateX(-50%) skewX(-12deg) scale(1)}}
 #srbStats{position:absolute;left:14px;bottom:calc(96px + env(safe-area-inset-bottom));width:320px;z-index:3;background:rgba(6,12,28,.78);border:2px solid #3a5f9a;border-radius:14px;padding:10px 12px;box-sizing:border-box}
 #srbStats .row{display:grid;grid-template-columns:78px 1fr 82px;gap:8px;align-items:center;margin:4px 0;font-weight:700;font-size:13px}#srbStats .row span:last-child{text-align:right;font-variant-numeric:tabular-nums;font-size:12px}
 #srbStats .bar{height:14px;background:#1a2440;border-radius:7px;overflow:hidden;border:1px solid #33456e;position:relative}#srbStats .fill{height:100%;width:0;border-radius:7px;background:repeating-linear-gradient(90deg,#7cff6b 0 14px,#3fd03a 14px 16px);transition:width .9s cubic-bezier(.2,1.3,.5,1)}
@@ -179,7 +189,7 @@ function html(){const n=ST.rigs.length;return `<canvas></canvas><div id=srbTop><
 <div id=srbDots>${ST.rigs.map(()=>'<i></i>').join('')}</div><div id=srbCard role=dialog aria-label="Rig parts card" hidden></div>
 <div id=srbBot><button id=srbPrev aria-label="Previous rig">◀</button><button id=srbSel>SELECT</button><button id=srbNext aria-label="Next rig">▶</button></div>
 <div id=srbHint>← → / A D / LB RB / swipe: change rig · Enter / ⒶA: select · I / Ⓨ: parts · N: night · M: sound · Esc / Ⓑ: close</div><div id=srbFlash></div><div id=srbBoom>RIG SELECTED</div>`}
-function hud(){const r=ST.rigs[ST.i],s=r.st;$('srbName').textContent=r.name;$('srbSub').textContent=`${ST.i+1} / ${ST.rigs.length} · ${r.kind} · SIM`;const B=$('srbBanner');B.classList.remove('slam');void B.offsetWidth;B.classList.add('slam');
+function hud(){placeBanner();const r=ST.rigs[ST.i],s=r.st;$('srbName').textContent=r.name;$('srbSub').textContent=`${ST.i+1} / ${ST.rigs.length} · ${r.kind} · SIM`;const B=$('srbBanner');B.classList.remove('slam');void B.offsetWidth;B.classList.add('slam');
  [...$('srbDots').children].forEach((d,k)=>d.classList.toggle('on',k==ST.i));
  for(const [k,,,f] of BARS){const row=ST.el.querySelector(`#srbStats .row[data-k=${k}]`),fi=row.querySelector('.fill');fi.style.transition='none';fi.style.width='0%';void fi.offsetWidth;fi.style.transition='';row.querySelector('.v').textContent=k=='hook'&&s.hookNote?s.hookNote:f(s[k]);row.dataset.v=bar(k,s[k]).toFixed(3)}
  clearTimeout(ST.fillT);ST.fillT=setTimeout(()=>{if(!ST.el)return;for(const [k] of BARS){const row=ST.el.querySelector(`#srbStats .row[data-k=${k}]`);row.querySelector('.fill').style.width=(+row.dataset.v*100).toFixed(1)+'%'}sfx('fill')},180)}
@@ -204,9 +214,9 @@ function tapAt(x,y){const o=pick(x,y);if(!o){if(ST.cardOn&&ST.path)cardShow(true
 // ---------- rig change: whoosh out, slam in ----------
 export async function show(i,dir=1){const n=ST.rigs.length;i=((i%n)+n)%n;const tok=ST.tok=(ST.tok||0)+1;ST.i=i;ST.anim++;hud();sfx('whoosh');
  const old=ST.grp;if(old?.userData.in){delete old.userData.in;ST.anim--}if(ST.out){ST.pod.remove(ST.out.g)}ST.out=old?{g:old,t:0,dir}:null;ST.grp=null;ST.para=(ST.para||0)+dir;
- if(ST.cardOn)ST.path=null;let g;try{$('srbLoad').hidden=!!ST.cache.get(ST.rigs[i].id+'_'+ST.lod);g=await loadRig(i)}catch(e){console.warn('showroomB load',e);$('srbLoad').textContent='MODEL NOT LOADED';ST.anim--;return}finally{if($('srbLoad'))$('srbLoad').hidden=true}
- if(tok!=ST.tok||!ST.el){ST.anim--;return}g.position.y=70;g.position.x=dir*12;g.userData.in={t:0};ST.pod.add(g);ST.grp=g;ST.zf=1;ST.zt=1;lightsApply();if(ST.night&&ST.real)realApply(true);frame();if(ST.cardOn)cardShow(true,null);
- const pre=(k)=>{const r=ST.rigs[((k%n)+n)%n];if(r&&!ST.cache.get(r.id+'_'+ST.lod))loadRig(((k%n)+n)%n).catch(()=>{})};setTimeout(()=>{pre(i+1);pre(i-1)},600)}
+ if(ST.cardOn)ST.path=null;let g;try{$('srbLoad').hidden=!!ST.cache.get(ST.rigs[i].id+'_'+lodOf(ST.rigs[i]));g=await loadRig(i)}catch(e){console.warn('showroomB load',e);$('srbLoad').textContent='MODEL NOT LOADED';ST.anim--;return}finally{if($('srbLoad'))$('srbLoad').hidden=true}
+ if(tok!=ST.tok||!ST.el){ST.anim--;return}g.position.y=70;g.position.x=dir*12;g.userData.in={t:0};ST.pod.add(g);ST.grp=g;ST.zf=1;ST.zt=1;ST.focus=null;ST.AS?.refresh();lightsApply();if(ST.night&&ST.real)realApply(true);frame();if(ST.cardOn)cardShow(true,null);
+ const pre=(k)=>{const r=ST.rigs[((k%n)+n)%n];if(r&&!ST.cache.get(r.id+'_'+lodOf(r)))loadRig(((k%n)+n)%n).catch(()=>{})};setTimeout(()=>{pre(i+1);pre(i-1)},600)}
 export function go(d){if(ST.sel)return;show(ST.i+d,d)}
 export function select(){if(!ST.grp||ST.sel)return false;const r=ST.rigs[ST.i];ST.sel=1;ST.anim++;sfx('select');burst(true);ST.shake=2.5;frame(true);const B=$('srbBoom');B.classList.remove('go');void B.offsetWidth;B.classList.add('go');const F=$('srbFlash');F.classList.remove('go');void F.offsetWidth;F.classList.add('go');
  let applied=false;try{if(window.GX?.setDesign){window.GX.setDesign({...r.st.design,name:r.name+' (SIM)'});applied=true}}catch(e){console.warn('showroomB setDesign',e)}
@@ -214,7 +224,7 @@ export function select(){if(!ST.grp||ST.sel)return false;const r=ST.rigs[ST.i];S
  ST.selT=setTimeout(()=>{ST.anim--;ST.sel=0;close()},1700);return true}
 // ---------- input ----------
 function key(e){if(!ST.el)return;const k=e.key;if(/INPUT|TEXTAREA/.test(e.target?.tagName))return;let h=1;
- if(k=='ArrowRight'||k=='d'||k=='D')go(1);else if(k=='ArrowLeft'||k=='a'||k=='A')go(-1);else if(k=='Enter'||k==' ')select();else if(k=='Escape'){if(ST.cardOn)cardShow(false);else close()}
+ if(k=='ArrowRight'||k=='d'||k=='D')go(1);else if(k=='ArrowLeft'||k=='a'||k=='A')go(-1);else if(k=='Enter'||k==' ')select();else if(k=='Escape'){if(ST.AS?.open)ST.AS.back();else if(ST.cardOn)cardShow(false);else close()}
  else if(k=='+'||k=='='||k=='PageUp')zoomBy(.8);else if(k=='-'||k=='_'||k=='PageDown')zoomBy(1.25);else if(k=='0')ST.zt=1;else if(k=='n'||k=='N')nightSet(!ST.night);else if(k=='m'||k=='M')setMute(!ST.mute);else if(k=='i'||k=='I'||k=='c'||k=='C')cardShow(!ST.cardOn);else h=0;if(h){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation()}}
 function pad(){const g=[...(navigator.getGamepads?.()||[])].find(Boolean);if(!g)return;const b=g.buttons.map(x=>!!x?.pressed),P=ST.prev||{},ed=i=>b[i]&&!P[i];const ax=g.axes[0]||0,axd=ax>.6?1:ax<-.6?-1:0;
  if(ed(5)||ed(15)||(axd==1&&ST.ax!=1))go(1);if(ed(4)||ed(14)||(axd==-1&&ST.ax!=-1))go(-1);if(ed(0))select();if(ed(1)){if(ST.cardOn)cardShow(false);else close()}if(ed(3))cardShow(!ST.cardOn);if(ed(2))nightSet(!ST.night);const zt=(g.buttons[7]?.value||0)-(g.buttons[6]?.value||0),ry=g.axes[3]||0,zz=Math.abs(ry)>.25?-ry:zt;if(Math.abs(zz)>.1)zoomBy(1-zz*.06);ST.prev=b;ST.ax=axd}
@@ -227,7 +237,7 @@ function ptr(cv){let s=null;const P=new Map();let pd=0;const pdist=()=>{const a=
 // ---------- loop ----------
 function loop(now){if(!ST.el)return;ST.raf=requestAnimationFrame(loop);const dt=Math.min(.05,(now-(ST.last||now))/1000);ST.last=now;ST.t+=dt;ST.frames++;
  if(now-(ST.fT||0)>1000){if(window.GX?.showroomB!==ST.api){window.GX=window.GX||{};window.GX.showroomB=ST.api}ST.fps=ST.frames*1000/(now-(ST.fT||now-1000));ST.frames=0;ST.fT=now}
- if(ST.gpT==null||now-ST.gpT>50){ST.gpT=now;pad()}
+ if(ST.gpT==null||now-ST.gpT>50){ST.gpT=now;pad()}if(!ST.pbT||now-ST.pbT>250){ST.pbT=now;placeBanner()}
  ST.pod.rotation.y+=dt*.35;ST.ring.material.opacity=.55+.3*Math.sin(ST.t*3);
  for(const s of ST.spots){const a=ST.t*.6+s.ph;s.sp.target.position.set(Math.sin(a)*26,0,Math.cos(a*.8)*18);s.ray.lookAt(s.sp.target.position);s.ray.rotateX(-Math.PI/2);s.fl.material.opacity=.6+.4*Math.sin(ST.t*4+s.ph)}
  // parallax: layers slide by different speeds after a rig change
@@ -239,15 +249,25 @@ function loop(now){if(!ST.el)return;ST.raf=requestAnimationFrame(loop);const dt=
  const f=ST.spots[0].fl.position.clone().project(ST.cam),vis=ST.fx&&!ST.oldOff&&f.z<1&&Math.abs(f.x)<1.3&&Math.abs(f.y)<1.3;for(const s of ST.ghosts){s.visible=vis;if(!vis)continue;const p=new THREE.Vector3(f.x*(1-s.userData.d*2),f.y*(1-s.userData.d*2),.5).unproject(ST.cam);s.position.copy(p).sub(ST.cam.position).setLength(60).add(ST.cam.position);s.material.opacity=.18*(ST.night?1.5:1)}
  ST.ren.render(ST.scene,ST.cam)}
 export function idle(){return !!ST.el&&!!ST.grp&&!ST.anim&&!ST.camMoving&&!ST.out&&!ST.grp.userData.in&&!ST.sel}
-function size(){if(!ST.ren)return;ST.ren.setSize(innerWidth,innerHeight,false);ST.cam.aspect=innerWidth/innerHeight;ST.cam.updateProjectionMatrix();frame()}
-function api(){return {ST,zoomBy,zoomInfo,ZMIN,STATS,BARS,CFG,open,close,show,go,select,sfx,setMute,nightSet,nightState,cardShow,pick,rigRect,freeRect,idle,pack,lodPick,manifest,isOpen:()=>!!ST.el}}
+// v5.12.2.1: keep the rig banner below the A|B|C header switch (phone: switch is on its own row)
+function placeBanner(){const b=$('srbBanner'),h=ST.el?.querySelector('.srabH');if(!b)return;let t=56;if(h){const r=h.getBoundingClientRect();if(r.height)t=Math.max(t,Math.ceil(r.bottom)+8)}b.style.top=t+'px'}
+function size(){placeBanner();if(!ST.ren)return;ST.ren.setSize(innerWidth,innerHeight,false);ST.cam.aspect=innerWidth/innerHeight;ST.cam.updateProjectionMatrix();frame()}
+function api(){return {ST,zoomBy,zoomInfo,ZMIN,STATS,BARS,CFG,open,close,show,go,select,sfx,setMute,nightSet,nightState,cardShow,pick,rigRect,freeRect,idle,pack,lodPick,manifest,lodOf,assetList,focusInfo,assets:()=>ST.AS,isOpen:()=>!!ST.el}}
+// ---------- Assets curtain (Showroom A's panel via srassets.js), filled from each rig's parts list + specs ----------
+export function assetList(){const g=ST.grp,r=ST.rigs[ST.i];if(!g||!r||!ASm)return[];return ASm.fromTree(g.userData.map||{},r.st||{},pretty)}
+function focusPath(p){const g=ST.grp;if(!p||!g){ST.focus=null;hilite(null);return null}const bb=new THREE.Box3();let n=0;for(const ms of g.userData.meshes){const q=ms.userData.path;if(q&&(q==p||q.startsWith(p+'/'))){bb.expandByObject(ms);n++}}
+ if(!n){ST.focus=null;return null}g.updateMatrixWorld(true);const c=bb.getCenter(new THREE.Vector3()),sz=bb.getSize(new THREE.Vector3()).length();ST.zt=1;ST.zf=1;ST.focus={p,lc:g.worldToLocal(c.clone()),d:Math.max(1.2,sz*1.15)};hilite(p);return ST.focus}
+export const focusInfo=()=>({path:ST.focus?.p||null,dist:ST.cam&&ST.look?+ST.cam.position.distanceTo(ST.look).toFixed(2):null,target:ST.focus?.d??null});
+let ASm=null;async function assetsMount(){try{ASm=ASm||await import('./srassets.js?v=a2');if(!ST.el)return;
+ ST.AS=ASm.mount(ST.el,{id:'srbAs',rig:()=>ST.rigs[ST.i],assets:assetList,narrow:()=>phone()||innerWidth<700,onSel:k=>{if(ST.cardOn)cardShow(false);focusPath(k);sfx('tick')},onComp:(k,i)=>{const c=assetList().find(a=>a.k==k)?.comps[i];focusPath(c?.path||k)}})}catch(e){console.warn('showroomB assets',e)}}
 export async function open(i){if(ST.el)return;window.GX=window.GX||{};window.GX.showroomB=ST.api=ST.api||api();if(!$('srbCss')){const s=document.createElement('style');s.id='srbCss';s.textContent=CSS;document.head.appendChild(s)}
- try{await manifest()}catch(e){console.warn('showroomB manifest',e);alert('Showroom B models are not available. Opening Showroom A.');const m=await import('./showroom.js?v=b17');m.init();m.open();return}
+ try{await manifest()}catch(e){console.warn('showroomB manifest',e);alert('Showroom B models are not available. Opening Showroom C.');try{await window.GX?.showroomC?.open?.()}catch(e){}return}
  ST.lod=lodPick();try{ST.mute=localStorage.getItem('dw_srb_mute')=='1'}catch(e){}
  const el=ST.el=document.createElement('div');el.id='showroomB';el.setAttribute('role','dialog');el.setAttribute('aria-label','Rig select, showroom B');el.innerHTML=html();document.body.appendChild(el);
  $('srbX').onclick=close;$('srbPrev').onclick=()=>go(-1);$('srbNext').onclick=()=>go(1);$('srbSel').onclick=select;$('srbNight').onclick=()=>nightSet(!ST.night);$('srbZin').onclick=()=>zoomBy(.7);$('srbZout').onclick=()=>zoomBy(1.4);$('srbMute').onclick=()=>setMute(!ST.mute);$('srbInfo').onclick=()=>cardShow(!ST.cardOn);
  setupGL();ptr(el.querySelector('canvas'));setMute(ST.mute);let on=false;try{on=window.GX?.night?.isOn?.()??localStorage.getItem('dw_night')=='1'}catch(e){}nightSet(on);
- let st=i;if(st==null)try{st=Math.max(0,ST.rigs.findIndex(r=>r.id==localStorage.getItem('dw_showroom_rig_b')))}catch(e){st=0}
+ let st=i;if(st==null)try{if(localStorage.getItem('dw_srb_cfirst')!='1'){localStorage.setItem('dw_srb_cfirst','1');st=0}else st=Math.max(0,ST.rigs.findIndex(r=>r.id==localStorage.getItem('dw_showroom_rig_b')))}catch(e){st=0}
+ assetsMount();
  ST.intro=1;ST.para=0;ST.prev=null;show(st||0,1);addEventListener('keydown',key,true);addEventListener('resize',size);addEventListener('dw:home',close);ST.last=0;ST.raf=requestAnimationFrame(loop);const at=performance.now();import('./srperf.js?v=p1').then(m=>{if(ST.el)m.attach({id:'B',el:ST.el,at,lod:()=>ST.lod,ready:()=>!!ST.grp,match:/assets\/rigsb\/.*\.glb/})}).catch(()=>{})}
 export function close(){if(!ST.el)return;try{if(ST.scene)window.GX?.nightReal?.dispose?.(ST.scene)}catch(e){}ST.real=false;ST.realInit=false;ST.oldOff=false;import('./srperf.js?v=p1').then(m=>m.detach('B')).catch(()=>{});cancelAnimationFrame(ST.raf);clearTimeout(ST.selT);clearTimeout(ST.fillT);removeEventListener('keydown',key,true);removeEventListener('resize',size);removeEventListener('dw:home',close);
  try{for(const c of [...ST.pod.children])if(c.userData?.meshes)ST.pod.remove(c);ST.scene.traverse(o=>{if(o.geometry&&!o.isSprite)o.geometry.dispose?.()});ST.env?.dispose();ST.ren.dispose()}catch(e){}ST.el.remove();Object.assign(ST,{el:null,grp:null,out:null,scene:null,ren:null,env:null,cardOn:false,path:null,hi:[],anim:0,sel:0,tok:(ST.tok||0)+1})}
