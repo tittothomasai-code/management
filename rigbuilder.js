@@ -2,7 +2,7 @@
 // assemble them in slots, see live key specs + BOM, save under a name. Saved rigs: load, rename, duplicate, delete (confirm),
 // export / import JSON, and they show as rigs in Showroom B. Storage via rigbuilder_store.js (localStorage dw_custom_rigs_v1 now).
 // All specs are SIM (generic class values). Keys, gamepad, touch; desk + phone.
-import * as C from './rigbuilder_core.js?v=rb1';import * as S from './rigbuilder_store.js?v=rb1';
+import * as C from './rigbuilder_core.js?v=rb2';import * as S from './rigbuilder_store.js?v=rb1';
 export const VER='rb1';
 const $=id=>document.getElementById(id),es=t=>String(t??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])),fmt=n=>(+n||0).toLocaleString('en-AU');
 export const ST={el:null,cat:null,man1:null,rig:null,slot:'mast',sel:0,list:[],dirty:false,tab:'build',pad:null,padPrev:[],dlg:null,q:''};
