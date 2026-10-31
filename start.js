@@ -80,7 +80,7 @@ async function choose(){const go=ST.items[ST.i]?.dataset.go;beep(880,.1);
  if(go=='well'){close('wplan');const P=await wait(()=>window.GX?.wplan);P.calc({...JSON.parse(JSON.stringify(P.DEFAULT)),name:'New well (SIM)',targets:[{name:'TD',tvd:1000,n:100,e:0,tol:30,dls:3}],casing:[],steps:[],assumed:['targets','surface','kop','dls']});P.open('inputs');return}
  if(go=='login'){close('join');await wait(()=>window.GX?.player);const m=await import('./player.js?v=592');m.join(true);
   addEventListener('dw:player',()=>{wait(()=>window.GX?.session).then(s=>s.open(true)).catch(()=>{})},{once:true})}}
-function key(e){if(!ST.el)return;const k=e.key;const m={ArrowLeft:'l',ArrowRight:'r',ArrowUp:'u',ArrowDown:'d',a:'l',d:'r',w:'u',s:'d'}[k];
+function key(e){if(!ST.el)return;if(document.getElementById('syncP'))return;const k=e.key;const m={ArrowLeft:'l',ArrowRight:'r',ArrowUp:'u',ArrowDown:'d',a:'l',d:'r',w:'u',s:'d'}[k];
  if(m){move(m)}else if(k=='Enter'||k==' '){choose()}else if(k=='Escape'||k=='Backspace'){back()}else return;e.preventDefault();e.stopPropagation()}
 function pad(){if(!ST.el)return;const gps=navigator.getGamepads?.()||[];for(const g of gps){if(!g)continue;const b=i=>!!g.buttons[i]?.pressed,ax=g.axes||[];
   const s={u:b(12)||ax[1]<-.5,d:b(13)||ax[1]>.5,l:b(14)||ax[0]<-.5,r:b(15)||ax[0]>.5,a:b(0)||b(9),b:b(1)};const P=ST.gp.prev[g.index]||{};
@@ -89,10 +89,11 @@ function pad(){if(!ST.el)return;const gps=navigator.getGamepads?.()||[];for(cons
 export function show(){api();if(ST.el)return;const st=document.createElement('style');st.textContent=CSS;document.head.appendChild(st);
  ST.snd=localStorage.getItem(SK)=='1';const e=document.createElement('section');e.id='start';e.setAttribute('role','dialog');e.setAttribute('aria-label','Start screen');
  e.innerHTML=`<canvas></canvas><div class=ui><h1>DRILLING WORLD</h1><div class=sub>Rig simulator <span class=sim>SIM</span></div><div class=tiles role=menu></div></div>
- <div class=bar><button id=stSnd aria-pressed=false></button><span class=hint>←↑→↓ / 🎮 move · Enter / A select · Esc / B back</span><span id=stVer></span></div>`;
+ <div class=bar><button id=stSnd aria-pressed=false></button><button id=stSync aria-label="Sync saved sites">⇄ Sync sites</button><span class=hint>←↑→↓ / 🎮 move · Enter / A select · Esc / B back</span><span id=stVer></span></div>`;
  document.body.appendChild(e);ST.el=e;backdrop(e.querySelector('canvas'));
  const sb=$('stSnd'),upd=()=>{sb.textContent=ST.snd?'🔊 Sound on':'🔇 Sound off';sb.setAttribute('aria-pressed',ST.snd)};upd();sb.onclick=ev=>{ev.stopPropagation();ST.snd=!ST.snd;try{localStorage.setItem(SK,ST.snd?'1':'0')}catch(err){}upd();beep(700)};
  const sv=()=>{const e=$('stVer');if(e)e.textContent=ver()};sv();setTimeout(sv,500);
+ $('stSync').onclick=async ev=>{ev.stopPropagation();const m=await import('./sitesync.js?v=y1');await m.open();addEventListener('dw:sites-changed',()=>import('./edmstore.js?v=5941').then(S=>S.list()).then(L=>{ST.saved=L;if(ST.el&&ST.menu=='main')render()}),{once:true})};/* sync hook */
  addEventListener('keydown',key,true);ST.padT=setInterval(pad,50);ST.menu='main';render();
  import('./edmstore.js?v=5941').then(S=>S.list()).then(L=>{ST.saved=L;if(ST.el&&ST.menu=='main'&&L.length){const k=ST.i;render();focus(k)}}).catch(()=>{})}
 const API={ST,show,shouldShow,hasSave,last:null};function api(){window.dwStart=API;window.GX=window.GX||{};if(window.GX.start!==API)window.GX.start=API;return API}api();addEventListener('load',api);setTimeout(api,3000);
