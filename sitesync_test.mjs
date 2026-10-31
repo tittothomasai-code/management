@@ -8,7 +8,7 @@ const br=await puppeteer.launch({executablePath:'/usr/bin/google-chrome',headles
 const PHONE={width:390,height:844,deviceScaleFactor:2,isMobile:true,hasTouch:true},DESK={width:1440,height:900};
 const mock=[];
 async function open(vp,{cloud=false}={}){const ctx=await br.createBrowserContext(),p=await ctx.newPage();await p.setViewport(vp);await p.setRequestInterception(true);
- p.on('request',r=>{const u=r.url();if(u.startsWith('https://mock-sync.invalid')){mock.push({u,m:r.method(),h:r.headers(),b:r.postData()});const path=new URL(u).pathname;
+ p.on('request',async r=>{const u=r.url();if(u.startsWith('https://mock-sync.invalid')){let b=r.postData();if(b==null&&r.hasPostData?.())b=await r.fetchPostData().catch(()=>undefined);mock.push({u,m:r.method(),h:r.headers(),b});const path=new URL(u).pathname;
    const J=b=>r.respond({status:200,contentType:'application/json',headers:{'access-control-allow-origin':'*','access-control-allow-headers':'*'},body:JSON.stringify(b)});
    if(r.method()=='OPTIONS')return r.respond({status:204,headers:{'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'*'}});
    if(path=='/auth/v1/signup')return J({access_token:'mock.jwt',expires_in:3600});if(path.endsWith('dw_sync_create_space'))return J('ABCDE12345');if(path.endsWith('dw_sync_join_space'))return J('00000000-0000-0000-0000-000000000001');
