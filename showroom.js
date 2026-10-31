@@ -115,7 +115,7 @@ function rcHTML(){const r=RIGS[ST.i],x=RIGX[r.id]||['—','—',''];return `<but
 <tr data-f=hook><td>Hook load / derrick</td><td>${es(r.hook)}</td></tr><tr data-f=depth><td>Depth capacity</td><td>${es(x[0])}</td></tr><tr data-f=dw><td>Drawworks</td><td>${es(r.dw)}</td></tr><tr data-f=td><td>Top drive</td><td>${es(x[1])}</td></tr><tr data-f=pumps><td>Mud pumps</td><td>${es(r.pumps)}</td></tr><tr data-f=bop><td>BOP rating</td><td>${es(r.bop)}</td></tr></table>
 <p class=ds>${es(x[2])}</p><div class=note>Generic values for this rig class (SIM). Not a real rig.</div><button id=srRcGo>▤ Assets and parts</button>`}
 export function rigCard(on,k){const c=$('srRC');if(!c)return;ST.rc=!!on;ST.rcK=k||null;if(!on){c.hidden=true;return}c.innerHTML=rcHTML();c.dataset.rig=RIGS[ST.i].id;c.hidden=false;
- $('srRcX').onclick=()=>rigCard(false);$('srRcT').onclick=()=>{const col=!c.classList.contains('col');c.classList.toggle('col',col);ST.rcCol=col;$('srRcT').textContent=col?'▸':'▾'};c.classList.toggle('col',!!ST.rcCol);$('srRcGo').onclick=()=>{const kk=ST.rcK;rigCard(false);drawer(true,kk)};placeRC()}
+ $('srRcX').onclick=()=>rigCard(false);$('srRcT').onclick=()=>{const col=!c.classList.contains('col');c.classList.toggle('col',col);ST.rcCol=col;$('srRcT').textContent=col?'▸':'▾';placeRC()};c.classList.toggle('col',!!ST.rcCol);$('srRcGo').onclick=()=>{const kk=ST.rcK;rigCard(false);drawer(true,kk)};placeRC()}
 function anchorOf(g){const ms=ST.parts.filter(m=>m.userData.part=='mast'&&g.getObjectById(m.id));const bb=new THREE.Box3();g.updateMatrixWorld(true);(ms.length?ms:[g]).forEach(m=>bb.expandByObject(m));const c=bb.getCenter(new THREE.Vector3());c.y=bb.max.y;return g.worldToLocal(c)}
 function rigRect(g){if(!g.userData.lbb){g.updateMatrixWorld(true);const bb=new THREE.Box3().setFromObject(g),inv=g.matrixWorld.clone().invert();g.userData.lbb=bb.applyMatrix4(inv)}const B=g.userData.lbb,r={l:1e9,t:1e9,r:-1e9,b:-1e9};
  for(let i=0;i<8;i++){const v=new THREE.Vector3(i&1?B.max.x:B.min.x,i&2?B.max.y:B.min.y,i&4?B.max.z:B.min.z);g.localToWorld(v).project(ST.cam);const x=(v.x+1)/2*innerWidth,y=(1-v.y)/2*innerHeight;r.l=Math.min(r.l,x);r.r=Math.max(r.r,x);r.t=Math.min(r.t,y);r.b=Math.max(r.b,y)}return r}
@@ -123,8 +123,8 @@ function rigRect(g){if(!g.userData.lbb){g.updateMatrixWorld(true);const bb=new T
 function placeRC(){const c=$('srRC'),g=ST.grp;if(!ST.rc||!c||!g)return;if(!g.userData.anchor)g.userData.anchor=anchorOf(g);const v=g.localToWorld(g.userData.anchor.clone());v.project(ST.cam);
  const ax=(v.x+1)/2*innerWidth,ay=(1-v.y)/2*innerHeight,R=ST.rcR=rigRect(g),m=8,top0=56,gap=10,W=innerWidth,H=innerHeight;c.classList.toggle('night',!!ST.night);
  const fit=()=>{const w=c.offsetWidth,h=c.offsetHeight;let x=Math.max(m,Math.min(W-w-m,ax-w/2)),y=Math.min(ay,R.t)-gap-h;if(y>=top0)return{x,y,mode:'above'};
-  y=Math.max(top0,Math.min(H-h-m,ay-h/2));if(R.r+gap+w<=W-m)return{x:R.r+gap,y,mode:'right'};if(R.l-gap-w>=m)return{x:R.l-gap-w,y,mode:'left'};return null};
- let P=fit();if(!P&&!ST.rcCol){c.classList.add('col');P=fit();if(P)ST.rcAuto=1;else c.classList.remove('col')}
+  y=Math.max(top0,Math.min(H-h-m,ay-h/2));if(R.r+gap+w<=W-m)return{x:R.r+gap,y,mode:'right'};if(R.l-gap-w>=m)return{x:R.l-gap-w,y,mode:'left'};if(R.b+gap+h<=H-m)return{x,y:R.b+gap,mode:'below'};return null};
+ let P=fit();if(!P&&ST.rcCol==null){c.classList.add('col');P=fit();if(P)ST.rcAuto=1;else c.classList.remove('col')}
  if(!P){const w=c.offsetWidth,h=c.offsetHeight;P={x:Math.max(m,Math.min(W-w-m,ax-w/2)),y:Math.max(top0,Math.min(R.t,ay)-gap-h),mode:'top'}}
  c.style.left=P.x+'px';c.style.top=P.y+'px';c.dataset.mode=P.mode;ST.rcA={x:ax,y:ay};const sc=$('srCard');if(sc)sc.style.opacity=ST.rc?0:1}
 function frame(now){if(!ST.el)return;if(window.GX&&!window.GX.showroom)window.GX.showroom=api();const dt=Math.min(.25,(now-(ST.last||now))/1000);ST.last=now;ST.t+=dt;const g=ST.grp;

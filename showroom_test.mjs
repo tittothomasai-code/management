@@ -62,18 +62,34 @@ for(const nm of ['desk','phone']){const vp=VP[nm];
  let ns=await p.evaluate(()=>{const S=GX.showroom.ST,N=GX.night;return N?{...N.stats(S.scene),btn:srNight.textContent}:null});
  ok(ns&&ns.on&&ns.t>0.9&&ns.stars>0&&/Day/.test(ns.btn),nm+': night on in showroom ('+JSON.stringify(ns)?.slice(0,90)+')');
  await p.evaluate(()=>GX.showroom.go(1));await w(1200);ok(await p.evaluate(()=>GX.night.stats(GX.showroom.ST.scene).on&&GX.showroom.isNight()),nm+': night stays on after rig change');
- await p.screenshot({path:SH+nm+'_6_night.png'});
+ await p.evaluate(()=>GX.showroom.rigCard(true));await w(300);ok(await p.evaluate(()=>{const c=srRC;return !c.hidden&&c.classList.contains('night')&&getComputedStyle(c).display!='none'&&c.getBoundingClientRect().width>100&&srRcGo.offsetHeight>0}),nm+': rig card renders in night mode');
+ await p.screenshot({path:SH+nm+'_6_night.png'});await p.evaluate(()=>GX.showroom.rigCard(false));
  ok(await p.evaluate(()=>{const sc=GX.showroom.ST.scene,n0=sc.children.length;GX.showroom.close();const n1=sc.children.length;return n1<n0&&!GX.night.stats(sc)?.on}),nm+': close disposes night objects');
  ok(await p.evaluate(()=>GX.night.isOn()===false),nm+': main scene night state untouched');
  // A>B>C drill-down: real tap on the rig opens the asset table at that asset
  await p.evaluate(()=>{btnShow.click()});await w(400);await p.evaluate(()=>GX.showroom.show(1));await w(300);
  const pt2=await p.evaluate(()=>{const S=GX.showroom.ST;S.grp.updateMatrixWorld(true);const pr=['drawworks','mudpump','mudsys','gen'];for(const m of [...S.parts.filter(m=>pr.includes(m.userData.part)),...S.parts]){const v=new (S.cam.position.constructor)();m.getWorldPosition(v);v.project(S.cam);const x=(v.x+1)/2*innerWidth,y=(1-v.y)/2*innerHeight,h=GX.showroom.pick(x,y);const el=document.elementFromPoint(x,y);if(h&&el&&el.tagName=='CANVAS')return{x,y,k:h.userData.part}}return null});
  if(pt2){if(nm=='phone')await p.touchscreen.tap(pt2.x,pt2.y);else await p.mouse.click(pt2.x,pt2.y);await w(700)}
+ const RC=()=>p.evaluate(()=>{const c=srRC,r=c.getBoundingClientRect(),S=GX.showroom.ST;return{open:!c.hidden&&S.rc,x:r.left,y:r.top,w:r.width,h:r.height,cx:r.left+r.width/2,bt:r.bottom,ax:S.rcA?.x,ay:S.rcA?.y,W:innerWidth,H:innerHeight,f:[...c.querySelectorAll('tr[data-f]')].map(t=>t.dataset.f+'='+t.cells[1].textContent.trim().length).join(),txt:c.textContent,mode:c.dataset.mode,R:S.rcR,col:c.classList.contains('col')}});
+ let rc=await RC();ok(pt2&&rc.open,nm+': tap on the rig opens the rig card (not the drawer)');ok(!(await p.evaluate(()=>srDrw.classList.contains('open'))),nm+': drawer stays closed on tap');
+ ok(/hook=[1-9].*depth=[1-9].*dw=[1-9].*td=[1-9].*pumps=[1-9].*bop=[1-9]/.test(rc.f)&&rc.txt.includes('Land rig — triple')&&/Type: land/.test(rc.txt)&&/SIM/.test(rc.txt)&&/derrick/.test(rc.txt),nm+': card fields name/type/hook/depth/dw/top drive/pumps/BOP/desc + SIM ('+rc.f+')');
+ ok(rc.x>=0&&rc.y>=0&&rc.x+rc.w<=rc.W+1&&rc.bt<=rc.H+1,nm+': card inside viewport');
+ await p.evaluate(()=>{const g=GX.showroom.ST.grp;g.userData.anchor.x+=g.userData.size*.25});
+ {const a=await RC();await w(1500);const b2=await RC();const clampX=c=>c.x<=9||c.x+c.w>=c.W-9;
+  ok(Math.abs(b2.ax-a.ax)>0.5||Math.abs(b2.ay-a.ay)>0.5,nm+': derrick anchor moves as rig rotates ('+a.ax?.toFixed(1)+'→'+b2.ax?.toFixed(1)+')');
+  ok(!/above|top/.test(b2.mode)||clampX(b2)||Math.abs(b2.cx-b2.ax)<2,nm+': card centre follows anchor x ('+b2.cx.toFixed(1)+' vs '+b2.ax.toFixed(1)+')');
+  ok(b2.mode=='top'||!(b2.x<b2.R.r&&b2.x+b2.w>b2.R.l&&b2.y<b2.R.t+1&&b2.bt>b2.R.t+2&&b2.y<b2.R.b),nm+': card never covers the rig ('+b2.mode+')');ok(b2.mode!='top',nm+': card found free space ('+b2.mode+')');}
+ await p.screenshot({path:SH+nm+'_4_rigcard.png'});
+ {const h0=(await RC()).h;await p.evaluate(()=>srRcT.click());await w(250);const c1=await RC();await p.evaluate(()=>srRcT.click());await w(250);const c2=await RC();const cl=c1.col?c1:c2,ex=c1.col?c2:c1;ok(cl.col&&!ex.col&&cl.h<ex.h,nm+': card collapses / expands ('+ex.h.toFixed(0)+' ↔ '+cl.h.toFixed(0)+' px)');if(nm=='phone')ok(cl.h<=120&&cl.w<=260,nm+': collapsed card compact at 390x844');const ov=c=>c.x<c.R.r&&c.x+c.w>c.R.l&&c.y<c.R.b&&c.bt>c.R.t;ok(!ov(cl)&&(ex.mode=='top'||!ov(ex)),nm+': no overlap with rig in either state ('+cl.mode+'/'+ex.mode+')');if(c2.col){await p.evaluate(()=>srRcT.click());await w(150)}}
+ await p.evaluate(()=>srRcX.click());await w(200);ok(!(await RC()).open,nm+': ✕ closes the card');
+ await p.evaluate(()=>GX.showroom.rigCard(true));await w(150);await p.keyboard.press('Escape');await w(200);
+ ok(!(await RC()).open&&await p.evaluate(()=>!!document.getElementById('showroom')),nm+': Esc closes the card (showroom stays open)');
+ await p.evaluate(k=>GX.showroom.rigCard(true,k),pt2?.k);await w(200);await p.evaluate(()=>srRcGo.click());await w(700);
  const D=()=>p.evaluate(()=>{srDrw.style.transition="none";const d=srDrw.getBoundingClientRect(),S=GX.showroom.ST;return{open:srDrw.classList.contains('open'),l:d.left,r:d.right,t:d.top,bt:d.bottom,w:d.width,W:innerWidth,H:innerHeight,b:S.lvl?.b,c:S.lvl?.c,crumb:srCrumb.textContent,rows:[...document.querySelectorAll('#srList tr.b')].length,crows:[...document.querySelectorAll('#srList tr.c')].length,zoom:!!S.camT,hi:S.parts.some(m=>m.userData.own&&m.material.emissive.getHex()>0),narrow:showroom.classList.contains('narrow')}});
- let d=await D();if(!(d.open&&d.b==pt2?.k))console.log('DBG',nm,JSON.stringify(pt2),JSON.stringify(d));ok(pt2&&d.open&&d.b==pt2.k,nm+': tap on the rig slides in the asset table at '+pt2?.k);
+ let d=await D();if(!(d.open&&d.b==pt2?.k))console.log('DBG',nm,JSON.stringify(pt2),JSON.stringify(d));ok(pt2&&d.open&&d.b==pt2.k,nm+': card button opens asset table at '+pt2?.k);
  ok(d.crumb.includes('Land rig — triple')&&d.crumb.includes('›'),nm+': breadcrumb Rig › Asset ('+d.crumb.slice(0,60)+')');
  if(nm=='desk')ok(d.l>d.W/2&&Math.abs(d.r-d.W)<2&&d.t<200,nm+': table slides in on the RIGHT');else ok(d.narrow&&Math.abs(d.bt-d.H)<2&&Math.abs(d.w-d.W)<2,nm+': narrow phone uses a bottom sheet');
- await p.screenshot({path:SH+nm+'_4_assets.png'});
+ await p.screenshot({path:SH+nm+'_4b_assets.png'});
  await p.evaluate(()=>GX.showroom.back());d=await D();ok(d.b==null&&d.rows>=8,nm+': back → rig level, '+d.rows+' asset rows');
  const hdr=await p.evaluate(()=>[...document.querySelectorAll('#srList th')].map(t=>t.textContent).join('|'));ok(hdr=='Asset|Type|Key spec|BOM',nm+': columns '+hdr);
  const names=await p.evaluate(()=>srList.textContent);for(const n of ['Top drive','Drawworks','Mud pumps','BOP stack','Mast / substructure','Pipe handling','Mud tanks / shakers','Generators','Accumulator','Choke manifold'])ok(names.includes(n),nm+': asset row '+n);
