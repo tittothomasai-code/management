@@ -8,3 +8,9 @@ showroom3d: rig card overlap fails on the baseline too (pre-existing).
 Phone FPS (Low, 4x throttle): day 3.3 / night 3.7. That is within 10%.
 Shots: shots_live/180_before_*.png, 180_after_*.png.
 Pending: once Showroom B v5.11.6 is live, rebase onto it so the night work is kept.
+
+## Update 16:15 AEST
+Live checks of v5.11.5.2: night_real 20/1 twice. Phone night FPS was 3.1 to 3.4 against day 3.9 to 4.1, which is more than 10% under.
+Fix b086df2 (not deployed): Low uses a cheaper sky (one noise octave, no dust lane) and 900 stars; night tag nr2. Test floor commit followed.
+Local results: night_real 21/0, FPS day 3.5 / night 3.4. night 36/0.
+Next: when v5.11.6 is live, rebase, bump tags (n4), stamp the next version, run the full regressions one at a time and ship.
