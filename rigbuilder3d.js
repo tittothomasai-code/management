@@ -59,7 +59,7 @@ export function stage(host,opt={}){const ren=new THREE.WebGLRenderer({antialias:
   if(S.root){S.sc.remove(S.root);S.root.traverse(m=>{if(m.isMesh)[].concat(m.material).forEach(x=>x.dispose())})}const first=!S.root;S.root=g;sc.add(g);paint();frame(first||fit);return g};
  S.select=k=>{S.sel=k;paint()};S.frame=()=>frame(true);
  // render on demand (orbit, change, resize), so a still stage costs no GPU time on phone.
- S.need=3;const want=()=>{S.need=Math.max(S.need,2)};const loop=t=>{if(S.dead)return;S.raf=requestAnimationFrame(loop);if(S.ctl?.update())S.need=Math.max(S.need,1);if(S.need>0||S.cont){S.need--;ren.render(sc,cam);S.frames++}if(t-S.t0>1000){S.fps=Math.round(S.frames*1000/(t-S.t0));S.frames=0;S.t0=t}};S.raf=requestAnimationFrame(loop);
- S.bench=(ms=2000)=>new Promise(r=>{S.cont=1;const f0=S.frames,t0=performance.now();setTimeout(()=>{S.cont=0;r(Math.round((S.frames-f0)*10000/(performance.now()-t0))/10)},ms)});
+ S.need=3;const want=()=>{S.need=Math.max(S.need,2)};const loop=t=>{if(S.dead)return;S.raf=requestAnimationFrame(loop);if(S.ctl?.update())S.need=Math.max(S.need,1);if(S.need>0||S.cont){S.need--;ren.render(sc,cam);S.frames++;S.total=(S.total||0)+1}if(t-S.t0>1000){S.fps=Math.round(S.frames*1000/(t-S.t0));S.frames=0;S.t0=t}};S.raf=requestAnimationFrame(loop);
+ S.bench=(ms=2000)=>new Promise(r=>{S.cont=1;const f0=S.total||0,t0=performance.now();setTimeout(()=>{S.cont=0;r(Math.round(((S.total||0)-f0)*10000/(performance.now()-t0))/10)},ms)});
  S.want=want;import('./vendor/OrbitControls.js').then(()=>{const t=setInterval(()=>{if(S.ctl){S.ctl.addEventListener('change',want);clearInterval(t)}if(S.dead)clearInterval(t)},50)});
  S.dispose=()=>{S.dead=true;cancelAnimationFrame(S.raf);ro.disconnect();S.ctl?.dispose();ren.dispose();ren.forceContextLoss?.();ren.domElement.remove()};return S}
