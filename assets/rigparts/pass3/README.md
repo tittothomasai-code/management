@@ -1,15 +1,15 @@
 # Rig Builder — Pass 3 single-unit parts
 
-Six independent assets, each supplied in three Draco-compressed GLB LODs. Every file uses metres, Y-up and a +Z front. The root and the empty `attach_base` sit at the bottom centre of the canonical footprint. Attachment transforms and semantic paths stay fixed across LOD changes.
+Eight independent assets, each supplied in three Draco-compressed GLB LODs. Every file uses metres, Y-up and a +Z front. The root and the empty `attach_base` sit at the bottom centre of the canonical footprint. Attachment transforms and semantic paths stay fixed across LOD changes.
 
 The source extends the original `land_1500_ac_double_detailed` pass 2 engine. It retains its oxide-red, muted ivory, blue-grey steel and safety-yellow material family, with rebuilt single-unit layouts and embedded normal maps, material cavity AO and ray-baked contact AO.
 
 ## Package
 
-- `glb/`: 18 runtime GLBs, named `<id>_lodH.glb`, `<id>_lodM.glb` and `<id>_lodL.glb`.
+- `glb/`: 24 runtime GLBs, named `<id>_lodH.glb`, `<id>_lodM.glb` and `<id>_lodL.glb`.
 - `manifest.json`: specs, measured bytes and decoded triangles, bounds, anchor transforms and node-path/BOM metadata.
 - `screenshots/`: day and night renders of every High GLB, opposite-side views, Medium/Low inspection views and overview sheets.
-- `source/`: rebuild scripts, configuration, original texture generators, six uncompressed High master GLBs, the local inspection viewer and QA evidence. This folder does not ship with the runtime bundle.
+- `source/`: rebuild scripts, configuration, original texture generators, eight uncompressed High master GLBs, the local inspection viewer, supplied A reference and QA evidence. This folder does not ship with the runtime bundle.
 - `SHA256SUMS`: file integrity hashes.
 
 ## Part specifications
@@ -22,6 +22,8 @@ The source extends the original `land_1500_ac_double_detailed` pass 2 engine. It
 | frac_pump_truck_single | 2,500 hhp hydraulic output class; 15,000 psi; 3,000 bhp diesel; tri-axle trailer |
 | offshore_derrick | 51.816 m / 170 ft structural height; 1,500,000 lbf static hook-load class |
 | substructure_drill_floor | 9 m floor; 500,000 lbf setback and 1,000,000 lbf rotary static classes |
+| offshore_drill_floor | 14 × 14 m deck; 3.5 m deep box girders; 12.2 × 12.2 m offshore derrick pattern |
+| substructure_drill_floor_A | 9 m floor; Showroom A paint; measured nominal 9.0 × 9.0 m mast pattern |
 
 These are generic visual assets rather than manufacturer CAD or a certified equipment design. Maximum pump pressure and flow are not simultaneous ratings. The floor's two load classes are independent, not a combined-load envelope. Tank working capacity is separate from external shell volume.
 
@@ -38,9 +40,11 @@ Values are **decoded triangles / decimal kB**. Budgets: H ≤60,000 tris / 3,000
 | genset_single | 14,842 / 446.6 | 6,014 / 287.3 | 2,454 / 139.0 |
 | mud_tank_single | 16,166 / 437.6 | 7,618 / 290.5 | 3,036 / 147.5 |
 | mud_pump_single | 13,660 / 432.7 | 6,588 / 286.7 | 1,896 / 134.9 |
-| frac_pump_truck_single | 36,492 / 655.4 | 11,008 / 364.2 | 5,086 / 204.4 |
+| frac_pump_truck_single | 36,492 / 655.4 | 11,008 / 383.4 | 5,086 / 212.7 |
 | offshore_derrick | 48,340 / 546.1 | 10,292 / 302.4 | 4,052 / 156.8 |
 | substructure_drill_floor | 21,104 / 505.7 | 8,692 / 325.9 | 4,588 / 183.9 |
+| offshore_drill_floor | 17,470 / 497.0 | 6,174 / 339.8 | 3,244 / 191.7 |
+| substructure_drill_floor_A | 21,104 / 517.2 | 8,692 / 344.7 | 4,588 / 191.8 |
 
 High has bevels, fasteners, full structural profiles, cooling fins, grating and machinery fittings. Medium reduces segments and small fittings. Low keeps principal machinery, structural silhouettes, access routes and datums. Tiny fittings can disappear within the unchanged canonical footprint; each LOD's AABB records its visible bounds.
 
@@ -57,10 +61,20 @@ Every GLB has a named root (`<id>`) and a leaf empty `attach_base` at `[0,0,0]`.
 | substructure_drill_floor | attach_top | 1.50000, 9.00000, -0.62578 |
 | substructure_drill_floor | attach_wellcentre | 1.50000, 9.00000, -0.62578 |
 | substructure_drill_floor | attach_vdoor | 1.50000, 9.00000, 5.87422 |
+| offshore_drill_floor | attach_wellcentre | 0.75750, 3.87000, -2.99850 |
+| offshore_drill_floor | attach_top | 0.75750, 3.87000, -2.99850 |
+| offshore_drill_floor | attach_vdoor | 0.75750, 3.72500, 4.55150 |
+| substructure_drill_floor_A | attach_top | 1.50000, 9.00000, -0.62578 |
+| substructure_drill_floor_A | attach_wellcentre | 1.50000, 9.00000, -0.62578 |
+| substructure_drill_floor_A | attach_vdoor | 1.50000, 9.00000, 5.87422 |
 
 The derrick also has four `attach_foot_*` nodes. The floor has four `attach_mast_foot_*` nodes. Full transforms and roles are in `part.anchors`. Empty nodes have identity rotation and scale. The well-centre datum marks the floor surface over a continuous open bore.
 
-The offshore foot pattern is 12.2 × 12.2 m. The land floor's mast pattern is 9.6 × 9.6 m. Centre-datum snapping works, but a physical installation between these different patterns needs an adapter.
+The offshore derrick mates with `offshore_drill_floor` on a 12.2 × 12.2 m pattern. Align the two `attach_wellcentre` nodes; each tower `attach_foot_LB/LF/RB/RF` then meets the floor's `attach_derrick_foot_LB/LF/RB/RF`. All nine floor/tower LOD combinations are tested. The original land floor retains its 9.6 × 9.6 m pattern; the A variant uses the source's nominal 9.0 × 9.0 m pattern.
+
+The offshore deck is 14 × 14 m; its complete envelope is larger because the pipe ramp and stairs are included. It has hollow 3.5 m deep box girders, rotary, setback, four bearing pedestals, V-door, inclined pipe catwalk, stairs, rails and a complete doghouse entrance. It contains no hull or support legs. `attach_top` and `attach_wellcentre` share the rotary surface datum; the four receiving feet are coplanar with it.
+
+The original derrick root has an X offset relative to its actual well datum: its foot X values are about −6.205253 / +5.994747 m and its well datum X is −0.105253 m. These are root-local values; foot offsets from the well datum are ±6.1 m. The new floor preserves that exact interface before bottom-centering its own complete footprint.
 
 ## Load, select and snap
 
@@ -109,15 +123,17 @@ Open `http://localhost:8080/source/viewer.html` to rotate/zoom, select component
 
 `CHROMIUM_EXECUTABLE` can select an existing Chromium binary; `PLAYWRIGHT_MODULE` can select an existing Playwright installation. `node generate.mjs --part=genset_single` or `--lod=H` writes a partial manifest beside the main one. Rerun the full generator for a release. `--quick` skips ray AO and is rejected by final validation.
 
+Add `--update` to merge a selected part or LOD into the main manifest while retaining all other files. The frac M/L correction translates geometry down by the measured 7 mm and preserves the origin and `attach_base`; its High file remains byte-for-byte unchanged.
+
 ## Verification and Showroom A
 
-`source/qa/validation.json` records budgets, decoded triangles, texture sizes, BOM and anchor invariance and Khronos validation of compressed and fully decoded data. `source/qa/browser-validation.json` records all 18 real GLB loads, component inspection, transformed-parent snap tests, material attributes and drill-floor clear-bore ray tests in every LOD.
+`source/qa/validation.json` records budgets, decoded triangles, texture sizes, BOM and anchor invariance and Khronos validation of compressed and fully decoded data. `source/qa/browser-validation.json` records all 24 real GLB loads, component inspection, transformed-parent snap tests, material attributes, floor clear-bore ray tests in every LOD and all nine offshore mating combinations.
 
-Screenshots are rendered from those GLBs. The target Rig Builder application and Showroom A Blender file were absent from this session. Reuse `substructure_drill_floor` for item 7: its style follows the exact pass 2 source and material family. Exact Showroom A Blender parity remains unverified.
+Screenshots are rendered from the GLBs, including day/night views of the offshore floor with the original derrick seated on it. `substructure_drill_floor_A` now uses the supplied `source/references/triple_high.glb`: its yellow structure and hazard rails use the source's linear colour, metallic and roughness factors; its mast pattern follows decoded `mast__mast` lower sections at nominal ±4.5 m. Dimensions stay in metres at unit scale. The source's deck top is about 7.8 m; the new component retains the explicitly requested 9 m floor height and the pass 3 detailed envelope. The target Rig Builder application itself was not present for hosted integration.
 
 ## Sources and rights
 
-Original procedural geometry, maps, decal artwork and renders: CC0-1.0. No brand logos or third-party models/textures are included. The original pass 2 engine is reused and extended. Dependency versions and upstream licences are in the lockfile.
+Original procedural geometry, maps, decal artwork and renders: CC0-1.0. No brand logos or downloaded models/textures are embedded in the runtime parts. The supplied `source/references/triple_high.glb` keeps its original rights and is excluded from this CC0 statement. The original pass 2 engine is reused and extended. Dependency versions and upstream licences are in the lockfile.
 
 Representative class references, checked 31 October 2026:
 

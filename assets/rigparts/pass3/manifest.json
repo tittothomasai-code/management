@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "3.0.0",
+  "schemaVersion": "3.1.0",
   "title": "Rig Builder / Pass 3 / single-unit parts",
   "units": "metres",
   "upAxis": "Y",
@@ -1817,17 +1817,17 @@
         "M": {
           "file": "glb/frac_pump_truck_single_lodM.glb",
           "triangles": 11008,
-          "bytes": 364236,
+          "bytes": 383440,
           "drawCalls": 73,
           "boundingBox": {
             "min": [
               -1.5700000524520874,
-              0.006999999377876515,
+              0,
               -7.107499972879887
             ],
             "max": [
               1.5700000524520874,
-              4.432000190485269,
+              4.425000191107392,
               7.107499972879887
             ],
             "size": [
@@ -1872,22 +1872,27 @@
             "budget": 20000,
             "maxPositionErrorMetres": 0.035
           },
-          "textureMax": 1024
+          "textureMax": 1024,
+          "geometryTranslationFromCanonical": [
+            0,
+            -0.006999999377876515,
+            0
+          ]
         },
         "L": {
           "file": "glb/frac_pump_truck_single_lodL.glb",
           "triangles": 5086,
-          "bytes": 204396,
+          "bytes": 212732,
           "drawCalls": 62,
           "boundingBox": {
             "min": [
               -1.5700000524520874,
-              0.006999999377876515,
+              0,
               -7.107499972879887
             ],
             "max": [
               1.5700000524520874,
-              4.432000190485269,
+              4.425000191107392,
               7.107499972879887
             ],
             "size": [
@@ -1932,7 +1937,12 @@
             "budget": 6000,
             "maxPositionErrorMetres": 0.13
           },
-          "textureMax": 512
+          "textureMax": 512,
+          "geometryTranslationFromCanonical": [
+            0,
+            -0.006999999377876515,
+            0
+          ]
         }
       },
       "nodeToBom": {
@@ -4049,18 +4059,13 @@
         ]
       },
       "showroomA": {
-        "reuse": true,
-        "style": "Same oxide / ivory / safety-yellow material family and 9 m floor datum as pass 2",
-        "exactBlenderParity": "Unverified: no Showroom A Blender file was available",
+        "reuse": false,
+        "variant": "substructure_drill_floor_A",
+        "style": "Original pass 2 oxide / ivory family",
         "mastMountPattern_m": [
           9.6,
           9.6
-        ],
-        "offshoreDerrickMountPattern_m": [
-          12.2,
-          12.2
-        ],
-        "mountingNote": "Offshore derrick feet require a separate engineered adapter; do not imply matching bolt patterns."
+        ]
       },
       "nodes": {
         "substructure_drill_floor/substructure": {
@@ -4346,6 +4351,2391 @@
             "type": "LED work light",
             "emissive": true
           }
+        }
+      }
+    },
+    {
+      "id": "offshore_drill_floor",
+      "name": "Offshore drill floor / derrick support",
+      "kind": "structure",
+      "bomId": "RB3/offshore_drill_floor",
+      "specs": {
+        "deckWidth_m": 14,
+        "deckDepth_m": 14,
+        "boxGirderDepth_m": 3.5,
+        "deckHeight_m": 3.65,
+        "rotaryDatumHeight_m": 3.87,
+        "derrickFootPattern_m": [
+          12.2,
+          12.2
+        ],
+        "form": "Deck and deep box girders, no hull or supporting legs",
+        "interfaceReference": "offshore_derrick exported attachment datums"
+      },
+      "front": "V-door and pipe catwalk ramp",
+      "view": [
+        -1.15,
+        0.95,
+        1.55
+      ],
+      "derrickInterface": {
+        "wellcentre": [
+          -0.10525298118591309,
+          1.4901161415892261e-09,
+          0
+        ],
+        "feet": {
+          "LB": [
+            -6.205252981185913,
+            1.4901161415892261e-09,
+            -6.1
+          ],
+          "LF": [
+            -6.205252981185913,
+            1.4901161415892261e-09,
+            6.1
+          ],
+          "RB": [
+            5.994747018814087,
+            1.4901161415892261e-09,
+            -6.1
+          ],
+          "RF": [
+            5.994747018814087,
+            1.4901161415892261e-09,
+            6.1
+          ]
+        },
+        "referenceFile": "glb/offshore_derrick_lodH.glb",
+        "referenceSha256": "cff9853f587aee42b43b64a16503669886f87c5355c095d70494b5a9e5626c75"
+      },
+      "unitCount": 1,
+      "lods": {
+        "H": {
+          "file": "glb/offshore_drill_floor_lodH.glb",
+          "triangles": 17470,
+          "bytes": 496956,
+          "drawCalls": 69,
+          "boundingBox": {
+            "min": [
+              -7.84250020980835,
+              0,
+              -10.02649974822998
+            ],
+            "max": [
+              7.84250020980835,
+              6.09000000372529,
+              10.02649974822998
+            ],
+            "size": [
+              15.6850004196167,
+              6.09000000372529,
+              20.05299949645996
+            ]
+          },
+          "nodeToBom": {
+            "offshore_drill_floor": "RB3/offshore_drill_floor",
+            "offshore_drill_floor/primary_box_girders": "RB3/offshore_drill_floor/primary_box_girders",
+            "offshore_drill_floor/primary_box_girders/girder_stiffeners_and_diaphragms": "RB3/offshore_drill_floor/primary_box_girders/girder_stiffeners_and_diaphragms",
+            "offshore_drill_floor/primary_box_girders/girder_access_covers": "RB3/offshore_drill_floor/primary_box_girders/girder_access_covers",
+            "offshore_drill_floor/secondary_framing": "RB3/offshore_drill_floor/secondary_framing",
+            "offshore_drill_floor/deck_plate": "RB3/offshore_drill_floor/deck_plate",
+            "offshore_drill_floor/perimeter_grating": "RB3/offshore_drill_floor/perimeter_grating",
+            "offshore_drill_floor/rotary_table": "RB3/offshore_drill_floor/rotary_table",
+            "offshore_drill_floor/setback": "RB3/offshore_drill_floor/setback",
+            "offshore_drill_floor/derrick_foot_pedestals": "RB3/offshore_drill_floor/derrick_foot_pedestals",
+            "offshore_drill_floor/derrick_foot_pedestals/pedestal_LB": "RB3/offshore_drill_floor/derrick_foot_pedestals/pedestal_LB",
+            "offshore_drill_floor/derrick_foot_pedestals/pedestal_LF": "RB3/offshore_drill_floor/derrick_foot_pedestals/pedestal_LF",
+            "offshore_drill_floor/derrick_foot_pedestals/pedestal_RB": "RB3/offshore_drill_floor/derrick_foot_pedestals/pedestal_RB",
+            "offshore_drill_floor/derrick_foot_pedestals/pedestal_RF": "RB3/offshore_drill_floor/derrick_foot_pedestals/pedestal_RF",
+            "offshore_drill_floor/handrails": "RB3/offshore_drill_floor/handrails",
+            "offshore_drill_floor/vdoor": "RB3/offshore_drill_floor/vdoor",
+            "offshore_drill_floor/catwalk_ramp": "RB3/offshore_drill_floor/catwalk_ramp",
+            "offshore_drill_floor/stairs": "RB3/offshore_drill_floor/stairs",
+            "offshore_drill_floor/stairs/light_stair": "RB3/offshore_drill_floor/stairs/light_stair",
+            "offshore_drill_floor/doghouse": "RB3/offshore_drill_floor/doghouse",
+            "offshore_drill_floor/doghouse/doghouse_door": "RB3/offshore_drill_floor/doghouse/doghouse_door",
+            "offshore_drill_floor/doghouse/light_doghouse": "RB3/offshore_drill_floor/doghouse/light_doghouse",
+            "offshore_drill_floor/light_offshore_deck_1": "RB3/offshore_drill_floor/light_offshore_deck_1",
+            "offshore_drill_floor/light_offshore_deck_2": "RB3/offshore_drill_floor/light_offshore_deck_2",
+            "offshore_drill_floor/light_offshore_deck_3": "RB3/offshore_drill_floor/light_offshore_deck_3",
+            "offshore_drill_floor/light_offshore_deck_4": "RB3/offshore_drill_floor/light_offshore_deck_4"
+          },
+          "bakedAO": true,
+          "optimisation": {
+            "before": 17474,
+            "after": 17474,
+            "budget": 60000,
+            "maxPositionErrorMetres": 0.008
+          },
+          "textureMax": 2048,
+          "geometryTranslationFromCanonical": [
+            0,
+            0,
+            0
+          ]
+        },
+        "M": {
+          "file": "glb/offshore_drill_floor_lodM.glb",
+          "triangles": 6174,
+          "bytes": 339820,
+          "drawCalls": 69,
+          "boundingBox": {
+            "min": [
+              -7.84250020980835,
+              0,
+              -10.02649974822998
+            ],
+            "max": [
+              7.84250020980835,
+              6.09000000372529,
+              10.02649974822998
+            ],
+            "size": [
+              15.6850004196167,
+              6.09000000372529,
+              20.05299949645996
+            ]
+          },
+          "nodeToBom": {
+            "offshore_drill_floor": "RB3/offshore_drill_floor",
+            "offshore_drill_floor/primary_box_girders": "RB3/offshore_drill_floor/primary_box_girders",
+            "offshore_drill_floor/primary_box_girders/girder_stiffeners_and_diaphragms": "RB3/offshore_drill_floor/primary_box_girders/girder_stiffeners_and_diaphragms",
+            "offshore_drill_floor/primary_box_girders/girder_access_covers": "RB3/offshore_drill_floor/primary_box_girders/girder_access_covers",
+            "offshore_drill_floor/secondary_framing": "RB3/offshore_drill_floor/secondary_framing",
+            "offshore_drill_floor/deck_plate": "RB3/offshore_drill_floor/deck_plate",
+            "offshore_drill_floor/perimeter_grating": "RB3/offshore_drill_floor/perimeter_grating",
+            "offshore_drill_floor/rotary_table": "RB3/offshore_drill_floor/rotary_table",
+            "offshore_drill_floor/setback": "RB3/offshore_drill_floor/setback",
+            "offshore_drill_floor/derrick_foot_pedestals": "RB3/offshore_drill_floor/derrick_foot_pedestals",
+            "offshore_drill_floor/derrick_foot_pedestals/pedestal_LB": "RB3/offshore_drill_floor/derrick_foot_pedestals/pedestal_LB",
+            "offshore_drill_floor/derrick_foot_pedestals/pedestal_LF": "RB3/offshore_drill_floor/derrick_foot_pedestals/pedestal_LF",
+            "offshore_drill_floor/derrick_foot_pedestals/pedestal_RB": "RB3/offshore_drill_floor/derrick_foot_pedestals/pedestal_RB",
+            "offshore_drill_floor/derrick_foot_pedestals/pedestal_RF": "RB3/offshore_drill_floor/derrick_foot_pedestals/pedestal_RF",
+            "offshore_drill_floor/handrails": "RB3/offshore_drill_floor/handrails",
+            "offshore_drill_floor/vdoor": "RB3/offshore_drill_floor/vdoor",
+            "offshore_drill_floor/catwalk_ramp": "RB3/offshore_drill_floor/catwalk_ramp",
+            "offshore_drill_floor/stairs": "RB3/offshore_drill_floor/stairs",
+            "offshore_drill_floor/stairs/light_stair": "RB3/offshore_drill_floor/stairs/light_stair",
+            "offshore_drill_floor/doghouse": "RB3/offshore_drill_floor/doghouse",
+            "offshore_drill_floor/doghouse/doghouse_door": "RB3/offshore_drill_floor/doghouse/doghouse_door",
+            "offshore_drill_floor/doghouse/light_doghouse": "RB3/offshore_drill_floor/doghouse/light_doghouse",
+            "offshore_drill_floor/light_offshore_deck_1": "RB3/offshore_drill_floor/light_offshore_deck_1",
+            "offshore_drill_floor/light_offshore_deck_2": "RB3/offshore_drill_floor/light_offshore_deck_2",
+            "offshore_drill_floor/light_offshore_deck_3": "RB3/offshore_drill_floor/light_offshore_deck_3",
+            "offshore_drill_floor/light_offshore_deck_4": "RB3/offshore_drill_floor/light_offshore_deck_4"
+          },
+          "bakedAO": true,
+          "optimisation": {
+            "before": 6178,
+            "after": 6178,
+            "budget": 20000,
+            "maxPositionErrorMetres": 0.035
+          },
+          "textureMax": 1024,
+          "geometryTranslationFromCanonical": [
+            0,
+            0,
+            0
+          ]
+        },
+        "L": {
+          "file": "glb/offshore_drill_floor_lodL.glb",
+          "triangles": 3244,
+          "bytes": 191716,
+          "drawCalls": 56,
+          "boundingBox": {
+            "min": [
+              -7.84250020980835,
+              0,
+              -10.02649974822998
+            ],
+            "max": [
+              7.814500331878662,
+              6.09000000372529,
+              10.02649974822998
+            ],
+            "size": [
+              15.657000541687012,
+              6.09000000372529,
+              20.05299949645996
+            ]
+          },
+          "nodeToBom": {
+            "offshore_drill_floor": "RB3/offshore_drill_floor",
+            "offshore_drill_floor/primary_box_girders": "RB3/offshore_drill_floor/primary_box_girders",
+            "offshore_drill_floor/primary_box_girders/girder_stiffeners_and_diaphragms": "RB3/offshore_drill_floor/primary_box_girders/girder_stiffeners_and_diaphragms",
+            "offshore_drill_floor/primary_box_girders/girder_access_covers": "RB3/offshore_drill_floor/primary_box_girders/girder_access_covers",
+            "offshore_drill_floor/secondary_framing": "RB3/offshore_drill_floor/secondary_framing",
+            "offshore_drill_floor/deck_plate": "RB3/offshore_drill_floor/deck_plate",
+            "offshore_drill_floor/perimeter_grating": "RB3/offshore_drill_floor/perimeter_grating",
+            "offshore_drill_floor/rotary_table": "RB3/offshore_drill_floor/rotary_table",
+            "offshore_drill_floor/setback": "RB3/offshore_drill_floor/setback",
+            "offshore_drill_floor/derrick_foot_pedestals": "RB3/offshore_drill_floor/derrick_foot_pedestals",
+            "offshore_drill_floor/derrick_foot_pedestals/pedestal_LB": "RB3/offshore_drill_floor/derrick_foot_pedestals/pedestal_LB",
+            "offshore_drill_floor/derrick_foot_pedestals/pedestal_LF": "RB3/offshore_drill_floor/derrick_foot_pedestals/pedestal_LF",
+            "offshore_drill_floor/derrick_foot_pedestals/pedestal_RB": "RB3/offshore_drill_floor/derrick_foot_pedestals/pedestal_RB",
+            "offshore_drill_floor/derrick_foot_pedestals/pedestal_RF": "RB3/offshore_drill_floor/derrick_foot_pedestals/pedestal_RF",
+            "offshore_drill_floor/handrails": "RB3/offshore_drill_floor/handrails",
+            "offshore_drill_floor/vdoor": "RB3/offshore_drill_floor/vdoor",
+            "offshore_drill_floor/catwalk_ramp": "RB3/offshore_drill_floor/catwalk_ramp",
+            "offshore_drill_floor/stairs": "RB3/offshore_drill_floor/stairs",
+            "offshore_drill_floor/stairs/light_stair": "RB3/offshore_drill_floor/stairs/light_stair",
+            "offshore_drill_floor/doghouse": "RB3/offshore_drill_floor/doghouse",
+            "offshore_drill_floor/doghouse/doghouse_door": "RB3/offshore_drill_floor/doghouse/doghouse_door",
+            "offshore_drill_floor/doghouse/light_doghouse": "RB3/offshore_drill_floor/doghouse/light_doghouse",
+            "offshore_drill_floor/light_offshore_deck_1": "RB3/offshore_drill_floor/light_offshore_deck_1",
+            "offshore_drill_floor/light_offshore_deck_2": "RB3/offshore_drill_floor/light_offshore_deck_2",
+            "offshore_drill_floor/light_offshore_deck_3": "RB3/offshore_drill_floor/light_offshore_deck_3",
+            "offshore_drill_floor/light_offshore_deck_4": "RB3/offshore_drill_floor/light_offshore_deck_4"
+          },
+          "bakedAO": true,
+          "optimisation": {
+            "before": 3248,
+            "after": 3248,
+            "budget": 6000,
+            "maxPositionErrorMetres": 0.13
+          },
+          "textureMax": 512,
+          "geometryTranslationFromCanonical": [
+            0,
+            0,
+            0
+          ]
+        }
+      },
+      "nodeToBom": {
+        "offshore_drill_floor": "RB3/offshore_drill_floor",
+        "offshore_drill_floor/primary_box_girders": "RB3/offshore_drill_floor/primary_box_girders",
+        "offshore_drill_floor/primary_box_girders/girder_stiffeners_and_diaphragms": "RB3/offshore_drill_floor/primary_box_girders/girder_stiffeners_and_diaphragms",
+        "offshore_drill_floor/primary_box_girders/girder_access_covers": "RB3/offshore_drill_floor/primary_box_girders/girder_access_covers",
+        "offshore_drill_floor/secondary_framing": "RB3/offshore_drill_floor/secondary_framing",
+        "offshore_drill_floor/deck_plate": "RB3/offshore_drill_floor/deck_plate",
+        "offshore_drill_floor/perimeter_grating": "RB3/offshore_drill_floor/perimeter_grating",
+        "offshore_drill_floor/rotary_table": "RB3/offshore_drill_floor/rotary_table",
+        "offshore_drill_floor/setback": "RB3/offshore_drill_floor/setback",
+        "offshore_drill_floor/derrick_foot_pedestals": "RB3/offshore_drill_floor/derrick_foot_pedestals",
+        "offshore_drill_floor/derrick_foot_pedestals/pedestal_LB": "RB3/offshore_drill_floor/derrick_foot_pedestals/pedestal_LB",
+        "offshore_drill_floor/derrick_foot_pedestals/pedestal_LF": "RB3/offshore_drill_floor/derrick_foot_pedestals/pedestal_LF",
+        "offshore_drill_floor/derrick_foot_pedestals/pedestal_RB": "RB3/offshore_drill_floor/derrick_foot_pedestals/pedestal_RB",
+        "offshore_drill_floor/derrick_foot_pedestals/pedestal_RF": "RB3/offshore_drill_floor/derrick_foot_pedestals/pedestal_RF",
+        "offshore_drill_floor/handrails": "RB3/offshore_drill_floor/handrails",
+        "offshore_drill_floor/vdoor": "RB3/offshore_drill_floor/vdoor",
+        "offshore_drill_floor/catwalk_ramp": "RB3/offshore_drill_floor/catwalk_ramp",
+        "offshore_drill_floor/stairs": "RB3/offshore_drill_floor/stairs",
+        "offshore_drill_floor/stairs/light_stair": "RB3/offshore_drill_floor/stairs/light_stair",
+        "offshore_drill_floor/doghouse": "RB3/offshore_drill_floor/doghouse",
+        "offshore_drill_floor/doghouse/doghouse_door": "RB3/offshore_drill_floor/doghouse/doghouse_door",
+        "offshore_drill_floor/doghouse/light_doghouse": "RB3/offshore_drill_floor/doghouse/light_doghouse",
+        "offshore_drill_floor/light_offshore_deck_1": "RB3/offshore_drill_floor/light_offshore_deck_1",
+        "offshore_drill_floor/light_offshore_deck_2": "RB3/offshore_drill_floor/light_offshore_deck_2",
+        "offshore_drill_floor/light_offshore_deck_3": "RB3/offshore_drill_floor/light_offshore_deck_3",
+        "offshore_drill_floor/light_offshore_deck_4": "RB3/offshore_drill_floor/light_offshore_deck_4"
+      },
+      "components": [
+        {
+          "nodePath": "offshore_drill_floor",
+          "bomId": "RB3/offshore_drill_floor",
+          "name": "offshore drill floor",
+          "specs": {
+            "dimensions_m": [
+              15.6850004196167,
+              6.09000000372529,
+              20.05299949645996
+            ],
+            "deckWidth_m": 14,
+            "deckDepth_m": 14,
+            "boxGirderDepth_m": 3.5,
+            "deckHeight_m": 3.65,
+            "rotaryDatumHeight_m": 3.87,
+            "derrickFootPattern_m": [
+              12.2,
+              12.2
+            ],
+            "form": "Deck and deep box girders, no hull or supporting legs",
+            "interfaceReference": "offshore_derrick exported attachment datums"
+          }
+        },
+        {
+          "nodePath": "offshore_drill_floor/primary_box_girders",
+          "bomId": "RB3/offshore_drill_floor/primary_box_girders",
+          "name": "primary box girders",
+          "specs": {
+            "dimensions_m": [
+              14.170000076293945,
+              3.5000000001490115,
+              14.037000179290771
+            ],
+            "depth_m": 3.5,
+            "width_m": 0.75,
+            "construction": "Welded hollow box sections"
+          }
+        },
+        {
+          "nodePath": "offshore_drill_floor/primary_box_girders/girder_stiffeners_and_diaphragms",
+          "bomId": "RB3/offshore_drill_floor/primary_box_girders/girder_stiffeners_and_diaphragms",
+          "name": "girder stiffeners and diaphragms",
+          "specs": {
+            "dimensions_m": [
+              14.079999923706055,
+              3.3599997758865356,
+              13.920000076293945
+            ]
+          }
+        },
+        {
+          "nodePath": "offshore_drill_floor/primary_box_girders/girder_access_covers",
+          "bomId": "RB3/offshore_drill_floor/primary_box_girders/girder_access_covers",
+          "name": "girder access covers",
+          "specs": {
+            "dimensions_m": [
+              14.170000076293945,
+              0.8499999046325681,
+              10.699999809265137
+            ]
+          }
+        },
+        {
+          "nodePath": "offshore_drill_floor/secondary_framing",
+          "bomId": "RB3/offshore_drill_floor/secondary_framing",
+          "name": "secondary framing",
+          "specs": {
+            "dimensions_m": [
+              12.399999618530273,
+              0.42799997329711914,
+              12.399999618530273
+            ],
+            "type": "Deck beams and central rotary trimmer; clear central well"
+          }
+        },
+        {
+          "nodePath": "offshore_drill_floor/deck_plate",
+          "bomId": "RB3/offshore_drill_floor/deck_plate",
+          "name": "deck plate",
+          "specs": {
+            "dimensions_m": [
+              14,
+              0.12999999523162842,
+              14
+            ],
+            "width_m": 14,
+            "depth_m": 14,
+            "surfaceHeight_m": 3.65
+          }
+        },
+        {
+          "nodePath": "offshore_drill_floor/perimeter_grating",
+          "bomId": "RB3/offshore_drill_floor/perimeter_grating",
+          "name": "perimeter grating",
+          "specs": {
+            "dimensions_m": [
+              13.975000381469727,
+              0.08999991416931152,
+              13.975000381469727
+            ]
+          }
+        },
+        {
+          "nodePath": "offshore_drill_floor/rotary_table",
+          "bomId": "RB3/offshore_drill_floor/rotary_table",
+          "name": "rotary table",
+          "specs": {
+            "dimensions_m": [
+              2.5360000133514404,
+              0.317500002682209,
+              2.5360000133514404
+            ],
+            "clearBore_m": 1.05,
+            "datumHeight_m": 3.87
+          }
+        },
+        {
+          "nodePath": "offshore_drill_floor/setback",
+          "bomId": "RB3/offshore_drill_floor/setback",
+          "name": "setback",
+          "specs": {
+            "dimensions_m": [
+              4.300000190734863,
+              0.11500000208616257,
+              2
+            ],
+            "width_m": 4.3,
+            "depth_m": 2
+          }
+        },
+        {
+          "nodePath": "offshore_drill_floor/derrick_foot_pedestals",
+          "bomId": "RB3/offshore_drill_floor/derrick_foot_pedestals",
+          "name": "derrick foot pedestals",
+          "specs": {
+            "dimensions_m": [
+              13.32000000476837,
+              0.27250000864267365,
+              13.32000000476837
+            ],
+            "pattern_m": [
+              12.2,
+              12.2
+            ],
+            "matches": "offshore_derrick"
+          }
+        },
+        {
+          "nodePath": "offshore_drill_floor/derrick_foot_pedestals/pedestal_LB",
+          "bomId": "RB3/offshore_drill_floor/derrick_foot_pedestals/pedestal_LB",
+          "name": "pedestal LB",
+          "specs": {
+            "dimensions_m": [
+              1.1200000047683716,
+              0.27250000864267365,
+              1.1200000047683716
+            ],
+            "receivingDatumHeight_m": 3.87
+          }
+        },
+        {
+          "nodePath": "offshore_drill_floor/derrick_foot_pedestals/pedestal_LF",
+          "bomId": "RB3/offshore_drill_floor/derrick_foot_pedestals/pedestal_LF",
+          "name": "pedestal LF",
+          "specs": {
+            "dimensions_m": [
+              1.1200000047683716,
+              0.27250000864267365,
+              1.1200000047683716
+            ],
+            "receivingDatumHeight_m": 3.87
+          }
+        },
+        {
+          "nodePath": "offshore_drill_floor/derrick_foot_pedestals/pedestal_RB",
+          "bomId": "RB3/offshore_drill_floor/derrick_foot_pedestals/pedestal_RB",
+          "name": "pedestal RB",
+          "specs": {
+            "dimensions_m": [
+              1.1200000047683716,
+              0.27250000864267365,
+              1.1200000047683716
+            ],
+            "receivingDatumHeight_m": 3.87
+          }
+        },
+        {
+          "nodePath": "offshore_drill_floor/derrick_foot_pedestals/pedestal_RF",
+          "bomId": "RB3/offshore_drill_floor/derrick_foot_pedestals/pedestal_RF",
+          "name": "pedestal RF",
+          "specs": {
+            "dimensions_m": [
+              1.1200000047683716,
+              0.27250000864267365,
+              1.1200000047683716
+            ],
+            "receivingDatumHeight_m": 3.87
+          }
+        },
+        {
+          "nodePath": "offshore_drill_floor/handrails",
+          "bomId": "RB3/offshore_drill_floor/handrails",
+          "name": "handrails",
+          "specs": {
+            "dimensions_m": [
+              14.055999755859375,
+              1.124000072479248,
+              14.055999755859375
+            ]
+          }
+        },
+        {
+          "nodePath": "offshore_drill_floor/vdoor",
+          "bomId": "RB3/offshore_drill_floor/vdoor",
+          "name": "vdoor",
+          "specs": {
+            "dimensions_m": [
+              3.6600000858306885,
+              1.4285314083099365,
+              1.5315132141113281
+            ],
+            "width_m": 3.5,
+            "direction": "+Z"
+          }
+        },
+        {
+          "nodePath": "offshore_drill_floor/catwalk_ramp",
+          "bomId": "RB3/offshore_drill_floor/catwalk_ramp",
+          "name": "catwalk ramp",
+          "specs": {
+            "dimensions_m": [
+              3.5,
+              3.9763329020142555,
+              5.689659118652344
+            ],
+            "width_m": 3,
+            "length_m": 6.58,
+            "type": "Inclined pipe catwalk / V-door approach"
+          }
+        },
+        {
+          "nodePath": "offshore_drill_floor/stairs",
+          "bomId": "RB3/offshore_drill_floor/stairs",
+          "name": "stairs",
+          "specs": {
+            "dimensions_m": [
+              2.02500057220459,
+              4.849999903738499,
+              6.8279998898506165
+            ],
+            "rise_m": 3.65,
+            "run_m": 5.4,
+            "width_m": 1.2
+          }
+        },
+        {
+          "nodePath": "offshore_drill_floor/stairs/light_stair",
+          "bomId": "RB3/offshore_drill_floor/stairs/light_stair",
+          "name": "light stair",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        },
+        {
+          "nodePath": "offshore_drill_floor/doghouse",
+          "bomId": "RB3/offshore_drill_floor/doghouse",
+          "name": "doghouse",
+          "specs": {
+            "dimensions_m": [
+              3.25,
+              2.440000002235174,
+              2.435000050663948
+            ],
+            "width_m": 3,
+            "depth_m": 2.15,
+            "height_m": 2.35
+          }
+        },
+        {
+          "nodePath": "offshore_drill_floor/doghouse/doghouse_door",
+          "bomId": "RB3/offshore_drill_floor/doghouse/doghouse_door",
+          "name": "doghouse door",
+          "specs": {
+            "dimensions_m": [
+              0.9799999892711639,
+              2.0999998569488523,
+              0.1419999971985817
+            ],
+            "width_m": 0.95,
+            "height_m": 2.1,
+            "hinge": "Right"
+          }
+        },
+        {
+          "nodePath": "offshore_drill_floor/doghouse/light_doghouse",
+          "bomId": "RB3/offshore_drill_floor/doghouse/light_doghouse",
+          "name": "light doghouse",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        },
+        {
+          "nodePath": "offshore_drill_floor/light_offshore_deck_1",
+          "bomId": "RB3/offshore_drill_floor/light_offshore_deck_1",
+          "name": "light offshore deck 1",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        },
+        {
+          "nodePath": "offshore_drill_floor/light_offshore_deck_2",
+          "bomId": "RB3/offshore_drill_floor/light_offshore_deck_2",
+          "name": "light offshore deck 2",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        },
+        {
+          "nodePath": "offshore_drill_floor/light_offshore_deck_3",
+          "bomId": "RB3/offshore_drill_floor/light_offshore_deck_3",
+          "name": "light offshore deck 3",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        },
+        {
+          "nodePath": "offshore_drill_floor/light_offshore_deck_4",
+          "bomId": "RB3/offshore_drill_floor/light_offshore_deck_4",
+          "name": "light offshore deck 4",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        }
+      ],
+      "anchors": {
+        "attach_base": {
+          "nodePath": "offshore_drill_floor/attach_base",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "role": "Ground / receiving surface"
+        },
+        "attach_derrick_foot_LB": {
+          "nodePath": "offshore_drill_floor/attach_derrick_foot_LB",
+          "position": [
+            -5.342499828338623,
+            3.8700000001490116,
+            -9.098499870300293
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "role": "Receiving surface for offshore_derrick/attach_foot_LB"
+        },
+        "attach_derrick_foot_LF": {
+          "nodePath": "offshore_drill_floor/attach_derrick_foot_LF",
+          "position": [
+            -5.342499828338623,
+            3.8700000001490116,
+            3.1015001296997067
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "role": "Receiving surface for offshore_derrick/attach_foot_LF"
+        },
+        "attach_derrick_foot_RB": {
+          "nodePath": "offshore_drill_floor/attach_derrick_foot_RB",
+          "position": [
+            6.857500171661377,
+            3.8700000001490116,
+            -9.098499870300293
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "role": "Receiving surface for offshore_derrick/attach_foot_RB"
+        },
+        "attach_derrick_foot_RF": {
+          "nodePath": "offshore_drill_floor/attach_derrick_foot_RF",
+          "position": [
+            6.857500171661377,
+            3.8700000001490116,
+            3.1015001296997067
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "role": "Receiving surface for offshore_derrick/attach_foot_RF"
+        },
+        "attach_doghouse_door": {
+          "nodePath": "offshore_drill_floor/attach_doghouse_door",
+          "position": [
+            5.357500171661377,
+            3.6500000001490114,
+            -5.508499870300293
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "role": "Clear entrance / door sill position"
+        },
+        "attach_wellcentre": {
+          "nodePath": "offshore_drill_floor/attach_wellcentre",
+          "position": [
+            0.757500171661377,
+            3.8700000001490116,
+            -2.998499870300293
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "role": "Rotary datum aligned with offshore_derrick/attach_wellcentre"
+        },
+        "attach_top": {
+          "nodePath": "offshore_drill_floor/attach_top",
+          "position": [
+            0.757500171661377,
+            3.8700000001490116,
+            -2.998499870300293
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "role": "Rotary / offshore derrick stacking datum"
+        },
+        "attach_vdoor": {
+          "nodePath": "offshore_drill_floor/attach_vdoor",
+          "position": [
+            0.757500171661377,
+            3.7250000001490116,
+            4.551500129699707
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "role": "V-door / catwalk approach, faces +Z"
+        }
+      },
+      "screenshots": {
+        "day": "screenshots/offshore_drill_floor_day.png",
+        "night": "screenshots/offshore_drill_floor_night.png"
+      },
+      "sourceToOriginOffset": [
+        0.86275315284729,
+        1.490116086078075e-10,
+        -2.998499870300293
+      ],
+      "boundingBox": {
+        "min": [
+          -7.84250020980835,
+          0,
+          -10.02649974822998
+        ],
+        "max": [
+          7.84250020980835,
+          6.09000000372529,
+          10.02649974822998
+        ],
+        "size": [
+          15.6850004196167,
+          6.09000000372529,
+          20.05299949645996
+        ]
+      },
+      "nodes": {
+        "offshore_drill_floor": {
+          "bomId": "RB3/offshore_drill_floor",
+          "name": "offshore drill floor",
+          "specs": {
+            "dimensions_m": [
+              15.6850004196167,
+              6.09000000372529,
+              20.05299949645996
+            ],
+            "deckWidth_m": 14,
+            "deckDepth_m": 14,
+            "boxGirderDepth_m": 3.5,
+            "deckHeight_m": 3.65,
+            "rotaryDatumHeight_m": 3.87,
+            "derrickFootPattern_m": [
+              12.2,
+              12.2
+            ],
+            "form": "Deck and deep box girders, no hull or supporting legs",
+            "interfaceReference": "offshore_derrick exported attachment datums"
+          }
+        },
+        "offshore_drill_floor/primary_box_girders": {
+          "bomId": "RB3/offshore_drill_floor/primary_box_girders",
+          "name": "primary box girders",
+          "specs": {
+            "dimensions_m": [
+              14.170000076293945,
+              3.5000000001490115,
+              14.037000179290771
+            ],
+            "depth_m": 3.5,
+            "width_m": 0.75,
+            "construction": "Welded hollow box sections"
+          }
+        },
+        "offshore_drill_floor/primary_box_girders/girder_stiffeners_and_diaphragms": {
+          "bomId": "RB3/offshore_drill_floor/primary_box_girders/girder_stiffeners_and_diaphragms",
+          "name": "girder stiffeners and diaphragms",
+          "specs": {
+            "dimensions_m": [
+              14.079999923706055,
+              3.3599997758865356,
+              13.920000076293945
+            ]
+          }
+        },
+        "offshore_drill_floor/primary_box_girders/girder_access_covers": {
+          "bomId": "RB3/offshore_drill_floor/primary_box_girders/girder_access_covers",
+          "name": "girder access covers",
+          "specs": {
+            "dimensions_m": [
+              14.170000076293945,
+              0.8499999046325681,
+              10.699999809265137
+            ]
+          }
+        },
+        "offshore_drill_floor/secondary_framing": {
+          "bomId": "RB3/offshore_drill_floor/secondary_framing",
+          "name": "secondary framing",
+          "specs": {
+            "dimensions_m": [
+              12.399999618530273,
+              0.42799997329711914,
+              12.399999618530273
+            ],
+            "type": "Deck beams and central rotary trimmer; clear central well"
+          }
+        },
+        "offshore_drill_floor/deck_plate": {
+          "bomId": "RB3/offshore_drill_floor/deck_plate",
+          "name": "deck plate",
+          "specs": {
+            "dimensions_m": [
+              14,
+              0.12999999523162842,
+              14
+            ],
+            "width_m": 14,
+            "depth_m": 14,
+            "surfaceHeight_m": 3.65
+          }
+        },
+        "offshore_drill_floor/perimeter_grating": {
+          "bomId": "RB3/offshore_drill_floor/perimeter_grating",
+          "name": "perimeter grating",
+          "specs": {
+            "dimensions_m": [
+              13.975000381469727,
+              0.08999991416931152,
+              13.975000381469727
+            ]
+          }
+        },
+        "offshore_drill_floor/rotary_table": {
+          "bomId": "RB3/offshore_drill_floor/rotary_table",
+          "name": "rotary table",
+          "specs": {
+            "dimensions_m": [
+              2.5360000133514404,
+              0.317500002682209,
+              2.5360000133514404
+            ],
+            "clearBore_m": 1.05,
+            "datumHeight_m": 3.87
+          }
+        },
+        "offshore_drill_floor/setback": {
+          "bomId": "RB3/offshore_drill_floor/setback",
+          "name": "setback",
+          "specs": {
+            "dimensions_m": [
+              4.300000190734863,
+              0.11500000208616257,
+              2
+            ],
+            "width_m": 4.3,
+            "depth_m": 2
+          }
+        },
+        "offshore_drill_floor/derrick_foot_pedestals": {
+          "bomId": "RB3/offshore_drill_floor/derrick_foot_pedestals",
+          "name": "derrick foot pedestals",
+          "specs": {
+            "dimensions_m": [
+              13.32000000476837,
+              0.27250000864267365,
+              13.32000000476837
+            ],
+            "pattern_m": [
+              12.2,
+              12.2
+            ],
+            "matches": "offshore_derrick"
+          }
+        },
+        "offshore_drill_floor/derrick_foot_pedestals/pedestal_LB": {
+          "bomId": "RB3/offshore_drill_floor/derrick_foot_pedestals/pedestal_LB",
+          "name": "pedestal LB",
+          "specs": {
+            "dimensions_m": [
+              1.1200000047683716,
+              0.27250000864267365,
+              1.1200000047683716
+            ],
+            "receivingDatumHeight_m": 3.87
+          }
+        },
+        "offshore_drill_floor/derrick_foot_pedestals/pedestal_LF": {
+          "bomId": "RB3/offshore_drill_floor/derrick_foot_pedestals/pedestal_LF",
+          "name": "pedestal LF",
+          "specs": {
+            "dimensions_m": [
+              1.1200000047683716,
+              0.27250000864267365,
+              1.1200000047683716
+            ],
+            "receivingDatumHeight_m": 3.87
+          }
+        },
+        "offshore_drill_floor/derrick_foot_pedestals/pedestal_RB": {
+          "bomId": "RB3/offshore_drill_floor/derrick_foot_pedestals/pedestal_RB",
+          "name": "pedestal RB",
+          "specs": {
+            "dimensions_m": [
+              1.1200000047683716,
+              0.27250000864267365,
+              1.1200000047683716
+            ],
+            "receivingDatumHeight_m": 3.87
+          }
+        },
+        "offshore_drill_floor/derrick_foot_pedestals/pedestal_RF": {
+          "bomId": "RB3/offshore_drill_floor/derrick_foot_pedestals/pedestal_RF",
+          "name": "pedestal RF",
+          "specs": {
+            "dimensions_m": [
+              1.1200000047683716,
+              0.27250000864267365,
+              1.1200000047683716
+            ],
+            "receivingDatumHeight_m": 3.87
+          }
+        },
+        "offshore_drill_floor/handrails": {
+          "bomId": "RB3/offshore_drill_floor/handrails",
+          "name": "handrails",
+          "specs": {
+            "dimensions_m": [
+              14.055999755859375,
+              1.124000072479248,
+              14.055999755859375
+            ]
+          }
+        },
+        "offshore_drill_floor/vdoor": {
+          "bomId": "RB3/offshore_drill_floor/vdoor",
+          "name": "vdoor",
+          "specs": {
+            "dimensions_m": [
+              3.6600000858306885,
+              1.4285314083099365,
+              1.5315132141113281
+            ],
+            "width_m": 3.5,
+            "direction": "+Z"
+          }
+        },
+        "offshore_drill_floor/catwalk_ramp": {
+          "bomId": "RB3/offshore_drill_floor/catwalk_ramp",
+          "name": "catwalk ramp",
+          "specs": {
+            "dimensions_m": [
+              3.5,
+              3.9763329020142555,
+              5.689659118652344
+            ],
+            "width_m": 3,
+            "length_m": 6.58,
+            "type": "Inclined pipe catwalk / V-door approach"
+          }
+        },
+        "offshore_drill_floor/stairs": {
+          "bomId": "RB3/offshore_drill_floor/stairs",
+          "name": "stairs",
+          "specs": {
+            "dimensions_m": [
+              2.02500057220459,
+              4.849999903738499,
+              6.8279998898506165
+            ],
+            "rise_m": 3.65,
+            "run_m": 5.4,
+            "width_m": 1.2
+          }
+        },
+        "offshore_drill_floor/stairs/light_stair": {
+          "bomId": "RB3/offshore_drill_floor/stairs/light_stair",
+          "name": "light stair",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        },
+        "offshore_drill_floor/doghouse": {
+          "bomId": "RB3/offshore_drill_floor/doghouse",
+          "name": "doghouse",
+          "specs": {
+            "dimensions_m": [
+              3.25,
+              2.440000002235174,
+              2.435000050663948
+            ],
+            "width_m": 3,
+            "depth_m": 2.15,
+            "height_m": 2.35
+          }
+        },
+        "offshore_drill_floor/doghouse/doghouse_door": {
+          "bomId": "RB3/offshore_drill_floor/doghouse/doghouse_door",
+          "name": "doghouse door",
+          "specs": {
+            "dimensions_m": [
+              0.9799999892711639,
+              2.0999998569488523,
+              0.1419999971985817
+            ],
+            "width_m": 0.95,
+            "height_m": 2.1,
+            "hinge": "Right"
+          }
+        },
+        "offshore_drill_floor/doghouse/light_doghouse": {
+          "bomId": "RB3/offshore_drill_floor/doghouse/light_doghouse",
+          "name": "light doghouse",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        },
+        "offshore_drill_floor/light_offshore_deck_1": {
+          "bomId": "RB3/offshore_drill_floor/light_offshore_deck_1",
+          "name": "light offshore deck 1",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        },
+        "offshore_drill_floor/light_offshore_deck_2": {
+          "bomId": "RB3/offshore_drill_floor/light_offshore_deck_2",
+          "name": "light offshore deck 2",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        },
+        "offshore_drill_floor/light_offshore_deck_3": {
+          "bomId": "RB3/offshore_drill_floor/light_offshore_deck_3",
+          "name": "light offshore deck 3",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        },
+        "offshore_drill_floor/light_offshore_deck_4": {
+          "bomId": "RB3/offshore_drill_floor/light_offshore_deck_4",
+          "name": "light offshore deck 4",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        }
+      }
+    },
+    {
+      "id": "substructure_drill_floor_A",
+      "name": "Land drill floor / Showroom A",
+      "kind": "structure",
+      "specs": {
+        "floor_height_m": 9,
+        "setback_load_lbf": 500000,
+        "setback_load_kN": 2224.1108,
+        "rotary_load_lbf": 1000000,
+        "rotary_load_kN": 4448.2216,
+        "deckWidth_m": 12.2,
+        "deckDepth_m": 11.2,
+        "ratingBasis": "Representative independent static load classes, not a combined-load calculation",
+        "mastFootPattern_m": [
+          9,
+          9
+        ],
+        "style": "Measured Showroom A paint and 9 m mast foot spacing; detailed pass 3 envelope",
+        "referenceFloorHeight_m": 7.8
+      },
+      "front": "V-door / pipe ramp",
+      "view": [
+        -1.25,
+        0.95,
+        1.6
+      ],
+      "bomId": "RB3/substructure_drill_floor_A",
+      "mastFootPattern_m": [
+        9,
+        9
+      ],
+      "appearance": {
+        "sourceFile": "source/references/triple_high.glb",
+        "sourceSha256": "fdb7b948850bf93dcb87224634cda1693ebce4cefcc29e8091f51b0a5f50441d",
+        "referenceNodes": [
+          "mast",
+          "site"
+        ],
+        "referenceFloorTop_m": 7.8,
+        "requestedFloorTop_m": 9,
+        "scale": "metres, scale 1; floor elevation kept at requested 9 m",
+        "footPatternBasis": "Decoded mast lower-section centres at nominal \u00b14.5 m; Draco deviations under 1 mm",
+        "materialMap": {
+          "oxide": "paint_yellow",
+          "ivory": "galv",
+          "yellow": "hazard_y",
+          "steel": "galv",
+          "machined": "galv",
+          "dark": "steel_dark",
+          "blue": "paint_grey",
+          "deck": "deck",
+          "rubber": "rubber"
+        },
+        "materials": {
+          "deck": {
+            "baseColorFactor": [
+              0.30000001192092896,
+              0.3100000023841858,
+              0.30000001192092896,
+              1
+            ],
+            "metallicFactor": 0.6000000238418579,
+            "roughnessFactor": 0.699999988079071
+          },
+          "paint_white": {
+            "baseColorFactor": [
+              0.8799999952316284,
+              0.8899999856948853,
+              0.8999999761581421,
+              1
+            ],
+            "metallicFactor": 0.15000000596046448,
+            "roughnessFactor": 0.5
+          },
+          "paint_grey": {
+            "baseColorFactor": [
+              0.36000001430511475,
+              0.38999998569488525,
+              0.4300000071525574,
+              1
+            ],
+            "metallicFactor": 0.30000001192092896,
+            "roughnessFactor": 0.550000011920929
+          },
+          "glass": {
+            "baseColorFactor": [
+              0.25,
+              0.44999998807907104,
+              0.6000000238418579,
+              1
+            ],
+            "metallicFactor": 0,
+            "roughnessFactor": 0.07999999821186066
+          },
+          "galv": {
+            "baseColorFactor": [
+              0.7200000286102295,
+              0.7400000095367432,
+              0.7599999904632568,
+              1
+            ],
+            "metallicFactor": 1,
+            "roughnessFactor": 0.3199999928474426
+          },
+          "hazard_y": {
+            "baseColorFactor": [
+              0.9800000190734863,
+              0.7799999713897705,
+              0.05000000074505806,
+              1
+            ],
+            "metallicFactor": 0.20000000298023224,
+            "roughnessFactor": 0.5
+          },
+          "hazard_k": {
+            "baseColorFactor": [
+              0.019999999552965164,
+              0.019999999552965164,
+              0.019999999552965164,
+              1
+            ],
+            "metallicFactor": 0.20000000298023224,
+            "roughnessFactor": 0.6000000238418579
+          },
+          "paint_yellow": {
+            "baseColorFactor": [
+              0.949999988079071,
+              0.6800000071525574,
+              0.05999999865889549,
+              1
+            ],
+            "metallicFactor": 0.25,
+            "roughnessFactor": 0.44999998807907104
+          },
+          "wire": {
+            "baseColorFactor": [
+              0.44999998807907104,
+              0.44999998807907104,
+              0.44999998807907104,
+              1
+            ],
+            "metallicFactor": 1,
+            "roughnessFactor": 0.4000000059604645
+          },
+          "steel_dark": {
+            "baseColorFactor": [
+              0.1599999964237213,
+              0.17000000178813934,
+              0.1899999976158142,
+              1
+            ],
+            "metallicFactor": 0.699999988079071,
+            "roughnessFactor": 0.5
+          },
+          "paint_red": {
+            "baseColorFactor": [
+              0.7799999713897705,
+              0.07999999821186066,
+              0.07000000029802322,
+              1
+            ],
+            "metallicFactor": 0.25,
+            "roughnessFactor": 0.44999998807907104
+          },
+          "paint_blue": {
+            "baseColorFactor": [
+              0.10000000149011612,
+              0.30000001192092896,
+              0.6200000047683716,
+              1
+            ],
+            "metallicFactor": 0.25,
+            "roughnessFactor": 0.44999998807907104
+          },
+          "rubber": {
+            "baseColorFactor": [
+              0.029999999329447746,
+              0.029999999329447746,
+              0.029999999329447746,
+              1
+            ],
+            "metallicFactor": 0,
+            "roughnessFactor": 0.8999999761581421
+          },
+          "pipe": {
+            "baseColorFactor": [
+              0.3499999940395355,
+              0.2199999988079071,
+              0.11999999731779099,
+              1
+            ],
+            "metallicFactor": 0.6000000238418579,
+            "roughnessFactor": 0.6000000238418579
+          },
+          "paint_orange": {
+            "baseColorFactor": [
+              0.9200000166893005,
+              0.41999998688697815,
+              0.05999999865889549,
+              1
+            ],
+            "metallicFactor": 0.25,
+            "roughnessFactor": 0.44999998807907104
+          },
+          "paint_green": {
+            "baseColorFactor": [
+              0.12999999523162842,
+              0.41999998688697815,
+              0.20000000298023224,
+              1
+            ],
+            "metallicFactor": 0.25,
+            "roughnessFactor": 0.5
+          }
+        }
+      },
+      "unitCount": 1,
+      "lods": {
+        "H": {
+          "file": "glb/substructure_drill_floor_A_lodH.glb",
+          "triangles": 21104,
+          "bytes": 517244,
+          "drawCalls": 59,
+          "boundingBox": {
+            "min": [
+              -7.628000020980835,
+              0,
+              -6.414778470993042
+            ],
+            "max": [
+              7.628000020980835,
+              10.540000015497206,
+              6.414778470993042
+            ],
+            "size": [
+              15.25600004196167,
+              10.540000015497206,
+              12.829556941986084
+            ]
+          },
+          "nodeToBom": {
+            "substructure_drill_floor_A": "RB3/substructure_drill_floor_A",
+            "substructure_drill_floor_A/substructure": "RB3/substructure_drill_floor_A/substructure",
+            "substructure_drill_floor_A/substructure/box_on_box_frames": "RB3/substructure_drill_floor_A/substructure/box_on_box_frames",
+            "substructure_drill_floor_A/substructure/floor_support_beams": "RB3/substructure_drill_floor_A/substructure/floor_support_beams",
+            "substructure_drill_floor_A/substructure/hinges_pins_and_gussets": "RB3/substructure_drill_floor_A/substructure/hinges_pins_and_gussets",
+            "substructure_drill_floor_A/drill_floor": "RB3/substructure_drill_floor_A/drill_floor",
+            "substructure_drill_floor_A/rotary_table": "RB3/substructure_drill_floor_A/rotary_table",
+            "substructure_drill_floor_A/setback": "RB3/substructure_drill_floor_A/setback",
+            "substructure_drill_floor_A/perimeter_grating": "RB3/substructure_drill_floor_A/perimeter_grating",
+            "substructure_drill_floor_A/handrails": "RB3/substructure_drill_floor_A/handrails",
+            "substructure_drill_floor_A/vdoor": "RB3/substructure_drill_floor_A/vdoor",
+            "substructure_drill_floor_A/stairs": "RB3/substructure_drill_floor_A/stairs",
+            "substructure_drill_floor_A/stairs/flight_1": "RB3/substructure_drill_floor_A/stairs/flight_1",
+            "substructure_drill_floor_A/stairs/flight_2": "RB3/substructure_drill_floor_A/stairs/flight_2",
+            "substructure_drill_floor_A/stairs/flight_3": "RB3/substructure_drill_floor_A/stairs/flight_3",
+            "substructure_drill_floor_A/stairs/stair_top_landing": "RB3/substructure_drill_floor_A/stairs/stair_top_landing",
+            "substructure_drill_floor_A/stairs/light_stair_1": "RB3/substructure_drill_floor_A/stairs/light_stair_1",
+            "substructure_drill_floor_A/stairs/light_stair_2": "RB3/substructure_drill_floor_A/stairs/light_stair_2",
+            "substructure_drill_floor_A/stairs/light_stair_3": "RB3/substructure_drill_floor_A/stairs/light_stair_3",
+            "substructure_drill_floor_A/derrick_mounts": "RB3/substructure_drill_floor_A/derrick_mounts",
+            "substructure_drill_floor_A/light_floor_1": "RB3/substructure_drill_floor_A/light_floor_1",
+            "substructure_drill_floor_A/light_floor_2": "RB3/substructure_drill_floor_A/light_floor_2",
+            "substructure_drill_floor_A/light_floor_3": "RB3/substructure_drill_floor_A/light_floor_3",
+            "substructure_drill_floor_A/light_floor_4": "RB3/substructure_drill_floor_A/light_floor_4"
+          },
+          "bakedAO": true,
+          "optimisation": {
+            "before": 21108,
+            "after": 21108,
+            "budget": 60000,
+            "maxPositionErrorMetres": 0.008
+          },
+          "textureMax": 2048,
+          "geometryTranslationFromCanonical": [
+            0,
+            0,
+            0
+          ]
+        },
+        "M": {
+          "file": "glb/substructure_drill_floor_A_lodM.glb",
+          "triangles": 8692,
+          "bytes": 344724,
+          "drawCalls": 57,
+          "boundingBox": {
+            "min": [
+              -7.628000020980835,
+              0,
+              -6.414778470993042
+            ],
+            "max": [
+              7.628000020980835,
+              10.540000015497206,
+              6.414778470993042
+            ],
+            "size": [
+              15.25600004196167,
+              10.540000015497206,
+              12.829556941986084
+            ]
+          },
+          "nodeToBom": {
+            "substructure_drill_floor_A": "RB3/substructure_drill_floor_A",
+            "substructure_drill_floor_A/substructure": "RB3/substructure_drill_floor_A/substructure",
+            "substructure_drill_floor_A/substructure/box_on_box_frames": "RB3/substructure_drill_floor_A/substructure/box_on_box_frames",
+            "substructure_drill_floor_A/substructure/floor_support_beams": "RB3/substructure_drill_floor_A/substructure/floor_support_beams",
+            "substructure_drill_floor_A/substructure/hinges_pins_and_gussets": "RB3/substructure_drill_floor_A/substructure/hinges_pins_and_gussets",
+            "substructure_drill_floor_A/drill_floor": "RB3/substructure_drill_floor_A/drill_floor",
+            "substructure_drill_floor_A/rotary_table": "RB3/substructure_drill_floor_A/rotary_table",
+            "substructure_drill_floor_A/setback": "RB3/substructure_drill_floor_A/setback",
+            "substructure_drill_floor_A/perimeter_grating": "RB3/substructure_drill_floor_A/perimeter_grating",
+            "substructure_drill_floor_A/handrails": "RB3/substructure_drill_floor_A/handrails",
+            "substructure_drill_floor_A/vdoor": "RB3/substructure_drill_floor_A/vdoor",
+            "substructure_drill_floor_A/stairs": "RB3/substructure_drill_floor_A/stairs",
+            "substructure_drill_floor_A/stairs/flight_1": "RB3/substructure_drill_floor_A/stairs/flight_1",
+            "substructure_drill_floor_A/stairs/flight_2": "RB3/substructure_drill_floor_A/stairs/flight_2",
+            "substructure_drill_floor_A/stairs/flight_3": "RB3/substructure_drill_floor_A/stairs/flight_3",
+            "substructure_drill_floor_A/stairs/stair_top_landing": "RB3/substructure_drill_floor_A/stairs/stair_top_landing",
+            "substructure_drill_floor_A/stairs/light_stair_1": "RB3/substructure_drill_floor_A/stairs/light_stair_1",
+            "substructure_drill_floor_A/stairs/light_stair_2": "RB3/substructure_drill_floor_A/stairs/light_stair_2",
+            "substructure_drill_floor_A/stairs/light_stair_3": "RB3/substructure_drill_floor_A/stairs/light_stair_3",
+            "substructure_drill_floor_A/derrick_mounts": "RB3/substructure_drill_floor_A/derrick_mounts",
+            "substructure_drill_floor_A/light_floor_1": "RB3/substructure_drill_floor_A/light_floor_1",
+            "substructure_drill_floor_A/light_floor_2": "RB3/substructure_drill_floor_A/light_floor_2",
+            "substructure_drill_floor_A/light_floor_3": "RB3/substructure_drill_floor_A/light_floor_3",
+            "substructure_drill_floor_A/light_floor_4": "RB3/substructure_drill_floor_A/light_floor_4"
+          },
+          "bakedAO": true,
+          "optimisation": {
+            "before": 8708,
+            "after": 8708,
+            "budget": 20000,
+            "maxPositionErrorMetres": 0.035
+          },
+          "textureMax": 1024,
+          "geometryTranslationFromCanonical": [
+            0,
+            0,
+            0
+          ]
+        },
+        "L": {
+          "file": "glb/substructure_drill_floor_A_lodL.glb",
+          "triangles": 4588,
+          "bytes": 191812,
+          "drawCalls": 48,
+          "boundingBox": {
+            "min": [
+              -7.628000020980835,
+              0,
+              -6.414778470993042
+            ],
+            "max": [
+              7.628000020980835,
+              10.540000015497206,
+              6.414778470993042
+            ],
+            "size": [
+              15.25600004196167,
+              10.540000015497206,
+              12.829556941986084
+            ]
+          },
+          "nodeToBom": {
+            "substructure_drill_floor_A": "RB3/substructure_drill_floor_A",
+            "substructure_drill_floor_A/substructure": "RB3/substructure_drill_floor_A/substructure",
+            "substructure_drill_floor_A/substructure/box_on_box_frames": "RB3/substructure_drill_floor_A/substructure/box_on_box_frames",
+            "substructure_drill_floor_A/substructure/floor_support_beams": "RB3/substructure_drill_floor_A/substructure/floor_support_beams",
+            "substructure_drill_floor_A/substructure/hinges_pins_and_gussets": "RB3/substructure_drill_floor_A/substructure/hinges_pins_and_gussets",
+            "substructure_drill_floor_A/drill_floor": "RB3/substructure_drill_floor_A/drill_floor",
+            "substructure_drill_floor_A/rotary_table": "RB3/substructure_drill_floor_A/rotary_table",
+            "substructure_drill_floor_A/setback": "RB3/substructure_drill_floor_A/setback",
+            "substructure_drill_floor_A/perimeter_grating": "RB3/substructure_drill_floor_A/perimeter_grating",
+            "substructure_drill_floor_A/handrails": "RB3/substructure_drill_floor_A/handrails",
+            "substructure_drill_floor_A/vdoor": "RB3/substructure_drill_floor_A/vdoor",
+            "substructure_drill_floor_A/stairs": "RB3/substructure_drill_floor_A/stairs",
+            "substructure_drill_floor_A/stairs/flight_1": "RB3/substructure_drill_floor_A/stairs/flight_1",
+            "substructure_drill_floor_A/stairs/flight_2": "RB3/substructure_drill_floor_A/stairs/flight_2",
+            "substructure_drill_floor_A/stairs/flight_3": "RB3/substructure_drill_floor_A/stairs/flight_3",
+            "substructure_drill_floor_A/stairs/stair_top_landing": "RB3/substructure_drill_floor_A/stairs/stair_top_landing",
+            "substructure_drill_floor_A/stairs/light_stair_1": "RB3/substructure_drill_floor_A/stairs/light_stair_1",
+            "substructure_drill_floor_A/stairs/light_stair_2": "RB3/substructure_drill_floor_A/stairs/light_stair_2",
+            "substructure_drill_floor_A/stairs/light_stair_3": "RB3/substructure_drill_floor_A/stairs/light_stair_3",
+            "substructure_drill_floor_A/derrick_mounts": "RB3/substructure_drill_floor_A/derrick_mounts",
+            "substructure_drill_floor_A/light_floor_1": "RB3/substructure_drill_floor_A/light_floor_1",
+            "substructure_drill_floor_A/light_floor_2": "RB3/substructure_drill_floor_A/light_floor_2",
+            "substructure_drill_floor_A/light_floor_3": "RB3/substructure_drill_floor_A/light_floor_3",
+            "substructure_drill_floor_A/light_floor_4": "RB3/substructure_drill_floor_A/light_floor_4"
+          },
+          "bakedAO": true,
+          "optimisation": {
+            "before": 4604,
+            "after": 4604,
+            "budget": 6000,
+            "maxPositionErrorMetres": 0.13
+          },
+          "textureMax": 512,
+          "geometryTranslationFromCanonical": [
+            0,
+            0,
+            0
+          ]
+        }
+      },
+      "nodeToBom": {
+        "substructure_drill_floor_A": "RB3/substructure_drill_floor_A",
+        "substructure_drill_floor_A/substructure": "RB3/substructure_drill_floor_A/substructure",
+        "substructure_drill_floor_A/substructure/box_on_box_frames": "RB3/substructure_drill_floor_A/substructure/box_on_box_frames",
+        "substructure_drill_floor_A/substructure/floor_support_beams": "RB3/substructure_drill_floor_A/substructure/floor_support_beams",
+        "substructure_drill_floor_A/substructure/hinges_pins_and_gussets": "RB3/substructure_drill_floor_A/substructure/hinges_pins_and_gussets",
+        "substructure_drill_floor_A/drill_floor": "RB3/substructure_drill_floor_A/drill_floor",
+        "substructure_drill_floor_A/rotary_table": "RB3/substructure_drill_floor_A/rotary_table",
+        "substructure_drill_floor_A/setback": "RB3/substructure_drill_floor_A/setback",
+        "substructure_drill_floor_A/perimeter_grating": "RB3/substructure_drill_floor_A/perimeter_grating",
+        "substructure_drill_floor_A/handrails": "RB3/substructure_drill_floor_A/handrails",
+        "substructure_drill_floor_A/vdoor": "RB3/substructure_drill_floor_A/vdoor",
+        "substructure_drill_floor_A/stairs": "RB3/substructure_drill_floor_A/stairs",
+        "substructure_drill_floor_A/stairs/flight_1": "RB3/substructure_drill_floor_A/stairs/flight_1",
+        "substructure_drill_floor_A/stairs/flight_2": "RB3/substructure_drill_floor_A/stairs/flight_2",
+        "substructure_drill_floor_A/stairs/flight_3": "RB3/substructure_drill_floor_A/stairs/flight_3",
+        "substructure_drill_floor_A/stairs/stair_top_landing": "RB3/substructure_drill_floor_A/stairs/stair_top_landing",
+        "substructure_drill_floor_A/stairs/light_stair_1": "RB3/substructure_drill_floor_A/stairs/light_stair_1",
+        "substructure_drill_floor_A/stairs/light_stair_2": "RB3/substructure_drill_floor_A/stairs/light_stair_2",
+        "substructure_drill_floor_A/stairs/light_stair_3": "RB3/substructure_drill_floor_A/stairs/light_stair_3",
+        "substructure_drill_floor_A/derrick_mounts": "RB3/substructure_drill_floor_A/derrick_mounts",
+        "substructure_drill_floor_A/light_floor_1": "RB3/substructure_drill_floor_A/light_floor_1",
+        "substructure_drill_floor_A/light_floor_2": "RB3/substructure_drill_floor_A/light_floor_2",
+        "substructure_drill_floor_A/light_floor_3": "RB3/substructure_drill_floor_A/light_floor_3",
+        "substructure_drill_floor_A/light_floor_4": "RB3/substructure_drill_floor_A/light_floor_4"
+      },
+      "components": [
+        {
+          "nodePath": "substructure_drill_floor_A",
+          "bomId": "RB3/substructure_drill_floor_A",
+          "name": "substructure drill floor A",
+          "specs": {
+            "dimensions_m": [
+              15.25600004196167,
+              10.540000015497206,
+              12.829556941986084
+            ],
+            "floor_height_m": 9,
+            "setback_load_lbf": 500000,
+            "setback_load_kN": 2224.1108,
+            "rotary_load_lbf": 1000000,
+            "rotary_load_kN": 4448.2216,
+            "deckWidth_m": 12.2,
+            "deckDepth_m": 11.2,
+            "ratingBasis": "Representative independent static load classes, not a combined-load calculation",
+            "mastFootPattern_m": [
+              9,
+              9
+            ],
+            "style": "Measured Showroom A paint and 9 m mast foot spacing; detailed pass 3 envelope",
+            "referenceFloorHeight_m": 7.8
+          }
+        },
+        {
+          "nodePath": "substructure_drill_floor_A/substructure",
+          "bomId": "RB3/substructure_drill_floor_A/substructure",
+          "name": "substructure",
+          "specs": {
+            "dimensions_m": [
+              12.199999809265137,
+              8.954000472426413,
+              11.57800006866455
+            ],
+            "floorHeight_m": 9,
+            "style": "Showroom A paint_yellow; detailed pass 3 land structure",
+            "reference": "references/triple_high.glb"
+          }
+        },
+        {
+          "nodePath": "substructure_drill_floor_A/substructure/box_on_box_frames",
+          "bomId": "RB3/substructure_drill_floor_A/substructure/box_on_box_frames",
+          "name": "box on box frames",
+          "specs": {
+            "dimensions_m": [
+              11.800000190734863,
+              8.954000472426413,
+              11.199999809265137
+            ]
+          }
+        },
+        {
+          "nodePath": "substructure_drill_floor_A/substructure/floor_support_beams",
+          "bomId": "RB3/substructure_drill_floor_A/substructure/floor_support_beams",
+          "name": "floor support beams",
+          "specs": {
+            "dimensions_m": [
+              12.199999809265137,
+              0.3000001907348633,
+              11.57800006866455
+            ]
+          }
+        },
+        {
+          "nodePath": "substructure_drill_floor_A/substructure/hinges_pins_and_gussets",
+          "bomId": "RB3/substructure_drill_floor_A/substructure/hinges_pins_and_gussets",
+          "name": "hinges pins and gussets",
+          "specs": {
+            "dimensions_m": [
+              11.482500076293945,
+              8.324999809265137,
+              10.020000457763672
+            ]
+          }
+        },
+        {
+          "nodePath": "substructure_drill_floor_A/drill_floor",
+          "bomId": "RB3/substructure_drill_floor_A/drill_floor",
+          "name": "drill floor",
+          "specs": {
+            "dimensions_m": [
+              12.199999809265137,
+              0.12999999523162842,
+              11.199999809265137
+            ],
+            "width_m": 12.2,
+            "depth_m": 11.2,
+            "surfaceHeight_m": 9
+          }
+        },
+        {
+          "nodePath": "substructure_drill_floor_A/rotary_table",
+          "bomId": "RB3/substructure_drill_floor_A/rotary_table",
+          "name": "rotary table",
+          "specs": {
+            "dimensions_m": [
+              2.3359999656677246,
+              0.42249999940395355,
+              2.350000023841858
+            ],
+            "staticLoad_lbf": 1000000,
+            "clearBore_m": 1.05
+          }
+        },
+        {
+          "nodePath": "substructure_drill_floor_A/setback",
+          "bomId": "RB3/substructure_drill_floor_A/setback",
+          "name": "setback",
+          "specs": {
+            "dimensions_m": [
+              4.900000095367432,
+              0.11500000208616257,
+              2.5
+            ],
+            "staticLoad_lbf": 500000
+          }
+        },
+        {
+          "nodePath": "substructure_drill_floor_A/perimeter_grating",
+          "bomId": "RB3/substructure_drill_floor_A/perimeter_grating",
+          "name": "perimeter grating",
+          "specs": {
+            "dimensions_m": [
+              12.225000381469727,
+              0.09000015258789062,
+              11.255000114440918
+            ]
+          }
+        },
+        {
+          "nodePath": "substructure_drill_floor_A/handrails",
+          "bomId": "RB3/substructure_drill_floor_A/handrails",
+          "name": "handrails",
+          "specs": {
+            "dimensions_m": [
+              12.255999565124512,
+              1.1239995956420898,
+              11.255999565124512
+            ]
+          }
+        },
+        {
+          "nodePath": "substructure_drill_floor_A/vdoor",
+          "bomId": "RB3/substructure_drill_floor_A/vdoor",
+          "name": "vdoor",
+          "specs": {
+            "dimensions_m": [
+              3.5,
+              1.0261764526367188,
+              1.640556812286377
+            ],
+            "direction": "+Z",
+            "type": "Pipe receiving ramp, short floor-level V-door"
+          }
+        },
+        {
+          "nodePath": "substructure_drill_floor_A/stairs",
+          "bomId": "RB3/substructure_drill_floor_A/stairs",
+          "name": "stairs",
+          "specs": {
+            "dimensions_m": [
+              3.078000068664551,
+              10.123999607563018,
+              6.855999946594238
+            ],
+            "flights": 3,
+            "rise_m_each": 3,
+            "clearWidth_m": 1.12
+          }
+        },
+        {
+          "nodePath": "substructure_drill_floor_A/stairs/flight_1",
+          "bomId": "RB3/substructure_drill_floor_A/stairs/flight_1",
+          "name": "flight 1",
+          "specs": {
+            "dimensions_m": [
+              2.8560004234313965,
+              4.124000084400177,
+              5.765605926513672
+            ]
+          }
+        },
+        {
+          "nodePath": "substructure_drill_floor_A/stairs/flight_2",
+          "bomId": "RB3/substructure_drill_floor_A/stairs/flight_2",
+          "name": "flight 2",
+          "specs": {
+            "dimensions_m": [
+              2.8560004234313965,
+              4.124000072479248,
+              5.765606120228767
+            ]
+          }
+        },
+        {
+          "nodePath": "substructure_drill_floor_A/stairs/flight_3",
+          "bomId": "RB3/substructure_drill_floor_A/stairs/flight_3",
+          "name": "flight 3",
+          "specs": {
+            "dimensions_m": [
+              1.3400001525878906,
+              4.120940208435058,
+              4.675212100148201
+            ]
+          }
+        },
+        {
+          "nodePath": "substructure_drill_floor_A/stairs/stair_top_landing",
+          "bomId": "RB3/substructure_drill_floor_A/stairs/stair_top_landing",
+          "name": "stair top landing",
+          "specs": {
+            "dimensions_m": [
+              1.5279998779296875,
+              1.2439994812011719,
+              1.5560000240802765
+            ]
+          }
+        },
+        {
+          "nodePath": "substructure_drill_floor_A/stairs/light_stair_1",
+          "bomId": "RB3/substructure_drill_floor_A/stairs/light_stair_1",
+          "name": "light stair 1",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        },
+        {
+          "nodePath": "substructure_drill_floor_A/stairs/light_stair_2",
+          "bomId": "RB3/substructure_drill_floor_A/stairs/light_stair_2",
+          "name": "light stair 2",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        },
+        {
+          "nodePath": "substructure_drill_floor_A/stairs/light_stair_3",
+          "bomId": "RB3/substructure_drill_floor_A/stairs/light_stair_3",
+          "name": "light stair 3",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        },
+        {
+          "nodePath": "substructure_drill_floor_A/derrick_mounts",
+          "bomId": "RB3/substructure_drill_floor_A/derrick_mounts",
+          "name": "derrick mounts",
+          "specs": {
+            "dimensions_m": [
+              9.859999656677246,
+              0.2174997329711914,
+              9.920000076293945
+            ],
+            "mountingPattern_m": [
+              9,
+              9
+            ]
+          }
+        },
+        {
+          "nodePath": "substructure_drill_floor_A/light_floor_1",
+          "bomId": "RB3/substructure_drill_floor_A/light_floor_1",
+          "name": "light floor 1",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        },
+        {
+          "nodePath": "substructure_drill_floor_A/light_floor_2",
+          "bomId": "RB3/substructure_drill_floor_A/light_floor_2",
+          "name": "light floor 2",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        },
+        {
+          "nodePath": "substructure_drill_floor_A/light_floor_3",
+          "bomId": "RB3/substructure_drill_floor_A/light_floor_3",
+          "name": "light floor 3",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        },
+        {
+          "nodePath": "substructure_drill_floor_A/light_floor_4",
+          "bomId": "RB3/substructure_drill_floor_A/light_floor_4",
+          "name": "light floor 4",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        }
+      ],
+      "anchors": {
+        "attach_base": {
+          "nodePath": "substructure_drill_floor_A/attach_base",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "role": "Ground / receiving surface"
+        },
+        "attach_mast_foot_LB": {
+          "nodePath": "substructure_drill_floor_A/attach_mast_foot_LB",
+          "position": [
+            -2.999999761581421,
+            9.160000011920928,
+            -5.125778436660767
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "role": "Land mast mounting plate"
+        },
+        "attach_mast_foot_LF": {
+          "nodePath": "substructure_drill_floor_A/attach_mast_foot_LF",
+          "position": [
+            -2.999999761581421,
+            9.160000011920928,
+            3.8742215633392334
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "role": "Land mast mounting plate"
+        },
+        "attach_mast_foot_RB": {
+          "nodePath": "substructure_drill_floor_A/attach_mast_foot_RB",
+          "position": [
+            6.000000238418579,
+            9.160000011920928,
+            -5.125778436660767
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "role": "Land mast mounting plate"
+        },
+        "attach_mast_foot_RF": {
+          "nodePath": "substructure_drill_floor_A/attach_mast_foot_RF",
+          "position": [
+            6.000000238418579,
+            9.160000011920928,
+            3.8742215633392334
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "role": "Land mast mounting plate"
+        },
+        "attach_top": {
+          "nodePath": "substructure_drill_floor_A/attach_top",
+          "position": [
+            1.500000238418579,
+            9.000000011920928,
+            -0.6257784366607666
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "role": "Deck / mast stacking datum"
+        },
+        "attach_wellcentre": {
+          "nodePath": "substructure_drill_floor_A/attach_wellcentre",
+          "position": [
+            1.500000238418579,
+            9.000000011920928,
+            -0.6257784366607666
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "role": "Rotary clear-bore centre at drill-floor surface"
+        },
+        "attach_vdoor": {
+          "nodePath": "substructure_drill_floor_A/attach_vdoor",
+          "position": [
+            1.500000238418579,
+            9.000000011920928,
+            5.874221563339233
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "role": "Pipe-handling approach datum; faces +Z"
+        }
+      },
+      "screenshots": {
+        "day": "screenshots/substructure_drill_floor_A_day.png",
+        "night": "screenshots/substructure_drill_floor_A_night.png"
+      },
+      "sourceToOriginOffset": [
+        1.500000238418579,
+        1.1920929132713809e-08,
+        -0.6257784366607666
+      ],
+      "boundingBox": {
+        "min": [
+          -7.628000020980835,
+          0,
+          -6.414778470993042
+        ],
+        "max": [
+          7.628000020980835,
+          10.540000015497206,
+          6.414778470993042
+        ],
+        "size": [
+          15.25600004196167,
+          10.540000015497206,
+          12.829556941986084
+        ]
+      },
+      "nodes": {
+        "substructure_drill_floor_A": {
+          "bomId": "RB3/substructure_drill_floor_A",
+          "name": "substructure drill floor A",
+          "specs": {
+            "dimensions_m": [
+              15.25600004196167,
+              10.540000015497206,
+              12.829556941986084
+            ],
+            "floor_height_m": 9,
+            "setback_load_lbf": 500000,
+            "setback_load_kN": 2224.1108,
+            "rotary_load_lbf": 1000000,
+            "rotary_load_kN": 4448.2216,
+            "deckWidth_m": 12.2,
+            "deckDepth_m": 11.2,
+            "ratingBasis": "Representative independent static load classes, not a combined-load calculation",
+            "mastFootPattern_m": [
+              9,
+              9
+            ],
+            "style": "Measured Showroom A paint and 9 m mast foot spacing; detailed pass 3 envelope",
+            "referenceFloorHeight_m": 7.8
+          }
+        },
+        "substructure_drill_floor_A/substructure": {
+          "bomId": "RB3/substructure_drill_floor_A/substructure",
+          "name": "substructure",
+          "specs": {
+            "dimensions_m": [
+              12.199999809265137,
+              8.954000472426413,
+              11.57800006866455
+            ],
+            "floorHeight_m": 9,
+            "style": "Showroom A paint_yellow; detailed pass 3 land structure",
+            "reference": "references/triple_high.glb"
+          }
+        },
+        "substructure_drill_floor_A/substructure/box_on_box_frames": {
+          "bomId": "RB3/substructure_drill_floor_A/substructure/box_on_box_frames",
+          "name": "box on box frames",
+          "specs": {
+            "dimensions_m": [
+              11.800000190734863,
+              8.954000472426413,
+              11.199999809265137
+            ]
+          }
+        },
+        "substructure_drill_floor_A/substructure/floor_support_beams": {
+          "bomId": "RB3/substructure_drill_floor_A/substructure/floor_support_beams",
+          "name": "floor support beams",
+          "specs": {
+            "dimensions_m": [
+              12.199999809265137,
+              0.3000001907348633,
+              11.57800006866455
+            ]
+          }
+        },
+        "substructure_drill_floor_A/substructure/hinges_pins_and_gussets": {
+          "bomId": "RB3/substructure_drill_floor_A/substructure/hinges_pins_and_gussets",
+          "name": "hinges pins and gussets",
+          "specs": {
+            "dimensions_m": [
+              11.482500076293945,
+              8.324999809265137,
+              10.020000457763672
+            ]
+          }
+        },
+        "substructure_drill_floor_A/drill_floor": {
+          "bomId": "RB3/substructure_drill_floor_A/drill_floor",
+          "name": "drill floor",
+          "specs": {
+            "dimensions_m": [
+              12.199999809265137,
+              0.12999999523162842,
+              11.199999809265137
+            ],
+            "width_m": 12.2,
+            "depth_m": 11.2,
+            "surfaceHeight_m": 9
+          }
+        },
+        "substructure_drill_floor_A/rotary_table": {
+          "bomId": "RB3/substructure_drill_floor_A/rotary_table",
+          "name": "rotary table",
+          "specs": {
+            "dimensions_m": [
+              2.3359999656677246,
+              0.42249999940395355,
+              2.350000023841858
+            ],
+            "staticLoad_lbf": 1000000,
+            "clearBore_m": 1.05
+          }
+        },
+        "substructure_drill_floor_A/setback": {
+          "bomId": "RB3/substructure_drill_floor_A/setback",
+          "name": "setback",
+          "specs": {
+            "dimensions_m": [
+              4.900000095367432,
+              0.11500000208616257,
+              2.5
+            ],
+            "staticLoad_lbf": 500000
+          }
+        },
+        "substructure_drill_floor_A/perimeter_grating": {
+          "bomId": "RB3/substructure_drill_floor_A/perimeter_grating",
+          "name": "perimeter grating",
+          "specs": {
+            "dimensions_m": [
+              12.225000381469727,
+              0.09000015258789062,
+              11.255000114440918
+            ]
+          }
+        },
+        "substructure_drill_floor_A/handrails": {
+          "bomId": "RB3/substructure_drill_floor_A/handrails",
+          "name": "handrails",
+          "specs": {
+            "dimensions_m": [
+              12.255999565124512,
+              1.1239995956420898,
+              11.255999565124512
+            ]
+          }
+        },
+        "substructure_drill_floor_A/vdoor": {
+          "bomId": "RB3/substructure_drill_floor_A/vdoor",
+          "name": "vdoor",
+          "specs": {
+            "dimensions_m": [
+              3.5,
+              1.0261764526367188,
+              1.640556812286377
+            ],
+            "direction": "+Z",
+            "type": "Pipe receiving ramp, short floor-level V-door"
+          }
+        },
+        "substructure_drill_floor_A/stairs": {
+          "bomId": "RB3/substructure_drill_floor_A/stairs",
+          "name": "stairs",
+          "specs": {
+            "dimensions_m": [
+              3.078000068664551,
+              10.123999607563018,
+              6.855999946594238
+            ],
+            "flights": 3,
+            "rise_m_each": 3,
+            "clearWidth_m": 1.12
+          }
+        },
+        "substructure_drill_floor_A/stairs/flight_1": {
+          "bomId": "RB3/substructure_drill_floor_A/stairs/flight_1",
+          "name": "flight 1",
+          "specs": {
+            "dimensions_m": [
+              2.8560004234313965,
+              4.124000084400177,
+              5.765605926513672
+            ]
+          }
+        },
+        "substructure_drill_floor_A/stairs/flight_2": {
+          "bomId": "RB3/substructure_drill_floor_A/stairs/flight_2",
+          "name": "flight 2",
+          "specs": {
+            "dimensions_m": [
+              2.8560004234313965,
+              4.124000072479248,
+              5.765606120228767
+            ]
+          }
+        },
+        "substructure_drill_floor_A/stairs/flight_3": {
+          "bomId": "RB3/substructure_drill_floor_A/stairs/flight_3",
+          "name": "flight 3",
+          "specs": {
+            "dimensions_m": [
+              1.3400001525878906,
+              4.120940208435058,
+              4.675212100148201
+            ]
+          }
+        },
+        "substructure_drill_floor_A/stairs/stair_top_landing": {
+          "bomId": "RB3/substructure_drill_floor_A/stairs/stair_top_landing",
+          "name": "stair top landing",
+          "specs": {
+            "dimensions_m": [
+              1.5279998779296875,
+              1.2439994812011719,
+              1.5560000240802765
+            ]
+          }
+        },
+        "substructure_drill_floor_A/stairs/light_stair_1": {
+          "bomId": "RB3/substructure_drill_floor_A/stairs/light_stair_1",
+          "name": "light stair 1",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        },
+        "substructure_drill_floor_A/stairs/light_stair_2": {
+          "bomId": "RB3/substructure_drill_floor_A/stairs/light_stair_2",
+          "name": "light stair 2",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        },
+        "substructure_drill_floor_A/stairs/light_stair_3": {
+          "bomId": "RB3/substructure_drill_floor_A/stairs/light_stair_3",
+          "name": "light stair 3",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        },
+        "substructure_drill_floor_A/derrick_mounts": {
+          "bomId": "RB3/substructure_drill_floor_A/derrick_mounts",
+          "name": "derrick mounts",
+          "specs": {
+            "dimensions_m": [
+              9.859999656677246,
+              0.2174997329711914,
+              9.920000076293945
+            ],
+            "mountingPattern_m": [
+              9,
+              9
+            ]
+          }
+        },
+        "substructure_drill_floor_A/light_floor_1": {
+          "bomId": "RB3/substructure_drill_floor_A/light_floor_1",
+          "name": "light floor 1",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        },
+        "substructure_drill_floor_A/light_floor_2": {
+          "bomId": "RB3/substructure_drill_floor_A/light_floor_2",
+          "name": "light floor 2",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        },
+        "substructure_drill_floor_A/light_floor_3": {
+          "bomId": "RB3/substructure_drill_floor_A/light_floor_3",
+          "name": "light floor 3",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        },
+        "substructure_drill_floor_A/light_floor_4": {
+          "bomId": "RB3/substructure_drill_floor_A/light_floor_4",
+          "name": "light floor 4",
+          "specs": {
+            "dimensions_m": [
+              0.2800000011920929,
+              0.33845771849155426,
+              0.16312366724014282
+            ],
+            "type": "LED work light",
+            "emissive": true
+          }
+        }
+      },
+      "showroomA": {
+        "verified": true,
+        "source": "source/references/triple_high.glb",
+        "sourceSha256": "fdb7b948850bf93dcb87224634cda1693ebce4cefcc29e8091f51b0a5f50441d",
+        "appearance": "Source linear colour, metallic and roughness factors with added procedural textures",
+        "scale": "Metres, unit scale",
+        "mastMountPattern_m": [
+          9,
+          9
+        ],
+        "floorElevation": {
+          "reference_m": 7.8,
+          "delivered_m": 9,
+          "reason": "Explicit 9 m floor in the request"
         }
       }
     }

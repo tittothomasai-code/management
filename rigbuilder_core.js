@@ -33,7 +33,7 @@ const shortRig=id=>({land_1500_ac_double:'1500 AC land',land_3000_triple_walking
 function nodes(r){const L=r.lods?.M||r.lods?.H||Object.values(r.lods||{})[0]||{};return L.nodeToBom||r.nodeToBom||{}}
 // man1 / man2: Codex manifests ({rigs:[...]}); bomRig: bom_data.js RIG ({assets:[{id,label?,components:[{n,lines}]}]}).
 // Pass-3 single-unit parts (assets/rigparts/pass3): one real unit per mesh, attach_* datums. src 'P3'.
-const P3SLOT={genset_single:'power',mud_tank_single:'tanks',mud_pump_single:'pumps',frac_pump_truck_single:'pumps',offshore_derrick:'mast',substructure_drill_floor:'sub'};
+const P3SLOT={genset_single:'power',mud_tank_single:'tanks',mud_pump_single:'pumps',frac_pump_truck_single:'pumps',offshore_derrick:'mast',substructure_drill_floor:'sub',substructure_drill_floor_A:'sub',offshore_drill_floor:'sub'};
 function p3cls(p){const b={...(CLS.land_1500_ac_double_detailed||CLS.A)},s=p.specs||{};
  if(p.id=='genset_single')b.kw=s.kW||b.kw;if(p.id=='mud_pump_single')b.php=s.hp||b.php;if(p.id=='frac_pump_truck_single')b.php=s.hhp||b.php;
  if(p.id=='offshore_derrick'){b.hook=Math.round((s.hook_load_kN||0)/9.80665);b.depth=(CLS.jackup||b).depth}return b}

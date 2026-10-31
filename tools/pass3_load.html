@@ -3,7 +3,7 @@
 import * as THREE from 'three';import {GLTFLoader} from '../vendor/loaders/GLTFLoader.js';import {DRACOLoader} from '../vendor/loaders/DRACOLoader.js';
 const d=new DRACOLoader();d.setDecoderPath('../vendor/libs/draco/');d.setDecoderConfig({type:'wasm'});const l=new GLTFLoader();l.setDRACOLoader(d);
 const base=new URLSearchParams(location.search).get('base');const man=await (await fetch(base+'manifest.json')).json();const out=[];
-for(const p of man.parts)for(const k of ['H','M','L']){const f=p.lods[k].file;try{const g=await l.loadAsync(base+f);const s=g.scene;s.updateMatrixWorld(true);
+for(const p of man.parts)for(const k of ["H","M","L"]){if(window.ONLY&&!ONLY.includes(p.id))continue;const f=p.lods[k].file;try{const g=await l.loadAsync(base+f);const s=g.scene;s.updateMatrixWorld(true);
  const bb=new THREE.Box3().setFromObject(s),sz=bb.getSize(new THREE.Vector3());let tris=0,mesh=0;s.traverse(o=>{if(o.isMesh){mesh++;const g=o.geometry;tris+=(g.index?g.index.count:g.attributes.position.count)/3}});
  const att={};s.traverse(o=>{if(o.name.startsWith('attach_')){const v=o.getWorldPosition(new THREE.Vector3());att[o.name]=[+v.x.toFixed(3),+v.y.toFixed(3),+v.z.toFixed(3)]}});
  out.push({id:p.id,lod:k,ok:true,tris,mesh,size:sz.toArray().map(v=>+v.toFixed(3)),minY:+bb.min.y.toFixed(3),att})}catch(e){out.push({id:p.id,lod:k,ok:false,err:''+e})}}
