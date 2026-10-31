@@ -24,7 +24,7 @@ const CSS=`#rigBuilder{position:fixed;inset:0;z-index:100002;background:#0b0d10;
 #rigBuilder input{cursor:text;width:100%;box-sizing:border-box}#rigBuilder .sim{border:1px solid #6b737c;color:#aab2ba;border-radius:3px;font-size:10px;padding:0 4px;margin-left:6px;letter-spacing:.1em}
 #rbTop{display:flex;align-items:center;gap:8px;padding:8px 12px;padding-top:calc(8px + env(safe-area-inset-top));border-bottom:1px solid #1f252b}#rbTop .tt{font-weight:600;letter-spacing:.3em;font-size:13px;flex:1}
 #rbTabs{display:none}#rbMain{display:grid;grid-template-columns:300px 1fr 360px;min-height:0}
-#rbMain>div{min-height:0;overflow:auto;padding:10px 12px;border-right:1px solid #1f252b}
+#rbMain>div{min-height:0;min-width:0;overflow:auto;padding:10px 12px;border-right:1px solid #1f252b}
 #rbSlots{display:flex;flex-direction:column;gap:3px;margin-bottom:8px}#rbSlots button{display:flex;justify-content:space-between;text-align:left;gap:6px;font-size:13px}
 #rbSlots button.on{border-color:#c9a46a;background:#221d14}#rbSlots button small{color:#8b949d;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px}
 #rbItems{display:flex;flex-direction:column;gap:3px}#rbItems button{text-align:left;display:flex;flex-direction:column;align-items:flex-start;font-size:13px}#rbItems button small{color:#8b949d;font-size:11px}
@@ -50,7 +50,7 @@ const CSS=`#rigBuilder{position:fixed;inset:0;z-index:100002;background:#0b0d10;
 #rbDlg .row{display:flex;gap:8px;justify-content:flex-end}#rbToast{position:absolute;left:50%;bottom:calc(16px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#1c2127;border:1px solid #3a434d;border-radius:6px;padding:6px 14px;z-index:6;font-size:13px;pointer-events:none;opacity:0;transition:opacity .2s}#rbToast.on{opacity:1}
 #rbHint{color:#6f7880;font-size:11px}
 @media (max-width:819px){#rbTabs{display:flex;gap:4px;padding:6px 8px;border-bottom:1px solid #1f252b}#rbTabs button{flex:1}#rbTabs button.on{border-color:#c9a46a;background:#221d14}
-#rigBuilder{grid-template-rows:auto auto 1fr}#rbMain{grid-template-columns:1fr}#rbMain>div{display:none;border:0;padding-bottom:calc(16px + env(safe-area-inset-bottom))}
+#rigBuilder{grid-template-rows:auto auto 1fr}#rbMain{grid-template-columns:minmax(0,1fr)}#rbCur,#rbOpenSaved{display:none}#rbTop{padding:6px 8px;padding-top:calc(6px + env(safe-area-inset-top))}#rbTop .tt{font-size:12px}#rbNameRow input{min-width:0;flex-basis:100%}#rbNameRow button{flex:1}#rbMain>div{display:none;border:0;padding-bottom:calc(16px + env(safe-area-inset-bottom))}
 #rigBuilder[data-tab=build] #rbCat,#rigBuilder[data-tab=build] #rbCenter,#rigBuilder[data-tab=specs] #rbRight{display:flex;flex-direction:column}
 #rigBuilder[data-tab=build] #rbMain{grid-template-rows:auto 1fr;overflow:auto}#rigBuilder[data-tab=build] #rbCenter{order:-1;overflow:visible}#rigBuilder[data-tab=build] #rbCat{overflow:visible}
 #rbSvg{min-height:200px;max-height:34vh;flex:none;height:34vh}#rbSlots{flex-direction:row;overflow-x:auto;gap:4px;padding-bottom:4px}#rbSlots button{flex:none;flex-direction:column}#rbSlots button small{max-width:110px}#rbHint{display:none}#rbTop .tt{letter-spacing:.16em}}`;
