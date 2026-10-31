@@ -4,7 +4,7 @@
 // Selector on the start screen (under the tiles) and in Tools > Settings. HUD Showroom button routes to the chosen one.
 const K='dw_showroom_ab',$=id=>document.getElementById(id);
 const REG={A:{label:'A · Classic',aria:'Showroom A, classic',open:async i=>{const m=await import('./showroom.js?v=b16');m.init();m.open(i)}},
- B:{label:'B · Arcade',aria:'Showroom B, arcade',open:async i=>{const m=await import('./showroomb.js?v=b1');m.open(i)}}};
+ B:{label:'B · Arcade',aria:'Showroom B, arcade',open:async i=>{const m=await import('./showroomb.js?v=b2');m.open(i)}}};
 export const keys=()=>Object.keys(REG).filter(k=>!REG[k].hidden).sort();
 export function register(k,o){k=String(k||'').toUpperCase();if(!/^[A-Z]$/.test(k)||typeof o?.open!='function')return false;REG[k]={label:o.label||k,aria:o.aria||'Showroom '+k,open:o.open,hidden:!!o.hidden};render();return true}
 export function get(){try{const u=new URLSearchParams(location.search).get('showroom'),v=(u||localStorage.getItem(K)||'A').toUpperCase();return REG[v]&&!REG[v].hidden?v:'A'}catch(e){return 'A'}}
