@@ -18,11 +18,17 @@ void main(){vec3 d=normalize(vD);float h=d.y,hp=max(h,0.);
  c+=vec3(.010,.016,.010)*exp(-abs(h-.06)*30.);                     // faint airglow layer
  float mc=max(dot(d,uMoon),0.);c+=vec3(.05,.058,.07)*pow(mc,60.)+vec3(.012,.015,.02)*pow(mc,6.); // moon aureole
  if(uMW>0.){vec3 gp=normalize(vec3(.42,.55,-.72));float b=dot(d,gp);float band=exp(-b*b/.018);
+  
+#ifdef LOWQ
+  float n=n3(d*9.);float dust=0.;
+#else
   float n=n3(d*7.)*.55+n3(d*15.)*.30+n3(d*31.)*.15;float dust=smoothstep(.45,.75,n3(d*11.+3.))*exp(-b*b/.004);
+#endif
+
   c+=vec3(.045,.047,.055)*band*(.45+.9*n)*(1.-.7*dust)*smoothstep(0.,.35,hp)*uMW;}
  if(h<0.)c=mix(c,vec3(.03,.032,.036),smoothstep(0.,-.08,h));
  gl_FragColor=vec4(c,uOp);}`;
-export function sky(R,q){const m=new T.Mesh(new T.SphereGeometry(R,32,20),new T.ShaderMaterial({vertexShader:VS,fragmentShader:FS,side:T.BackSide,transparent:true,depthWrite:false,fog:false,toneMapped:false,
+export function sky(R,q){const m=new T.Mesh(new T.SphereGeometry(R,32,20),new T.ShaderMaterial({defines:q=='low'?{LOWQ:1}:{},vertexShader:VS,fragmentShader:FS,side:T.BackSide,transparent:true,depthWrite:false,fog:false,toneMapped:false,
  uniforms:{uOp:{value:0},uMW:{value:q=='low'?0.7:1},uMoon:{value:MOON.clone().normalize()},uPol:{value:new T.Vector3(0,0,1)}}}));
  m.material.opacity=0;m.onBeforeRender=()=>{m.material.uniforms.uOp.value=m.material.opacity};m.renderOrder=-10;m.name='nightSky';m.frustumCulled=false;return m}
 export const MOON_POS=[-520,620,-760];let MOON=null;
