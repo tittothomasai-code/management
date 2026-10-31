@@ -8,7 +8,7 @@ const H={skip:false,prev:{},inited:false};
 const vis=e=>!!e&&getComputedStyle(e).display!='none'&&getComputedStyle(e).visibility!='hidden'&&e.getBoundingClientRect().width>0;
 export function inScene(){return !$('start')}
 export function busy(){const W=window.GX?.witsml?.WML,S=window.GX?.session?.S;return !!(W&&W.timer)||!!(S&&S.code)}
-export function anyOpen(){if($('showroomB'))return true;/* showroom-b hook */if(window.GX?.safety?.isOpen?.())return true;/* safety hook */const DK=window.GX?.ui?.DK;if(DK?.on&&DK.open?.length)return true;
+export function anyOpen(){if($('showroomB'))return true;if(document.getElementById('showroomC'))return true;/* showroom-c hook *//* showroom-b hook */if(window.GX?.safety?.isOpen?.())return true;/* safety hook */const DK=window.GX?.ui?.DK;if(DK?.on&&DK.open?.length)return true;
  const o=[...document.body.children].filter(e=>(e.tagName=='DIV'||e.id=='uiTools')&&!SKIP.has(e.id)&&/fixed|absolute/.test(getComputedStyle(e).position));
  document.querySelectorAll('#panels>.panel').forEach(e=>o.push(e));const w=$('wshop');if(w)o.push(w);return o.some(vis)}
 function mark(){try{if(!history.state?.dwScene)history.pushState({...(history.state||{}),dwScene:1},'',location.href)}catch(e){}}
