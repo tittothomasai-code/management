@@ -73,8 +73,8 @@ async function choose(){const go=ST.items[ST.i]?.dataset.go;beep(880,.1);
  if(go=='showroom'){close('showroom');const P=await import('./srpick.js?v=b7').catch(()=>null);if(P){await P.open();return}const m=await import('./showroom.js?v=b17');m.init();m.open();return}
  if(go=='workover'){close('workover');const m=await import('./workover.js?v=b13');m.open();return}
  if(go=='saved'){ST.menu='saved';return render()}
- if(go?.startsWith('open:')){close('edm');const m=await import('./edmui.js?v=b15');m.openSaved(go.slice(5)).catch(e=>alert('Could not open saved site: '+e.message));return}
- if(go=='edm'){close('edm');const m=await import('./edmui.js?v=b15');m.open();return}if(go=='back')return back();
+ if(go?.startsWith('open:')){close('edm');const m=await import('./edmui.js?v=b16');m.openSaved(go.slice(5)).catch(e=>alert('Could not open saved site: '+e.message));return}
+ if(go=='edm'){close('edm');const m=await import('./edmui.js?v=b16');m.open();return}if(go=='back')return back();
  if(go=='continue'||go=='simFree')return close(go);
  if(go=='simA'){close('simA');const P=await wait(()=>window.GX?.wplan);P.calc(JSON.parse(JSON.stringify(P.DEFAULT)));return}
  if(go=='well'){close('wplan');const P=await wait(()=>window.GX?.wplan);P.calc({...JSON.parse(JSON.stringify(P.DEFAULT)),name:'New well (SIM)',targets:[{name:'TD',tvd:1000,n:100,e:0,tol:30,dls:3}],casing:[],steps:[],assumed:['targets','surface','kop','dls']});P.open('inputs');return}

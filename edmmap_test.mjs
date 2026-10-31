@@ -49,5 +49,15 @@ for(const [nm,vp] of [['phone',{width:390,height:844,deviceScaleFactor:2,isMobil
  r=await p.evaluate(()=>({m:GX.edmmap.map().mode,btn:document.getElementById('emmapb').innerText}));ok(r.m=='street'&&r.btn=='Map: Street',`${nm}: Map setting kept on reopen (${r.btn})`);
  await p.screenshot({path:SH+nm+'_3_map_street.png'});
  await p.click('#emmapb');await w(500);r=await p.evaluate(()=>({m:GX.edmmap.map(),ls:localStorage.getItem('dw_edm_map')}));ok(r.m.mode=='off'&&!r.m.mesh&&r.ls=='off',`${nm}: Map off removes the map`);
+ // v5.12.5: select a well/site → camera flies close (radius cap) and the selected well's GL + TD labels show
+ await p.evaluate(()=>{const M=GX.edmmap;M.cam.position.multiplyScalar(40);M.ctl.update();M.st.dirty=true});await w(800);
+ await p.evaluate(()=>GX.edmmap.select('well',0,true));await w(400);await p.waitForFunction(()=>GX.edmmap.settled(),{timeout:15000}).catch(()=>{});await w(600);
+ r=await p.evaluate(()=>{const M=GX.edmmap;return {d:M.cam.position.distanceTo(M.ctl.target),labs:[...document.querySelectorAll('#edmmap .eml')].filter(e=>e.offsetParent).map(e=>e.textContent),td:[...document.querySelectorAll('#emtd .emt')].filter(e=>e.offsetParent).length}});
+ ok(r.d<=600*2.6+1,`${nm}: well select flies close (cam ${r.d.toFixed(0)} m ≤ 1560)`);
+ ok(r.labs.some(t=>t=='SYN-1 · GL 120.0 m')&&r.td>0,`${nm}: selected well shows GL + TD labels (${r.labs.slice(0,3).join(' | ')}; TD ${r.td})`);
+ await p.evaluate(()=>GX.edmmap.select('site',0,true));await w(400);await p.waitForFunction(()=>GX.edmmap.settled(),{timeout:15000}).catch(()=>{});await w(600);
+ r=await p.evaluate(()=>{const M=GX.edmmap;return {d:M.cam.position.distanceTo(M.ctl.target),labs:[...document.querySelectorAll('#edmmap .eml')].filter(e=>e.offsetParent&&/GL/.test(e.textContent)).length}});
+ ok(r.d<=600*2.6+1&&r.labs>0,`${nm}: site select flies close (cam ${r.d.toFixed(0)} m) with GL labels (${r.labs})`);
+ await p.screenshot({path:SH+nm+'_4_select_zoom.png'});
  await ctx.close()}
 ok(!errs.length,'no page errors '+errs.slice(0,3).join(' | '));await b.close();console.log(`\n${pass} passed, ${fails} failed`);process.exit(fails?1:0)
