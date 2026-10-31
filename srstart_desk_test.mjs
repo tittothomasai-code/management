@@ -8,7 +8,7 @@ for(const ab of ['B','C','A']){
 await p.goto(URL+'/?start=1',{waitUntil:'load',timeout:180000});await p.evaluate(v=>localStorage.setItem('dw_showroom_ab',v),ab);await p.reload({waitUntil:'load',timeout:180000});
 await p.waitForSelector('#st_showroom',{visible:true,timeout:180000});await p.waitForFunction(()=>document.getElementById('st_rigN')?.dataset.src,{timeout:180000}).catch(()=>{});await new Promise(r=>setTimeout(r,1500));
 const r=await p.evaluate(()=>({pick:!!document.getElementById('srabStart'),n:+document.getElementById('st_rigN')?.textContent,src:document.getElementById('st_rigN')?.dataset.src}));
-const want=await p.evaluate(async()=>1+(await import('./showroom.js?v=b17')).RIGS.length+(await (await import('./showroomb.js?v=b6')).manifest()).rigs.length);
+const want=await p.evaluate(async()=>{const sc=await import('./showroomc.js?v=c10');/* D3: one per rig type */return 1+(await import('./showroom.js?v=b18')).RIGS.filter(r=>!sc.superseded(r.id)).length+(await (await import('./showroomb.js?v=b7')).manifest()).rigs.filter(r=>!sc.superseded('b:'+r.id)).length});
 ck(!r.pick,`${ab}: no showroom picker on start`);ck(r.n===want&&r.src=='C',`${ab}: tile count ${r.n} == ${want} (one showroom)`);
 if(ab=='B')await p.screenshot({path:SHOT});
 await p.click('#st_showroom');await p.waitForFunction(()=>window.GX?.showroomC?.ST?.open,{timeout:180000}).catch(()=>{});ck(await p.evaluate(()=>!!document.getElementById('showroomC')&&!document.getElementById('showroomB')&&!document.getElementById('showroom')),`${ab}: Showroom tile opens the single showroom`)}
