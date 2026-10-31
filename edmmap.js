@@ -1,4 +1,4 @@
-// edmmap.js v5.12.3: + Map toggle (free Street tiles; Satellite kept behind SAT_ENABLED flag, off draped at ground level), GL per wellhead, TD markers (MD/TVD/TVDSS + datum) on every wellbore and plan.
+// edmmap.js v5.12.3: + Map toggle (free Satellite/Street tiles draped at ground level), GL per wellhead, TD markers (MD/TVD/TVDSS + datum) on every wellbore and plan.
 // was v5.9.4.2: + per-well stats, field stats and filters (persisted per saved site).
 // was v5.9.4.1: every imported EDM site and well at its real position in 3D (local metres about the data centroid, from lat/long).
 // Tap/click any wellhead or well path for all its details; decluttered labels (sites when zoomed out, wells when zoomed in); hover card on desktop.
