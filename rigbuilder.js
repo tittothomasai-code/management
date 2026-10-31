@@ -14,9 +14,11 @@ export function catalogue(){return CATp||(CATp=(async()=>{const get=u=>fetch(new
 export function showroomRigs(base){const list=S.cached();if(!ST.cat||!list.length)return [];const out=[];
  for(const r of list){const b=(base||[]).find(x=>x.id==C.baseRig(r,ST.cat))||(base||[])[0];if(!b)continue;const s=C.specs(r,ST.cat);
   out.push({...b,id:'custom:'+r.id,name:r.name,kind:'custom build',custom:true,customId:r.id,st:{hook:s.hook,depth:s.depth,kw:s.kw,bop:s.bop,short:r.name,hookNote:s.hook?null:'n/a',design:{derrick_klbf:Math.round(s.hook*2.2),dw_hp:ST.cat.find(c=>c.id==r.slots.dw)?.cls.hp||1000,lines:10,bop_psi:s.bop,pumps:[]}}})}return out}
-async function showInShowroom(id){await save(true);try{localStorage.setItem('dw_showroom_rig_b','custom:'+id)}catch(e){}close();const m=await import('./showroomb.js?v=b1');m.open()}
+async function showInShowroom(id){await save(true);try{localStorage.setItem('dw_showroom_rig_b','custom:'+id)}catch(e){}close();
+ if($('start')&&$('st_showroom')){const u=new URL(location.href);u.searchParams.set('showroom','b');history.replaceState(history.state,'',u);$('st_showroom').click();setTimeout(()=>{const v=new URL(location.href);v.searchParams.delete('showroom');history.replaceState(history.state,'',v)},4000);return}
+ const m=await import('./showroomb.js?v=b1');m.open()}
 // ---------- CSS ----------
-const CSS=`#rigBuilder{position:fixed;inset:0;z-index:60;background:#0b0d10;color:#e8ebef;font:14px Inter,system-ui,-apple-system,Segoe UI,sans-serif;display:grid;grid-template-rows:auto 1fr;overflow:hidden}
+const CSS=`#rigBuilder{position:fixed;inset:0;z-index:100002;background:#0b0d10;color:#e8ebef;font:14px Inter,system-ui,-apple-system,Segoe UI,sans-serif;display:grid;grid-template-rows:auto 1fr;overflow:hidden}
 #rigBuilder button,#rigBuilder input{font:inherit;color:#e8ebef;background:#161a1f;border:1px solid #2c333b;border-radius:6px;min-height:36px;padding:4px 12px;cursor:pointer}
 #rigBuilder button:hover,#rigBuilder button:focus-visible{border-color:#c9a46a;outline:none}#rigBuilder button.pri{background:#c9a46a;color:#111;border-color:#c9a46a;font-weight:600}
 #rigBuilder input{cursor:text;width:100%;box-sizing:border-box}#rigBuilder .sim{border:1px solid #6b737c;color:#aab2ba;border-radius:3px;font-size:10px;padding:0 4px;margin-left:6px;letter-spacing:.1em}
@@ -148,7 +150,7 @@ export function close(){if(!ST.el)return;clearTimeout(ST.pad);removeEventListene
 // ---------- entry points: button beside the showroom selector (start screen + Settings), GX.rigBuilder ----------
 function pin(){window.GX=window.GX||{};if(!window.GX.rigBuilder)window.GX.rigBuilder=api()}
 function inject(){for(const id of ['srabStart','srabSet']){const s=$(id);if(s&&!s.querySelector('.rbOpen')){const b=document.createElement('button');b.type='button';b.className='rbOpen';b.id=id=='srabStart'?'rbBtnStart':'rbBtnSet';b.textContent='Rig builder';b.setAttribute('aria-label','Open the rig builder');
- b.onclick=e=>{e.preventDefault();e.stopPropagation();if(id=='srabStart')try{window.GX?.start?.close?.();$('start')?.remove()}catch(x){}open()};s.appendChild(b)}}}
+ b.onclick=e=>{e.preventDefault();e.stopPropagation();open()};s.appendChild(b)}}}
 export function init(){if(typeof document=='undefined'||window.__rb)return;window.__rb=1;pin();catalogue();let n=0;const t=setInterval(()=>{pin();if(++n>120)clearInterval(t)},500);
  let q=0;new MutationObserver(()=>{if(q)return;q=1;requestAnimationFrame(()=>{q=0;inject()})}).observe(document.body,{childList:true,subtree:true});inject()}
 if(typeof document!='undefined'){if(document.body)init();else addEventListener('DOMContentLoaded',init)}
