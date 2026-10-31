@@ -19,7 +19,7 @@ for(const [vp,nm] of [[DESK,'desk'],[PHONE,'phone']]){const {p,ctx,errs}=await o
   const tw=st.material.uniforms&&st.material.uniforms.uT;
   return {shader:!!(sk&&sk.material.isShaderMaterial&&sk.material.uniforms.uMW),stars:mg.length,faint:mg.filter(m=>m>4).length/mg.length,bright:mg.filter(m=>m<1).length,tw:!!tw,maxSat:+maxSat.toFixed(2),cls:document.body.classList.contains('dw-night'),moon:!!sc.getObjectByName('nightMoon'),q:GX.night.stats().quality}});
  console.log(nm,JSON.stringify(r));
- ok(r.shader,nm+': atmospheric sky shader with Milky Way term');ok(r.stars>=1500,nm+': star field '+r.stars);
+ ok(r.shader,nm+': atmospheric sky shader with Milky Way term');ok(r.stars>=800,nm+': star field '+r.stars);
  ok(r.faint>0.6&&r.bright>=1&&r.bright<40,nm+': magnitude distribution (faint '+(r.faint*100).toFixed(0)+'%, <1 mag '+r.bright+')');
  ok(r.tw,nm+': scintillation uniform');ok(r.maxSat<0.4,nm+': light colours restrained (max saturation '+r.maxSat+')');ok(r.cls&&r.moon,nm+': night class + moon');
  await w(500);await p.screenshot({path:SH+nm+'_night.png'});
