@@ -36,8 +36,9 @@ let LDp=null;function loader(){return LDp||(LDp=(async()=>{const [{GLTFLoader},{
  const d=new DRACOLoader();d.setDecoderPath(new URL('./vendor/libs/draco/',import.meta.url).href);d.setDecoderConfig({type:'wasm'});const l=new GLTFLoader();l.setDRACOLoader(d);return l})())}
 // Map: bomId -> manifest path (e.g. mud_system/mud_pump_1/power_end). Uses node extras.bomId (names can be made unique by the loader).
 function bomIndex(r,lod){const m=(r.lods?.[lod]?.nodeToBom)||r.nodeToBom||{},inv={};for(const [p,b] of Object.entries(m))inv[b]=p;return {map:m,inv}}
-export async function loadRig(i){const r=ST.rigs[i],lod=r.lods?.[ST.lod]?ST.lod:'M',k=r.id+'_'+lod;
- if(!ST.cache.has(k))ST.cache.set(k,loader().then(l=>l.loadAsync(new URL(r.lods[lod].file,ST.base).href+'?v='+VER)).then(g=>g.scene).catch(e=>{ST.cache.delete(k);throw e}));
+export async function loadRig(i){const r=ST.rigs[i],lod=r.lods?.[ST.lod]?ST.lod:'M',k=r.id+'_'+lod+(r.rb?'_'+(r.rb.updated||0):'');/* rig-builder hook: key */
+ if(r.custom&&r.rb&&window.GX?.rigBuilder?.assemble3d){const lk=lod=='H'?'M':lod;if(!ST.cache.has(k))ST.cache.set(k,window.GX.rigBuilder.assemble3d(r.rb,lk).catch(e=>{ST.cache.delete(k);throw e}))}/* rig-builder hook: assembled 3D custom rig */
+ else if(!ST.cache.has(k))ST.cache.set(k,loader().then(l=>l.loadAsync(new URL(r.lods[lod].file,ST.base).href+'?v='+VER)).then(g=>g.scene).catch(e=>{ST.cache.delete(k);throw e}));
  const src=await ST.cache.get(k),root=src.clone(true),{map,inv}=bomIndex(r,lod),meshes=[],lights=[];
  root.traverse(o=>{if(o.isMesh){const b=o.userData.bomId||o.parent?.userData?.bomId;o.userData.path=inv[b]||null;o.userData.bom=b||null;meshes.push(o);const mats=Array.isArray(o.material)?o.material:[o.material];if(mats.some(x=>/light/i.test(x.name)))lights.push(o)}});
  // normalise: max size 40 units, base on podium top, centred.

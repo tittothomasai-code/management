@@ -2,18 +2,18 @@
 // assemble them in slots, see live key specs + BOM, save under a name. Saved rigs: load, rename, duplicate, delete (confirm),
 // export / import JSON, and they show as rigs in Showroom B. Storage via rigbuilder_store.js (localStorage dw_custom_rigs_v1 now).
 // All specs are SIM (generic class values). Keys, gamepad, touch; desk + phone.
-import * as C from './rigbuilder_core.js?v=rb2';import * as S from './rigbuilder_store.js?v=rb1';
-export const VER='rb1';
+import * as C from './rigbuilder_core.js?v=rb2';import * as S from './rigbuilder_store.js?v=rb1';import * as R3 from './rigbuilder3d.js?v=rb2';
+export const VER='rb2';
 const $=id=>document.getElementById(id),es=t=>String(t??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])),fmt=n=>(+n||0).toLocaleString('en-AU');
 export const ST={el:null,cat:null,man1:null,rig:null,slot:'mast',sel:0,list:[],dirty:false,tab:'build',pad:null,padPrev:[],dlg:null,q:''};
 let CATp=null;
 export function catalogue(){return CATp||(CATp=(async()=>{const get=u=>fetch(new URL(u,import.meta.url).href+'?v='+VER).then(r=>r.ok?r.json():null).catch(()=>null);
  const [m1,m2,bd]=await Promise.all([get('./assets/rigsb/pass1/manifest.json'),get('./assets/rigsc/pass2/manifest.json'),import('./bom_data.js?v=1').catch(()=>null)]);
- ST.man1=m1;ST.cat=C.buildCatalogue(m1,m2,bd?.RIG);return ST.cat})())}
+ ST.man1=m1;ST.man2=m2;ST.cat=C.buildCatalogue(m1,m2,bd?.RIG);return ST.cat})())}
 // ---------- showroom hook: custom rigs as extra Showroom B rigs (base model = rig that gave the mast) ----------
 export function showroomRigs(base){const list=S.cached();if(!ST.cat||!list.length)return [];const out=[];
  for(const r of list){const b=(base||[]).find(x=>x.id==C.baseRig(r,ST.cat))||(base||[])[0];if(!b)continue;const s=C.specs(r,ST.cat);
-  out.push({...b,id:'custom:'+r.id,name:r.name,kind:'custom build',custom:true,customId:r.id,st:{hook:s.hook,depth:s.depth,kw:s.kw,bop:s.bop,short:r.name,hookNote:s.hook?null:'n/a',design:{derrick_klbf:Math.round(s.hook*2.2),dw_hp:ST.cat.find(c=>c.id==r.slots.dw)?.cls.hp||1000,lines:10,bop_psi:s.bop,pumps:[]}}})}return out}
+  out.push({...b,id:'custom:'+r.id,rb:r,name:r.name,kind:'custom build',custom:true,customId:r.id,st:{hook:s.hook,depth:s.depth,kw:s.kw,bop:s.bop,short:r.name,hookNote:s.hook?null:'n/a',design:{derrick_klbf:Math.round(s.hook*2.2),dw_hp:ST.cat.find(c=>c.id==r.slots.dw)?.cls.hp||1000,lines:10,bop_psi:s.bop,pumps:[]}}})}return out}
 async function showInShowroom(id){await save(true);try{localStorage.setItem('dw_showroom_rig_b','custom:'+id)}catch(e){}close();
  if($('start')&&$('st_showroom')){const u=new URL(location.href);u.searchParams.set('showroom','b');history.replaceState(history.state,'',u);$('st_showroom').click();setTimeout(()=>{const v=new URL(location.href);v.searchParams.delete('showroom');history.replaceState(history.state,'',v)},4000);return}
  const m=await import('./showroomb.js?v=b1');m.open()}
@@ -31,7 +31,7 @@ const CSS=`#rigBuilder{position:fixed;inset:0;z-index:100002;background:#0b0d10;
 #rbItems button.on{border-color:#c9a46a;background:#221d14}#rbItems button.cur{box-shadow:0 0 0 2px #c9a46a88}
 #rbItems h4,#rbCat h4,#rbRight h4{margin:10px 0 4px;font-weight:600;font-size:11px;letter-spacing:.14em;color:#8b949d;text-transform:uppercase}
 #rbCenter{display:flex;flex-direction:column;gap:10px}#rbSvg{flex:1;min-height:260px;background:radial-gradient(#161a20,#0b0d10 70%);border:1px solid #1f252b;border-radius:6px}
-#rbSvg svg{width:100%;height:100%;display:block}#rbSvg .z{cursor:pointer}#rbSvg .z rect,#rbSvg .z path{fill:#1b2026;stroke:#3a434d;stroke-width:1.2}
+#rbSvg{position:relative;overflow:hidden}#rbSvg canvas{position:absolute;inset:0}#rb3Lbl,#rb3Help,#rb3Miss,#rbLoad3{position:absolute;z-index:1;pointer-events:none;font-size:12px;color:#aab2ba}#rb3Lbl{left:10px;top:8px;right:10px;text-shadow:0 1px 2px #000}#rb3Lbl b{color:#e8ebef;font-weight:600}#rb3Lbl small{color:#6f7880}#rb3Help{left:10px;bottom:8px;color:#6f7880;font-size:11px}#rb3Miss{right:10px;bottom:8px;color:#e0a06a}#rbLoad3{left:50%;top:50%;transform:translate(-50%,-50%);background:#12161aee;border:1px solid #262c33;border-radius:6px;padding:6px 12px}#rbLoad3[hidden]{display:none}#rbSvg .z{cursor:pointer}#rbSvg .z rect,#rbSvg .z path{fill:#1b2026;stroke:#3a434d;stroke-width:1.2}
 #rbSvg .z.f rect,#rbSvg .z.f path{fill:#262d35;stroke:#8d96a0}#rbSvg .z.on rect,#rbSvg .z.on path{stroke:#c9a46a;stroke-width:2.2}#rbSvg text{fill:#aab2ba;font-size:11px;pointer-events:none}
 #rbSvg .z.miss rect,#rbSvg .z.miss path{stroke-dasharray:4 3}
 #rbNameRow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}#rbNameRow input{flex:1;min-width:160px}#rbErr{color:#e0a06a;font-size:12px;min-height:16px;width:100%}
@@ -53,7 +53,7 @@ const CSS=`#rigBuilder{position:fixed;inset:0;z-index:100002;background:#0b0d10;
 #rigBuilder{grid-template-rows:auto auto 1fr}#rbMain{grid-template-columns:minmax(0,1fr)}#rbCur,#rbOpenSaved{display:none}#rbTop{padding:6px 8px;padding-top:calc(6px + env(safe-area-inset-top))}#rbTop .tt{font-size:12px}#rbNameRow input{min-width:0;flex-basis:100%}#rbNameRow button{flex:1}#rbMain>div{display:none;border:0;padding-bottom:calc(16px + env(safe-area-inset-bottom))}
 #rigBuilder[data-tab=build] #rbCat,#rigBuilder[data-tab=build] #rbCenter,#rigBuilder[data-tab=specs] #rbRight{display:flex;flex-direction:column}
 #rigBuilder[data-tab=build] #rbMain{grid-template-rows:auto 1fr;overflow:auto}#rigBuilder[data-tab=build] #rbCenter{order:-1;overflow:visible}#rigBuilder[data-tab=build] #rbCat{overflow:visible}
-#rbSvg{min-height:200px;max-height:34vh;flex:none;height:34vh}#rbSlots{flex-direction:row;overflow-x:auto;gap:4px;padding-bottom:4px}#rbSlots button{flex:none;flex-direction:column}#rbSlots button small{max-width:110px}#rbHint{display:none}#rbTop .tt{letter-spacing:.16em}}`;
+#rbSvg{min-height:240px;max-height:42vh;flex:none;height:42vh}#rbSlots{flex:none;flex-direction:row;overflow-x:auto;overflow-y:hidden;gap:4px;padding:2px 0 6px;scrollbar-width:none;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity}#rbSlots button{scroll-snap-align:start;min-height:52px}#rb3Help{display:none}#rbQ{flex:none}#rbSlots button{flex:none;flex-direction:column}#rbSlots button small{max-width:110px}#rbHint{display:none}#rbTop .tt{letter-spacing:.16em}}`;
 // ---------- schematic (elevation, slot zones) ----------
 const ZONES={mast:'<path d="M182 30 L218 30 L236 200 L164 200 Z"/>',td:'<rect x="186" y="70" width="28" height="44" rx="3"/>',sub:'<rect x="130" y="200" width="140" height="44"/>',
  dw:'<rect x="236" y="176" width="44" height="24" rx="2"/>',bop:'<rect x="186" y="246" width="28" height="44" rx="2"/>',cabin:'<rect x="100" y="172" width="58" height="28" rx="2"/>',
@@ -62,6 +62,16 @@ const ZONES={mast:'<path d="M182 30 L218 30 L236 200 L164 200 Z"/>',td:'<rect x=
 const ZL={mast:[200,24],td:[200,94],sub:[200,226],dw:[258,170],bop:[200,302],cabin:[129,166],pipe:[322,210],pumps:[332,280],tanks:[68,280],power:[68,241],extra:[336,64]};
 function svg(){const r=ST.rig,sp=C.SLOTS;return `<svg viewBox="0 0 400 320" role=img aria-label="Rig layout"><line x1="0" y1="290.5" x2="400" y2="290.5" stroke="#2c333b"/>`+sp.map(s=>{const f=s.multi?r.extras.length:!!r.slots[s.k];
  return `<g class="z${f?' f':''}${ST.slot==s.k?' on':''}${s.req&&!f?' miss':''}" data-z="${s.k}" tabindex=-1>${ZONES[s.k]}<title>${es(s.l)}</title></g><text x="${ZL[s.k][0]}" y="${ZL[s.k][1]}" text-anchor=middle>${es(s.l.split(' /')[0])}${s.multi&&f?' ('+f+')':''}</text>`}).join('')+`</svg>`}
+// ---------- 3D stage ----------
+const phoneish=()=>matchMedia('(max-width:819px)').matches||/Mobi|Android|iPhone/.test(navigator.userAgent);
+export function lod(){try{const u=new URLSearchParams(location.search).get('rblod');if(/^[HML]$/.test(u||''))return u}catch(e){}return phoneish()?'L':'M'}
+const man=()=>({m1:ST.man1,m2:ST.man2});
+function draw3d(){const st=ST.stage;if(!st)return;const k=JSON.stringify(C.nodeSet(ST.rig))+JSON.stringify(ST.rig.qty);
+ if(k!=ST.k3){ST.k3=k;clearTimeout(ST.t3);$('rbLoad3').hidden=false;ST.t3=setTimeout(()=>st.set(ST.rig,ST.cat,man()).then(g=>{if(g){$('rbLoad3').hidden=true;miss3(g)}}),60)}st.select(ST.slot);
+ const S0=C.SLOTS.find(s=>s.k==ST.slot),it=S0.multi?null:item(ST.rig.slots[ST.slot]);$('rb3Lbl').innerHTML=`<b>${es(S0.l)}</b> · ${S0.multi?ST.rig.extras.length+' added':it?es(it.name+' · '+it.rigName):'none'} · <small>${es(C.ANCHORS[ST.slot].at)}</small>`}
+function miss3(g){const m=g.userData.missing;$('rb3Miss').textContent=m.length?'No mesh: '+m.map(x=>x.slot).join(', '):''}
+// Saved rig record -> assembled 3D group (Showroom B uses this).
+export async function assemble3d(rec,lodK){await catalogue();return R3.assemble(rec,ST.cat,lodK||lod(),man())}
 // ---------- render ----------
 const item=id=>ST.cat.find(c=>c.id==id);
 function items(){const q=ST.q.trim().toLowerCase();return ST.cat.filter(c=>c.slot==ST.slot&&(!q||(c.name+' '+c.rigName+' '+c.bom).toLowerCase().includes(q)))}
@@ -71,7 +81,7 @@ function renderCat(){const r=ST.rig;$('rbSlots').innerHTML=C.SLOTS.map(s=>{const
  $('rbItems').innerHTML=`<h4>${es(S0.l)} · ${L.length} parts</h4>`+(S0.req?'':`<button data-i="-1" class="${!S0.multi&&!r.slots[S0.k]?'on':''}${ST.sel==-1?' cur':''}"><span>None</span></button>`)+
   L.map((c,i)=>{const on=S0.multi?r.extras.includes(c.id):r.slots[S0.k]==c.id;return `<button data-i="${i}" data-id="${es(c.id)}" class="${on?'on':''}${i==ST.sel?' cur':''}" aria-pressed=${on}><span>${on&&S0.multi?'✓ ':''}${es(c.name)}</span><small>${es(c.rigName)} · ${es(SRC[c.src])} · ${c.kids.length} sub-parts</small></button>`}).join('');
  $('rbSlots').querySelectorAll('button').forEach(b=>b.onclick=()=>slot(b.dataset.s));$('rbItems').querySelectorAll('button').forEach(b=>b.onclick=()=>{ST.sel=+b.dataset.i;pick(b.dataset.id||null)})}
-function renderRig(){const r=ST.rig,s=C.specs(r,ST.cat),q=r.qty;$('rbSvg').innerHTML=svg();$('rbSvg').querySelectorAll('.z').forEach(g=>g.onclick=()=>slot(g.dataset.z));
+function renderRig(){const r=ST.rig,s=C.specs(r,ST.cat),q=r.qty;draw3d();
  $('rbSpecs').innerHTML=[['Hook load',s.hook?fmt(s.hook)+' t':'n/a'],['Depth',fmt(s.depth)+' m'],['Power',fmt(s.kw)+' kW'],['BOP',fmt(s.bop)+' psi'],['Pump power',fmt(s.pumpHp)+' hp'],['Peak load',fmt(s.load)+' kW']].map(([l,v])=>`<div><span>${l}</span><b>${v}</b></div>`).join('');
  $('rbWarn').innerHTML=s.warn.map(es).join('<br>');const B=C.bom(r,ST.cat);
  $('rbBom').innerHTML=`<tr><th>Lvl</th><th>Part</th><th>Qty</th></tr>`+B.map(x=>`<tr class=${x.lvl}><td>${x.lvl}</td><td>${es(x.name)}${x.slot?` <small style="color:#8b949d">· ${es(x.slot)}</small>`:''}<div class=id>${es(x.bom)}${x.src?' · '+es(x.src):''}</div></td><td class=q>${x.qty}</td></tr>`).join('');
@@ -125,28 +135,26 @@ function poll(){if(!ST.el)return;const g=[...(navigator.getGamepads?.()||[])].fi
  ST.pad=setTimeout(poll,60)}
 function tab(t){ST.tab=t;ST.el.dataset.tab=t;ST.el.querySelectorAll('#rbTabs button').forEach(b=>{b.classList.toggle('on',b.dataset.t==t);b.setAttribute('aria-pressed',b.dataset.t==t)});if(t=='saved')savedShow(true)}
 // ---------- open / close ----------
-function api(){return {VER,ST,C,S,open,close,slot,pick,save,load,newRig,rename,duplicate,remove,exportText,download,importText,refresh,savedShow,ask,showroomRigs,catalogue,tab,isOpen:()=>!!ST.el}}
+function api(){return {VER,ST,C,S,open,close,slot,pick,save,load,newRig,rename,duplicate,remove,exportText,download,importText,refresh,savedShow,ask,showroomRigs,catalogue,tab,assemble3d,lod,R3,stage:()=>ST.stage,isOpen:()=>!!ST.el}}
 export async function open(){if(ST.el)return;pin();if(!$('rbCss')){const s=document.createElement('style');s.id='rbCss';s.textContent=CSS;document.head.appendChild(s)}await catalogue();await refresh();
  const el=ST.el=document.createElement('section');el.id='rigBuilder';el.setAttribute('role','dialog');el.setAttribute('aria-label','Rig builder');el.dataset.tab='build';
  el.innerHTML=`<div id=rbTop><span class=tt>RIG BUILDER<span class=sim>SIM</span></span><span id=rbCur style="color:#8b949d;font-size:12px;max-width:40vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span><button id=rbNew>New</button><button id=rbOpenSaved aria-expanded=false>Saved rigs</button><button id=rbX aria-label="Close (Esc)">✕</button></div>
 <div id=rbTabs><button data-t=build class=on>Build</button><button data-t=specs>Specs & BOM</button><button data-t=saved>Saved</button></div>
 <div id=rbMain><div id=rbCat><div id=rbSlots role=tablist aria-label="Rig slots"></div><input id=rbQ type=search placeholder="Filter parts ( / )" aria-label="Filter parts"><div id=rbItems role=listbox aria-label="Parts"></div></div>
-<div id=rbCenter><div id=rbSvg></div><div id=rbQty></div><div id=rbNameRow><input id=rbName maxlength=80 placeholder="Rig name, for example George special" aria-label="Rig name"><button id=rbSave class=pri>Save</button><button id=rbShow>View in showroom</button><div id=rbErr role=alert></div></div>
+<div id=rbCenter><div id=rbSvg><div id=rb3Lbl></div><div id=rb3Miss></div><div id=rbLoad3>Loading part models…</div><div id=rb3Help>Drag to turn · Scroll or pinch to zoom · Select a part to edit its slot</div></div><div id=rbQty></div><div id=rbNameRow><input id=rbName maxlength=80 placeholder="Rig name, for example George special" aria-label="Rig name"><button id=rbSave class=pri>Save</button><button id=rbShow>View in showroom</button><div id=rbErr role=alert></div></div>
 <div id=rbHint>← → slot · ↑ ↓ part · Enter fit · S save · L saved rigs · Esc close · Pad: D-pad / LB RB · Ⓐ fit · Ⓨ save · Ⓧ saved · Ⓑ close</div></div>
 <div id=rbRight><h4>Key specs <span class=sim>SIM</span></h4><div id=rbSpecs></div><div id=rbWarn></div><h4>Live BOM · <span id=rbBomN></span></h4><table id=rbBom></table><p style="color:#6f7880;font-size:11px">Generic SIM class values from the rig catalogue. Not a design for a real rig. Check against the maker's data before use.</p></div></div>
 <div id=rbSaved hidden><div style="display:flex;gap:6px;align-items:center"><b style="flex:1;letter-spacing:.14em;font-weight:600">SAVED RIGS</b><button id=rbSavedX aria-label="Close saved rigs">✕</button></div>
 <div style="display:flex;gap:6px;flex-wrap:wrap"><button id=rbExpAll>Export all</button><button id=rbImp>Import file</button><button id=rbPaste>Paste JSON</button><input id=rbFile type=file accept="application/json,.json" hidden></div><div id=rbList></div>
 <small style="color:#6f7880">Stored on this device (${es(S.adapter().name)}). Share with Export, then Import on the other device.</small></div><div id=rbDlg hidden></div><div id=rbToast role=status></div>`;
- document.body.appendChild(el);ST.rig=C.defaults(ST.cat);ST.dirty=false;
+ document.body.appendChild(el);ST.rig=C.defaults(ST.cat);ST.dirty=false;ST.k3=null;ST.stage=R3.stage($('rbSvg'),{phone:phoneish(),lod:lod()});ST.stage.onPick=k=>slot(k);
  $('rbX').onclick=close;$('rbNew').onclick=async()=>{if(ST.dirty&&!(await ask({t:'Start a new rig? Your changes that are not saved will be lost.',ok:'New rig'})))return;newRig()};$('rbOpenSaved').onclick=()=>savedShow($('rbSaved').hidden);$('rbSavedX').onclick=()=>{savedShow(false);if(ST.tab=='saved')tab('build')};
  $('rbSave').onclick=()=>save();$('rbShow').onclick=async()=>{if(await save())showInShowroom(ST.rig.id)};$('rbName').oninput=()=>{$('rbErr').textContent='';ST.dirty=true;renderRig()};
  $('rbQ').oninput=e=>{ST.q=e.target.value;ST.sel=0;renderCat()};$('rbExpAll').onclick=()=>{if(!ST.list.length)return toast('No saved rigs to export');download();toast('Exported '+ST.list.length+' rigs')};
  $('rbImp').onclick=()=>$('rbFile').click();$('rbPaste').onclick=importUI;$('rbFile').onchange=async e=>{const f=e.target.files?.[0];if(!f)return;const v=await importText(await f.text());if(!v.ok)toast(v.err);e.target.value=''};
  el.querySelectorAll('#rbTabs button').forEach(b=>b.onclick=()=>{if(b.dataset.t!='saved')savedShow(false);tab(b.dataset.t)});
- // swipe left/right on the layout changes slot (touch)
- let sx=null;$('rbSvg').addEventListener('touchstart',e=>{sx=e.touches[0].clientX},{passive:true});$('rbSvg').addEventListener('touchend',e=>{if(sx==null)return;const dx=e.changedTouches[0].clientX-sx;sx=null;if(Math.abs(dx)>50)key({key:dx<0?'ArrowRight':'ArrowLeft',target:document.body,preventDefault(){},stopPropagation(){}})});
  render();addEventListener('keydown',key,true);addEventListener('dw:home',close);ST.padPrev=[];poll()}
-export function close(){if(!ST.el)return;clearTimeout(ST.pad);removeEventListener('keydown',key,true);removeEventListener('dw:home',close);ST.el.remove();ST.el=null;ST.dlg=null}
+export function close(){if(!ST.el)return;ST.stage?.dispose();ST.stage=null;clearTimeout(ST.pad);removeEventListener('keydown',key,true);removeEventListener('dw:home',close);ST.el.remove();ST.el=null;ST.dlg=null}
 // ---------- entry points: button beside the showroom selector (start screen + Settings), GX.rigBuilder ----------
 function pin(){window.GX=window.GX||{};if(!window.GX.rigBuilder)window.GX.rigBuilder=api()}
 function inject(){for(const id of ['srabStart','srabSet']){const s=$(id);if(s&&!s.querySelector('.rbOpen')){const b=document.createElement('button');b.type='button';b.className='rbOpen';b.id=id=='srabStart'?'rbBtnStart':'rbBtnSet';b.textContent='Rig builder';b.setAttribute('aria-label','Open the rig builder');
