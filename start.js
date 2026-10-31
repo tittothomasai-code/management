@@ -72,7 +72,7 @@ async function choose(){const go=ST.items[ST.i]?.dataset.go;beep(880,.1);
  if(go=='ddcab'){close('ddcab');const m=await import('./ddcab.js?v=r2');m.open();return}
  if(go=='safety'){close('safety');const m=await import('./safety.js?v=s1');m.open();return}/* safety hook */
  if(go=='showroom'){close('showroom');const P=await import('./srpick.js?v=b8').catch(()=>null);if(P){await P.open();return}const m=await import('./showroom.js?v=b18');m.init();m.open();return}
- if(go=='workover'){close('workover');const m=await import('./workover.js?v=b14');m.open();return}
+ if(go=='workover'){close('workover');const m=await import('./workover.js?v=b15');m.open();return}
  if(go=='saved'){ST.menu='saved';return render()}
  if(go?.startsWith('open:')){close('edm');const m=await import('./edmui.js?v=b16');m.openSaved(go.slice(5)).catch(e=>alert('Could not open saved site: '+e.message));return}
  if(go=='edm'){close('edm');const m=await import('./edmui.js?v=b16');m.open();return}if(go=='back')return back();
@@ -100,4 +100,4 @@ export function show(){api();if(ST.el)return;const st=document.createElement('st
 const API={ST,show,shouldShow,hasSave,last:null};function api(){window.dwStart=API;window.GX=window.GX||{};if(window.GX.start!==API)window.GX.start=API;return API}api();addEventListener('load',api);setTimeout(api,3000);
 if(shouldShow()){if(document.body)show();else addEventListener('DOMContentLoaded',show)}
 
-if(new URLSearchParams(location.search).has('workover'))import('./workover.js?v=b14');
+if(new URLSearchParams(location.search).has('workover'))import('./workover.js?v=b15');

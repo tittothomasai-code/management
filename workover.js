@@ -82,7 +82,9 @@ async function build(cv){THREE=THREE||await import('three');OC=OC||(await import
 async function earth(){let F=null;try{const S=await import('./strat.js?v=b6');E.stratReady?.(S);const Mdl=S.model?S.model():S.SIM_STRAT?S.SIM_STRAT():null;F=(Mdl?.formations||[]).map(f=>({name:f.name,top:f.top,col:(S.LITH?.[f.lith]?.color)||null}))}catch(e){}
  if(!F?.length)F=[{name:'Soil/clay',top:0,col:'#6b5a3a'},{name:'Sandstone',top:150,col:'#c9a96a'},{name:'Shale',top:700,col:'#5a6470'},{name:'Limestone',top:1250,col:'#9fa79a'},{name:'Shale',top:1900,col:'#4d5761'},{name:'Reservoir sand',top:2410,col:'#d8b26a'},{name:'Shale',top:2470,col:'#4d5761'}];
  for(let i=0;i<F.length;i++){const a=Math.max(0,F[i].top),b=Math.min(E.WELL.td+60,F[i+1]?.top??E.WELL.td+60);if(b<=a)continue;const m=box(40,(b-a)*K,.4,M(new THREE.Color(F[i].col||'#556'),{roughness:1,metalness:0}));m.position.set(0,-(a+b)/2*K,-6);G.earth.add(m)}}
-function fit(){if(!ren||!R.el)return;const c=ren.domElement;const w=c.clientWidth,h=c.clientHeight;ren.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix()}
+function fit(){if(!ren||!R.el)return;const c=ren.domElement;const w=c.clientWidth,h=c.clientHeight;ren.setSize(w,h,false);cam.aspect=w/h;if(PH())cam.setViewOffset(w,h,0,h*.22,w,h);else cam.clearViewOffset();cam.updateProjectionMatrix()}
+// phone: the Sequence sheet covers the bottom 44%, so shift the 3D view up into the free top part.
+const PH=()=>matchMedia('(max-width:700px)').matches;
 function mkTool(name){G.tool.clear();if(!name)return;const col={gun:0x3a3a3a,screen:0xc0c0c0,cutter:0xaa3333,overshot:0x8a5a2a,gauge:0x7fa0c0,logtool:0xffd04a,nozzle:0xd94f2b}[name]||0x999999;
  const t=cyl(name=='screen'?.6:.32,name=='screen'?(E.WELL.perf[1]-E.WELL.perf[0]+6)*K:1.4,M(col,{metalness:.6}));t.position.y=-(name=='screen'?t.geometry.parameters.height/2:.7);G.tool.add(t);
  if(name=='overshot'){const g=cyl(.52,.8,M(0x5a3a1a));g.position.y=-1.4;G.tool.add(g)}}
@@ -186,11 +188,11 @@ export async function open(jobKey='workover'){if(R.el)close();const st=document.
  $('#woPause').onclick=()=>{R.play=false};$('#woStop').onclick=()=>{R.play=false;R.hold=false;R.t=0;R.ticks={};R.lastI=-1;tick(0,true)};
  $('#woStep').onclick=step;$('#woSm').onchange=e=>{R.stepMode=e.target.checked;if(!R.stepMode)R.hold=false};$('#woSpd').onchange=e=>R.speed=+e.target.value;
  d.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>{R.view=b.dataset.v;d.querySelectorAll('[data-v]').forEach(x=>x.classList.toggle('on',x==b));
-  if(R.view=='surf'){ctl.target.set(0,6,0);cam.position.set(26,18,34)}if(R.view=='well'){ctl.target.set(0,-26,0);cam.position.set(60,-10,70)}});
+  if(R.view=='surf'){if(PH()&&G.spread?.visible){ctl.target.set(20,2,-5);cam.position.set(-14,30,42)}else{ctl.target.set(0,6,0);cam.position.set(26,18,34)}}if(R.view=='well'){ctl.target.set(0,-26,0);cam.position.set(60,-10,70)}});
  addEventListener('keydown',key,true);setJob(jobKey);lastT=0;R.raf=requestAnimationFrame(loop);R.clk=setInterval(clock,100);window.dwWO=api();return api()}
 function step(){const s=R.last;if(R.hold){if(!checksDone(s.i))return;R.hold=false;const nx=Math.min(s.i+1,R.TL.steps.length-1);R.lastI=nx;R.t=R.TL.steps[nx].t0+1e-6;R.play=true;tick(0,true);return}
  if(!R.stepMode){R.stepMode=true;$('#woSm').checked=true}R.lastI=s.i;R.play=true}
 function key(e){if(!R.el||document.getElementById('wo2')||/INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName))return;if(e.key=='Escape'){close();e.stopPropagation()}else if(e.key==' '){R.play=!R.play;e.preventDefault()}else if(e.key=='n'||e.key=='N')step()}
 export function close(){if(!R.el)return;cancelAnimationFrame(R.raf);clearInterval(R.clk);removeEventListener('keydown',key,true);removeEventListener('resize',fit);try{ren.dispose()}catch(e){}R.el.remove();document.getElementById('woCss')?.remove();R.el=null;ren=null}
-function api(){return {pumps:()=>G.pumpGlb,R,E,open,close,setJob,seek,step,tick:t=>{R.t=t;tick(0,true)},tickAll:()=>{for(const st of R.TL.steps)st.chk?.forEach((_,j)=>R.ticks[R.TL.steps.indexOf(st)+':'+j]=true);tick(0,true)},get last(){return R.last}}}
+function api(){return {pumps:()=>G.pumpGlb,cam:()=>cam&&{off:cam.view?.enabled?cam.view.offsetY/cam.view.fullHeight:0,t:ctl.target.toArray()},R,E,open,close,setJob,seek,step,tick:t=>{R.t=t;tick(0,true)},tickAll:()=>{for(const st of R.TL.steps)st.chk?.forEach((_,j)=>R.ticks[R.TL.steps.indexOf(st)+':'+j]=true);tick(0,true)},get last(){return R.last}}}
 if(typeof location!='undefined'){const q=new URLSearchParams(location.search);if(q.has('workover'))open(q.get('workover')||'workover')}
