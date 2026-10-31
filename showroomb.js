@@ -225,6 +225,7 @@ function size(){if(!ST.ren)return;ST.ren.setSize(innerWidth,innerHeight,false);S
 function api(){return {ST,STATS,BARS,CFG,open,close,show,go,select,sfx,setMute,nightSet,nightState,cardShow,pick,rigRect,freeRect,idle,pack,lodPick,manifest,isOpen:()=>!!ST.el}}
 export async function open(i){if(ST.el)return;window.GX=window.GX||{};window.GX.showroomB=ST.api=ST.api||api();if(!$('srbCss')){const s=document.createElement('style');s.id='srbCss';s.textContent=CSS;document.head.appendChild(s)}
  try{await manifest()}catch(e){console.warn('showroomB manifest',e);alert('Showroom B models are not available. Opening Showroom A.');const m=await import('./showroom.js?v=b16');m.init();m.open();return}
+ try{ST.rigs=ST.rigs.filter(r=>!r.custom);const x=window.GX?.rigBuilder?.showroomRigs?.(ST.rigs);if(Array.isArray(x))for(const r of x)ST.rigs.push({...r,st:r.st||statsFor(r)})}catch(e){}/* rig-builder hook */
  ST.lod=lodPick();try{ST.mute=localStorage.getItem('dw_srb_mute')=='1'}catch(e){}
  const el=ST.el=document.createElement('div');el.id='showroomB';el.setAttribute('role','dialog');el.setAttribute('aria-label','Rig select, showroom B');el.innerHTML=html();document.body.appendChild(el);
  $('srbX').onclick=close;$('srbPrev').onclick=()=>go(-1);$('srbNext').onclick=()=>go(1);$('srbSel').onclick=select;$('srbNight').onclick=()=>nightSet(!ST.night);$('srbMute').onclick=()=>setMute(!ST.mute);$('srbInfo').onclick=()=>cardShow(!ST.cardOn);
