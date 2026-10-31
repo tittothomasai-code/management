@@ -69,3 +69,25 @@ export function importJSON(text,list){let d;try{d=JSON.parse(text)}catch(e){retu
  return out.length?{ok:true,rigs:out}:{ok:false,err:'No valid rigs found in the file.'}}
 // Base model for showrooms: the pass-1 rig that gave the mast (else the 1500 AC land rig).
 export function baseRig(rig,cat){const m=byId(cat,rig.slots?.mast);return m&&m.src=='B'?m.rig:'land_1500_ac_double'}
+// ---------- 3D assembly: anchor / attach table (pure). All packs are metres, Y up, so scale is 1 for every part. ----------
+// Each part is pivoted to its own footprint centre at base (x,z centre, min y = 0). dims[slot] = [x,y,z] size of one instance.
+// Anchors are relative to the chosen substructure: F = drill floor (top of substructure). Zones: +X V-door / pipe handling,
+// -Z back: tanks then a row of mud pumps, -X: a row of generators, +Z: other parts in a row. Gap G between items.
+export const G3=2;
+export const ANCHORS={
+ sub:{on:'ground',at:'well centre'},mast:{on:'sub',at:'drill floor, well centre'},td:{on:'mast',at:'in mast, 35 % of mast height above floor'},
+ dw:{on:'sub',at:'drill floor, back edge (driller side)'},bop:{on:'sub',at:'under floor, well centre (cellar)'},cabin:{on:'sub',at:'drill floor, front corner'},
+ pipe:{on:'sub',at:'ground, out from V-door (+X)'},tanks:{on:'sub',at:'ground, behind substructure (-Z)'},pumps:{on:'tanks',at:'ground, row behind tanks'},
+ power:{on:'sub',at:'ground, row on off-driller side (-X)'},extra:{on:'sub',at:'ground, row in front (+Z)'}};
+export function layout(dims,qty={},extraDims=[]){const D=k=>dims[k]||[0,0,0],s=D('sub'),F=s[1],hx=s[0]/2,hz=s[2]/2,out={};
+ out.sub=[[0,0,0]];out.mast=[[0,F,0]];out.td=[[0,F+Math.max(3,D('mast')[1]*.35),0]];
+ const dw=D('dw');out.dw=[[0,F,-Math.max(0,hz-dw[2]/2)]];const b=D('bop');out.bop=[[0,Math.max(0,F-b[1]-.5),0]];
+ const c=D('cabin');out.cabin=[[Math.max(0,hx-c[0]/2),F,Math.max(0,hz-c[2]/2)]];const p=D('pipe');out.pipe=[[hx+G3+p[0]/2,0,0]];
+ const t=D('tanks'),tz=-(hz+G3+t[2]/2);out.tanks=[[0,0,tz]];const pm=D('pumps'),np=Math.max(1,qty.pumps||1),pz=tz-t[2]/2-G3-pm[2]/2,sx=pm[0]+1.5;
+ out.pumps=Array.from({length:np},(_,i)=>[(i-(np-1)/2)*sx,0,pz]);
+ const g=D('power'),ng=Math.max(1,qty.power||1),gx=-(hx+G3+g[0]/2),sz=g[2]+1.5;out.power=Array.from({length:ng},(_,i)=>[gx,0,(i-(ng-1)/2)*sz]);
+ let x=-hx;const ez=hz+G3+Math.max(0,...extraDims.map(e=>e[2]))/2;out.extra=extraDims.map(e=>{const r=[x+e[0]/2,0,ez];x+=e[0]+G3;return r});return out}
+// The instance list a rig needs (same order every time): [{slot,id,i}].
+export function instances(rig){const o=[];for(const S of SLOTS){if(S.multi){(rig.extras||[]).forEach((id,i)=>o.push({slot:S.k,id,i}));continue}const id=rig.slots?.[S.k];if(!id)continue;
+ const n=S.qty?Math.max(S.qty[0],Math.min(S.qty[1],rig.qty?.[S.k]||S.qty[2])):1;for(let i=0;i<n;i++)o.push({slot:S.k,id,i})}return o}
+export const nodeSet=rig=>instances(rig).map(x=>x.slot+'#'+x.i+':'+x.id).sort();
