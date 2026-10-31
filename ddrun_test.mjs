@@ -16,7 +16,7 @@ for(const [nm,vp] of [['desk',{width:1440,height:900}],['phone',{width:390,heigh
  ok(await E(()=>{const r=document.getElementById('drGo').getBoundingClientRect();return r.width>40&&r.top>=0&&r.bottom<=innerHeight&&document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)?.id=='drGo'}),nm+': Start is visible and on top');
  const r0=await R();ok(!r0.run,nm+': idle before Start');
  await p.select('#drSpd','4');await p.click('#drGo');await w(400);ok(await E(()=>document.getElementById('drGo').textContent.includes('Pause')),nm+': Start -> button shows Pause');
- const g0=await E(()=>document.getElementById('drG').textContent);await p.click('#drPerf');await w(500);const d0=await E(()=>GX.ddcab.motorPerf?.dot&&{...GX.ddcab.motorPerf.dot});ok(!!d0,nm+': motor-performance pop-up opens with an operating point');
+ const g0=await E(()=>document.getElementById('drG').textContent);await p.click('#drPerf');await p.waitForFunction(()=>GX.ddcab.motorPerf?.dot,{timeout:20000}).catch(()=>{});await w(300);const d0=await E(()=>GX.ddcab.motorPerf?.dot&&{...GX.ddcab.motorPerf.dot});ok(!!d0,nm+': motor-performance pop-up opens with an operating point');
  const t0=Date.now();while(Date.now()-t0<40000&&(await R()).n<3)await w(500);const r1=await R();
  ok(r1.md>r0.md+30,nm+': depth advances while running ('+r0.md.toFixed(1)+' -> '+r1.md.toFixed(1)+')');ok(r1.n>=3,nm+': MWD surveys arrive ('+r1.n+')');
  ok(await E(()=>{const s=GX.ddrun.run.surveys;return s.slice(1).every((v,i)=>Math.abs(v.md-s[i].md-30)<0.05)}),nm+': one MWD survey per 30 m stand');
