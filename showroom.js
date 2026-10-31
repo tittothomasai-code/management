@@ -3,6 +3,7 @@
 // or its BOM tab when bom.js is loaded. "Use this rig" applies the rig design to the scene (GX.setDesign, ext2.js).
 // HONESTY: all rigs and numbers are GENERIC SIM values (typical class values), not a specific real rig. Labelled SIM.
 import * as THREE from 'three';
+import * as M3 from './showroom3d.js?v=5115';
 const $=id=>document.getElementById(id),es=t=>String(t??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const PT={s:'Triplex 1000 HP (10in)',m:'Triplex 1600 HP (12in)',l:'Triplex 2200 HP (14in)',q:'Quintuplex 2500 HP (11in)'};
 const pumps=(n,t,l)=>Array.from({length:n},()=>({type:PT[t],liner_in:l}));
@@ -25,8 +26,9 @@ const CSS=`#showroom{position:fixed;inset:0;z-index:100002;background:radial-gra
 #showroom button{background:rgba(10,30,60,.85);color:#dff;border:1px solid #3a6a9a;border-radius:10px;padding:8px 14px;font:inherit;cursor:pointer;min-height:40px}
 #showroom button:focus-visible{outline:3px solid #7fe3ff}
 .srSim{background:#8a8f98;color:#fff;border-radius:6px;padding:1px 7px;font-size:11px;font-weight:700;letter-spacing:.1em;margin-left:6px}
-#srCard{position:absolute;left:12px;bottom:calc(84px + env(safe-area-inset-bottom));width:min(330px,calc(100vw - 24px));background:rgba(8,20,40,.82);border:1px solid #3a6a9a;border-radius:14px;padding:10px 14px;box-sizing:border-box;transition:opacity .25s}
-#srCard h3{margin:0 0 2px;font-size:18px}#srCard .ty{opacity:.75;font-size:12px;margin-bottom:6px}#srCard table{width:100%;border-collapse:collapse;font-size:13px}#srCard td{padding:2px 0}#srCard td:last-child{text-align:right;font-weight:600}
+#srRC{position:absolute;z-index:6;width:min(280px,calc(100vw - 16px));max-height:calc(100vh - 120px);overflow:auto;background:rgba(8,20,40,.9);border:1px solid #3a6a9a;border-radius:14px;padding:10px 12px;box-sizing:border-box;font-size:13px;color:#e8f0ff;box-shadow:0 6px 24px rgba(0,0,0,.5)}#srRC[hidden]{display:none}#srRC.night{background:rgba(4,8,18,.94);border-color:#c89a3a;color:#fff}#srRC h3{margin:0 28px 2px 0;font-size:15px}#srRC table{width:100%;border-collapse:collapse}#srRC td{padding:2px 4px;border-bottom:1px solid #ffffff18}#srRC td:last-child{text-align:right}#srRC .ds{margin:6px 0 4px}#srRC .note{font-size:11px;opacity:.75}#srRcX{position:absolute;right:4px;top:4px;min-width:36px;min-height:36px}#srRcT{position:absolute;right:44px;top:4px;min-width:36px;min-height:36px}#srRC h3{margin-right:84px!important}#srRC.col table,#srRC.col .ds,#srRC.col .note{display:none}#srRC.col .ty{font-size:11px}#srRC.col #srRcGo{min-height:36px;margin-top:4px}@media (max-width:600px){#srRC{font-size:12px;padding:8px 10px;width:min(250px,calc(100vw - 16px))}#srRC td{padding:1px 3px}#srRC .ds{display:none}}#srRcGo{width:100%;margin-top:6px;min-height:44px}
+#srCard{position:absolute;left:12px;top:calc(52px + env(safe-area-inset-top));bottom:auto!important;width:auto;max-width:calc(100vw - 24px);pointer-events:none;background:rgba(8,20,40,.82);border:1px solid #3a6a9a;border-radius:14px;padding:10px 14px;box-sizing:border-box;transition:opacity .25s}
+#srCard h3{margin:0;font-size:14px}#srCard table,#srCard .note,#srCard .ty{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}#srCard .ty{opacity:.75;font-size:12px;margin-bottom:6px}#srCard table{width:100%;border-collapse:collapse;font-size:13px}#srCard td{padding:2px 0}#srCard td:last-child{text-align:right;font-weight:600}
 #srCard .note{font-size:11px;opacity:.6;margin-top:4px}
 @media (max-width:600px){#srCard{bottom:calc(132px + env(safe-area-inset-bottom));padding:8px 12px}#srCard table{font-size:12px}}
 #srBar{position:absolute;left:0;right:0;bottom:calc(10px + env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;gap:8px}
@@ -53,7 +55,7 @@ function floorKit(g,y,s=1,np=2){box(g,6*s,.6*s,2*s,'#7a5c3a',0,y+.3*s,6*s,'pipe'
  for(let k=0;k<2;k++)box(g,5*s,2.4*s,2.2*s,'#e0b020',10*s+0,y-2*s,-8*s+k*2.8*s,'gen');box(g,2.6*s,1.6*s,1.4*s,'#c1272d',-4*s,y-2.2*s,8*s,'accum');box(g,3*s,1.2*s,1*s,'#d38b1a',4*s,y-2.2*s,8*s,'choke');box(g,4*s,2*s,2.4*s,'#3b3f45',-6*s,y+1*s,0,'drawworks');cyl(g,.7*s,2*s,'#b08a2e',-6*s,y+2.4*s,0,'drawworks',Math.PI/2);
  cyl(g,.9*s,1.4*s,'#c1272d',0,y-1.4*s,0,'bop');box(g,2*s,.8*s,1.2*s,'#2a4d8f',0,y-2.4*s,0,'bop');
  for(let k=0;k<np;k++)box(g,3.2*s,1.6*s,2*s,'#2f6f3f',8*s,y+.8*s,(k-(np-1)/2)*3*s,'mudpump')}
-function build(r){const g=new THREE.Group();ST.parts=[];const H=r.H;
+function build(r){const g=new THREE.Group();ST.parts=[];ST.mg=[];const H=r.H;
  if(r.kind=='land'||r.kind=='heli'){const sub=r.id=='single'?3:7;box(g,14,sub,10,'#4d5560',0,sub/2,0,'mast');mast(g,H,r.id=='single'?3:9,2,sub,r.legs);floorKit(g,sub,1,r.id=='single'?1:2);
   if(r.kind=='heli')for(let k=0;k<6;k++)box(g,2.4,1.2,1.2,['#c96','#69c','#9c6'][k%3],-6+k*2.4,.6,7)}
  else if(r.kind=='truck'){box(g,16,2.2,3,'#d38b1a',0,1.6,0);box(g,3,3,3,'#e0e4e8',8.5,2.5,0);for(const x of[-6,-3,5,8])for(const z of[-1.6,1.6])cyl(g,.7,.6,'#222',x,.7,z,null,Math.PI/2);
@@ -69,29 +71,77 @@ function build(r){const g=new THREE.Group();ST.parts=[];const H=r.H;
 // ---------- view ----------
 const q=()=>window.GX?.quality?.get?.()||'medium';
 function setupGL(){const cv=ST.el.querySelector('canvas');const R=ST.ren=new THREE.WebGLRenderer({canvas:cv,antialias:q()!='low',alpha:true});
- R.setPixelRatio(Math.min(devicePixelRatio||1,q()=='low'?1:q()=='high'?2:1.5));R.shadowMap.enabled=q()=='high';
- const S=ST.scene=new THREE.Scene();ST.cam=new THREE.PerspectiveCamera(40,1,.5,2000);S.add(new THREE.HemisphereLight('#cfe8ff','#202830',1.2));
- const d=new THREE.DirectionalLight('#fff',1.6);d.position.set(60,120,80);d.castShadow=q()=='high';S.add(d);
- const tt=new THREE.Mesh(new THREE.CylinderGeometry(1,1.04,.04,64),new THREE.MeshStandardMaterial({color:'#1a2836',metalness:.6,roughness:.4}));tt.receiveShadow=true;ST.table=tt;S.add(tt);size()}
+ R.setPixelRatio(Math.min(devicePixelRatio||1,q()=='low'?1:q()=='high'?2:1.5));const SH=q()=='high'||(q()=='medium'&&innerWidth>=600);R.shadowMap.enabled=SH;R.shadowMap.type=THREE.PCFSoftShadowMap;R.toneMapping=THREE.ACESFilmicToneMapping;R.toneMappingExposure=1.25;
+ const S=ST.scene=new THREE.Scene();ST.cam=new THREE.PerspectiveCamera(40,1,.5,3000);S.add(ST.hemi=new THREE.HemisphereLight('#dff0ff','#3a4048',1.1));
+ // Studio light: PMREM RoomEnvironment (local vendor), warm key + cool rim. Soft shadows on medium/high, blob shadow on low.
+ import('./vendor/environments/RoomEnvironment.js').then(({RoomEnvironment})=>{if(ST.scene!==S)return;const pm=new THREE.PMREMGenerator(R);S.environment=pm.fromScene(new RoomEnvironment(R),.04).texture;S.environmentIntensity=.9;pm.dispose()}).catch(()=>{});
+ const d=ST.key=new THREE.DirectionalLight('#fff4e0',2.6);d.position.set(60,120,80);d.castShadow=SH;d.shadow.mapSize.set(q()=='high'?2048:1024,q()=='high'?2048:1024);d.shadow.radius=4;d.shadow.bias=-.0005;d.shadow.normalBias=.04;S.add(d,d.target);
+ const rim=ST.rim=new THREE.DirectionalLight('#9fd0ff',1.8);rim.position.set(-80,60,-90);S.add(rim);
+ const gnd=ST.gnd=new THREE.Mesh(new THREE.CircleGeometry(1,48),!SH?new THREE.MeshBasicMaterial({map:blob(),transparent:true,depthWrite:false}):new THREE.ShadowMaterial({opacity:.38}));gnd.rotation.x=-Math.PI/2;gnd.position.y=.03;gnd.receiveShadow=true;gnd.name='srGround';S.add(gnd);
+ const tt=new THREE.Mesh(new THREE.CylinderGeometry(1,1.04,.04,64),new THREE.MeshStandardMaterial({color:'#121c26',metalness:.3,roughness:.7,envMapIntensity:.3}));tt.receiveShadow=true;ST.table=tt;S.add(tt);addEventListener('dw-quality',()=>{if(ST.el&&ST.grp)loadGLB(RIGS[ST.i],ST.grp)});size()}
+function blob(){const c=document.createElement('canvas');c.width=c.height=64;const x=c.getContext('2d'),gr=x.createRadialGradient(32,32,2,32,32,32);gr.addColorStop(0,'rgba(0,0,0,.55)');gr.addColorStop(1,'rgba(0,0,0,0)');x.fillStyle=gr;x.fillRect(0,0,64,64);return new THREE.CanvasTexture(c)}
+// GLB rig (Blender, tools/blender). Procedural model stays until the GLB is in; on error it stays (fallback).
+const INV=Object.fromEntries(Object.entries({mudpump:'mudpumps',pipe:'pipehandling',mudsys:'mudtanks',gen:'generators',accum:'accumulator'}).map(([a,b])=>[b,a]));
+function loadGLB(r,g){const lod=q();ST.glb=null;if(!M3.enabled()){ST.glbState='off';return}ST.glbState='loading';ST.lodReq=lod;
+ Promise.all([M3.load(r.id,lod),M3.utils().catch(()=>null)]).then(([m,U])=>{if(ST.grp!==g||RIGS[ST.i]!==r||ST.lodReq!==lod)return;g.clear();g.add(m);ST.parts=M3.tag(m,INV,Object.keys(ASSET));ST.mg=U?M3.merge(m,U):[];g.userData.parts=ST.parts;m.updateMatrixWorld(true);
+  const r0=g.rotation.y,p0=g.position.clone();g.rotation.y=0;g.position.set(0,0,0);g.updateMatrixWorld(true);const bb=new THREE.Box3(),s=new THREE.Vector3();const ab=new THREE.Box3();m.traverse(o=>{if(o.isMesh&&o.userData.bom!='site'){bb.expandByObject(o);if(o.userData.bom=='mast'||o.userData.bom=='block')ab.expandByObject(o)}});if(bb.isEmpty())bb.setFromObject(m);const A=(ab.isEmpty()?bb:ab).getCenter(new THREE.Vector3());A.y=(ab.isEmpty()?bb:ab).max.y;g.rotation.y=r0;g.position.copy(p0);g.updateMatrixWorld(true);bb.getSize(s);g.userData.size=Math.max(s.x,s.y,s.z);g.userData.cy=(bb.min.y+bb.max.y)/2;g.userData.dims=s;g.userData.lbb=bb.clone();g.userData.anchor=A;
+  ST.glb=m;ST.lod=lod;ST.glbState='ok';if(!ST.camT)frameCam();if(ST.hk)hilite(ST.hk,1);if(ST.dOpen)renderList();if(ST.night)nightSet(true,true)}).catch(e=>{console.warn('showroom GLB fallback',e);if(ST.grp===g)ST.glbState='fallback'})}
+
 function size(){if(!ST.ren)return;ST.el.classList.toggle('narrow',innerWidth<600);const w=innerWidth,h=innerHeight;ST.ren.setSize(w,h,false);ST.cam.aspect=w/h;ST.cam.updateProjectionMatrix();frameCam()}
-function frameCam(){const g=ST.grp;if(!g)return;const s=g.userData.size,fit=s/(2*Math.tan(ST.cam.fov*Math.PI/360))*(ST.cam.aspect<1?1.6/ST.cam.aspect*.75:1.15);
- ST.cam.position.set(0,g.userData.cy+s*.25,fit);ST.look=new THREE.Vector3(0,g.userData.cy*.85,0);ST.cam.lookAt(ST.look);ST.table.scale.set(s*.62,1,s*.62)}
+function frameCam(){const g=ST.grp;if(!g)return;const c=ST.cam;let dm=g.userData.dims;if(!dm){const rr=g.rotation.y;g.rotation.y=0;g.updateMatrixWorld(true);const bb=new THREE.Box3().setFromObject(g);g.rotation.y=rr;dm=g.userData.dims=bb.getSize(new THREE.Vector3())}
+ // Fit the whole rig (turntable sweep = horizontal diagonal) so it fills the view, leaving the top band for the floating rig card.
+ const ph=c.aspect<1,fh=ph?.52:.58,cen=ph?.52:.54,tv=Math.tan(c.fov*Math.PI/360),th=tv*c.aspect,R=Math.hypot(dm.x,dm.z)/2,H=dm.y;
+ let d=Math.max(H/(fh*2*tv)+R*.4,R*.8/(.96*th)+R*.6,6);const cy=g.userData.cy;let ly=cy+(cen-.5)*2*d*tv;const put=()=>{ST.look=new THREE.Vector3(0,ly,0);c.position.set(0,ly+d*.08,d);c.lookAt(ST.look);c.far=Math.max(3000,d*4);c.updateProjectionMatrix();c.updateMatrixWorld(true)};put();
+ // Refine on the turntable sweep box (rotation-invariant): the rig stays inside a vertical band; when the rig card is open the band starts below the card.
+ const L=g.userData.lbb,Hp=innerHeight,y0=L?L.min.y:cy-H/2,y1=L?L.max.y:cy+H/2,R2=L?Math.hypot(Math.max(-L.min.x,L.max.x),Math.max(-L.min.z,L.max.z)):R,dW=d;
+ const top=ST.rc&&ST.rcHf?Math.min(.62,(56+ST.rcHf+18)/Hp):(ph?.24:.22),bot=ph?.80:.86,band=(bot-top)*Hp,mid=(top+bot)/2*Hp;ST.band={top:top*Hp,bot:bot*Hp};
+ const sw=()=>{let t=1e9,b=-1e9;for(const x of[-R2,R2])for(const y of[y0,y1])for(const z of[-R2,R2]){const v=new THREE.Vector3(x+g.position.x,y,z).project(c),sy=(1-v.y)/2*Hp;t=Math.min(t,sy);b=Math.max(b,sy)}return{t,b}};
+ for(let it=0;it<6;it++){const r=sw(),k=(r.b-r.t)/band;if(Math.abs(k-1)<.01&&Math.abs((r.t+r.b)/2-mid)<1)break;d=Math.max(d*k,ST.rc?6:dW*.6,6);put();const r2=sw();ly-=((r2.t+r2.b)/2-mid)/Hp*2*d*tv;put()}
+ const s=R*1.02;ST.table.scale.set(s,1,s);if(ST.gnd)ST.gnd.scale.setScalar(s*1.6);
+ if(ST.key){const k=ST.key,sh=k.shadow.camera,e=Math.max(R,H)*1.2;k.position.set(e*.8,e*1.6,e*1.1);k.target.position.set(0,cy*.5,0);sh.left=sh.bottom=-e;sh.right=sh.top=e;sh.near=.5;sh.far=e*6;sh.updateProjectionMatrix()}}
 function show(i,dir=0){const n=RIGS.length;i=(i+n)%n;ST.i=i;const r=RIGS[i];if(ST.old){ST.scene.remove(ST.old)}ST.old=dir?ST.grp:null;if(!dir&&ST.grp)ST.scene.remove(ST.grp);
- const g=ST.grp=build(r);g.rotation.y=ST.grp0rot??-.5;ST.scene.add(g);ST.tr=dir?{t:0,dir}:null;frameCam();
- if(!dir)g.position.x=0;ST.camT=null;ST.lvl=null;if(ST.dOpen)renderList();card();const ds=ST.el.querySelectorAll('#srDots i');ds.forEach((d,k)=>{d.classList.toggle('on',k==i);d.setAttribute('aria-current',k==i)});ST.el.dataset.rig=r.id;if(ST.night)nightSet(true,true)}
+ const g=ST.grp=build(r);g.rotation.y=ST.grp0rot??-.5;ST.scene.add(g);ST.tr=dir?{t:0,dir}:null;frameCam();loadGLB(r,g);
+ if(!dir)g.position.x=0;rigCard(false);ST.camT=null;ST.lvl=null;if(ST.dOpen)renderList();card();const ds=ST.el.querySelectorAll('#srDots i');ds.forEach((d,k)=>{d.classList.toggle('on',k==i);d.setAttribute('aria-current',k==i)});ST.el.dataset.rig=r.id;if(ST.night)nightSet(true,true)}
 const go=d=>show(ST.i+d,d);
 function card(){const r=RIGS[ST.i],c=$('srCard');c.innerHTML=`<h3>${es(r.name)} <span class=srSim>SIM</span></h3><div class=ty>${es(r.type)}</div><table>
 <tr><td>Hookload</td><td>${es(r.hook)}</td></tr><tr><td>Drawworks</td><td>${es(r.dw)}</td></tr><tr><td>Mast / derrick height</td><td>${es(r.mast)}</td></tr><tr><td>Mud pumps</td><td>${es(r.pumps)}</td></tr><tr><td>BOP rating</td><td>${es(r.bop)}</td></tr></table>
 <div class=note>Generic typical values for this rig class (SIM). Not a specific real rig. Tap a part to see its exploded view.</div>`;c.dataset.rig=r.id}
+// Rig card extras (generic class values, SIM): depth capacity, top drive, short description.
+const RIGX={single:['≈ 2,500 m','Kelly / power swivel, 15 kN·m','Small land rig for shallow wells. Drills with single joints.'],
+ triple:['≈ 6,000 m','500 t, 1,150 hp AC, 60 kN·m','Large land rig. Racks triple stands in the derrick for fast trips.'],
+ heli:['≈ 4,500 m','350 t, 50 kN·m','Land rig in small modules. A helicopter moves it to remote sites.'],
+ workover:['≈ 4,000 m (service)','Power swivel, 10 kN·m','Mast truck for well repair, pulling tubing and rods.'],
+ ctu:['≈ 6,000 m (coil reach)','None — injector head 45 t','Runs a continuous steel tube into a live well. No joints to connect.'],
+ jackup:['≈ 9,000 m · water ≤ 120 m','750 t, 2 × 1,150 hp, 75 kN·m','Offshore rig. Legs stand on the seabed and lift the hull above the waves.'],
+ semi:['≈ 10,000 m · water ≤ 3,000 m','750 t, 85 kN·m','Floating offshore rig on pontoons and columns. Anchors or thrusters hold it.'],
+ ship:['≈ 12,000 m · water ≤ 3,600 m','1,000 t, 2 × 1,150 hp, 100 kN·m','Ship with a derrick on the deck. Thrusters hold it over the well.'],
+ frac:['n/a (stimulation)','None','Group of pump trucks, blenders and tanks. Pumps fluid to crack the rock.']};
+function rcHTML(){const r=RIGS[ST.i],x=RIGX[r.id]||['—','—',''];return `<button id=srRcX aria-label=Close>✕</button><button id=srRcT aria-label="Show or hide details">▾</button><h3>${es(r.name)} <span class=srSim>SIM</span></h3><div class=ty>Type: ${es(r.kind=='heli'?'land':r.kind)} · ${es(r.type)}</div><table>
+<tr data-f=hook><td>Hook load / derrick</td><td>${es(r.hook)}</td></tr><tr data-f=depth><td>Depth capacity</td><td>${es(x[0])}</td></tr><tr data-f=dw><td>Drawworks</td><td>${es(r.dw)}</td></tr><tr data-f=td><td>Top drive</td><td>${es(x[1])}</td></tr><tr data-f=pumps><td>Mud pumps</td><td>${es(r.pumps)}</td></tr><tr data-f=bop><td>BOP rating</td><td>${es(r.bop)}</td></tr></table>
+<p class=ds>${es(x[2])}</p><div class=note>Generic values for this rig class (SIM). Not a real rig.</div><button id=srRcGo>▤ Assets and parts</button>`}
+export function rigCard(on,k){const c=$('srRC');if(!c)return;ST.rc=!!on;ST.rcK=k||null;if(!on){c.hidden=true;if(ST.rcHf){ST.rcHf=0;if(!ST.camT)frameCam()}return}c.innerHTML=rcHTML();c.dataset.rig=RIGS[ST.i].id;c.hidden=false;
+ $('srRcX').onclick=()=>rigCard(false);$('srRcT').onclick=()=>{const col=!c.classList.contains('col');c.classList.toggle('col',col);ST.rcCol=col;$('srRcT').textContent=col?'▸':'▾';placeRC()};c.classList.toggle('col',!!ST.rcCol);$('srRcGo').onclick=()=>{const kk=ST.rcK;rigCard(false);drawer(true,kk)};placeRC()}
+function anchorOf(g){const ms=ST.parts.filter(m=>m.userData.part=='mast'&&g.getObjectById(m.id));const bb=new THREE.Box3();g.updateMatrixWorld(true);(ms.length?ms:[g]).forEach(m=>bb.expandByObject(m));const c=bb.getCenter(new THREE.Vector3());c.y=bb.max.y;return g.worldToLocal(c)}
+function rigRect(g){if(!g.userData.lbb){g.updateMatrixWorld(true);const bb=new THREE.Box3().setFromObject(g),inv=g.matrixWorld.clone().invert();g.userData.lbb=bb.applyMatrix4(inv)}const B=g.userData.lbb,r={l:1e9,t:1e9,r:-1e9,b:-1e9};
+ for(let i=0;i<8;i++){const v=new THREE.Vector3(i&1?B.max.x:B.min.x,i&2?B.max.y:B.min.y,i&4?B.max.z:B.min.z);g.localToWorld(v).project(ST.cam);const x=(v.x+1)/2*innerWidth,y=(1-v.y)/2*innerHeight;r.l=Math.min(r.l,x);r.r=Math.max(r.r,x);r.t=Math.min(r.t,y);r.b=Math.max(r.b,y)}return r}
+// Card floats above the derrick top and never covers the rig: above the rig box, else beside it, else collapsed into the top band.
+function placeRC(){const c=$('srRC'),g=ST.grp;if(!ST.rc||!c||!g)return;if(!g.userData.anchor)g.userData.anchor=anchorOf(g);const v=g.localToWorld(g.userData.anchor.clone());v.project(ST.cam);
+ const ax=(v.x+1)/2*innerWidth,ay=(1-v.y)/2*innerHeight,R=ST.rcR=rigRect(g),m=8,top0=56,gap=10,W=innerWidth,H=innerHeight;c.classList.toggle('night',!!ST.night);
+ const fit=()=>{const w=c.offsetWidth,h=c.offsetHeight;let x=Math.max(m,Math.min(W-w-m,ax-w/2)),y=Math.min(ay,R.t)-gap-h;if(y>=top0)return{x,y,mode:'above'};
+  y=Math.max(top0,Math.min(H-h-m,ay-h/2));if(R.r+gap+w<=W-m)return{x:R.r+gap,y,mode:'right'};if(R.l-gap-w>=m)return{x:R.l-gap-w,y,mode:'left'};if(R.b+gap+h<=H-m)return{x,y:R.b+gap,mode:'below'};return null};
+ let P=fit();if(!P&&ST.rcCol==null){c.classList.add('col');P=fit();if(P)ST.rcAuto=1;else c.classList.remove('col')}
+ if(!P){const w=c.offsetWidth,h=c.offsetHeight;P={x:Math.max(m,Math.min(W-w-m,ax-w/2)),y:Math.max(top0,Math.min(R.t,ay)-gap-h),mode:'top'}}
+ c.style.left=P.x+'px';c.style.top=P.y+'px';c.dataset.mode=P.mode;ST.rcA={x:ax,y:ay};const sc=$('srCard');if(sc)sc.style.opacity=ST.rc?0:1;const hh=c.offsetHeight;if(Math.abs(hh-(ST.rcHf||0))>4&&!ST.camT){ST.rcHf=hh;frameCam()}}
 function frame(now){if(!ST.el)return;if(window.GX&&!window.GX.showroom)window.GX.showroom=api();const dt=Math.min(.25,(now-(ST.last||now))/1000);ST.last=now;ST.t+=dt;const g=ST.grp;
  if(g)g.rotation.y+=dt*(ST.camT?.06:.25);
  if(ST.tr){const T=ST.tr;T.t=Math.min(1,T.t+dt/.45);const e=1-Math.pow(1-T.t,3),W=g.userData.size*1.3;g.position.x=T.dir*W*(1-e);if(ST.old)ST.old.position.x=-T.dir*W*e;if(T.t>=1){if(ST.old)ST.scene.remove(ST.old);ST.old=null;ST.tr=null;g.position.x=0}}
- if(ST.hiT&&now>ST.hiT){ST.parts.forEach(m=>m.material.emissive?.setHex?.(0));ST.hiT=0;if(ST.hk)hilite(ST.hk,0)}
+ if(ST.hiT&&now>ST.hiT){[...ST.parts,...(ST.mg||[])].forEach(m=>m.material.emissive?.setHex?.(0));ST.hiT=0;if(ST.hk)hilite(ST.hk,0)}
  if(ST.camT){const c=ST.cam,T=ST.camT,k=Math.min(1,dt*4);c.position.lerp(T.p,k);ST.look.lerp(T.l,k);c.lookAt(ST.look)}
- ST.ren.render(ST.scene,ST.cam);ST.raf=requestAnimationFrame(frame)}
+ if(ST.glbState=='ok'&&ST.lod!==q()&&!ST.tr)loadGLB(RIGS[ST.i],g);
+ placeRC();ST.ren.render(ST.scene,ST.cam);ST.raf=requestAnimationFrame(frame)}
 function pad(){const p=[...(navigator.getGamepads?.()||[])].find(Boolean);if(!p)return;const b=i=>!!p.buttons[i]?.pressed,e=i=>b(i)&&!ST.prev[i];
  if(e(5)||e(15))go(1);if(e(4)||e(14))go(-1);if(e(0))use();if(e(1))close();ST.prev=p.buttons.map(x=>x.pressed)}
-function key(e){if(!ST.el)return;const k=e.key;let h=true;if(k=='ArrowRight'||k=='d'||k=='D')go(1);else if(k=='ArrowLeft'||k=='a'||k=='A')go(-1);else if(k=='Escape'){if(ST.dOpen)back();else close()}else if(k=='Enter'&&(document.activeElement===document.body||!document.activeElement||document.activeElement.id=='srUse'))use();else h=false;if(h){e.preventDefault();e.stopPropagation()}}
+function key(e){if(!ST.el)return;const k=e.key;let h=true;if(k=='ArrowRight'||k=='d'||k=='D')go(1);else if(k=='ArrowLeft'||k=='a'||k=='A')go(-1);else if(k=='Escape'){if(ST.rc)rigCard(false);else if(ST.dOpen)back();else close()}else if(k=='Enter'&&(document.activeElement===document.body||!document.activeElement||document.activeElement.id=='srUse'))use();else h=false;if(h){e.preventDefault();e.stopPropagation()}}
 function pick(x,y){const r=new THREE.Raycaster(),v=new THREE.Vector2(x/innerWidth*2-1,-(y/innerHeight)*2+1);r.setFromCamera(v,ST.cam);const hit=r.intersectObjects(ST.parts,false)[0];return hit?.object||null}
 export function tapPart(key,expOnly){if(!key)return false;const ws=window.GX?.ws;if(!ws||!ws.CAT?.[key])return toast('Exploded view is not ready yet'),false;close();
  ws.open('exp',key);if(!expOnly&&window.GX?.bom&&ws.setMode)try{ws.setMode('bom')}catch(e){}// guarded hook for bom.js (feat/bom)
@@ -102,7 +152,7 @@ function ptr(){const cv=ST.el.querySelector('canvas');const dn=(x,y)=>{ST.dn={x,
  cv.addEventListener('touchstart',e=>{ST.tch=1;const t=e.changedTouches[0];dn(t.clientX,t.clientY);e.preventDefault()},{passive:false});cv.addEventListener('touchend',e=>{const t=e.changedTouches[0],m=ST.mv||{};up(Math.abs(m.x-ST.dn?.x)>Math.abs(t.clientX-ST.dn?.x)?m.x:t.clientX,m.y??t.clientY);e.preventDefault()},{passive:false});
  function up(cx,cy){const d=ST.dn;ST.dn=null;if(!d)return;const dx=cx-d.x,dy=cy-d.y;
   if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*1.2)return go(dx<0?1:-1);
-  if(Math.hypot(dx,dy)<12){const m=pick(cx,cy);if(m){m.material=m.material.clone();m.material.emissive=new THREE.Color('#2a6fff');ST.hiT=performance.now()+400;ST.lastPart=m.userData.part;drawer(true,m.userData.part)}else drawer(true)}}}
+  if(Math.hypot(dx,dy)<12){const m=pick(cx,cy);if(m){m.material=m.material.clone();m.material.emissive=new THREE.Color('#2a6fff');ST.hiT=performance.now()+400;ST.lastPart=m.userData.part;rigCard(true,m.userData.part)}}}}
 function toast(t){const e=$('srToast');if(!e)return;e.textContent=t;e.style.display='block';clearTimeout(e._t);e._t=setTimeout(()=>e.style.display='none',2600)}
 export function use(){const r=RIGS[ST.i];ST.used=r.id;let ok=false;try{if(window.GX?.setDesign){window.GX.setDesign({...r.design,name:r.name+' (SIM)'});ok=true}}catch(e){console.warn('showroom use',e)}
  try{localStorage.setItem('dw_showroom_rig',r.id)}catch(e){}window.dispatchEvent(new CustomEvent('dw-rig',{detail:{id:r.id,name:r.name,applied:ok}}));close();
@@ -110,7 +160,7 @@ export function use(){const r=RIGS[ST.i];ST.used=r.id;let ok=false;try{if(window
 export function open(i){if(ST.el)return;window.GX=window.GX||{};if(!window.GX.showroom)window.GX.showroom=api();if(!$('srCss')){const s=document.createElement('style');s.id='srCss';s.textContent=CSS;document.head.appendChild(s)}
  const el=ST.el=document.createElement('section');el.id='showroom';el.setAttribute('role','dialog');el.setAttribute('aria-label','Rig showroom');
  el.innerHTML=`<canvas></canvas><div id=srTop><b>🏁 Rig showroom <span class=srSim>SIM</span></b><button id=srClose aria-label="Close showroom">✕ Close</button></div><div id=srToast></div>
-<div id=srCard></div><aside id=srDrw aria-label="Rig assets"><button id=srHdl aria-label="Open or close the asset table" aria-expanded=false>☰ Assets</button><div id=srCrumb></div><div id=srList></div></aside><div id=srHint>← → or LB / RB: change rig · Enter: use · Esc: close<br>Tap a part for its exploded view</div>
+<div id=srCard></div><div id=srRC role=dialog aria-label="Rig card" hidden></div><aside id=srDrw aria-label="Rig assets"><button id=srHdl aria-label="Open or close the asset table" aria-expanded=false>☰ Assets</button><div id=srCrumb></div><div id=srList></div></aside><div id=srHint>← → or LB / RB: change rig · Enter: use · Esc: close<br>Tap a part for its exploded view</div>
 <div id=srBar><div id=srNav><button id=srPrev aria-label="Previous rig">◀</button><div id=srDots>${RIGS.map((r,k)=>`<i data-k=${k} title="${es(r.name)}"></i>`).join('')}</div><button id=srNext aria-label="Next rig">▶</button></div><button id=srNight aria-label="Day or night">☾ Night</button><button id=srUse>✔ Use this rig</button></div>`;
  document.body.appendChild(el);$('srClose').onclick=close;$('srPrev').onclick=()=>go(-1);$('srNext').onclick=()=>go(1);$('srUse').onclick=use;$('srNight').onclick=()=>nightSet(!ST.night);$('srHdl').onclick=()=>drawer(!ST.dOpen);
  el.querySelectorAll('#srDots i').forEach(d=>d.onclick=()=>{const k=+d.dataset.k;if(k!=ST.i)show(k,k>ST.i?1:-1)});
@@ -147,13 +197,14 @@ export function comps(k){const A=ASSET[k];if(!A)return[];const R=rigA(k),CAT=win
  return (A.comp||[]).map((c,i)=>({n:c.n,i,lines:[{no:1,qty:1,spec:'Generic',fn:'',part:null}]}))}
 function bomCount(k){return comps(k).reduce((t,c)=>t+c.lines.length,0)}
 const nameOf=k=>rigA(k)?.label||ASSET[k].name;
-function hilite(k,on){for(const m of ST.parts){const x=m.userData.part==k&&on;if(x&&!m.userData.own){m.material=m.material.clone();m.userData.own=1}if(m.userData.own)m.material.emissive.setHex(x?0x2a6fff:0)}}
+function hilite(k,on){for(const m of [...ST.parts,...(ST.mg||[])]){const x=m.userData.part==k&&on;if(x&&!m.userData.own){m.material=m.material.clone();m.userData.own=1}if(m.userData.own)m.material.emissive.setHex(x?0x2a6fff:0)}}
 function zoom(k){const ms=ST.parts.filter(m=>m.userData.part==k);if(!ms.length){ST.camT=null;frameCam();return}const bb=new THREE.Box3();ms.forEach(m=>bb.expandByObject(m));
  const c=bb.getCenter(new THREE.Vector3()),sz=Math.max(4,bb.getSize(new THREE.Vector3()).length());ST.look=ST.look||c.clone();ST.camT={p:c.clone().add(new THREE.Vector3(sz*.6,sz*.4,sz*1.3)),l:c}}
 export function drawer(open,k){ST.dOpen=open;$('srDrw').classList.toggle('open',open);$('srHdl').setAttribute('aria-expanded',open);if(!open){if(ST.hk)hilite(ST.hk,0);ST.lvl=null;ST.camT=null;frameCam();return}
  if(k&&ASSET[k])selB(k);else renderList()}
 export function selB(k){if(ST.hk&&ST.hk!=k)hilite(ST.hk,0);ST.lvl={b:k,c:null};ST.hk=k;hilite(k,1);zoom(k);renderList()}
-export function selC(i){const L=ST.lvl;if(!L)return;L.c=i;hilite(L.b,1);zoom(L.b);renderList()}
+export function selC(i){const L=ST.lvl;if(!L)return;L.c=i;hilite(L.b,1);const id=comps(L.b)[i]?.id,ms=id?ST.parts.filter(m=>m.userData.part==L.b&&m.userData.comp==id):[];if(ms.length)zoomMs(ms);else zoom(L.b);renderList()}
+function zoomMs(ms){const bb=new THREE.Box3();ms.forEach(m=>bb.expandByObject(m));const c=bb.getCenter(new THREE.Vector3()),sz=Math.max(3,bb.getSize(new THREE.Vector3()).length());ST.look=ST.look||c.clone();ST.camT={p:c.clone().add(new THREE.Vector3(sz*.6,sz*.4,sz*1.3)),l:c}}
 export function back(){const L=ST.lvl;if(L?.c!=null){L.c=null;renderList()}else if(L){hilite(L.b,0);ST.lvl=null;ST.hk=null;ST.camT=null;frameCam();renderList()}else drawer(false)}
 function renderList(){const r=RIGS[ST.i],L=ST.lvl,A=L&&ASSET[L.b],cs=L?comps(L.b):[],C=L&&L.c!=null?cs[L.c]:null;
  $('srCrumb').innerHTML=`<button id=srBack aria-label=Back>◀ Back</button><a data-l=0>${es(r.name)}</a>`+(A?` › <a data-l=1>${es(nameOf(L.b))}</a>`:'')+(C?` › <b>${es(C.n)}</b>`:'');
@@ -167,7 +218,7 @@ function renderList(){const r=RIGS[ST.i],L=ST.lvl,A=L&&ASSET[L.b],cs=L?comps(L.b
   return `<tr class="b${open?' on':''}" data-k="${k}"><td>${open?'▾':'▸'} ${es(nameOf(k))}</td><td>${es(a.type)}</td><td>${es(a.spec(r))}</td><td>${bomCount(k)}</td></tr>`+(open?comps(k).map(c=>`<tr class=c data-c="${c.i}"><td>${es(c.n)}</td><td colspan=2>${es(c.lines[0]?.spec||'')}</td><td>${c.lines.length}</td></tr>`).join(''):'')}).join('')+`</table><div style="font-size:11px;opacity:.6;padding:6px">Generic SIM values. Tap a row to zoom; tap again to close.</div>`;
  $('srList').querySelectorAll('tr.b').forEach(tr=>{const k=tr.dataset.k;tr.onmouseenter=()=>{if(!ST.lvl)hilite(k,1)};tr.onmouseleave=()=>{if(!ST.lvl)hilite(k,0)};tr.onclick=()=>{if(ST.lvl?.b==k)back();else selB(k)}});
  $('srList').querySelectorAll('tr.c').forEach(tr=>tr.onclick=()=>selC(+tr.dataset.c))}
-function api(){return {ST,RIGS,ASSET,open,close,go,show,use,tapPart,pick,isOpen:()=>!!ST.el,init,comps,drawer,selB,selC,back,nightSet,isNight:()=>!!ST.night}}
+function api(){return {ST,RIGS,ASSET,open,close,go,show,use,tapPart,pick,isOpen:()=>!!ST.el,init,comps,drawer,rigCard,rigRect,selB,selC,back,nightSet,isNight:()=>!!ST.night,M3,loadGLB}}
 if(typeof window!='undefined'){window.GX=window.GX||{};window.GX.showroom=window.GX.showroom||api()}
 
 // ---------- Day / night (feat/night). Guarded: does nothing if night.js is not there. ----------
