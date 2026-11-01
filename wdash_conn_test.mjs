@@ -37,7 +37,7 @@ mode='fault';await pg.evaluate(()=>wdW.dispatchEvent(new Event('change')));await
 mode='ok';await pg.evaluate(()=>{wdDis.click()});await w(300);await connect('wrong');ok(/Login problem.*refused|Login problem: Authentication failed/.test(await st()),'auth message: '+await st());
 mode='down';await connect('S3cret-pw-XYZ');ok(/Proxy\/CORS problem/.test(await st()),'proxy/CORS message: '+await st());
 mode='ok';await pg.evaluate(()=>{wdForget.click()});await w(300);
-const np=await pg.evaluate(async()=>{const m=await import('./wdash.js?v=w4');return [m.normProxy('https://tryfecta-witsml-proxy.netlify.app/witsml'),m.isLocalProxy('http://localhost:8796/soap')]});
+const np=await pg.evaluate(async()=>{const m=await import('./wdash.js?v=w5');return [m.normProxy('https://tryfecta-witsml-proxy.netlify.app/witsml'),m.isLocalProxy('http://localhost:8796/soap')]});
 ok(np[0]=='https://tryfecta-witsml-proxy.netlify.app/witsml-proxy'&&np[1],'proxy URL "/witsml" corrected to /witsml-proxy; local proxy detected');
 // ---- v5.12.14 saved connection ----
 await connect('S3cret-pw-XYZ');await pg.evaluate(()=>{wdW.value='MW1';wdUse.click()});await w(1500);

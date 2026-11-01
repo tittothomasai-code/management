@@ -1,8 +1,8 @@
-// wdash.js v5.12.19 (whole-well discovery, depth/time mapping) / v5.12.12: WITSML dashboard. Vertical depth (or time) logs, tracks side by side, auto-scroll, curve picker, scales,
+// wdash.js v5.12.20 (discovery + views moved to shared wwell.js) / v5.12.19 (whole-well discovery, depth/time mapping) / v5.12.12: WITSML dashboard. Vertical depth (or time) logs, tracks side by side, auto-scroll, curve picker, scales,
 // borehole image tracks (unwrapped 0-360°, colour map, sinusoids). Data: WITSML 1.4.1.1 store (via proxy or direct) or SIM.
 // Credentials: held ONLY in this module's memory while the panel is connected. Never written to browser storage (local or session),
 // cookies, URLs, the console or error text. Cleared on Disconnect and on close. SIM data is labelled SIM, never LIVE.
-import * as K from './wdash_core.js?v=w2';
+import * as K from './wdash_core.js?v=w2';import * as WW from './wwell.js?v=ww1';
 const $=id=>document.getElementById(id);
 const HOSTED='https://tryfecta-witsml-proxy.netlify.app/witsml-proxy',LOCAL='http://localhost:8796/soap';
 const NS='xmlns="http://www.witsml.org/schemas/1series" version="1.4.1.1"';
@@ -61,30 +61,13 @@ async function call1(op,wmlType,query,options){const C=D.conn,u=CRED||{user:'',p
  catch(e){if(e.name=='AbortError')throw Object.assign(new Error('no answer within 45 s'),{timeout:1});if(e instanceof TypeError)throw NOPRX(C.via=='direct'?'browser blocked the request (CORS) or the store is unreachable — use a proxy (see guide)':'cannot reach the proxy (check the proxy URL / network)');throw Object.assign(new Error(K.redact(e.message,[u.user,u.pass])),{auth:e.auth})}
  finally{clearTimeout(to)}}
 export const ids=(x,t)=>[...String(x).matchAll(new RegExp('<(?:\\w+:)?'+t+'\\b([^>]*?)(?:/>|>([\\s\\S]*?)</(?:\\w+:)?'+t+'>)','g'))].map(m=>({uid:(m[1].match(/\buid="([^"]*)"/)||[])[1],name:(((m[2]||'').match(/<(?:\w+:)?name>([^<]*)</)||[])[1]||'').trim()})).filter(w=>w.uid);
+const IO=WW.makeIO((...a)=>call(...a));const listWbs=IO.listWbs,readLog=s=>IO.readLog(D.conn.well,s);
 async function listWells(){const j=await call('WMLS_GetFromStore','well',`<wells ${NS}><well uid=""><name/></well></wells>`,'returnElements=id-only');return ids(j.xml,'well')}
-async function listWbs(w){const j=await call('WMLS_GetFromStore','wellbore',`<wellbores ${NS}><wellbore uidWell="${w}" uid=""><name/></wellbore></wellbores>`,'returnElements=id-only');return ids(j.xml,'wellbore')}
-async function listLogs(w,b){const j=await call('WMLS_GetFromStore','log',`<logs ${NS}><log uidWell="${w}" uidWellbore="${b}" uid=""/></logs>`,'returnElements=header-only');return K.parseLogs(j.xml).map(l=>({...l,uidWellbore:l.uidWellbore||b}))}
-async function listTraj(w,b){const j=await call('WMLS_GetFromStore','trajectory',`<trajectorys ${NS}><trajectory uidWell="${w}" uidWellbore="${b}" uid=""/></trajectorys>`,'returnElements=all');return K.parseTraj(j.xml).map(t=>({...t,uidWellbore:t.uidWellbore||b}))}
-async function listMud(w,b){const j=await call('WMLS_GetFromStore','mudLog',`<mudLogs ${NS}><mudLog uidWell="${w}" uidWellbore="${b}" uid=""/></mudLogs>`,'returnElements=all');return K.parseMudLogs(j.xml).map(t=>({...t,uidWellbore:t.uidWellbore||b}))}
-const WIN={time:12*3600e3,depth:500};// first read per log: last 12 h (time) / last 500 m (depth)
-function rangeQ(s){const last=s.rows.at(-1)?.[0];if(s.time){const st=last?last+1:(Date.parse(s.end||'')?Date.parse(s.end)-WIN.time:0);return st?`<startDateTimeIndex>${new Date(st).toISOString()}</startDateTimeIndex>`:''}
- const u=s.uom||'m';const e=parseFloat(s.end);return last!=null?`<startIndex uom="${u}">${last}</startIndex>`:Number.isFinite(e)?`<startIndex uom="${u}">${Math.max(0,e-WIN.depth)}</startIndex>`:''}
-async function readLog(s){const j=await call('WMLS_GetFromStore','log',`<logs ${NS}><log uidWell="${D.conn.well}" uidWellbore="${s.wb}" uid="${s.uid}">${rangeQ(s)}<logData><data/></logData></log></logs>`,'returnElements=data-only;maxReturnNodes=2000');
- const L=K.parseLogs(j.xml)[0];if(L&&L.rows.length){if(!s.ml||!s.rows.length){s.ml=null;s.rows=[]}K.appendRows(s,L.ml,L.rows,L.ul);return L.rows.length}return 0}
-async function pool(items,n,f){const q=items.slice();await Promise.all(Array.from({length:n},async()=>{while(q.length){const it=q.shift();try{await f(it)}catch(e){it.err=e.message}}}))}
 // discover EVERY object in the well: all wellbores -> all logs (time+depth, FE, mud, survey logs), trajectories, mudLogs; then read data; live branch selected
-export async function loadWell(well,note=()=>{}){const C=D.conn;C.well=well;note('Reading wellbores…');const wbs=await listWbs(well);if(!wbs.length)throw new Error('Connected, but the store returned no wellbores for well '+well+' (empty result)');const sets=[];
- for(const b of wbs){note('Wellbore '+(b.name||b.uid)+': listing objects…');const [lg,tr,ml]=await Promise.all([listLogs(well,b.uid).catch(e=>[]),listTraj(well,b.uid).catch(e=>[]),listMud(well,b.uid).catch(e=>[])]);
-  for(const s of [...lg,...tr,...ml]){s.wb=b.uid;s.wbName=b.name||b.uid;s.kind=K.classify(s);s.short=(s.name||s.uid).replace(/\W+/g,'').slice(0,10);if(s.obj=='log'){s.uom=(s.ml?.length?null:null)||'m';s.ml=null;s.rows=[];s.ul=[]}sets.push(s)}}
- note('Reading data from '+sets.filter(s=>s.obj=='log').length+' logs…');await pool(sets.filter(s=>s.obj=='log'),4,readLog);
- D.sets=sets;D.disc={wellbores:wbs.length,logs:sets.filter(s=>s.obj=='log').length,time:sets.filter(s=>s.obj=='log'&&s.time).length,depth:sets.filter(s=>s.obj=='log'&&!s.time).length,
-  realtime:sets.filter(s=>s.kind=='realtime').length,fe:sets.filter(s=>s.kind=='fe').length,mudlog:sets.filter(s=>s.kind=='mudlog').length,survey:sets.filter(s=>s.kind=='survey').length,
-  trajectories:sets.filter(s=>s.obj=='trajectory').length,mudLogs:sets.filter(s=>s.obj=='mudLog').length,withData:sets.filter(s=>s.rows?.length).length,errors:sets.filter(s=>s.err).length};
- const P=K.pickLive(sets.filter(s=>s.rows?.length))||K.pickLive(sets);if(!P)throw new Error('the store returned no logs or trajectories for well '+well+' (empty result)');
- select(P,true);C.lastPoll=Date.now();saveCfg();return D.disc}
+export async function loadWell(well,note=()=>{}){const C=D.conn;C.well=well;const R=await WW.discoverWell(IO,well,note);// shared with the simulator (wwell.js)
+ D.sets=R.sets;D.disc=R.disc;select(R.P,true);C.lastPoll=Date.now();saveCfg();return D.disc}
 function wbSets(){return D.sets.filter(s=>s.wb==D.P.wb&&s.rows?.length)}
-function rebuild(){if(!D.P)return;const W=wbSets(),tl=[D.P,...W.filter(s=>s.time&&s!==D.P)].filter(s=>s.time);let M=null;for(const s of tl){M=K.depthMap(s);if(M){M.from=s.name||s.uid;break}}D.M=M;
- D.dep=K.combine(W,'depth',M,D.P);D.tim=K.combine(W,'time',M,D.P)}
+function rebuild(){if(!D.P)return;const V=WW.buildViews(D.sets,D.P);D.M=V.M;D.dep=V.dep;D.tim=V.tim}
 function select(P,first){D.P=P;Object.assign(D.conn,{wb:P.wb,log:P.uid,logTime:!!P.time});saveCfg();rebuild();D.src='WITSML';if(first||true)D.mode=P.time?'time':'depth';D.top=null;D.auto=true;D.tracks=cur().ml?.length?defaultTracks(cur().ml):[];D.conn.okAt=Date.now();head();render()}
 async function pollLive(){const C=D.conn,P=D.P;if(!C.connected||!P||P.obj!='log'||C.busy)return;C.busy=true;
  try{const n=await readLog(P);if(n){const had=cur().ml?.length;rebuild();if(!had||!D.tracks.length)D.tracks=defaultTracks(cur().ml||[])}

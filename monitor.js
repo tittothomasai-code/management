@@ -1,4 +1,4 @@
-// monitor.js v5.9.3: "Monitor a well" — phone-first progress view. SIM unless a saved WITSML connection exists.
+// monitor.js v5.12.20 (whole-well card, shared wwell.js model) / v5.9.3: "Monitor a well" — phone-first progress view. SIM unless a saved WITSML connection exists.
 // Saved WITSML: uses ONLY the existing saved-connection behaviour (opens the existing WITSML panel to reconnect; reads window.WML/S once
 // that panel reports "connected"). This module makes NO network calls of its own. SIM data is always labelled SIM, never LIVE. Metric units.
 import * as WP from './wplan.js?v=b11';
@@ -63,7 +63,7 @@ function draw(){const H=M.hist;if(!H.length)return;const pc=M.plan?planCurve():[
 // ---- UI ----
 const CSS=`#mon{position:fixed;inset:0;z-index:99990;background:#08111b;color:#e6f0f8;font:13px system-ui,-apple-system,sans-serif;overflow:auto;-webkit-overflow-scrolling:touch;padding:calc(8px + env(safe-area-inset-top)) 10px calc(16px + env(safe-area-inset-bottom));box-sizing:border-box}
 #mon h2{margin:0;font-size:18px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}#mon .simb{background:#8a8f98;color:#fff;border-radius:6px;padding:1px 7px;font-size:12px;font-weight:800;letter-spacing:.08em}
-#mon .wb{background:#2a5a8a;color:#fff;border-radius:6px;padding:1px 7px;font-size:12px;font-weight:800}
+#mon button.on{background:#2a6db0;color:#fff}#mon .wb{background:#2a5a8a;color:#fff;border-radius:6px;padding:1px 7px;font-size:12px;font-weight:800}
 #mon .g{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0}@media(min-width:820px){#mon .g{grid-template-columns:repeat(4,minmax(0,1fr))}#mon .pl{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}}
 #mon .k{background:#102031;border:1px solid #23405c;border-radius:10px;padding:8px}#mon .k small{display:block;opacity:.7;font-size:11px}#mon .k b{font-size:20px}
 #mon .card{background:#0d1a28;border:1px solid #23405c;border-radius:10px;padding:8px;margin-bottom:8px}#mon canvas{width:100%;height:190px;display:block}
@@ -74,9 +74,16 @@ function shell(){const st=document.createElement('style');st.id='monCss';st.text
  <div id=monSrc style="font-size:12px;opacity:.8;margin-top:3px"></div><div class=card style="margin-top:8px"><small style="opacity:.7">Current activity / rig state</small><div id=monAct class=act>–</div><div id=monSec style="font-size:12px;margin-top:3px"></div></div>
  <div class=g><div class=k><small>Bit / hole depth MD</small><b id=monMD>–</b> m</div><div class=k><small>ROP</small><b id=monROP>–</b> m/h</div><div class=k><small>ETA to TD</small><b id=monETA>–</b></div><div class=k><small>vs plan</small><b id=monVs>–</b></div></div>
  <div class=pl><div class=card><b>Depth vs time</b> <small style="opacity:.7">orange actual · grey dashed plan</small><canvas id=monDT></canvas></div><div class=card><b>Depth vs plan</b> <small style="opacity:.7">section view, TVD vs VS</small><canvas id=monDP></canvas></div><div class=card><b>Key traces</b><canvas id=monTr></canvas></div></div>
- <div class=card><b>Latest surveys</b> <small style="opacity:.7">distance to plan (3D)</small><table id=monSv><thead><tr><th>MD m</th><th>Inc °</th><th>TVD m</th><th>Dist to plan m</th></tr></thead><tbody></tbody></table></div>`;
+ <div class=card><b>Latest surveys</b> <small style="opacity:.7">distance to plan (3D)</small><table id=monSv><thead><tr><th>MD m</th><th>Inc °</th><th>TVD m</th><th>Dist to plan m</th></tr></thead><tbody></tbody></table></div><div class=card id=monWW><b>Whole well</b> <small style="opacity:.7">every wellbore, log, trajectory and mud log (shared with the WITSML dashboard)</small><div id=monWWb></div></div>`;
  document.body.appendChild(e);M.el=e;$('monX').onclick=close;$('monSpd').onclick=()=>{M.speed=M.speed==120?600:M.speed==600?30:120;$('monSpd').textContent='⏩ ×'+M.speed}}
-function render(){if(!M.el)return;const sim=M.src=='SIM';$('monBadge').innerHTML=sim?'<span class=simb>SIM</span>':'<span class=wb>WITSML</span>';$('monSpd').style.display=sim?'':'none';
+// v5.12.20: whole-well card from the SAME shared model as ?wdash (wwell.js via GX.wellmodel): live branch default, Depth/Time selector
+function wwCard(){const b=$('monWWb');if(!b)return;const G=window.GX?.wellmodel,W=G?.WM;if(!W?.disc){b.innerHTML='<span class=simb>SIM</span> No WITSML well loaded — connect in the WITSML panel and load a well to see every wellbore, log and trajectory here.';return}
+ const e=t=>String(t??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));const dm=W.mode=='depth',V=G.view(),la=G.latest(),tg=W.tag=='LIVE'&&W.P?.kind=='realtime'?'LIVE':W.tag=='LIVE'?'WITSML':'SIM-TEST';
+ b.innerHTML=`<div style="font-size:12px;margin:3px 0"><span class=${tg=='LIVE'?'wb':'simb'} id=monWWtag>${tg}</span> ${e(G.discText(W.disc))}</div><div style="font-size:12px">Branch: <b id=monWWP>${e((W.P?.wbName||'')+' · '+(W.P?.name||W.P?.uid||''))}</b>${W.P?.kind=='realtime'?' (live)':''}</div>
+ <div style="margin:4px 0">View by <button id=monWWD class=${dm?'on':''}>Depth</button> <button id=monWWT class=${dm?'':'on'}>Time</button> <small id=monWWn style="opacity:.8">${V.ml?(V.ml.length-1)+' channels'+(W.M?' · mapped via '+e(W.M.mn):' · no time↔depth mapping'):'no data in this view'}</small></div>
+ <div style="font-size:12px;max-height:110px;overflow:auto">${la.ch.slice(0,30).map(c=>`<span style="display:inline-block;margin:1px 8px 1px 0">${e(c.mn)} <b>${c.v==null?'–':+c.v.toFixed(2)}</b> ${e(c.unit)}</span>`).join('')}</div>`;
+ $('monWWD').onclick=()=>{G.setMode('depth');wwCard()};$('monWWT').onclick=()=>{G.setMode('time');wwCard()}}
+function render(){if(!M.el)return;try{wwCard()}catch(e){}const sim=M.src=='SIM';$('monBadge').innerHTML=sim?'<span class=simb>SIM</span>':'<span class=wb>WITSML</span>';$('monSpd').style.display=sim?'':'none';
  if(!M.st){$('monAct').textContent='Waiting for data from the saved WITSML connection ('+(M.wstat||'not connected')+') — reconnect in the WITSML panel';return}
  const s=stats();$('monName').textContent=M.plan.name+(sim?' (SIM)':'');$('monAct').textContent=M.st.act;$('monSec').textContent='Hole section / casing: '+s.sec;
  $('monMD').textContent=fmt(M.st.md);$('monROP').textContent=fmt(M.st.rop,1);$('monETA').textContent=s.left<=0?'At TD':hm(s.eta);

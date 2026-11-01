@@ -1,4 +1,4 @@
-// start.js v5.12.19 (s34, settings guide link on phone); v5.12.18: paged menu (Drill / Plan / Monitor / Operations → sub-pages with Back; login + guide in top bar).
+// start.js v5.12.20 (s35, simulator uses shared whole-well WITSML model); v5.12.19 (s34, settings guide link on phone); v5.12.18: paged menu (Drill / Plan / Monitor / Operations → sub-pages with Back; login + guide in top bar).
 // was v5.9.1: game-style start screen (original art, no third-party assets). SIM only.
 // Tiles: New simulation | New well | Log in as player | Continue (only if saved state exists).
 // Keyboard (arrows/WASD, Enter/Space, Esc), Gamepad API (d-pad/stick, A=select, B=back), touch/click. Sound OFF by default.
@@ -86,8 +86,8 @@ function close(dest){ST.last=dest;const A=api();A.last=dest;if(dest!='join'&&des
 async function choose(g){const go=g||ST.items[ST.i]?.dataset.go;beep(880,.1);
  if(go?.startsWith('grp:')){ST.menu=go.slice(4);return render()}
  if(go=='sim'){ST.menu='sim';return render()}
- if(go=='wdash'){close('wdash');const m=await import('./wdash.js?v=w4');m.open();return}
- if(go=='monitor'){close('monitor');const m=await import('./monitor.js?v=b11');m.open();return}
+ if(go=='wdash'){close('wdash');const m=await import('./wdash.js?v=w5');m.open();return}
+ if(go=='monitor'){close('monitor');const m=await import('./monitor.js?v=b12');m.open();return}
  if(go=='ddtracks'){close('ddtracks');const m=await import('./ddtracks.js?v=t2');m.open();return}
  if(go=='ddcab'){close('ddcab');const m=await import('./ddcab.js?v=r2');m.open();return}
  if(go=='safety'){close('safety');const m=await import('./safety.js?v=s1');m.open();return}/* safety hook */
@@ -119,7 +119,7 @@ export function show(){api();if(ST.el)return;const st=document.createElement('st
  addEventListener('keydown',key,true);ST.padT=setInterval(pad,50);ST.menu='main';render();
  import('./edmstore.js?v=5941').then(S=>S.list()).then(L=>{ST.saved=L;if(ST.el&&L.length){const k=ST.i;render();focus(k)}}).catch(()=>{})}
 /* v5.12.19: guide link in Settings installed at module load (phones often skip the start screen, so show() never ran) */
-function installGuide(){const gl=()=>{const g=document.getElementById('uig_set');if(!g||document.getElementById('setGuide'))return;const a=document.createElement('a');a.id='setGuide';a.href='./user-guide.html';a.target='_blank';a.rel='noopener';a.textContent='User guide (HTML / PDF)';a.style.cssText='display:block;color:#9cf;font-size:12px;margin:6px 0';g.appendChild(a);const b=document.createElement('a');b.id='setWdash';b.href='#';b.textContent='📊 WITSML dashboard (logs + image logs)';b.style.cssText=a.style.cssText;b.onclick=e=>{e.preventDefault();import('./wdash.js?v=w4').then(m=>m.open())};g.appendChild(b)};gl();if(!window.__dwGuideMO){window.__dwGuideMO=new MutationObserver(gl);window.__dwGuideMO.observe(document.body,{childList:true,subtree:true})}}
+function installGuide(){const gl=()=>{const g=document.getElementById('uig_set');if(!g||document.getElementById('setGuide'))return;const a=document.createElement('a');a.id='setGuide';a.href='./user-guide.html';a.target='_blank';a.rel='noopener';a.textContent='User guide (HTML / PDF)';a.style.cssText='display:block;color:#9cf;font-size:12px;margin:6px 0';g.appendChild(a);const b=document.createElement('a');b.id='setWdash';b.href='#';b.textContent='📊 WITSML dashboard (logs + image logs)';b.style.cssText=a.style.cssText;b.onclick=e=>{e.preventDefault();import('./wdash.js?v=w5').then(m=>m.open())};g.appendChild(b)};gl();if(!window.__dwGuideMO){window.__dwGuideMO=new MutationObserver(gl);window.__dwGuideMO.observe(document.body,{childList:true,subtree:true})}}
 installGuide();
 const API={ST,show,shouldShow,hasSave,reveal,groupOf,last:null};function api(){window.dwStart=API;window.GX=window.GX||{};if(window.GX.start!==API)window.GX.start=API;return API}api();addEventListener('load',api);setTimeout(api,3000);
 if(shouldShow()){if(document.body)show();else addEventListener('DOMContentLoaded',show)}

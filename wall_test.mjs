@@ -24,7 +24,7 @@ async function pg(url,vp){const ctx=await b.createBrowserContext();const p=await
 const PH={width:390,height:844,deviceScaleFactor:2,isMobile:true,hasTouch:true},LT={width:1440,height:900};
 for(const [nm,vp] of [['phone',PH],['laptop',LT]]){
  const p=await pg(BASE+'/?wdash',vp);await p.waitForFunction(()=>window.GX?.wdash,{timeout:90000}).catch(()=>{});
- await p.evaluate(async()=>{if(!document.getElementById('wdash')){const m=await import('./wdash.js?v=w4');m.open()}});await w(1500);
+ await p.evaluate(async()=>{if(!document.getElementById('wdash')){const m=await import('./wdash.js?v=w5');m.open()}});await w(1500);
  await p.evaluate(()=>wdConnB.click());await w(200);await p.evaluate(()=>{wdVia.value='proxy';wdProxy.value='https://mock-proxy.invalid/soap';wdUrl.value='https://store.example.test/WMLS';wdUser.value='tester';wdPass.value='S3cret-pw-XYZ';wdGo.click()});
  await p.waitForSelector('#wdUse',{timeout:20000}).catch(()=>{});await p.evaluate(()=>wdUse.click());await p.waitForFunction(()=>GX.wdash.ST.disc,{timeout:30000}).catch(()=>{});await w(1800);
  const d=await p.evaluate(()=>GX.wdash.ST.disc);ok(d&&d.wellbores==2&&d.logs==6&&d.time==2&&d.depth==4&&d.realtime==1&&d.fe==1&&d.mudlog==2&&d.trajectories==1&&d.mudLogs==1,nm+': discovered every object '+JSON.stringify(d));
