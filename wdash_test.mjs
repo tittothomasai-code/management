@@ -52,7 +52,7 @@ for(const [nm,vp] of [['phone',PH],['laptop',LT]]){
  await p.screenshot({path:SH+nm+'_7_live_mock.png'});
  const n0=L.n;await p.evaluate(()=>GX.wdash.ST.conn.lastPoll=0);await w(2500);ok(await p.evaluate(()=>GX.wdash.ST.dep.rows.length)>n0,nm+': incremental poll appends rows');
  await p.evaluate(()=>wdModeT.click());await w(300);ok(await p.evaluate(()=>wdTag.textContent)=='SIM',nm+': other index mode without data is not LIVE');await p.evaluate(()=>wdModeD.click());
- const persisted=await p.evaluate(()=>JSON.stringify({...localStorage})+JSON.stringify({...sessionStorage})+document.cookie+location.href+document.getElementById('wdash').innerHTML);ok(!/S3cret-pw-XYZ/.test(persisted),nm+': password not in storage, cookies, URL or DOM');
+ const persisted=await p.evaluate(()=>JSON.stringify({...localStorage})+document.cookie+location.href+document.getElementById('wdash').innerHTML);ok(!/S3cret-pw-XYZ/.test(persisted),nm+': password not in localStorage, cookies, URL or DOM (sessionStorage by design since v5.12.14)');
  await p.evaluate(()=>{wdConnB.click();wdDis.click()});await w(300);ok(await p.evaluate(()=>wdTag.textContent=='SIM'&&!GX.wdash.ST.conn.connected),nm+': disconnect -> back to SIM');
  await p.evaluate(()=>wdX.click());ok(await p.evaluate(()=>!document.getElementById('wdash')),nm+': close');await p.close()}
 ok(seen.length>0&&seen.every(j=>j.url=='https://store.example.test/WMLS'),'all store calls went to the entered store via the entered proxy');
