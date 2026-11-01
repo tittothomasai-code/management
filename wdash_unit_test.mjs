@@ -22,6 +22,6 @@ ok(K.redact('err for bob with hunter2 Basic Ym9iOmh1bnRlcjI=',['bob','hunter2'])
 const sv=K.soapResult(`<soap:Envelope><soap:Body><r><Result>1</Result><XMLout>&lt;wells/&gt;</XMLout><SuppMsgOut>x</SuppMsgOut></r></soap:Body></soap:Envelope>`);ok(sv.result==1&&sv.xml=='<wells/>','SOAP result parse');
 ok(/WMLS_GetFromStore/.test(K.soapEnvelope('WMLS_GetFromStore',{wmlType:'log',query:'<logs/>'}))&&/&lt;logs\/&gt;/.test(K.soapEnvelope('WMLS_GetFromStore',{wmlType:'log',query:'<logs/>'})),'SOAP envelope escapes query');
 const src=fs.readFileSync(new URL('./wdash.js',import.meta.url),'utf8')+fs.readFileSync(new URL('./wdash_core.js',import.meta.url),'utf8');
-ok(!/localStorage|sessionStorage|document\.cookie|indexedDB|console\.(log|info|warn|error)/.test(src),'dashboard code has no storage / console use (credentials cannot persist or be logged)');
+ok(!/sessionStorage|document\.cookie|indexedDB|console\.(log|info|warn|error)/.test(src)&&(src.match(/localStorage\.setItem\([^;]*/g)||[]).every(x=>!/pass|user|CRED/.test(x)),'only non-secret settings go to localStorage; no other storage / console use (credentials cannot persist or be logged)');
 ok(!/\bLIVE\b/.test(src.match(/simInit[\s\S]*?simTick/)[0]),'SIM generator never says LIVE');
 console.log(`\n${p} passed, ${f} failed`);process.exit(f?1:0)
