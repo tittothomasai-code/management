@@ -1,4 +1,4 @@
-// start.js v5.12.16: paged menu (Drill / Plan / Monitor / Operations → sub-pages with Back; login + guide in top bar).
+// start.js v5.12.18: paged menu (Drill / Plan / Monitor / Operations → sub-pages with Back; login + guide in top bar).
 // was v5.9.1: game-style start screen (original art, no third-party assets). SIM only.
 // Tiles: New simulation | New well | Log in as player | Continue (only if saved state exists).
 // Keyboard (arrows/WASD, Enter/Space, Esc), Gamepad API (d-pad/stick, A=select, B=back), touch/click. Sound OFF by default.
@@ -64,7 +64,7 @@ const GRP={drill:['🛢','Drill','Simulate, train and steer · Continue, New sim
 const LEAF=()=>({drill:[hasSave()&&['continue','▶','Continue','Resume your saved SIM rig and well'],['sim','🛢','New simulation','Pick a SIM well and start drilling'],['ddcab','🧭','DD Training','Directional driller cabin · steer the driller, manage the mud motor · SIM'],['ddtracks','🏎','DD Tracks','Select a steering track · cups, stars, best times · SIM'],['showroom','🏁','Rig showroom','Browse <span id=st_rigN>all</span> rig types · spin, compare, use · SIM']],
  plan:[['well','📐','New well','Well Planning with a blank proposal'],['edm','📂','Import EDM','All sites & wells from an EDM file · stays on this device'],ST.saved?.length&&['saved','💾','Saved sites',ST.saved.length+' saved on this device · open without importing']],
  monitor:[['wdash','📊','WITSML dashboard','Vertical depth/time logs + image logs · your WITSML store or SIM'],['monitor','📈','Monitor a well','Track progress · saved WITSML well or SIM']],
- ops:[['workover','🔧','Workover & intervention','Completions, workover, fishing, P&A, slickline, e-line, CT · SIM'],['safety','🦺','Safety World','Close corrective actions · hunt hazards on the rig · SIM']]});/* v5.12.16 paged menu; safety hook */
+ ops:[['workover','🔧','Workover & intervention','Completions, workover, fishing, P&A, slickline, e-line, CT · SIM'],['safety','🦺','Safety World','Close corrective actions · hunt hazards on the rig · SIM']]});/* v5.12.18 paged menu; safety hook */
 const PARENT={sim:'drill',saved:'plan'};
 export function groupOf(id){const L=LEAF();for(const g in L)if(L[g].some(t=>t&&t[0]==id))return g;return null}
 export function reveal(id){const g=groupOf(id);if(!g||!ST.el)return false;if(ST.menu!=g){ST.menu=g;render()}return true}
@@ -94,8 +94,8 @@ async function choose(g){const go=g||ST.items[ST.i]?.dataset.go;beep(880,.1);
  if(go=='showroom'){close('showroom');const P=await import('./srpick.js?v=b10').catch(()=>null);if(P){await P.open();return}const m=await import('./showroom.js?v=b18');m.init();m.open();return}
  if(go=='workover'){close('workover');const m=await import('./workover.js?v=b15');m.open();return}
  if(go=='saved'){ST.menu='saved';return render()}
- if(go?.startsWith('open:')){close('edm');const m=await import('./edmui.js?v=c1');m.openSaved(go.slice(5)).catch(e=>alert('Could not open saved site: '+e.message));return}
- if(go=='edm'){close('edm');const m=await import('./edmui.js?v=c1');m.open();return}if(go=='back')return back();
+ if(go?.startsWith('open:')){close('edm');const m=await import('./edmui.js?v=c2');m.openSaved(go.slice(5)).catch(e=>alert('Could not open saved site: '+e.message));return}
+ if(go=='edm'){close('edm');const m=await import('./edmui.js?v=c2');m.open();return}if(go=='back')return back();
  if(go=='continue'||go=='simFree')return close(go);
  if(go=='simA'){close('simA');const P=await wait(()=>window.GX?.wplan);P.calc(JSON.parse(JSON.stringify(P.DEFAULT)));return}
  if(go=='well'){close('wplan');const P=await wait(()=>window.GX?.wplan);P.calc({...JSON.parse(JSON.stringify(P.DEFAULT)),name:'New well (SIM)',targets:[{name:'TD',tvd:1000,n:100,e:0,tol:30,dls:3}],casing:[],steps:[],assumed:['targets','surface','kop','dls']});P.open('inputs');return}
