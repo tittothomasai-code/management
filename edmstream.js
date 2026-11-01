@@ -4,7 +4,7 @@
 // into numeric arrays and decimated. Nothing is uploaded. Output is tagged IMPORT (never LIVE). EDM lengths are feet → metres.
 import {minCurvM} from './ac.js?v=5924';
 import {trajStats} from './edmstats.js?v=5942';
-import {inv,parseZone} from './edmgeo.js?v=1';
+import {inv,parseZone2 as parseZone} from './edmgeo.js?v=2';
 const FT=0.3048;
 const KEEP={CD_PROJECT:1,CD_SITE:1,CD_WELL:1,CD_WELLBORE:1,CD_DATUM:1,CD_SCENARIO:1,CD_DESIGN:1,CD_DEFINITIVE_SURVEY_HEADER:1,CD_SURVEY_HEADER:1,CD_PLAN_HEADER:1,CD_WELLPLAN:1,
  CD_ASSEMBLY:1,CD_ASSEMBLY_COMP:1,CD_CASE:1,CD_HOLE_SECT:1,DP_PROJECT_TARGET:1,CD_PROJ_TARG_WELL_LINK:1,CD_PROJECT_TARGET_WB_LINK:1,CD_TARGET:1,CD_WP_TARGET:1,
@@ -59,8 +59,10 @@ export function world(R,{units='ft',name='EDM'}={}){const L=units=='m'?1:FT,len=
  const projects=new Map(T('CD_PROJECT').map(p=>[p.project_id,{id:p.project_id,name:p.project_name||p.project_id,zone:p.geo_zone_id||null,datum:p.geo_datum_id||null,sysDatum:p.system_datum_desc||null}]));
  const customer=T('CD_POLICY')[0]?.customer_name||null;const wellRows=T('CD_WELL');
  // v5.12.4 CRS: lat/long in the file, else UTM/MGA map E/N (geo_offset_east/north) converted with the project zone
- const P0=[...projects.values()].find(p=>p.zone)||null,zn=parseZone(P0?.zone,P0?.datum);let crs=null,fromMap=0;
+ const P0=[...projects.values()].find(p=>parseZone(p.zone,p.datum))||[...projects.values()].find(p=>p.zone)||null,zn=parseZone(P0?.zone,P0?.datum);let crs=null,fromMap=0;
  if(!wellRows.some(w=>num(w.geo_latitude)!=null)&&zn)for(const w of wellRows){const e=len(num(w.geo_offset_east)),n=len(num(w.geo_offset_north));if(e&&n&&e>1e5&&e<9e5){const q=inv(e,n,zn.zone,zn.south);w.geo_latitude=String(q.lat);w.geo_longitude=String(q.lon);fromMap++}}
+ // v5.12.15: sites with only map E/N (geo_map_easting/northing) are converted too
+ if(zn&&!T('CD_SITE').some(x=>num(x.geo_latitude)!=null))for(const x of T('CD_SITE')){const e=len(num(x.geo_map_easting)),n=len(num(x.geo_map_northing));if(e&&n&&e>1e5&&e<9e5){const q=inv(e,n,zn.zone,zn.south);x.geo_latitude=String(q.lat);x.geo_longitude=String(q.lon);fromMap++}}
  const geo=T('CD_SITE').some(s=>num(s.geo_latitude)!=null)||wellRows.some(w=>num(w.geo_latitude)!=null);if(geo)crs={kind:fromMap?'utm':'latlon',zone:P0?.zone||null,datum:P0?.datum||null,sys:P0?.sysDatum||null,fromMap};
  const sites=T('CD_SITE').map(s=>({id:s.site_id,name:pick(s,'site_name','site_common_name')||s.site_id,project:projects.get(s.project_id)?.name||null,lat:num(s.geo_latitude),lon:num(s.geo_longitude),
   mapE:len(num(pick(s,'geo_map_easting','loc_easting','easting'))),mapN:len(num(pick(s,'geo_map_northing','loc_northing','northing'))),created:ts(s.create_date),updated:ts(s.update_date),wells:[]}));
