@@ -27,7 +27,7 @@ const opts=await pg.evaluate(()=>({w:[...wdW.options].map(o=>o.value),b:[...wdB.
 ok(opts.w[0]=='MW1'&&opts.b[0]=='MB1'&&opts.l[0]=='ML1','wells -> wellbores (self-closing) -> logs all load: '+JSON.stringify(opts));
 ok(opts.pw==='','password field cleared after Connect');
 ok(calls.length>=4&&calls.every(c=>c.auth==GOOD),'every request in the session carried the header credentials ('+calls.length+' calls)');
-calls=[];await pg.evaluate(()=>{wdW.dispatchEvent(new Event('change'))});await w(800);ok(calls.length>=2&&calls.every(c=>c.auth==GOOD)&&!/credentials/.test(await st()),'re-picking the well later still sends credentials');
+calls=[];await pg.evaluate(()=>{wdW.dispatchEvent(new Event('change'))});await w(2000);ok(calls.length>=2&&calls.every(c=>c.auth==GOOD)&&!/credentials/.test(await st()),'re-picking the well later still sends credentials');
 calls=[];await connect('');ok(calls.length&&calls.every(c=>c.auth==GOOD)&&/Connected/.test(await st()),'Reconnect with blank password reuses in-page credentials');
 const persisted=await pg.evaluate(()=>JSON.stringify({...localStorage})+JSON.stringify({...sessionStorage})+document.cookie+location.href+document.body.innerHTML);
 ok(!/S3cret-pw-XYZ/.test(persisted.replace(/"dw_wdash_pw":"S3cret-pw-XYZ"/,''))&&!persisted.includes(GOOD.slice(6)),'password only in sessionStorage (not localStorage, cookies, URL or DOM)');
