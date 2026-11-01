@@ -16,7 +16,7 @@ const b=await puppeteer.launch({executablePath:'/usr/bin/google-chrome',args:['-
 for(const [nm,vp] of [['phone',{width:390,height:844,deviceScaleFactor:2,isMobile:true,hasTouch:true}],['desk',{width:1440,height:900}]]){
  const p=await b.newPage();await p.setViewport(vp);p.on('pageerror',e=>errs.push(e.message));p.on('request',r=>{if(!['GET','HEAD','OPTIONS'].includes(r.method()))posts.push(r.method()+' '+r.url())});
  if(nm=='phone'){await p.goto(BASE+'/?start=1',{waitUntil:'load',timeout:120000});await p.waitForSelector('#st_edm',{timeout:60000});ok(true,'start menu has Import EDM tile');await w(500);await p.screenshot({path:SH+'0_tile.png'});
-  await p.click('#st_edm');await p.waitForFunction(()=>window.GX?.edm&&getComputedStyle(document.getElementById('edm')).display!='none',{timeout:120000});await w(800);await p.screenshot({path:SH+'1_picker.png'})}
+  await (await p.evaluate(()=>dwStart.reveal('edm')),p.click('#st_edm'));await p.waitForFunction(()=>window.GX?.edm&&getComputedStyle(document.getElementById('edm')).display!='none',{timeout:120000});await w(800);await p.screenshot({path:SH+'1_picker.png'})}
  else{await p.goto(BASE+'/?nosplash=1&edm=1',{waitUntil:'load',timeout:120000});await p.waitForFunction(()=>window.GX?.edm&&document.getElementById('edm'),{timeout:120000});await w(800)}
  const inp=await p.$('#edmf');await inp.uploadFile(nm=='phone'?'fixtures/edm_pad.zip':'fixtures/edm_pad.xml');
  await p.waitForFunction(()=>window.GX.edm.ST.R,{timeout:60000});await w(1500);

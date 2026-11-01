@@ -17,31 +17,33 @@ const press=async(p,b)=>{await p.evaluate(b=>{__pad.buttons[b].pressed=true},b);
 for(const [nm,vp] of [['desk',{width:1440,height:900}],['phone',{width:390,height:844,isMobile:true,hasTouch:true,deviceScaleFactor:2}]]){const T=nm=='phone';
  // 1. menu, version, sound off, no Continue on a fresh device
  let p=await page(vp,'/?start=1');await p.waitForSelector('#start .tile',{timeout:60000});await w(1200);
- const m=await p.evaluate(()=>({tiles:[...document.querySelectorAll('#start .tile')].map(b=>b.dataset.go),ver:document.getElementById('stVer').textContent,meta:document.querySelector('meta[name=app-version]').content,snd:document.getElementById('stSnd').textContent,sim:!!document.querySelector('#start .sim'),live:/\bLIVE\b/.test(document.getElementById('start').innerText),r:(q=>({width:q.width,height:q.height}))(document.getElementById('start').getBoundingClientRect()),over:[...document.querySelectorAll('#start .tile')].every(b=>{const q=b.getBoundingClientRect();return q.left>=0&&q.right<=innerWidth&&q.bottom<=innerHeight})}));
- ok(m.tiles.join()=='sim,well,login,edm,monitor,workover,ddcab,ddtracks,showroom,safety',`${nm}: fresh device shows New simulation / New well / Log in (no Continue) [${m.tiles}]`);
+ const m=await p.evaluate(()=>({tiles:[...document.querySelectorAll('#start .tiles .tile')].map(b=>b.dataset.go),ver:document.getElementById('stVer').textContent,meta:document.querySelector('meta[name=app-version]').content,snd:document.getElementById('stSnd').textContent,sim:!!document.querySelector('#start .sim'),live:/\bLIVE\b/.test(document.getElementById('start').innerText),r:(q=>({width:q.width,height:q.height}))(document.getElementById('start').getBoundingClientRect()),over:[...document.querySelectorAll('#start .tiles .tile')].every(b=>{const q=b.getBoundingClientRect();return q.left>=0&&q.right<=innerWidth&&q.bottom<=innerHeight})}));
+ ok(m.tiles.join()=='grp:drill,grp:plan,grp:monitor,grp:ops',`${nm}: main menu = 4 groups Drill/Plan/Monitor/Operations [${m.tiles}]`);
  ok(m.ver&&m.ver==m.meta&&/^v5\.(9|1[0-9])/.test(m.ver),`${nm}: version on screen = ${m.ver}`);
  ok(/Sound off/.test(m.snd),`${nm}: sound defaults OFF`);ok(m.sim&&!m.live,`${nm}: SIM label, no LIVE`);ok(m.r.width==vp.width&&m.r.height==vp.height&&m.over,`${nm}: full-screen, all tiles on screen (${m.r.width}x${m.r.height}, ${m.over})`);
  await p.screenshot({path:`${DIR}/${PRE}${nm}_1_menu.png`});
  // keyboard: Down moves focus, Enter on New simulation opens SIM picker, Esc goes back
- await p.keyboard.press('ArrowDown');let f=await p.evaluate(()=>document.querySelector('#start .tile.on')?.dataset.go);ok(f==(T?'well':'login'),`${nm}: keyboard ArrowDown moves focus (${f})`);
- await p.keyboard.press('ArrowUp');f=await p.evaluate(()=>document.querySelector('#start .tile.on')?.dataset.go);
- await p.keyboard.press('Enter');await w(300);await p.waitForFunction(()=>[...document.querySelectorAll('#start .tile')].map(b=>b.dataset.go).join()=='simA,simFree,back',{timeout:30000,polling:50}).catch(()=>{});let sub=await p.evaluate(()=>[...document.querySelectorAll('#start .tile')].map(b=>b.dataset.go).join());ok(f=='sim'&&sub=='simA,simFree,back',`${nm}: Enter on New simulation → SIM well picker (${sub})`);
+ await p.keyboard.press('ArrowDown');let f=await p.evaluate(()=>document.querySelector('#start .tile.on')?.dataset.go);ok(f==(T?'grp:plan':'grp:monitor'),`${nm}: keyboard ArrowDown moves focus (${f})`);
+ await p.keyboard.press('ArrowUp');await p.keyboard.press('Enter');await w(300);let dr=await p.evaluate(()=>[...document.querySelectorAll('#start .tiles .tile')].map(b=>b.dataset.go).join());ok(dr=='sim,ddcab,ddtracks,showroom,back',`${nm}: Enter on Drill → Drill page (${dr})`);
+ await p.screenshot({path:`${DIR}/${PRE}${nm}_1b_drill.png`});f=await p.evaluate(()=>document.querySelector('#start .tile.on')?.dataset.go);
+ await p.keyboard.press('Enter');await w(300);await p.waitForFunction(()=>[...document.querySelectorAll('#start .tiles .tile')].map(b=>b.dataset.go).join()=='simA,simFree,back',{timeout:30000,polling:50}).catch(()=>{});let sub=await p.evaluate(()=>[...document.querySelectorAll('#start .tiles .tile')].map(b=>b.dataset.go).join());ok(f=='sim'&&sub=='simA,simFree,back',`${nm}: Enter on New simulation → SIM well picker (${sub})`);
  await p.screenshot({path:`${DIR}/${PRE}${nm}_2_sim_picker.png`});
- await p.keyboard.press('Escape');await w(200);await p.waitForFunction(()=>[...document.querySelectorAll('#start .tile')].map(b=>b.dataset.go).join()=='sim,well,login,edm,monitor,workover,ddcab,ddtracks,showroom,safety',{timeout:30000,polling:50}).catch(()=>{});sub=await p.evaluate(()=>[...document.querySelectorAll('#start .tile')].map(b=>b.dataset.go).join());ok(sub=='sim,well,login,edm,monitor,workover,ddcab,ddtracks,showroom,safety','Esc → back to main menu');
+ await p.keyboard.press('Escape');await w(200);sub=await p.evaluate(()=>[...document.querySelectorAll('#start .tiles .tile')].map(b=>b.dataset.go).join());ok(sub.startsWith('sim,'),'Esc → back to Drill page ('+sub+')');
+ await p.keyboard.press('Escape');await w(200);sub=await p.evaluate(()=>[...document.querySelectorAll('#start .tiles .tile')].map(b=>b.dataset.go).join());ok(sub=='grp:drill,grp:plan,grp:monitor,grp:ops','Esc again → main menu');
  // sound toggle
  await tap(p,'#stSnd',T);ok(/Sound on/.test(await p.$eval('#stSnd',e=>e.textContent)),`${nm}: sound toggle turns on`);await tap(p,'#stSnd',T);
  // New simulation → SIM proposal A (touch/click)
- await tap(p,'#st_sim',T);await tap(p,'#st_simA',T);let g=await gone(p);await p.waitForFunction(()=>window.GX?.wplan?.W?.P,{timeout:120000});
+ await tap(p,'#st_grp\\:drill',T);await tap(p,'#st_sim',T);await tap(p,'#st_simA',T);let g=await gone(p);await p.waitForFunction(()=>window.GX?.wplan?.W?.P,{timeout:120000});
  let r=await p.evaluate(()=>({last:dwStart.last,name:GX.wplan.W.P.name,c:GX.wplan.W.P.casing.length,wp:document.getElementById('wp')?.style.display}));
  ok(g&&r.last=='simA'&&r.name=='SIM proposal A'&&r.c==3&&r.wp!='block',`${nm}: New simulation → SIM proposal A loaded, rig view (${JSON.stringify(r)})`);
  await w(2500);await p.screenshot({path:`${DIR}/${PRE}${nm}_3_sim_started.png`});await p.ctx.close();
  // Free drilling via gamepad: A on New simulation, d-pad down, A
- p=await page(vp,'/?start=1');await p.waitForSelector('#start .tile',{timeout:60000});await w(800);await press(p,0);await w(200);await press(p,15);
+ p=await page(vp,'/?start=1');await p.waitForSelector('#start .tile',{timeout:60000});await w(800);await press(p,0);await w(800);await press(p,0);await w(200);await press(p,15);
  f=await p.evaluate(()=>document.querySelector('#start .tile.on')?.dataset.go);await press(p,0);g=await gone(p);
  ok(f=='simFree'&&g&&await p.evaluate(()=>dwStart.last)=='simFree',`${nm}: gamepad A / d-pad right → Free drilling, start screen closes (${f},${g})`);
  await p.ctx.close();
  // New well → Well Planning, blank proposal
- p=await page(vp,'/?start=1');await tap(p,'#st_well',T);g=await gone(p);await p.waitForFunction(()=>document.getElementById('wp')?.style.display=='block',{timeout:120000}).catch(()=>{});await w(800);
+ p=await page(vp,'/?start=1');await tap(p,'#st_grp\\:plan',T);await tap(p,'#st_well',T);g=await gone(p);await p.waitForFunction(()=>document.getElementById('wp')?.style.display=='block',{timeout:120000}).catch(()=>{});await w(800);
  r=await p.evaluate(()=>({last:dwStart.last,name:GX.wplan.W.P.name,c:GX.wplan.W.P.casing.length,t:GX.wplan.W.P.targets.length,view:GX.wplan.W.view,wp:document.getElementById('wp')?.style.display}));
  ok(g&&r.last=='wplan'&&r.wp=='block'&&r.name=='New well (SIM)'&&r.c==0&&r.t==1&&r.view=='inputs',`${nm}: New well → Well Planning inputs, blank SIM proposal (${JSON.stringify(r)})`);
  await p.screenshot({path:`${DIR}/${PRE}${nm}_4_new_well.png`});await p.ctx.close();
@@ -55,7 +57,7 @@ for(const [nm,vp] of [['desk',{width:1440,height:900}],['phone',{width:390,heigh
  await p.ctx.close();
  // Continue only with saved state
  p=await page(vp,'/?start=1',{pre:`try{localStorage.setItem('dw_start_save','{"dest":"simA"}')}catch(e){}`});await p.waitForSelector('#start .tile',{timeout:60000});
- r=await p.evaluate(()=>[...document.querySelectorAll('#start .tile')].map(b=>b.dataset.go).join());ok(r=='continue,sim,well,login,edm,monitor,workover,ddcab,ddtracks,showroom,safety',`${nm}: saved state → Continue tile first (${r})`);
+ await p.keyboard.press('Enter');await w(300);r=await p.evaluate(()=>[...document.querySelectorAll('#start .tiles .tile')].map(b=>b.dataset.go).join());ok(r=='continue,sim,ddcab,ddtracks,showroom,back',`${nm}: saved state → Continue first on Drill page (${r})`);
  if(nm=='desk')await p.screenshot({path:`${DIR}/${PRE}${nm}_6_continue.png`});
  await p.keyboard.press('Enter');g=await gone(p);ok(g&&await p.evaluate(()=>dwStart.last)=='continue',`${nm}: Continue → resumes saved game`);await p.ctx.close();
  // ?s=CODE skips straight to join (network aborted so no session write)
@@ -73,9 +75,9 @@ for(const [nm,vp] of [['desk',{width:1440,height:900}],['phone',{width:390,heigh
  await p.ctx.close()}
 // v5.12.4.2 DD Tracks tile: click/tap → start closes, track select opens; shot per viewport
 for(const [nm,vp] of [['desk',{width:1440,height:900}],['phone',{width:390,height:844,isMobile:true,hasTouch:true,deviceScaleFactor:2}]]){
- const p=await page(vp,'/?start=1');await p.waitForSelector('#start .tile[data-go=ddtracks]',{timeout:60000});await w(1000);
- const lb=await p.evaluate(()=>document.querySelector('#start .tile[data-go=ddtracks]').textContent);ok(/DD Tracks/.test(lb)&&/SIM/.test(lb),`${nm}: DD Tracks tile shows "DD Tracks" + SIM`);
- await tap(p,'#start .tile[data-go=ddtracks]',nm=='phone');const g=await gone(p);
+ const p=await page(vp,'/?start=1');await p.waitForSelector('#start .tile[data-go=ddtracks]',{timeout:60000});await p.evaluate(()=>dwStart.reveal('ddtracks'));await w(1000);
+ const lb=await p.evaluate(()=>document.querySelector('#start .tiles .tile[data-go=ddtracks]').textContent);ok(/DD Tracks/.test(lb)&&/SIM/.test(lb),`${nm}: DD Tracks tile shows "DD Tracks" + SIM`);
+ await tap(p,'#start .tiles .tile[data-go=ddtracks]',nm=='phone');const g=await gone(p);
  const o=await p.waitForFunction(()=>window.GX?.ddtracks?.isOpen?.(),{timeout:60000}).then(()=>true,()=>false);
  ok(g&&o,`${nm}: DD Tracks tile → start closes, track select opens`);await w(1200);
  fs.mkdirSync(DIR,{recursive:true});await p.screenshot({path:`${DIR}/${PRE}ddtracks_${nm}.png`});

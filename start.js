@@ -1,4 +1,5 @@
-// start.js v5.9.1: game-style start screen (original art, no third-party assets). SIM only.
+// start.js v5.12.16: paged menu (Drill / Plan / Monitor / Operations → sub-pages with Back; login + guide in top bar).
+// was v5.9.1: game-style start screen (original art, no third-party assets). SIM only.
 // Tiles: New simulation | New well | Log in as player | Continue (only if saved state exists).
 // Keyboard (arrows/WASD, Enter/Space, Esc), Gamepad API (d-pad/stick, A=select, B=back), touch/click. Sound OFF by default.
 // Skipped for ?s=/?session= invite links (straight to join), ?nosplash, ?demo=, ?join, ?player, and automated runs unless ?start.
@@ -32,6 +33,11 @@ const CSS=`#start{position:fixed;inset:0;z-index:100001;color:#eaf6ff;font-famil
 #start .bar button{background:rgba(10,30,60,.8);color:#cfe;border:1px solid #3a6a9a;border-radius:16px;padding:6px 12px;font:12px system-ui;cursor:pointer}
 #start .hint{opacity:.6}
 @media (max-width:520px){#start .hint{display:none}}
+#start .top{position:absolute;top:calc(8px + env(safe-area-inset-top));left:0;right:0;display:flex;justify-content:flex-end;gap:8px;padding:0 12px;z-index:2}
+#start .tb{background:rgba(10,30,60,.8);color:#cfe;border:1px solid #3a6a9a;border-radius:16px;padding:6px 12px;font:13px system-ui;cursor:pointer;text-decoration:none}
+#start .pghd{font-size:clamp(14px,3.6vw,18px);font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#9fdcff;min-height:1em}
+#start .tile.grp{min-height:88px}@media (min-width:820px){#start .tile.grp{min-height:150px}#start .tile.grp .ic{font-size:44px;width:60px}#start .tile.grp b{font-size:30px}}
+#start .pool{display:none!important}
 #start.out{opacity:0;transition:opacity .35s}`;
 function backdrop(cv){const x=cv.getContext('2d');let w,h,dpr;const stars=[...Array(90)].map(()=>[Math.random(),Math.random()*.6,Math.random()*1.5+.3,Math.random()*6]);
  const fit=()=>{dpr=Math.min(2,devicePixelRatio||1);w=cv.clientWidth;h=cv.clientHeight;cv.width=w*dpr;cv.height=h*dpr;x.setTransform(dpr,0,0,dpr,0,0)};fit();addEventListener('resize',fit);
@@ -54,18 +60,31 @@ function backdrop(cv){const x=cv.getContext('2d');let w,h,dpr;const stars=[...Ar
   ST.raf=requestAnimationFrame(frame)}ST.raf=requestAnimationFrame(frame)}
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function tile(id,ic,t,s){return `<button class=tile data-go="${id}" id="st_${id}"><span class=ic>${ic}</span><span><b>${t}</b><small>${s}</small></span></button>`}
-function render(){const T=ST.el.querySelector('.tiles');
- if(ST.menu=='main')T.innerHTML=(hasSave()?tile('continue','▶','Continue','Resume your saved SIM rig and well'):'')+tile('sim','🛢','New simulation','Pick a SIM well and start drilling')+tile('well','📐','New well','Well Planning with a blank proposal')+tile('login','👤','Log in as player','Name only, no password · lobby or join by code')+tile('edm','📂','Import EDM','All sites & wells from an EDM file · stays on this device')+(ST.saved?.length?tile('saved','💾','Saved sites',ST.saved.length+' saved on this device · open without importing'):'')+tile('monitor','📈','Monitor a well','Track progress · saved WITSML well or SIM')+tile('wdash','📊','WITSML dashboard','Vertical depth/time logs + image logs · your WITSML store or SIM')+tile('workover','🔧','Workover & intervention','Completions, workover, fishing, P&A, slickline, e-line, CT · SIM')+tile('ddcab','🧭','DD Training','Directional driller cabin · steer the driller, manage the mud motor · SIM')+tile('ddtracks','🏎','DD Tracks','Select a steering track · cups, stars, best times · SIM')+tile('showroom','🏁','Rig showroom','Browse <span id=st_rigN>all</span> rig types · spin, compare, use · SIM')+tile('safety','🦺','Safety World','Close corrective actions · hunt hazards on the rig · SIM');/* safety hook */
- else if(ST.menu=='saved')T.innerHTML=`<h3 class=svh>Saved sites (on this device)</h3>`+(ST.saved||[]).map(m=>`<div class=svrow>${tile('open:'+m.id,'🗺',esc(m.name),m.wells+' wells · '+m.sites+' sites · imported '+new Date(m.date).toLocaleDateString('en-AU')+' · '+(m.size>=1e6?(m.size/1e6).toFixed(1)+' MB':Math.max(1,Math.round(m.size/1e3))+' kB'))}<button class=svrm data-rm="${esc(m.id)}" aria-label="Remove ${esc(m.name)}">Remove</button></div>`).join('')+tile('back','↩','Back','Main menu');
- else T.innerHTML=tile('simA','🎯','SIM proposal A','Directional J-curve to T1/T2 · 3 casing points')+tile('simFree','⛏','Free drilling','Vertical SIM well, no plan loaded')+tile('back','↩','Back','Main menu');
- T.querySelectorAll('.svrm').forEach(b=>b.onclick=async e=>{e.preventDefault();e.stopPropagation();const id=b.dataset.rm,m=(ST.saved||[]).find(x=>x.id==id);if(!confirm('Remove saved site "'+(m?.name||id)+'" from this device?'))return;const S=await import('./edmstore.js?v=5941');await S.remove(id);ST.saved=await S.list();if(!ST.saved.length)ST.menu='main';render()});
+const GRP={drill:['🛢','Drill','Simulate, train and steer · Continue, New simulation, DD Training, DD Tracks, Rig showroom'],plan:['📐','Plan','Wells and sites · New well, Import EDM, Saved sites'],monitor:['📈','Monitor','Real wells · WITSML dashboard, Monitor a well'],ops:['🔧','Operations','Workover & intervention, Safety World']};
+const LEAF=()=>({drill:[hasSave()&&['continue','▶','Continue','Resume your saved SIM rig and well'],['sim','🛢','New simulation','Pick a SIM well and start drilling'],['ddcab','🧭','DD Training','Directional driller cabin · steer the driller, manage the mud motor · SIM'],['ddtracks','🏎','DD Tracks','Select a steering track · cups, stars, best times · SIM'],['showroom','🏁','Rig showroom','Browse <span id=st_rigN>all</span> rig types · spin, compare, use · SIM']],
+ plan:[['well','📐','New well','Well Planning with a blank proposal'],['edm','📂','Import EDM','All sites & wells from an EDM file · stays on this device'],ST.saved?.length&&['saved','💾','Saved sites',ST.saved.length+' saved on this device · open without importing']],
+ monitor:[['wdash','📊','WITSML dashboard','Vertical depth/time logs + image logs · your WITSML store or SIM'],['monitor','📈','Monitor a well','Track progress · saved WITSML well or SIM']],
+ ops:[['workover','🔧','Workover & intervention','Completions, workover, fishing, P&A, slickline, e-line, CT · SIM'],['safety','🦺','Safety World','Close corrective actions · hunt hazards on the rig · SIM']]});/* v5.12.16 paged menu; safety hook */
+const PARENT={sim:'drill',saved:'plan'};
+export function groupOf(id){const L=LEAF();for(const g in L)if(L[g].some(t=>t&&t[0]==id))return g;return null}
+export function reveal(id){const g=groupOf(id);if(!g||!ST.el)return false;if(ST.menu!=g){ST.menu=g;render()}return true}
+function render(){const T=ST.el.querySelector('.tiles'),L=LEAF(),hd=ST.el.querySelector('.pghd');let shown=[];
+ if(ST.menu=='main'){T.innerHTML=Object.entries(GRP).map(([g,[i,t,s]])=>tile('grp:'+g,i,t,s).replace('class=tile','class="tile grp"')).join('');if(hd)hd.textContent=''}
+ else if(GRP[ST.menu]){const ls=L[ST.menu].filter(Boolean);shown=ls.map(t=>t[0]);T.innerHTML=ls.map(t=>tile(...t)).join('')+tile('back','↩','Back','Main menu');if(hd)hd.textContent=GRP[ST.menu][1]}
+ else if(ST.menu=='saved'){T.innerHTML=`<h3 class=svh>Saved sites (on this device)</h3>`+(ST.saved||[]).map(m=>`<div class=svrow>${tile('open:'+m.id,'🗺',esc(m.name),m.wells+' wells · '+m.sites+' sites · imported '+new Date(m.date).toLocaleDateString('en-AU')+' · '+(m.size>=1e6?(m.size/1e6).toFixed(1)+' MB':Math.max(1,Math.round(m.size/1e3))+' kB'))}<button class=svrm data-rm="${esc(m.id)}" aria-label="Remove ${esc(m.name)}">Remove</button></div>`).join('')+tile('back','↩','Back','Plan');if(hd)hd.textContent='Plan › Saved sites'}
+ else{T.innerHTML=tile('simA','🎯','SIM proposal A','Directional J-curve to T1/T2 · 3 casing points')+tile('simFree','⛏','Free drilling','Vertical SIM well, no plan loaded')+tile('back','↩','Back','Drill');if(hd)hd.textContent='Drill › New simulation'}
+ /* hidden pool: every leaf tile stays in the DOM (deep links, tests, showroom/rig-builder hooks click #st_*) */
+ const P=ST.el.querySelector('.pool');P.innerHTML=Object.values(L).flat().filter(t=>t&&!shown.includes(t[0])).map(t=>tile(...t)).join('');
+ P.querySelectorAll('.tile').forEach(b=>b.onclick=e=>{e.preventDefault();choose(b.dataset.go)});
+ T.querySelectorAll('.svrm').forEach(b=>b.onclick=async e=>{e.preventDefault();e.stopPropagation();const id=b.dataset.rm,m=(ST.saved||[]).find(x=>x.id==id);if(!confirm('Remove saved site "'+(m?.name||id)+'" from this device?'))return;const S=await import('./edmstore.js?v=5941');await S.remove(id);ST.saved=await S.list();if(!ST.saved.length)ST.menu='plan';render()});
  ST.items=[...T.querySelectorAll('.tile')];ST.i=0;for(const [k,b] of ST.items.entries()){b.onmouseenter=()=>focus(k);b.onclick=e=>{e.preventDefault();focus(k);choose()}}focus(0)}
 function focus(k){if(!ST.items.length)return;k=(k+ST.items.length)%ST.items.length;if(k!=ST.i)beep(620);ST.i=k;ST.items.forEach((b,j)=>b.classList.toggle('on',j==k));ST.items[k].focus({preventScroll:true})}
 function cols(){return innerWidth>=820?2:1}
 function move(d){const c=cols();if(d=='l')focus(ST.i-1);else if(d=='r')focus(ST.i+1);else if(d=='u')focus(ST.i-c);else focus(ST.i+c)}
-function back(){if(ST.menu!='main'){ST.menu='main';beep(300);render()}}
+function back(){if(ST.menu!='main'){const from=ST.menu;ST.menu=PARENT[from]||'main';beep(300);render();if(ST.menu=='main'){const k=Object.keys(GRP).indexOf(from);if(k>=0)focus(k)}}}
 function close(dest){ST.last=dest;const A=api();A.last=dest;if(dest!='join'&&dest!='continue'&&dest!='edm'&&dest!='monitor'&&dest!='wdash'&&dest!='workover'&&dest!='ddcab'&&dest!='ddtracks'&&dest!='safety')try{localStorage.setItem('dw_start_save',JSON.stringify({t:Date.now(),dest}))}catch(err){}removeEventListener('keydown',key,true);cancelAnimationFrame(ST.raf);clearInterval(ST.padT);const e=ST.el;ST.el=null;e.classList.add('out');setTimeout(()=>e.remove(),360);try{dispatchEvent(new CustomEvent('dw:start',{detail:dest}))}catch(err){}}
-async function choose(){const go=ST.items[ST.i]?.dataset.go;beep(880,.1);
+async function choose(g){const go=g||ST.items[ST.i]?.dataset.go;beep(880,.1);
+ if(go?.startsWith('grp:')){ST.menu=go.slice(4);return render()}
  if(go=='sim'){ST.menu='sim';return render()}
  if(go=='wdash'){close('wdash');const m=await import('./wdash.js?v=w3');m.open();return}
  if(go=='monitor'){close('monitor');const m=await import('./monitor.js?v=b11');m.open();return}
@@ -90,16 +109,16 @@ function pad(){if(document.getElementById('rigBuilder'))return;/* rig-builder ho
  }
 export function show(){api();if(ST.el)return;const st=document.createElement('style');st.textContent=CSS;document.head.appendChild(st);
  ST.snd=localStorage.getItem(SK)=='1';const e=document.createElement('section');e.id='start';e.setAttribute('role','dialog');e.setAttribute('aria-label','Start screen');
- e.innerHTML=`<canvas></canvas><div class=ui><h1>DRILLING WORLD</h1><div class=sub>Rig simulator <span class=sim>SIM</span></div><div class=tiles role=menu></div></div>
- <div class=bar><button id=stSnd aria-pressed=false></button><button id=stSync aria-label="Sync saved sites">⇄ Sync sites</button><span class=hint>←↑→↓ / 🎮 move · Enter / A select · Esc / B back</span><a id=stGuide href="./user-guide.html" target=_blank rel=noopener style="color:#9cf;font-size:12px;margin-left:8px">? User guide</a><span id=stVer></span></div>`;
- document.body.appendChild(e);ST.el=e;backdrop(e.querySelector('canvas'));
+ e.innerHTML=`<canvas></canvas><div class=top><button id=st_login data-go=login class=tb aria-label="Log in as player">👤 Log in as player</button><a id=stGuide class=tb href="./user-guide.html" target=_blank rel=noopener>? User guide</a></div><div class=ui><h1>DRILLING WORLD</h1><div class=sub>Rig simulator <span class=sim>SIM</span></div><div class=pghd aria-live=polite></div><div class=tiles role=menu></div><div class=pool hidden></div></div>
+ <div class=bar><button id=stSnd aria-pressed=false></button><button id=stSync aria-label="Sync saved sites">⇄ Sync sites</button><span class=hint>←↑→↓ / 🎮 move · Enter / A select · Esc / B back</span><span id=stVer></span></div>`;
+ document.body.appendChild(e);ST.el=e;$('st_login').onclick=ev=>{ev.preventDefault();ev.stopPropagation();choose('login')};backdrop(e.querySelector('canvas'));
  const sb=$('stSnd'),upd=()=>{sb.textContent=ST.snd?'🔊 Sound on':'🔇 Sound off';sb.setAttribute('aria-pressed',ST.snd)};upd();sb.onclick=ev=>{ev.stopPropagation();ST.snd=!ST.snd;try{localStorage.setItem(SK,ST.snd?'1':'0')}catch(err){}upd();beep(700)};
  /* v5.12.11 guide link in Settings (observer: phone builds Settings late) */{const gl=()=>{const g=document.getElementById('uig_set');if(!g||document.getElementById('setGuide'))return;const a=document.createElement('a');a.id='setGuide';a.href='./user-guide.html';a.target='_blank';a.rel='noopener';a.textContent='User guide (HTML / PDF)';a.style.cssText='display:block;color:#9cf;font-size:12px;margin:6px 0';g.appendChild(a);const b=document.createElement('a');b.id='setWdash';b.href='#';b.textContent='📊 WITSML dashboard (logs + image logs)';b.style.cssText=a.style.cssText;b.onclick=e=>{e.preventDefault();import('./wdash.js?v=w3').then(m=>m.open())};g.appendChild(b)};gl();if(!window.__dwGuideMO){window.__dwGuideMO=new MutationObserver(gl);window.__dwGuideMO.observe(document.body,{childList:true,subtree:true})}}
  const sv=()=>{const e=$('stVer');if(e)e.textContent=ver()};sv();setTimeout(sv,500);
- $('stSync').onclick=async ev=>{ev.stopPropagation();const m=await import('./sitesync.js?v=y3');await m.open();addEventListener('dw:sites-changed',()=>import('./edmstore.js?v=5941').then(S=>S.list()).then(L=>{ST.saved=L;if(ST.el&&ST.menu=='main')render()}),{once:true})};/* sync hook */
+ $('stSync').onclick=async ev=>{ev.stopPropagation();const m=await import('./sitesync.js?v=y3');await m.open();addEventListener('dw:sites-changed',()=>import('./edmstore.js?v=5941').then(S=>S.list()).then(L=>{ST.saved=L;if(ST.el&&(ST.menu=='main'||ST.menu=='plan'))render()}),{once:true})};/* sync hook */
  addEventListener('keydown',key,true);ST.padT=setInterval(pad,50);ST.menu='main';render();
- import('./edmstore.js?v=5941').then(S=>S.list()).then(L=>{ST.saved=L;if(ST.el&&ST.menu=='main'&&L.length){const k=ST.i;render();focus(k)}}).catch(()=>{})}
-const API={ST,show,shouldShow,hasSave,last:null};function api(){window.dwStart=API;window.GX=window.GX||{};if(window.GX.start!==API)window.GX.start=API;return API}api();addEventListener('load',api);setTimeout(api,3000);
+ import('./edmstore.js?v=5941').then(S=>S.list()).then(L=>{ST.saved=L;if(ST.el&&L.length){const k=ST.i;render();focus(k)}}).catch(()=>{})}
+const API={ST,show,shouldShow,hasSave,reveal,groupOf,last:null};function api(){window.dwStart=API;window.GX=window.GX||{};if(window.GX.start!==API)window.GX.start=API;return API}api();addEventListener('load',api);setTimeout(api,3000);
 if(shouldShow()){if(document.body)show();else addEventListener('DOMContentLoaded',show)}
 
 if(new URLSearchParams(location.search).has('workover'))import('./workover.js?v=b15');
