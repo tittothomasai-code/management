@@ -39,6 +39,26 @@ ok(await P.p.evaluate(()=>/Added 0 sites\. Kept 2/.test(document.getElementById(
 // bad file
 fs.writeFileSync('/tmp/dw_bad.json','{"a":1}');await (await P.p.$('#syImp')).uploadFile('/tmp/dw_bad.json');await w(1000);ok(await P.p.evaluate(()=>/not a Drilling World sites file/.test(document.getElementById('sySt').textContent)),'wrong file is refused');
 ok(L.errs.length==0&&P.errs.length==0,'no page errors '+[...L.errs,...P.errs].slice(0,2));await L.ctx.close();await P.ctx.close();
+// v5.12.8: custom rigs (dw_custom_rigs_v1) ride in the sync file; merge by id, newer 'updated' wins, no duplicates, secrets stripped, v1 files still open
+const SS='/workspace/shots/sync/';fs.mkdirSync(SS,{recursive:true});
+const RK='dw_custom_rigs_v1',rig=(id,name,updated,x={})=>({id,name,created:1,updated,parts:[],...x});
+const L2=await open(DESK);await seed(L2.p);await L2.p.evaluate((RK,a)=>localStorage.setItem(RK,JSON.stringify(a)),RK,[rig('rA','Laptop rig A',2000,{apiKey:'zz-not-real',meta:{password:'zz'}}),rig('rB','Laptop rig B',2000),rig('rC','Laptop rig C',2000)]);
+await L2.p.evaluate(()=>location.reload());await L2.p.waitForSelector('#stSync',{timeout:120000});await w(1500);await L2.p.click('#stSync');await L2.p.waitForSelector('#syncP #syExp:not([disabled])',{timeout:30000});
+ok(await L2.p.evaluate(()=>/3 custom rigs too/.test(document.getElementById('syncP').innerText)),'laptop: panel counts 3 custom rigs');
+await L2.p.click('#syExp');await L2.p.waitForFunction(()=>GX.sync.last,{timeout:30000});const F2=await L2.p.evaluate(()=>GX.sync.last);const t2=JSON.stringify(F2);
+ok(F2.v==2&&F2.rigs.length==3&&F2.sites.length==2,'sync file v2 holds 2 sites + 3 custom rigs');ok(!/apiKey|password|zz-not-real/.test(t2),'custom rig credential-like keys stripped');
+ok(await L2.p.evaluate(()=>/Sync file made: 2 sites, 3 custom rigs/.test(document.getElementById('sySt').textContent)),'status counts rigs');await L2.p.screenshot({path:SS+'laptop_export.png'});
+fs.writeFileSync('/tmp/dw_sync_v2.json',t2);const v1=JSON.parse(t2);delete v1.rigs;v1.v=1;fs.writeFileSync('/tmp/dw_sync_v1.json',JSON.stringify(v1));await L2.ctx.close();
+const P2=await open(PHONE);await P2.p.evaluate((RK,a)=>localStorage.setItem(RK,JSON.stringify(a)),RK,[rig('rA','Phone old A',1000),rig('rB','Phone newer B',3000),rig('rP','Phone only P',1500)]);
+await P2.p.evaluate(()=>location.reload());await P2.p.waitForSelector('#stSync',{timeout:120000});await w(1500);
+await P2.p.click('#stSync');await P2.p.waitForSelector('#syncP #syImp',{timeout:30000});await (await P2.p.$('#syImp')).uploadFile('/tmp/dw_sync_v1.json');await w(1500);
+ok(await P2.p.evaluate(()=>/Added 2 sites/.test(document.getElementById('sySt').textContent)&&!/Custom rigs/.test(document.getElementById('sySt').textContent)),'old v1 sync file (no rigs) still opens');
+await (await P2.p.$('#syImp')).uploadFile('/tmp/dw_sync_v2.json');await w(1500);const s2=await P2.p.evaluate(()=>document.getElementById('sySt').textContent);console.log('rig import:',s2);
+ok(/Custom rigs: 1 added, 1 updated, 1 kept/.test(s2),'phone: rigs merged (C added, A newer from laptop, B newer on phone kept)');await P2.p.screenshot({path:SS+'phone_import.png'});
+const R2=await P2.p.evaluate(RK=>JSON.parse(localStorage.getItem(RK)),RK);const by=Object.fromEntries(R2.map(r=>[r.id,r]));
+ok(R2.length==4&&by.rA.name=='Laptop rig A'&&by.rB.name=='Phone newer B'&&by.rC&&by.rP,'phone: 4 rigs, newer copy won by id');ok(!/apiKey|password|zz-not-real/.test(JSON.stringify(R2)),'phone: no credentials stored in rigs');
+await P2.p.evaluate(()=>{document.getElementById('syImp').value='';document.getElementById('sySt').textContent=''});await (await P2.p.$('#syImp')).uploadFile('/tmp/dw_sync_v2.json');await w(1500);ok(await P2.p.evaluate(()=>/Custom rigs: 0 added, 0 updated, 3 kept/.test(document.getElementById('sySt').textContent)),'re-import adds no duplicate rigs');
+ok((await P2.p.evaluate(RK=>JSON.parse(localStorage.getItem(RK)).length,RK))==4,'phone: still 4 rigs after re-import');ok(L2.errs.length==0&&P2.errs.length==0,'no page errors (rig sync)');await P2.ctx.close();
 // cloud flow on mock Supabase (flag on)
 const C=await open(DESK,{cloud:true});await seed(C.p);await C.p.click('#stSync');await C.p.waitForSelector('#syncP #syNew',{timeout:30000});
 await C.p.click('#syNew');await C.p.waitForFunction(()=>/ABCDE12345/.test(document.getElementById('sySt').textContent),{timeout:20000}).catch(()=>{});ok(await C.p.evaluate(()=>document.getElementById('syCode').value=='ABCDE12345'),'cloud (flag on, mock): pairing code shown');
