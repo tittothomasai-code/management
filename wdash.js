@@ -1,16 +1,16 @@
-// wdash.js v5.12.12: WITSML dashboard. Vertical depth (or time) logs, tracks side by side, auto-scroll, curve picker, scales,
+// wdash.js v5.12.19 (whole-well discovery, depth/time mapping) / v5.12.12: WITSML dashboard. Vertical depth (or time) logs, tracks side by side, auto-scroll, curve picker, scales,
 // borehole image tracks (unwrapped 0-360°, colour map, sinusoids). Data: WITSML 1.4.1.1 store (via proxy or direct) or SIM.
 // Credentials: held ONLY in this module's memory while the panel is connected. Never written to browser storage (local or session),
 // cookies, URLs, the console or error text. Cleared on Disconnect and on close. SIM data is labelled SIM, never LIVE.
-import * as K from './wdash_core.js?v=w1';
+import * as K from './wdash_core.js?v=w2';
 const $=id=>document.getElementById(id);
 const HOSTED='https://tryfecta-witsml-proxy.netlify.app/witsml-proxy',LOCAL='http://localhost:8796/soap';
 const NS='xmlns="http://www.witsml.org/schemas/1series" version="1.4.1.1"';
 let CRED=null,TYPED=false;// {user,pass} memory only
-const D={el:null,src:'SIM',mode:'depth',auto:true,top:null,span:{depth:30,time:600},dep:{ml:null,rows:[]},tim:{ml:null,rows:[]},tracks:[],imgs:[],sines:true,timer:0,simMd:1500,simT:0,
+const D={el:null,src:'SIM',mode:'depth',auto:true,top:null,span:{depth:30,time:600},dep:{ml:null,rows:[]},tim:{ml:null,rows:[]},tracks:[],sets:[],P:null,M:null,disc:null,imgs:[],sines:true,timer:0,simMd:1500,simT:0,
  conn:{proto:'soap',via:'proxy',proxy:HOSTED,url:'',well:'',wb:'',log:'',logTime:false,connected:false,okAt:0,err:'',sim:false},raf:0};
 export const ST=D;
-const live=()=>D.src=='WITSML'&&D.conn.connected&&!D.conn.sim&&!!D.conn.log&&D.conn.logTime==(D.mode=='time')&&Date.now()-D.conn.okAt<120000&&cur().rows.length>0;
+const live=()=>D.src=='WITSML'&&D.conn.connected&&!D.conn.sim&&!!D.conn.log&&!!D.P&&Date.now()-D.conn.okAt<120000&&cur().rows.length>0;
 const badge=()=>live()?'LIVE':'SIM';
 const cur=()=>D.mode=='depth'?D.dep:D.tim;
 // ---------- default tracks from available mnemonics ----------
@@ -45,9 +45,8 @@ async function savePw(pw,remember){try{sessionStorage.setItem(PWS,pw)}catch(e){}
 async function loadPw(){try{const s=sessionStorage.getItem(PWS);if(s)return s}catch(e){}try{const e=JSON.parse(localStorage.getItem(PWE)||'null');if(!e)return '';const k=await aesKey(false);if(!k)return '';return new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:ub64(e.iv)},k,ub64(e.ct)))}catch(e){return ''}}
 async function forgetCfg(){try{localStorage.removeItem(SAVEK);localStorage.removeItem(PWE);sessionStorage.removeItem(PWS)}catch(e){}try{await idbOp('readwrite',o=>o.delete('aes'))}catch(e){}}
 async function savedCred(){const o=loadCfg();if(!o||!o.user)return null;const pass=await loadPw();return pass?{user:o.user,pass}:null}
-async function autoReconnect(){const o=loadCfg(),c=await savedCred();if(!o||!c||!o.url||!o.well||!o.wb||!o.log)return;CRED=c;const C=D.conn;
- try{await call('WMLS_GetVersion');Object.assign(C,{connected:true,sim:/\/sim\b|simulated/i.test(C.url),well:o.well,wb:o.wb,log:o.log,logTime:!!o.logTime,okAt:0,hdr:null});
-  D.dep={ml:null,rows:[]};D.tim={ml:null,rows:[]};D.conn.lastPoll=Date.now();D.src='WITSML';D.mode=o.logTime?'time':'depth';D.tracks=[];D.top=null;D.auto=true;await pollLive();if(!D.tracks.length&&cur().ml)D.tracks=defaultTracks(cur().ml);head();render()}
+async function autoReconnect(){const o=loadCfg(),c=await savedCred();if(!o||!c||!o.url||!o.well)return;CRED=c;const C=D.conn;
+ try{await call('WMLS_GetVersion');Object.assign(C,{connected:true,sim:/\/sim\b|simulated/i.test(C.url),well:o.well,okAt:0,hdr:null});await loadWell(o.well)}
  catch(e){C.connected=false;C.err='Auto-reconnect failed: '+e.message;render()}}
 async function call(op,wmlType,query,options){try{return await call1(op,wmlType,query,options)}catch(e){if(TYPED||!(e.auth||e.timeout))throw e;const c=await savedCred();if(c)CRED=c;return await call1(op,wmlType,query,options)}}
 async function call1(op,wmlType,query,options){const C=D.conn,u=CRED||{user:'',pass:''};let body,h;const ac=new AbortController(),to=setTimeout(()=>ac.abort(),45000);
@@ -64,15 +63,33 @@ async function call1(op,wmlType,query,options){const C=D.conn,u=CRED||{user:'',p
 export const ids=(x,t)=>[...String(x).matchAll(new RegExp('<(?:\\w+:)?'+t+'\\b([^>]*?)(?:/>|>([\\s\\S]*?)</(?:\\w+:)?'+t+'>)','g'))].map(m=>({uid:(m[1].match(/\buid="([^"]*)"/)||[])[1],name:(((m[2]||'').match(/<(?:\w+:)?name>([^<]*)</)||[])[1]||'').trim()})).filter(w=>w.uid);
 async function listWells(){const j=await call('WMLS_GetFromStore','well',`<wells ${NS}><well uid=""><name/></well></wells>`,'returnElements=id-only');return ids(j.xml,'well')}
 async function listWbs(w){const j=await call('WMLS_GetFromStore','wellbore',`<wellbores ${NS}><wellbore uidWell="${w}" uid=""><name/></wellbore></wellbores>`,'returnElements=id-only');return ids(j.xml,'wellbore')}
-async function listLogs(w,b){const j=await call('WMLS_GetFromStore','log',`<logs ${NS}><log uidWell="${w}" uidWellbore="${b}" uid=""/></logs>`,'returnElements=header-only');return K.parseLogs(j.xml)}
-async function pollLive(){const C=D.conn;if(!C.connected||!C.log||C.busy)return;C.busy=true;const s=C.logTime?D.tim:D.dep;
- try{const last=s.rows.at(-1)?.[0];let rng='';
-  if(C.logTime)rng=last?`<startDateTimeIndex>${new Date(last+1).toISOString()}</startDateTimeIndex>`:(C.hdr?.end?`<startDateTimeIndex>${new Date(Date.parse(C.hdr.end)-3600e3).toISOString()}</startDateTimeIndex>`:'');
-  else rng=last!=null?`<startIndex uom="${C.uom||'m'}">${last}</startIndex>`:(C.hdr?.end!=null?`<startIndex uom="${C.uom||'m'}">${Math.max(0,C.hdr.end-200)}</startIndex>`:'');
-  const j=await call('WMLS_GetFromStore','log',`<logs ${NS}><log uidWell="${C.well}" uidWellbore="${C.wb}" uid="${C.log}">${rng}<logData><data/></logData></log></logs>`,'returnElements=data-only;maxReturnNodes=2000');
-  const L=K.parseLogs(j.xml)[0];if(L&&L.rows.length){const before=s.ml;K.appendRows(s,L.ml,L.rows,L.ul);if(!before||D.tracks.length==0)D.tracks=defaultTracks(s.ml)}
+async function listLogs(w,b){const j=await call('WMLS_GetFromStore','log',`<logs ${NS}><log uidWell="${w}" uidWellbore="${b}" uid=""/></logs>`,'returnElements=header-only');return K.parseLogs(j.xml).map(l=>({...l,uidWellbore:l.uidWellbore||b}))}
+async function listTraj(w,b){const j=await call('WMLS_GetFromStore','trajectory',`<trajectorys ${NS}><trajectory uidWell="${w}" uidWellbore="${b}" uid=""/></trajectorys>`,'returnElements=all');return K.parseTraj(j.xml).map(t=>({...t,uidWellbore:t.uidWellbore||b}))}
+async function listMud(w,b){const j=await call('WMLS_GetFromStore','mudLog',`<mudLogs ${NS}><mudLog uidWell="${w}" uidWellbore="${b}" uid=""/></mudLogs>`,'returnElements=all');return K.parseMudLogs(j.xml).map(t=>({...t,uidWellbore:t.uidWellbore||b}))}
+const WIN={time:12*3600e3,depth:500};// first read per log: last 12 h (time) / last 500 m (depth)
+function rangeQ(s){const last=s.rows.at(-1)?.[0];if(s.time){const st=last?last+1:(Date.parse(s.end||'')?Date.parse(s.end)-WIN.time:0);return st?`<startDateTimeIndex>${new Date(st).toISOString()}</startDateTimeIndex>`:''}
+ const u=s.uom||'m';const e=parseFloat(s.end);return last!=null?`<startIndex uom="${u}">${last}</startIndex>`:Number.isFinite(e)?`<startIndex uom="${u}">${Math.max(0,e-WIN.depth)}</startIndex>`:''}
+async function readLog(s){const j=await call('WMLS_GetFromStore','log',`<logs ${NS}><log uidWell="${D.conn.well}" uidWellbore="${s.wb}" uid="${s.uid}">${rangeQ(s)}<logData><data/></logData></log></logs>`,'returnElements=data-only;maxReturnNodes=2000');
+ const L=K.parseLogs(j.xml)[0];if(L&&L.rows.length){if(!s.ml||!s.rows.length){s.ml=null;s.rows=[]}K.appendRows(s,L.ml,L.rows,L.ul);return L.rows.length}return 0}
+async function pool(items,n,f){const q=items.slice();await Promise.all(Array.from({length:n},async()=>{while(q.length){const it=q.shift();try{await f(it)}catch(e){it.err=e.message}}}))}
+// discover EVERY object in the well: all wellbores -> all logs (time+depth, FE, mud, survey logs), trajectories, mudLogs; then read data; live branch selected
+export async function loadWell(well,note=()=>{}){const C=D.conn;C.well=well;note('Reading wellbores…');const wbs=await listWbs(well);if(!wbs.length)throw new Error('Connected, but the store returned no wellbores for well '+well+' (empty result)');const sets=[];
+ for(const b of wbs){note('Wellbore '+(b.name||b.uid)+': listing objects…');const [lg,tr,ml]=await Promise.all([listLogs(well,b.uid).catch(e=>[]),listTraj(well,b.uid).catch(e=>[]),listMud(well,b.uid).catch(e=>[])]);
+  for(const s of [...lg,...tr,...ml]){s.wb=b.uid;s.wbName=b.name||b.uid;s.kind=K.classify(s);s.short=(s.name||s.uid).replace(/\W+/g,'').slice(0,10);if(s.obj=='log'){s.uom=(s.ml?.length?null:null)||'m';s.ml=null;s.rows=[];s.ul=[]}sets.push(s)}}
+ note('Reading data from '+sets.filter(s=>s.obj=='log').length+' logs…');await pool(sets.filter(s=>s.obj=='log'),4,readLog);
+ D.sets=sets;D.disc={wellbores:wbs.length,logs:sets.filter(s=>s.obj=='log').length,time:sets.filter(s=>s.obj=='log'&&s.time).length,depth:sets.filter(s=>s.obj=='log'&&!s.time).length,
+  realtime:sets.filter(s=>s.kind=='realtime').length,fe:sets.filter(s=>s.kind=='fe').length,mudlog:sets.filter(s=>s.kind=='mudlog').length,survey:sets.filter(s=>s.kind=='survey').length,
+  trajectories:sets.filter(s=>s.obj=='trajectory').length,mudLogs:sets.filter(s=>s.obj=='mudLog').length,withData:sets.filter(s=>s.rows?.length).length,errors:sets.filter(s=>s.err).length};
+ const P=K.pickLive(sets.filter(s=>s.rows?.length))||K.pickLive(sets);if(!P)throw new Error('the store returned no logs or trajectories for well '+well+' (empty result)');
+ select(P,true);C.lastPoll=Date.now();saveCfg();return D.disc}
+function wbSets(){return D.sets.filter(s=>s.wb==D.P.wb&&s.rows?.length)}
+function rebuild(){if(!D.P)return;const W=wbSets(),tl=[D.P,...W.filter(s=>s.time&&s!==D.P)].filter(s=>s.time);let M=null;for(const s of tl){M=K.depthMap(s);if(M){M.from=s.name||s.uid;break}}D.M=M;
+ D.dep=K.combine(W,'depth',M,D.P);D.tim=K.combine(W,'time',M,D.P)}
+function select(P,first){D.P=P;Object.assign(D.conn,{wb:P.wb,log:P.uid,logTime:!!P.time});saveCfg();rebuild();D.src='WITSML';if(first||true)D.mode=P.time?'time':'depth';D.top=null;D.auto=true;D.tracks=cur().ml?.length?defaultTracks(cur().ml):[];D.conn.okAt=Date.now();head();render()}
+async function pollLive(){const C=D.conn,P=D.P;if(!C.connected||!P||P.obj!='log'||C.busy)return;C.busy=true;
+ try{const n=await readLog(P);if(n){const had=cur().ml?.length;rebuild();if(!had||!D.tracks.length)D.tracks=defaultTracks(cur().ml||[])}
   C.okAt=Date.now();C.err='';C.polls=(C.polls||0)+1}catch(e){C.err=e.message;if(e.auth){disconnect('Login refused — polling stopped. Check user name and password.')}}finally{C.busy=false;render()}}
-function disconnect(msg){CRED=null;Object.assign(D.conn,{connected:false,log:'',okAt:0,err:msg||''});['wdUser','wdPass'].forEach(i=>{if($(i))$(i).value=''});D.src='SIM';simInit();D.tracks=defaultTracks(cur().ml);D.top=null;D.auto=true;head();render()}
+function disconnect(msg){CRED=null;Object.assign(D.conn,{connected:false,log:'',okAt:0,err:msg||''});D.sets=[];D.P=null;D.M=null;D.disc=null;$('wdSet')&&($('wdSet').style.display='none');['wdUser','wdPass'].forEach(i=>{if($(i))$(i).value=''});D.src='SIM';simInit();D.tracks=defaultTracks(cur().ml);D.top=null;D.auto=true;head();render()}
 // ---------- UI ----------
 const CSS=`body.mob #wdash.msheet,body.mob #wdash.mcol,#wdash.msheet{display:flex!important;top:0!important;bottom:0!important;left:0!important;right:0!important;width:auto!important;max-height:none!important;height:auto!important;overflow:hidden!important;border-radius:0!important;z-index:100002!important}body.mob #wdash.msheet::before{display:none!important}
 #wdash{position:fixed;inset:0;z-index:100002;background:#0b1118;color:#dde7f0;font:13px system-ui,-apple-system,Segoe UI,sans-serif;display:flex;flex-direction:column;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
@@ -89,24 +106,24 @@ const CSS=`body.mob #wdash.msheet,body.mob #wdash.mcol,#wdash.msheet{display:fle
 export function open(){if(D.el)return;const st=document.createElement('style');st.id='wdashCss';st.textContent=CSS;document.head.appendChild(st);
  const el=document.createElement('div');el.id='wdash';el.innerHTML=`<div class=bar><h1>WITSML dashboard</h1><span id=wdTag class="tag SIM">SIM</span>
  <button id=wdModeD class=on>Depth</button><button id=wdModeT>Time</button><button id=wdZin aria-label="Zoom in">＋</button><button id=wdZout aria-label="Zoom out">－</button>
- <button id=wdAuto class=on title="Auto-scroll to newest data">⤓ Follow</button><button id=wdTracks>Tracks</button><button id=wdSines class=on>Sines</button><button id=wdConnB>Connect…</button>
- <a id=wdHelp href="./user-guide.html#witsml" target=_blank rel=noopener style="color:#8ecbff" class=hide-ph>Guide</a><span style="flex:1"></span><button id=wdX aria-label=Close>✕</button></div>
+ <button id=wdAuto class=on title="Auto-scroll to newest data">⤓ Follow</button><button id=wdTracks>Tracks</button><button id=wdSines class=on>Sines</button><button id=wdConnB>Connect…</button><select id=wdSet aria-label="Dataset" style="display:none;max-width:46vw"></select>
+ <a id=wdHelp href="./user-guide.html#witsml" target=_blank rel=noopener style="color:#8ecbff">Guide</a><span style="flex:1"></span><button id=wdX aria-label=Close>✕</button></div>
  <div class=body id=wdBody><canvas id=wdCv></canvas></div><div class=note id=wdNote></div>`;document.body.appendChild(el);D.el=el;
  if(!D.dep.rows.length)simInit();if(!D.tracks.length)D.tracks=defaultTracks(cur().ml);
  $('wdX').onclick=close;$('wdModeD').onclick=()=>setMode('depth');$('wdModeT').onclick=()=>setMode('time');
  $('wdZin').onclick=()=>zoom(1/1.5);$('wdZout').onclick=()=>zoom(1.5);$('wdAuto').onclick=()=>{D.auto=!D.auto;if(D.auto)D.top=null;head();render()};
- $('wdSines').onclick=()=>{D.sines=!D.sines;head();render()};$('wdTracks').onclick=()=>picker();$('wdConnB').onclick=connPanel;
+ $('wdSines').onclick=()=>{D.sines=!D.sines;head();render()};$('wdTracks').onclick=()=>picker();$('wdSet').onchange=e=>{const s=D.sets.find(x=>x.wb+'|'+x.uid==e.target.value);if(s)select(s)};$('wdConnB').onclick=connPanel;
  const B=$('wdBody');let drag=null;B.addEventListener('pointerdown',e=>{if(e.target.id!='wdCv')return;const hy=e.offsetY;if(hy<HEAD){const t=hitTrack(e.offsetX);if(t>=0)picker(t);return}drag={y:e.clientY,x:e.clientX,top:viewTop(),sl:B.scrollLeft}});
  addEventListener('pointermove',D.pm=e=>{if(!drag)return;const dy=e.clientY-drag.y;B.scrollLeft=drag.sl-(e.clientX-drag.x);if(Math.abs(dy)>3){D.auto=false;D.top=drag.top-dy/pxPer();head();render()}});addEventListener('pointerup',D.pu=()=>drag=null);
  B.addEventListener('wheel',e=>{e.preventDefault();if(e.ctrlKey){zoom(e.deltaY>0?1.2:1/1.2);return}D.auto=false;D.top=viewTop()+e.deltaY/pxPer();head();render()},{passive:false});
  addEventListener('resize',D.rs=()=>render());addEventListener('keydown',D.kd=e=>{if(e.key=='Escape'&&D.el){e.stopPropagation();close()}},true);
- D.timer=setInterval(()=>{if(D.src=='SIM')simTick();else if(D.conn.connected&&Date.now()-(D.conn.lastPoll||0)>=10000){D.conn.lastPoll=Date.now();pollLive()}render()},1000);D.livePoll=0;head();render();window.GX=window.GX||{};GX.wdash={ST:D,open,close,K,render,setMode};autoReconnect()}
+ D.timer=setInterval(()=>{window.GX=window.GX||{};if(!GX.wdash)GX.wdash={ST:D,open,close,K,render,setMode,loadWell,discText};if(D.src=='SIM')simTick();else if(D.conn.connected&&Date.now()-(D.conn.lastPoll||0)>=10000){D.conn.lastPoll=Date.now();pollLive()}render()},1000);D.livePoll=0;head();render();window.GX=window.GX||{};GX.wdash={ST:D,open,close,K,render,setMode,loadWell,discText};autoReconnect()}
 export function close(){if(!D.el)return;clearInterval(D.timer);D.el.remove();$('wdashCss')?.remove();D.el=null;removeEventListener('pointermove',D.pm);removeEventListener('pointerup',D.pu);removeEventListener('resize',D.rs);removeEventListener('keydown',D.kd,true);
  if(D.conn.connected)disconnect();CRED=null}
 function setMode(m){D.mode=m;D.top=null;D.auto=true;D.tracks=defaultTracks(cur().ml||[]);head();render()}
 function zoom(f){D.span[D.mode]=Math.min(D.mode=='depth'?2000:86400,Math.max(D.mode=='depth'?2:30,D.span[D.mode]*f));render()}
 function head(){if(!D.el)return;const t=$('wdTag');t.textContent=badge();t.className='tag '+badge();$('wdModeD').classList.toggle('on',D.mode=='depth');$('wdModeT').classList.toggle('on',D.mode=='time');
- $('wdAuto').classList.toggle('on',D.auto);$('wdSines').classList.toggle('on',D.sines);$('wdConnB').textContent=D.conn.connected?'Store ✓':'Connect…'}
+ $('wdAuto').classList.toggle('on',D.auto);$('wdSines').classList.toggle('on',D.sines);$('wdConnB').textContent=D.conn.connected?'Store ✓':'Connect…';const S=$('wdSet');if(S){const L=D.sets.filter(s=>s.rows?.length);S.style.display=L.length?'':'none';const k=L.map(s=>s.wb+'|'+s.uid).join();if(S.dataset.k!=k){S.dataset.k=k;S.innerHTML=L.map(s=>`<option value="${s.wb}|${s.uid}">${(s.kind=='realtime'?'● LIVE branch · ':'')+s.wbName+' · '+(s.name||s.uid)+' · '+s.kind+' · '+(s.time?'time':'depth')}</option>`).join('')}if(D.P)S.value=D.P.wb+'|'+D.P.uid}}
 // ---------- drawing ----------
 const HEAD=58,AXW=46;let LAY=[];
 const pxPer=()=>{const h=($('wdCv')?.clientHeight||600)-HEAD;return h/D.span[D.mode]/(D.mode=='time'?1000:1)};
@@ -135,11 +152,16 @@ export function render(){if(!D.el)return;const B=$('wdBody'),cv=$('wdCv'),dpr=Ma
    g.fillText(fmtN(a),x+4,23+k*22);const bt=fmtN(b);g.fillText(bt,x+w-6-g.measureText(bt).width,23+k*22);g.fillStyle=c.color;g.fillRect(x+4,25+k*22,w-10,1)});
   if(!('image' in t)&&t.curves.length==0){g.fillStyle='#9fb3c6';g.fillText('empty · tap to add',x+4,14)}
   g.restore();x+=w});
+ if(D.P&&!s.rows.length){g.fillStyle='#ffcc80';g.font='bold 13px system-ui';g.fillText(D.mode=='depth'?'No depth-indexed data and no time→depth mapping for this wellbore':'No time-indexed data and no depth→time mapping for this wellbore',AXW+10,HEAD+30);g.font='11px system-ui';g.fillText('Mapping needs a bit-depth or hole-depth channel (e.g. DBTM, DMEA) in a time log.',AXW+10,HEAD+50)}
  // newest-data marker
  if(lastRow){const yy=y(lastRow[0]);g.strokeStyle='#ffd54f';g.setLineDash([4,3]);g.beginPath();g.moveTo(AXW,yy);g.lineTo(W,yy);g.stroke();g.setLineDash([])}
  const C=D.conn,n=$('wdNote');const lab=badge();
  n.textContent=(lab=='LIVE'?'LIVE · '+C.url.replace(/^https?:\/\//,'').split('/')[0]+' · '+C.log+' · last poll '+new Date(C.okAt).toLocaleTimeString():D.src=='WITSML'?'SIM label · store '+(C.sim?'is a SIMULATED test store':'not returning data yet')+(C.err?' · '+C.err:''):'SIM · simulated well data, not from a rig · Connect… to read a WITSML store')+
-  ' · '+(D.mode=='depth'?'depth':'time')+' window '+(D.mode=='depth'?D.span.depth.toFixed(0)+' m':Math.round(D.span.time/60)+' min')+(D.auto?' · following newest':' · paused (Follow to resume)');head()}
+  (D.P?' · '+mapNote():'')+' · '+(D.mode=='depth'?'depth':'time')+' window '+(D.mode=='depth'?D.span.depth.toFixed(0)+' m':Math.round(D.span.time/60)+' min')+(D.auto?' · following newest':' · paused (Follow to resume)');head()}
+export const discText=d=>`${d.wellbores} wellbores · ${d.logs} logs (${d.time} time, ${d.depth} depth; ${d.realtime} real-time, ${d.fe} FE, ${d.mudlog} mud, ${d.survey} survey) · ${d.trajectories} trajectories · ${d.mudLogs} mudLogs · ${d.withData} with data`+(d.errors?` · ${d.errors} unreadable`:'');
+function mapNote(){const s=cur(),nat=s.ml?Object.values(s.src||{}):[],mp=nat.filter(x=>x.how=='mapped').length;
+ const m=D.M?'index map time↔depth via '+D.M.mn+' ('+D.M.from+')':'no time↔depth mapping (no bit/hole depth channel in a time log)';
+ return (D.mode=='depth'?'Depth':'Time')+' view · '+(s.ml?s.ml.length-1:0)+' channels ('+mp+' mapped from '+(D.mode=='depth'?'time':'depth')+')'+(s.missing?.length?' · not available in this mode: '+s.missing.join(', '):'')+' · '+m}
 function fmtN(v){return Math.abs(v)>=1000?(v/1000).toFixed(1)+'k':Math.abs(v)>=10?v.toFixed(0):(+v).toFixed(1)}
 function niceStep(r){const p=10**Math.floor(Math.log10(r||1)),m=r/p;return (m<1.5?1:m<3.5?2:m<7.5?5:10)*p}
 function drawImage(g,t,x,w,H,vis,y,top,bot){const s=cur();const im=D.imgs.find(i=>i.name==t.image)||null;
@@ -188,12 +210,7 @@ function connPanel(){$('wdPick')?.remove();if($('wdConn')){$('wdConn').remove();
   Object.assign(C,{via:$('wdVia').value,proxy:$('wdProxy').value.trim(),url:$('wdUrl').value.trim(),connected:false,err:''});if(!/^https?:\/\//.test(C.url)){st.textContent='Enter the store URL (https://…)';return}
   {const nu=$('wdUser').value.trim(),np=$('wdPass').value;C.remember=$('wdRem').checked;if(np===''&&!(CRED&&CRED.user==nu&&CRED.pass)){const sc=await savedCred();if(sc&&sc.user==nu)CRED=sc}TYPED=np!=='';if(!(np===''&&CRED&&CRED.user==nu&&CRED.pass))CRED={user:nu,pass:np}}$('wdPass').value='';st.textContent='Connecting…';
   try{await call('WMLS_GetVersion');C.connected=true;C.sim=/\/sim\b|simulated/i.test(C.url);saveCfg();await savePw(CRED.pass,C.remember);TYPED=false;const ws=await listWells();if(!ws.length){st.textContent='Connected, but the store returned no wells for this login (empty result)';return}
-   st.textContent='Connected · '+ws.length+' wells';const L=$('wdPickLog');L.innerHTML=`<label>Well<select id=wdW>${ws.map(w=>`<option value="${w.uid}">${w.name||w.uid}</option>`).join('')}</select></label><label>Wellbore<select id=wdB></select></label><label>Log<select id=wdL></select></label><button id=wdUse>Show this log</button>`;
-   let logs=[];const wb=async()=>{const b=await listWbs($('wdW').value);$('wdB').innerHTML=b.map(x=>`<option value="${x.uid}">${x.name||x.uid}</option>`).join('');if(!b.length){$('wdL').innerHTML='';st.textContent='Connected, but the store returned no wellbores for well '+$('wdW').value+' (empty result)';return}const sv=loadCfg();if(sv&&b.some(x=>x.uid==sv.wb))$('wdB').value=sv.wb;await lg()};
-   const lg=async()=>{logs=await listLogs($('wdW').value,$('wdB').value);if(!logs.length)st.textContent='Connected, but no logs in this wellbore (empty result)';$('wdL').innerHTML=logs.map(l=>`<option value="${l.uid}">${(l.name||l.uid)+' · '+(l.time?'time':'depth')+' · '+l.curves.length+' curves'}</option>`).join('')};
-   $('wdW').onchange=()=>wb().catch(e=>st.textContent=e.message);$('wdB').onchange=()=>lg().catch(e=>st.textContent=e.message);await wb();
-   $('wdUse').onclick=async()=>{const l=logs.find(x=>x.uid==$('wdL').value);if(!l)return;Object.assign(C,{well:$('wdW').value,wb:$('wdB').value,log:l.uid,logTime:l.time,okAt:0,hdr:null});saveCfg();
-    const j=await call('WMLS_GetFromStore','log',`<logs ${NS}><log uidWell="${C.well}" uidWellbore="${C.wb}" uid="${C.log}"/></logs>`,'returnElements=header-only').catch(e=>{st.textContent=e.message;return null});
-    if(j){const hx=j.xml;C.uom=(hx.match(/<(?:\w+:)?endIndex[^>]*uom="([^"]*)"/)||[])[1]||'m';C.hdr={end:l.time?(hx.match(/<(?:\w+:)?endDateTimeIndex>([^<]*)</)||[])[1]:+((hx.match(/<(?:\w+:)?endIndex[^>]*>([^<]*)</)||[])[1])}}
-    const s={ml:null,rows:[]};D.dep={ml:null,rows:[]};D.tim={ml:null,rows:[]};if(l.time)D.tim=s;else D.dep=s;D.conn.lastPoll=Date.now();D.src='WITSML';D.mode=l.time?'time':'depth';D.tracks=[];D.top=null;D.auto=true;await pollLive();if(!D.tracks.length&&s.ml)D.tracks=defaultTracks(s.ml);head();render();P.remove()}}
+   st.textContent='Connected · '+ws.length+' wells';const L=$('wdPickLog');L.innerHTML=`<label>Well<select id=wdW>${ws.map(w=>`<option value="${w.uid}">${w.name||w.uid}</option>`).join('')}</select></label><button id=wdUse>Load everything in this well</button><div id=wdDisc style="margin-top:4px;color:#9fb3c6"></div>`;
+   {const sv=loadCfg();if(sv&&ws.some(x=>x.uid==sv.well))$('wdW').value=sv.well}
+   const go=async cl=>{$('wdUse').disabled=true;try{const d=await loadWell($('wdW').value,m=>st.textContent=m);st.textContent='Connected · loaded '+discText(d)+' · showing the live branch';if(cl)setTimeout(()=>P.remove(),1500)}catch(e){st.textContent=e.message}finally{if($('wdUse'))$('wdUse').disabled=false}};$('wdUse').onclick=()=>go(true);$('wdW').onchange=()=>go(false);await go(false)}
   catch(e){C.connected=false;CRED=null;TYPED=false;st.textContent='Connect failed: '+e.message}}}

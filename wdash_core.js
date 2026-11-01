@@ -24,7 +24,7 @@ export function parseLogs(x){x=String(x||'');return tagAll(x,'log').map(L=>{cons
  if(ld){ml=tag1(ld.body,'mnemonicList').split(',').map(s=>s.trim()).filter(Boolean);ul=tag1(ld.body,'unitList').split(',').map(s=>s.trim());
   const isArr=ml.map(m=>(curves.find(c=>c.mn==m)?.array)||0);
   rows=tagAll(ld.body,'data').map(d=>splitRow(unesc(d.body.trim()),isArr))}
- const it=tag1(b,'indexType');return {uid:attr(L.attr,'uid'),name:tag1(b,'name'),indexType:it,time:/time/i.test(it),indexCurve:tag1(b,'indexCurve'),curves,ml,ul,rows}})}
+ const it=tag1(b,'indexType');return {uid:attr(L.attr,'uid'),uidWellbore:attr(L.attr,'uidWellbore'),obj:'log',end:tag1(b,'endDateTimeIndex')||tag1(b,'endIndex'),start:tag1(b,'startDateTimeIndex')||tag1(b,'startIndex'),name:tag1(b,'name'),indexType:it,time:/time/i.test(it),indexCurve:tag1(b,'indexCurve'),curves,ml,ul,rows}})}
 // a data row: comma separated; array curve values are space-separated numbers in one cell (1.4.1.1 convention); time index kept as ms
 export function splitRow(s,isArr=[]){return s.split(',').map((c,i)=>{c=c.trim();if(c==='')return NaN;if(isArr[i]||/\s/.test(c)&&i>0)return c.split(/\s+/).map(Number);
  if(i==0&&/\d{4}-\d\d-\d\dT/.test(c))return Date.parse(c);return +c})}
@@ -76,3 +76,40 @@ const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'
 export function soapEnvelope(op,a={}){const body=op=='WMLS_GetVersion'?'':op=='WMLS_GetCap'?`<OptionsIn>${esc(a.options||'dataVersion=1.4.1.1')}</OptionsIn>`:`<WMLtypeIn>${esc(a.wmlType)}</WMLtypeIn><QueryIn>${esc(a.query)}</QueryIn><OptionsIn>${esc(a.options||'')}</OptionsIn><CapabilitiesIn></CapabilitiesIn>`;
  return `<?xml version="1.0" encoding="utf-8"?><soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"><soap:Body><q1:${op} xmlns:q1="http://www.witsml.org/message/120">${body}</q1:${op}></soap:Body></soap:Envelope>`}
 export function soapResult(x){x=String(x||'');const r=tag1(x,'Result')||tag1(x,'result');const out=tag1(x,'XMLout');const v=tag1(x,'WMLS_GetVersionResult')||(r&&!/^-?\d+$/.test(r)?r:'');return {result:/^-?\d+$/.test(r)?+r:null,xml:out,version:v||r,supp:tag1(x,'SuppMsgOut'),fault:tag1(x,'faultstring')}}
+// ---- v5.12.19 whole-well discovery: classify every object, pick the live branch, map time<->depth, combine channels ----
+// kind: realtime | time | depth | survey | mudlog | fe (formation evaluation)
+export function classify(d){const n=(d.name||'')+' '+(d.uid||'');if(d.obj=='trajectory')return 'survey';if(d.obj=='mudLog')return 'mudlog';
+ if(d.time&&/real\s*-?time|\blive\b|\brt\b|_rt\b|realtime/i.test(n))return 'realtime';if(/survey|traj/i.test(n))return 'survey';if(/mud\s*log|mudlog|gas|lith/i.test(n))return 'mudlog';
+ if(/\bfe\b|formation\s*eval|wireline|lwd|petro|resist|gamma|neutron|density|sonic|image/i.test(n))return 'fe';return d.time?'time':'depth'}
+// live branch: a real-time time log; else the time log with the latest end; else the deepest depth log
+export function pickLive(sets){const t=sets.filter(s=>s.time&&s.obj=='log');const end=s=>Date.parse(s.end||'')||0;
+ const rt=t.filter(s=>s.kind=='realtime').sort((a,b)=>end(b)-end(a)||(b.rows?.length||0)-(a.rows?.length||0));if(rt.length)return rt[0];
+ if(t.length)return t.slice().sort((a,b)=>end(b)-end(a))[0];const dl=sets.filter(s=>!s.time&&s.obj=='log');return dl.sort((a,b)=>(+b.end||0)-(+a.end||0))[0]||sets[0]||null}
+export const DEPTH_MN=[/^(DBTM|BITDEP|BDEP|BDE|DBTV|BIT_DEPTH|BITDEPTH)$/i,/^(DMEA|HDTH|HDEP|DEPTH_HOLE|HOLEDEPTH|DEPT|DEPTH|MD)$/i];
+// map from a time set: [[t,md]] monotone in t, md = hole depth (running max of bit/hole depth). null if no depth channel.
+export function depthMap(set){if(!set||!set.ml)return null;let j=-1,mn='';for(const re of DEPTH_MN){j=set.ml.findIndex((m,i)=>i>0&&re.test(m));if(j>0){mn=set.ml[j];break}}if(j<0)return null;
+ const P=[];let mx=-Infinity;for(const r of set.rows){const t=r[0],d=r[j];if(!Number.isFinite(t)||!Number.isFinite(d))continue;if(d>mx){mx=d;P.push([t,d])}}return P.length>=2?{mn,pts:P,bit:set.rows.filter(r=>Number.isFinite(r[0])&&Number.isFinite(r[j])).map(r=>[r[0],r[j]])}:null}
+const lerp=(P,x,a,b)=>{if(!P.length)return NaN;if(x<P[0][a]||x>P.at(-1)[a])return NaN;let lo=0,hi=P.length-1;while(hi-lo>1){const m=(lo+hi)>>1;P[m][a]<=x?lo=m:hi=m}const p=P[lo],q=P[hi];return q[a]==p[a]?p[b]:p[b]+(q[b]-p[b])*(x-p[a])/(q[a]-p[a])};
+export const t2d=(M,t)=>M?lerp(M.pts,t,0,1):NaN;export const d2t=(M,d)=>M?lerp(M.pts,d,1,0):NaN;
+// resample a set's columns onto a target index (array of numbers) in mode 'depth'|'time'; arrays use nearest row
+function sampler(set,mode,M){let rows=set.rows;if(!rows.length)return null;const native=set.time?'time':'depth';
+ if(native!=mode){if(!M)return null;if(mode=='depth'){// time->depth: keep on-bottom drilling rows (new hole), indexed by hole depth
+   rows=rows.map(r=>[t2d(M,r[0]),...r.slice(1)]).filter(r=>Number.isFinite(r[0]));const o=[];let mx=-Infinity;for(const r of rows)if(r[0]>mx){mx=r[0];o.push(r)}rows=o}
+  else rows=rows.map(r=>[d2t(M,r[0]),...r.slice(1)]).filter(r=>Number.isFinite(r[0])).sort((a,b)=>a[0]-b[0])}
+ if(rows.length<1)return null;return {rows,at(x,j){let lo=0,hi=rows.length-1;if(x<rows[0][0]||x>rows[hi][0])return NaN;while(hi-lo>1){const m=(lo+hi)>>1;rows[m][0]<=x?lo=m:hi=m}
+  const p=rows[lo],q=rows[hi],a=p[j],b=q[j];if(Array.isArray(a)||Array.isArray(b))return (x-p[0]<=q[0]-x?a:b)??NaN;if(!Number.isFinite(a)||!Number.isFinite(b))return Number.isFinite(a)&&x-p[0]<=q[0]-x?a:Number.isFinite(b)?b:NaN;return q[0]==p[0]?a:a+(b-a)*(x-p[0])/(q[0]-p[0])}}}
+// build the view store for one mode from all sets of one wellbore; primary gives the grid. src[mn] = {set, how:'native'|'mapped'}; missing lists sets without a mapping.
+export function combine(sets,mode,M,primary){const out={ml:[],ul:[],rows:[],src:{},missing:[]};const nat=s=>(s.time?'time':'depth')==mode;
+ const grid=(nat(primary)&&primary.rows.length?primary:sets.filter(s=>nat(s)&&s.rows.length).sort((a,b)=>b.rows.length-a.rows.length)[0])||(primary&&primary.rows.length?primary:null);
+ if(!grid)return out;const gs=sampler(grid,mode,M);if(!gs){out.missing=sets.filter(s=>s.rows.length).map(s=>s.name||s.uid);return out}
+ const idx=gs.rows.map(r=>r[0]);out.ml.push(mode=='depth'?'MD':'TIME');out.ul.push(mode=='depth'?(grid.ul?.[0]||'m'):'ms');const cols=[];
+ const order=[grid,...sets.filter(s=>s!==grid&&s.rows.length)];
+ for(const s of order){const sm=s===grid?gs:sampler(s,mode,M);if(!sm){out.missing.push(s.name||s.uid);continue}
+  s.ml.forEach((m,j)=>{if(j==0)return;let mn=m;if(out.src[mn])mn=m+'@'+(s.short||s.uid);if(out.src[mn])return;out.src[mn]={set:s.uid,name:s.name,how:nat(s)?'native':'mapped',orig:m};out.ml.push(mn);out.ul.push(s.ul?.[j]||'');cols.push([sm,j])})}
+ out.rows=idx.map((x,i)=>[x,...cols.map(([sm,j])=>sm===gs?gs.rows[i][j]:sm.at(x,j))]);return out}
+// trajectory stations -> depth set rows [md,inc,azi,tvd]
+export function parseTraj(x){x=String(x||'');return tagAll(x,'trajectory').map(T=>{const st=tagAll(T.body,'trajectoryStation').map(s=>[+tag1(s.body,'md'),+tag1(s.body,'incl'),+tag1(s.body,'azi'),+tag1(s.body,'tvd')]).filter(r=>Number.isFinite(r[0])).sort((a,b)=>a[0]-b[0]);
+ return {uid:attr(T.attr,'uid'),uidWellbore:attr(T.attr,'uidWellbore'),name:tag1(T.body,'name'),obj:'trajectory',time:false,ml:['MD','INCL','AZI','TVD'],ul:['m','dega','dega','m'],rows:st}})}
+// mudLog geology intervals -> depth set rows [mdTop, ropAv, lith% ] (interval tops)
+export function parseMudLogs(x){x=String(x||'');return tagAll(x,'mudLog').map(L=>{const gi=tagAll(L.body,'geologyInterval').map(g=>[+tag1(g.body,'mdTop'),+tag1(g.body,'ropAv')||NaN,+tag1(tagAll(g.body,'lithology')[0]?.body||'','lithPc')||NaN]).filter(r=>Number.isFinite(r[0])).sort((a,b)=>a[0]-b[0]);
+ return {uid:attr(L.attr,'uid'),uidWellbore:attr(L.attr,'uidWellbore'),name:tag1(L.body,'name'),obj:'mudLog',time:false,ml:['MD','ML_ROPAV','ML_LITHPC'],ul:['m','m/h','%'],rows:gi}})}
