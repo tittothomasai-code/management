@@ -18,8 +18,8 @@ for(const [nm,vp] of [['phone',{width:390,height:844,deviceScaleFactor:2,isMobil
   p.on('request',r=>{const u=r.url();if(u.startsWith(BASE)||u.startsWith('data:')||u.startsWith('blob:')||TRX.test(u))return;if(r.method()!='GET'||!/fonts|cdn|unpkg|jsdelivr/.test(u))bad.push(r.method()+' '+u)});
  const load=async f=>{await w(4000);await p.goto(BASE+'/?nosplash=1&edm=1',{waitUntil:'load',timeout:120000});await p.waitForFunction(()=>window.GX?.edm&&document.getElementById('edm'),{timeout:120000});await w(500);
   await (await p.$('#edmf')).uploadFile(f);await p.waitForFunction(()=>GX.edm.ST.R?.W&&!GX.edm.ST.busy,{timeout:150000}).catch(async e=>{await p.screenshot({path:"/tmp/edmmap_fail.png"});console.log("LOADFAIL",errs,await p.evaluate(()=>document.getElementById("edm")?.innerText.slice(0,600)));throw e});await p.evaluate(()=>GX.edm.openMap());await p.waitForFunction(()=>GX.edmmap?.open&&document.querySelector('#edmmap canvas'),{timeout:30000});await w(1200)};
- await load(FN);let r=await p.evaluate(()=>({btn:!!document.getElementById('emmapb'),note:document.getElementById('emnomap')?.innerText||'',crs:GX.edmmap.W.crs}));
- ok(!r.btn&&/no coordinate system/.test(r.note)&&!r.crs,`${nm}: no CRS → no Map toggle, note "${r.note}"`);await p.screenshot({path:SH+nm+'_0_nocrs.png'});
+ await load(FN);let r=await p.evaluate(()=>({btn:!!document.getElementById('emmapb'),note:document.getElementById('emnomap')?.innerText||'',pl:!!document.getElementById('emplace'),crs:GX.edmmap.W.crs}));
+ ok(!r.btn&&/Map not available: no site lat\/long/.test(r.note)&&r.pl&&!r.crs,`${nm}: no CRS → no Map toggle, note "${r.note}"`);await p.screenshot({path:SH+nm+'_0_nocrs.png'});
  await p.evaluate(()=>localStorage.removeItem('dw_edm_map'));await load(FG);
  r=await p.evaluate(()=>{const M=GX.edmmap,W=M.W;return {crs:W.crs,wells:W.wells.map(w=>({n:w.name,lat:w.lat,lon:w.lon,E:w.E,N:w.N,gl:w.gl,src:w.glSrc,dat:w.datum})),ll:W.wells.map(w=>M.ll(w.E,w.N)),btn:document.getElementById('emmapb')?.innerText}});
  ok(r.crs?.kind=='utm'&&r.crs.zone=='UTM-55S'&&r.btn=='Map: Off',`${nm}: CRS ${JSON.stringify(r.crs)} · toggle "${r.btn}"`);

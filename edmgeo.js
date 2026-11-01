@@ -38,7 +38,7 @@ export function resolve(W,ov){const S=W.sites||[],P=W.projects||[],nz=v=>v!=null
  const grid=(z,label)=>{const E0=s0.mapE,N0=s0.mapN,O=inv(E0,N0,z.zone,z.south);return {ok:true,kind:'grid',label,O,zone:z,ll:(E,N)=>{const q=inv(E0+E,N0+N,z.zone,z.south);return [q.lat,q.lon]},en:(la,lo)=>{const q=fwd(la,lo,z.zone,z.south);return [q.E-E0,q.N-N0]}}};
  const zl=z=>(z.zone>=49&&z.zone<=56&&z.south?'MGA / UTM zone ':'UTM zone ')+z.zone+(z.south?'S':'N');
  const geoOK=!!(W.geo&&W.origin&&nz(W.origin.lat));
- if(ov?.kind=='ll'&&nz(ov.lat)&&Number.isFinite(+ov.lon)){const s=S.find(x=>x.id==ov.site)||S[0]||{E:0,N:0};const c=Math.cos(ov.lat*r);return eq({lat:+ov.lat-(s.N||0)/110574,lon:+ov.lon-(s.E||0)/(111320*c)},'manual','placed by you at '+(+ov.lat).toFixed(5)+', '+(+ov.lon).toFixed(5))}
+ if(ov?.kind=='ll'&&nz(ov.lat)&&Number.isFinite(+ov.lon)){const s=S.find(x=>x.id==ov.site)||S[0]||{E:0,N:0};const la0=+ov.lat-(s.N||0)/110574,c=Math.cos(la0*r);return eq({lat:la0,lon:+ov.lon-(s.E||0)/(111320*c)},'manual','placed by you at '+(+ov.lat).toFixed(5)+', '+(+ov.lon).toFixed(5))}
  if(ov?.kind=='zone'&&s0&&!geoOK&&ov.zone>=1&&ov.zone<=60)return grid({zone:+ov.zone,south:!!ov.south},'map E/N in '+zl({zone:+ov.zone,south:!!ov.south})+' (set by you)');
  if(geoOK)return eq(W.origin,'latlon',W.crs?.fromMap?'map E/N converted from '+(W.crs.zone||'project zone'):'lat/long in file');
  if(s0&&zn)return grid(zn,'map E/N in '+zl(zn)+' (project zone)');
