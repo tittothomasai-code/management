@@ -1,4 +1,4 @@
-// start.js v5.12.20 (s35, simulator uses shared whole-well WITSML model); v5.12.19 (s34, settings guide link on phone); v5.12.18: paged menu (Drill / Plan / Monitor / Operations → sub-pages with Back; login + guide in top bar).
+// start.js v5.12.21 (s36, RBX-209 rig equipment in Equipment library); v5.12.20 (s35, simulator uses shared whole-well WITSML model); v5.12.19 (s34, settings guide link on phone); v5.12.18: paged menu (Drill / Plan / Monitor / Operations → sub-pages with Back; login + guide in top bar).
 // was v5.9.1: game-style start screen (original art, no third-party assets). SIM only.
 // Tiles: New simulation | New well | Log in as player | Continue (only if saved state exists).
 // Keyboard (arrows/WASD, Enter/Space, Esc), Gamepad API (d-pad/stick, A=select, B=back), touch/click. Sound OFF by default.
