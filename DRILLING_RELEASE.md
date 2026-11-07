@@ -21,7 +21,7 @@ node operations_release.mjs BASELINE EMPTY_CANDIDATE BASELINE_MANIFEST
 /workspace/drill-sim/drilling-guard.sh EMPTY_CANDIDATE
 ```
 
-The script checks every baseline file hash, applies only the dashboard changes, and preserves unrelated production files. It resolves overlapping import-cache hooks explicitly. The operations deep link skips the startup intro and does not require a simulator player profile. Other routes keep their existing startup behavior. It refuses unexpected conflicts. It writes `operations-release.json` with the dashboard commit and baseline deploy ID. Keep the manifest and baseline with the release evidence, not in the public repository.
+The script checks every baseline file hash, applies only the dashboard changes, and preserves unrelated production files. It resolves overlapping import-cache hooks explicitly. The operations deep link skips the startup intro and does not require a simulator player profile. Other routes keep their existing startup behavior. The dashboard and its connection panel stay above unrelated floating simulator controls. It refuses unexpected conflicts. It writes `operations-release.json` with the dashboard commit and baseline deploy ID. Keep the manifest and baseline with the release evidence, not in the public repository.
 
 Before publication, check that the published Netlify deploy is still the recorded baseline. If it changed, stop and assemble against the new baseline. Use the existing CLI artifact workflow with `--no-build`, the exact site ID, and the assembled directory. Do not stage or deploy the repository directory directly. Run browser and asset-hash smoke tests after publication. Restore the recorded deploy with Netlify's `restoreSiteDeploy` operation if smoke tests fail.
 

@@ -1,6 +1,6 @@
 #dwOperations {
   --line:#2d4960; --dim:#9db5c8; --cyan:#20c7ff; --amber:#ffbd4a;
-  position:fixed; inset:0; z-index:100003; overflow:auto; color:#eaf4ff;
+  position:fixed; inset:0; z-index:100020; overflow:auto; color:#eaf4ff;
   background:radial-gradient(ellipse at 48% -30%,#193752,#07121f 65%);
   font:13px system-ui,sans-serif; font-variant-numeric:tabular-nums;
   padding:0 max(12px,env(safe-area-inset-right)) env(safe-area-inset-bottom) max(12px,env(safe-area-inset-left));

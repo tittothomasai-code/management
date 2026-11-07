@@ -32,8 +32,10 @@ with sync_playwright() as pw:
   assert p.locator('#opsExecution').inner_text()=='Hold active'
   dimensions=p.locator('#dwOperations').evaluate('(e)=>({width:e.clientWidth,scroll:e.scrollWidth})')
   assert dimensions['scroll']<=dimensions['width']+1,dimensions
+  assert p.locator('#opsBar').evaluate('(e)=>{const r=e.getBoundingClientRect();return e.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2))}'),'Floating simulator controls cover dashboard progress'
   p.screenshot(path=str(OUT/(mode+'-training.png')),full_page=True)
   p.locator('#opsConnect').click();p.wait_for_selector('#wproxy')
+  assert p.locator('#wproxy').evaluate('(e)=>{const r=e.getBoundingClientRect();return e===document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)}'),'Connection inputs must stay above floating controls'
   for k,v in [('wproxy',args.proxy),('wurl',args.store),('wuser','SIM-TEST'),('wpass','SIM-TEST'),('wint','10000')]:p.locator('#'+k).fill(v)
   p.locator('#wcon').click();p.wait_for_function('GX.witsml.WML.connected && document.querySelector("#wwb option[value=WB01B02]")')
   if p.locator('#wwell').input_value()!='DR101L':p.locator('#wwell').select_option('DR101L')

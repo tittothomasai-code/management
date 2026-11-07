@@ -404,7 +404,12 @@ export function open() {
   root.style.visibility = '';
   $('opsClose').onclick = () => close();
   $('opsLoadImage').onclick = loadFeedImage;
-  $('opsConnect').onclick = () => { close(); window.GX?.witsml?.open?.(); };
+  $('opsConnect').onclick = () => {
+    close(); window.GX?.witsml?.open?.();
+    // Keep this workflow above unrelated floating simulator controls.
+    const panel = $('witsml');
+    if (panel) panel.style.zIndex = '100021';
+  };
   root.addEventListener('click',e => {
     const button = e.target.closest('button');
     if (button?.dataset.view) {
