@@ -56,9 +56,28 @@ Surveys inside the joint depth are listed with distance 0. If none are inside, t
 
 A historical selection is a deep copy. Appending samples and ingesting again does not change that copy. "Current joint" follows the open joint on the new context.
 
-## Demo
+## Course board
 
-`demo/index.html` loads the synthetic fixture in the browser. It is not the game. Serve the repository root and open `/rtoc/demo/`. The well pane hides, the gutter resizes on a wide screen, and the layout stacks on a narrow screen.
+`ui/board.js` draws the context as a score ribbon and a joint course. Figures come from `ui/scores.js`. A missing joint count stays unknown. Mean ROP is omitted when there are no samples. Branch chips are counts, not a rank or a percent complete. The mode bar uses recorded durations only. Coverage stays in a `<details>` block so it can be collapsed without being removed.
+
+`demo/index.html` is that board plus a synthetic rig. Serve the repository root and open `/rtoc/demo/`. The page says the fixture is test-only. No reference image was supplied for the look, so the course, rail, and score tiles are original and do not use franchise characters or assets.
+
+## Cinematic rig view
+
+F1, the **Cinematic view** button, and Escape are handled by `ui/cinematic.js`.
+
+- The library does not claim F1 unless the caller passes `claimKey: true`. The demo page does. A host that wants the browser's own help key leaves `claimKey` false and uses the button.
+- Key repeat is ignored. F1 does nothing while focus is in a text field, select, or contenteditable.
+- Escape restores the camera and the clutter only while the cinematic view is on. The next Escape is left for the game. `input.js` already uses Escape to close panels.
+- Reduced motion applies the end frame in one step.
+- The saved camera is the pre-toggle pose, including `controlsEnabled`. Orbit controls are disabled for the hold and put back exactly. Pumps and other setpoints are not written.
+- Safety and sim controls marked `data-rtoc-keep` and `data-rtoc-sim` stay visible. `data-rtoc-clutter` hides.
+
+On `e0ae66a` and on this branch's `ext2.js`, the rig camera is `GX.camMode('orbit' | 'walk' | 'bit')`. `GX.input.orbit`, `zoom`, and `look` exist once `input.js` has loaded. F1 is not bound there. `GX.resetCam` is only an optional call from `vpad.js`. No definition was found, and this controller does not call it.
+
+`tryGameAdapter()` returns `available: false` when `GX.camMode` and `G.cam` / `G.ctl` are absent. The live v5.15.1 tree is not in this repository, so the adapter is not attached to `index.html`. That wiring is pending.
+
+## Demo
 
 ```bash
 node --test rtoc/rtoc_test.mjs
