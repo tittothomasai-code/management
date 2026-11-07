@@ -1,13 +1,14 @@
 // witsml-proxy (Netlify) — read-only HTTPS proxy for the Drilling World game -> one WITSML 1.4.1.1 SOAP server.
 // * Stores NO credentials: user's own Basic creds per request in X-Witsml-Authorization only.
 // * Exactly one upstream URL (allowlist); read SOAP ops only (GetVersion/GetCap/GetFromStore); envelope built here.
-// * CORS: https://tittothomasai-code.github.io only; other/missing Origin -> 403.
+// * CORS: the existing Pages origin and the drilling dashboard only; other/missing Origin -> 403.
 // * Upstream 401/403 passed straight back. No logging at all.
 // * TLS: verified everywhere, EXCEPT a per-request https.Agent({rejectUnauthorized:false}) used ONLY when the
 //   upstream hostname === cfg.skipHost (australia.adagasolutions.com, whose cert is expired). Never global.
 // * Cheap per-instance rate limit per client IP.
 import https from "node:https";
 export const ORIGIN = "https://tittothomasai-code.github.io";
+export const ORIGINS = new Set([ORIGIN, "https://drilling.robotyx.systems"]);
 const OPS = new Set(["WMLS_GetVersion", "WMLS_GetCap", "WMLS_GetFromStore"]);
 const MAX_BODY = 64 * 1024, MAX_RESP = 16 * 1024 * 1024;
 const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -21,7 +22,7 @@ function envelope(op, a) {
 }
 function cors(origin) {
   const h = { "Vary": "Origin", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" };
-  if (origin === ORIGIN) Object.assign(h, { "Access-Control-Allow-Origin": ORIGIN, "Access-Control-Allow-Methods": "POST, GET, OPTIONS", "Access-Control-Allow-Headers": "Content-Type, X-Witsml-Authorization", "Access-Control-Max-Age": "600" });
+  if (ORIGINS.has(origin)) Object.assign(h, { "Access-Control-Allow-Origin": origin, "Access-Control-Allow-Methods": "POST, GET, OPTIONS", "Access-Control-Allow-Headers": "Content-Type, X-Witsml-Authorization", "Access-Control-Max-Age": "600" });
   return h;
 }
 const json = (status, o, origin, extra = {}) => new Response(JSON.stringify(o), { status, headers: { ...cors(origin), "Content-Type": "application/json", ...extra } });
@@ -59,8 +60,8 @@ export function makeProxy({ upstream, skipHost, perMin = 60 }) {
     return x.protocol === "https:" && x.hostname.toLowerCase() === UP_HOST && (x.port === "" || x.port === "443") && x.username === "" && x.password === "" && x.search === "" && x.hash === "" && x.pathname.replace(/\/+$/, "").toUpperCase() === UP_PATH; } catch { return false; } };
   return async req => {
     const origin = req.headers.get("Origin");
-    if (req.method === "OPTIONS") return new Response(null, { status: origin === ORIGIN ? 204 : 403, headers: cors(origin) });
-    if (origin !== ORIGIN) return json(403, { result: -1, error: "origin not allowed" }, origin);
+    if (req.method === "OPTIONS") return new Response(null, { status: ORIGINS.has(origin) ? 204 : 403, headers: cors(origin) });
+    if (!ORIGINS.has(origin)) return json(403, { result: -1, error: "origin not allowed" }, origin);
     if (rateLimited(req, perMin)) return json(429, { result: -1, error: "rate limit: max " + perMin + " requests/minute" }, origin, { "Retry-After": "30" });
     if (req.method === "GET") return json(200, { ok: true, service: "witsml-proxy", host: "netlify", upstream, ops: [...OPS], tlsVerify: "enforced except per-request skip for " + skipHost, storesCredentials: false, rateLimitPerMin: perMin }, origin);
     if (req.method !== "POST") return json(405, { result: -1, error: "method not allowed" }, origin);
