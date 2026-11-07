@@ -98,28 +98,51 @@ function parseBasic(auth) {
   return { header: "Basic " + token, token, user, password, raw };
 }
 
+// Fixed class names only. Alphabetical order is the combination order.
+// basic covers the Basic header and its token. The username is not a class.
+const CREDENTIAL_CLASS_ORDER = Object.freeze(["basic", "caller-key", "password", "raw-pair"]);
+
 function credentialFields(parsed, callerSecret) {
-  const long = [];
-  const add = (value) => {
-    if (typeof value === "string" && value.length >= 4) long.push(value);
+  const named = [];
+  const add = (value, name) => {
+    if (typeof value === "string" && value.length >= 4) named.push({ name, value });
   };
   if (parsed) {
     // The username is an identifier. It may occur in a well uid, name, or
     // operator and must not be treated as a secret, redacted, or used to
     // rewrite those fields. Password, raw user:password, the Basic token,
     // and the caller key remain reflection secrets.
-    add(parsed.header);
-    add(parsed.token);
-    add(parsed.password);
-    add(parsed.raw);
+    add(parsed.header, "basic");
+    add(parsed.token, "basic");
+    add(parsed.password, "password");
+    add(parsed.raw, "raw-pair");
   }
-  add(callerSecret);
-  return { long };
+  add(callerSecret, "caller-key");
+  return { long: named.map((item) => item.value), named };
+}
+
+function matchCredential(text, fields) {
+  if (typeof text !== "string" || text.length === 0 || !fields || !fields.named) return [];
+  const names = new Set();
+  for (const item of fields.named) {
+    if (typeof item.value === "string" && text.includes(item.value)) names.add(item.name);
+  }
+  return CREDENTIAL_CLASS_ORDER.filter((name) => names.has(name));
 }
 
 function containsCredential(text, fields) {
-  if (typeof text !== "string" || text.length === 0 || !fields) return false;
-  return fields.long.some((part) => text.includes(part));
+  return matchCredential(text, fields).length > 0;
+}
+
+function credentialClass(texts, fields) {
+  const names = new Set();
+  for (const text of texts) {
+    for (const name of matchCredential(text, fields)) names.add(name);
+  }
+  const ordered = CREDENTIAL_CLASS_ORDER.filter((name) => names.has(name));
+  if (ordered.length === 0) return "ambiguous";
+  if (ordered.length === 1) return ordered[0];
+  return ordered.join("+");
 }
 
 function carriesCallerSecret(parsed, callerSecret) {
@@ -136,7 +159,12 @@ function refusalBody(texts, fields) {
   let reason = "credential-reflection";
   if (credential && format) reason = "credential-reflection-and-format-character";
   else if (format) reason = "format-character";
-  return { result: -1, error: "upstream response refused", reason };
+  const body = { result: -1, error: "upstream response refused", reason };
+  // Class names only. A raw pair also matches password, and a Basic header
+  // also matches its token; those overlaps stay in the joined name. The
+  // refusal decision is still any match of the same strings as before.
+  if (credential) body.credentialClass = credentialClass(present, fields);
+  return body;
 }
 
 function refusalResponse(texts, fields) {
