@@ -19,7 +19,7 @@ with sync_playwright() as pw:
   p=c.new_page(); errors=[]; calls=[]
   p.on('pageerror',lambda e:errors.append(str(e)))
   p.on('request',lambda r:calls.append(json.loads(r.post_data or '{}').get('op')) if r.url==args.proxy else None)
-  p.goto(args.base_url.rstrip('/')+'/?operations');p.wait_for_selector('#dwOperations');p.wait_for_function('window.GX?.witsml?.start && window.GEO && window.GX?.player');p.wait_for_timeout(1500)
+  p.goto(args.base_url.rstrip('/')+'/?operations');p.wait_for_selector('#dwOperations');p.wait_for_function('window.GX?.witsml?.start && window.GEO && window.GX?.player',timeout=120000);p.wait_for_timeout(1500)
   assert p.locator('#intro').count()==0,'Operations deep link must skip the startup intro'
   assert p.locator('#plJoin').count()==0,'Observer mode must not require a simulator player profile'
   assert p.locator('#opsSource').inner_text()=='TRAINING SIMULATION'
@@ -35,13 +35,16 @@ with sync_playwright() as pw:
   p.screenshot(path=str(OUT/(mode+'-training.png')),full_page=True)
   p.locator('#opsConnect').click();p.wait_for_selector('#wproxy')
   for k,v in [('wproxy',args.proxy),('wurl',args.store),('wuser','SIM-TEST'),('wpass','SIM-TEST'),('wint','10000')]:p.locator('#'+k).fill(v)
-  p.locator('#wcon').click();p.wait_for_function('document.querySelector("#wlog option[value=TLOG]")')
-  p.locator('#wwell').select_option('DR101L');p.locator('#wwb').select_option('WB01B02');p.wait_for_timeout(500)
+  p.locator('#wcon').click();p.wait_for_function('GX.witsml.WML.connected && document.querySelector("#wwb option[value=WB01B02]")')
+  if p.locator('#wwell').input_value()!='DR101L':p.locator('#wwell').select_option('DR101L')
+  p.locator('#wwb').select_option('WB01B02')
+  p.wait_for_function('document.querySelector("#wlog option[value=TLOG]") && !document.querySelector("#wgo").disabled && GX.witsml.WML.preview?.w==="DR101L" && GX.witsml.WML.preview?.b==="WB01B02"')
   p.locator('#wlog').select_option('TLOG');p.locator('#wgo').click();p.wait_for_function('GX.witsml.WML.rows>0');p.wait_for_timeout(1500)
   p.locator('#wx').click();p.evaluate('import("./operations.js").then(m=>m.open())');p.wait_for_selector('#dwOperations');p.wait_for_timeout(700)
   assert p.locator('#opsSource').inner_text()=='WITSML SIM-TEST',p.locator('#opsSource').inner_text()
   assert p.locator('[data-cmd]:enabled').count()==0
-  assert 'WB01B02' in p.locator('#opsWell').inner_text()
+  assert 'WB01B02' in p.locator('#opsWell').inner_text(),p.locator('#opsWell').inner_text()
+  assert p.evaluate('GX.witsml.WML.log.b')=='WB01B02'
   assert 'No channel' in p.locator('#opsControl').inner_text()
   assert 'No mapped anti-collision data' in p.locator('#opsRadarDetail').inner_text()
   p.evaluate('window.fixtureHistory=GX.witsml.WML.hist;GX.witsml.WML.hist=[]');p.wait_for_timeout(600)

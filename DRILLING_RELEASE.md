@@ -33,6 +33,8 @@ node conn_test.mjs
 node wdash_unit_test.mjs
 ```
 
+The connection picker ignores out-of-order responses, disables Start while headers load, and rejects log headers from a different wellbore.
+
 The adapter rejects false LIVE states: no time-indexed log, no actual source rows, invalid sample timestamps, and stale source timestamps.
 
 For the local-only browser regression, start these in separate terminals:
