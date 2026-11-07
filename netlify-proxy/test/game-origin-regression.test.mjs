@@ -78,9 +78,13 @@ describe("game origin regression", { concurrency: 1 }, () => {
       "netlify-proxy/netlify/lib/machine-disabled.mjs",
       "netlify-proxy/netlify/lib/machine-handler.mjs",
       "netlify-proxy/netlify/lib/machine-policy.mjs",
+      "netlify-proxy/netlify/lib/machine-reader-adapter.mjs",
+      "netlify-proxy/test/fixtures/rtoc_hist.js",
+      "netlify-proxy/test/fixtures/wdash_core.js",
       "netlify-proxy/test/game-origin-regression.test.mjs",
       "netlify-proxy/test/machine-handler.test.mjs",
       "netlify-proxy/test/machine-policy.test.mjs",
+      "netlify-proxy/test/machine-reader-adapter.test.mjs",
     ]);
   });
 
@@ -108,6 +112,7 @@ describe("game origin regression", { concurrency: 1 }, () => {
     assert.ok(hrefs.some((href) => href.endsWith("machine-handler.mjs")));
     assert.ok(hrefs.some((href) => href.endsWith("machine-policy.mjs")));
     assert.ok(hrefs.some((href) => href.endsWith("machine-auth.mjs")));
+    assert.equal(hrefs.some((href) => href.endsWith("machine-reader-adapter.mjs")), false);
     const names = readdirSync(new URL("../netlify/functions/", import.meta.url)).sort();
     assert.deepEqual(names, ["witsml-machine.mjs", "witsml-proxy.mjs"]);
     for (const rel of [
@@ -116,6 +121,7 @@ describe("game origin regression", { concurrency: 1 }, () => {
       "../netlify/lib/machine-disabled.mjs",
       "../netlify/lib/machine-handler.mjs",
       "../netlify/lib/machine-policy.mjs",
+      "../netlify/lib/machine-reader-adapter.mjs",
       "../netlify/lib/limiter.mjs",
     ]) {
       const src = readFileSync(new URL(rel, import.meta.url), "utf8");

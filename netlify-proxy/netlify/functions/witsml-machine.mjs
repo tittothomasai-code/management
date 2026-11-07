@@ -25,6 +25,24 @@ import { createMachineHandler } from "../lib/machine-handler.mjs";
 // * Decoded upstream fields that contain a Unicode Format (Cf) character are
 //   refused. The substring scan is only an exact-substring check. It is not
 //   protection against arbitrary transformations.
+// * The upstream username is not a reflection secret. A well uid, name, or
+//   operator that equals that username is returned unchanged. Password, the
+//   raw user:password pair, the Basic header and token, and the caller key
+//   still refuse the whole response. A refusal says which category matched
+//   (credential-reflection, format-character, or both) and includes none of
+//   the content. The historical id-only well 502 is not attributed to either
+//   category by this code.
+// * If a password or the caller key is itself a substring of legitimate well
+//   text, the whole response is refused. This route does not edit the XML or
+//   the uid to remove that overlap. Homoglyphs and ordinary inserted characters
+//   still pass the exact-substring scan.
+// * The reader adapter is a separate server-side library. It is not a new
+//   route and it is not imported by this function. A refused or failed
+//   GetVersion, GetCap, or GetFromStore throws. It does not return empty xml
+//   and supp, which the frozen reader would treat as an assumed 1.4.1.1.
+//   The reader's own assumption remains for an older transport that is not
+//   this adapter. The browser reader is not wired to this route, and the
+//   machine key must not be placed in a browser bundle or an API response.
 //
 // GATES BEFORE ROLLOUT (this change does not perform them):
 // 1. Operator generates an independent high-entropy secret (at least 32 bytes
