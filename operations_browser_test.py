@@ -19,8 +19,9 @@ with sync_playwright() as pw:
   p=c.new_page(); errors=[]; calls=[]
   p.on('pageerror',lambda e:errors.append(str(e)))
   p.on('request',lambda r:calls.append(json.loads(r.post_data or '{}').get('op')) if r.url==args.proxy else None)
-  p.goto(args.base_url.rstrip('/')+'/?operations');p.wait_for_selector('#dwOperations');p.wait_for_function('window.GX?.witsml?.start && window.GEO');p.wait_for_timeout(1500)
+  p.goto(args.base_url.rstrip('/')+'/?operations');p.wait_for_selector('#dwOperations');p.wait_for_function('window.GX?.witsml?.start && window.GEO && window.GX?.player');p.wait_for_timeout(1500)
   assert p.locator('#intro').count()==0,'Operations deep link must skip the startup intro'
+  assert p.locator('#plJoin').count()==0,'Observer mode must not require a simulator player profile'
   assert p.locator('#opsSource').inner_text()=='TRAINING SIMULATION'
   assert p.locator('#opsScene').evaluate('(c)=>c.width>0 && c.height>0')
   assert p.locator('#opsEmpty').is_hidden()

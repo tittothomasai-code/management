@@ -17,7 +17,7 @@ for(const f of manifest.files){
 }
 fs.mkdirSync(out,{recursive:true});
 for(const f of manifest.files){const p=path.join(out,f.path);fs.mkdirSync(path.dirname(p),{recursive:true});fs.copyFileSync(path.join(baseline,f.path),p)}
-const runtime=['intro.js','ext.js','ext2.js','ext3.js','ext4.js','index.html','main.js','operations.css','operations.js','operations_data.js','operations_plots.js','operations_scene.js','physics.js','start.js','ui.js'];
+const runtime=['intro.js','ext.js','ext2.js','ext3.js','ext4.js','index.html','main.js','operations.css','operations.js','operations_data.js','operations_plots.js','operations_scene.js','physics.js','player.js','start.js','ui.js'];
 const base='e0ae66a061d1a6cf5c5cb7da0449ea4c5c1afa82';
 const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'operations-release-'));
 function replace(s,a,b){if(!s.includes(a))throw new Error('Integration anchor missing: '+a);return s.replace(a,b)}
@@ -35,6 +35,7 @@ try{
   else if(f==='ext3.js'){
    production=replace(production,'./ext4.js?v=h2','./ext4.js?v=ops1');
    production=replace(production,'./ui.js?v=b10','./ui.js?v=ops1');
+   production=replace(production,'./player.js?v=592','./player.js?v=ops2');
   }else if(f==='main.js'){
    production=replace(production,'./physics.js?v=b4','./physics.js?v=ops1');
    production=replace(production,'./ext.js?v=c5151','./ext.js?v=ops1');

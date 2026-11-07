@@ -26,4 +26,4 @@ export function init(){window.GX=window.GX||{};GX.player=P;let n='';try{n=localS
  const q=new URLSearchParams(location.search);if(q.get('player'))n=clean(q.get('player'));
  if(!n&&navigator.webdriver&&!q.has('join')&&!inviteCode())n='TEST player';  // automated tests: no modal unless ?join
  if(n)P.set(n);badge();const h=$('hud');if(h){const b=document.createElement('button');b.id='btnPlayer';b.textContent='👤 Switch player';b.onclick=()=>join(true);h.appendChild(b)}
- if(!P.name)join()}
+ if(!P.name&&!q.has('operations'))join()}
