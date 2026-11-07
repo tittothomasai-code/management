@@ -1,6 +1,9 @@
 // In-memory best-effort limiter. Not caller authentication.
-// Keys are whatever the caller passes (the machine route passes a client address
-// or the single bucket "unknown"). Values are only [windowStart, count].
+// Process-local only: each serverless isolate has its own Map, a cold start
+// resets it, and other isolates are not counted. The platform rate limit on
+// the function is the cross-instance control.
+// Keys are whatever the caller passes (an address, "global", or a hash of the
+// caller secret). Values are only [windowStart, count]. The raw secret is not a key.
 
 export function createLimiter({ perMin, now = Date.now, windowMs = 60000, maxKeys = 5000 } = {}) {
   if (!Number.isInteger(perMin) || perMin < 0) throw new Error("bad limit");

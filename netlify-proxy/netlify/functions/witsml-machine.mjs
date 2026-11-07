@@ -1,40 +1,43 @@
-import { handleMachineRequest } from "../lib/machine-disabled.mjs";
+import https from "node:https";
+import { createMachineHandler } from "../lib/machine-handler.mjs";
 
-// DISABLED draft. This file is the only machine entrypoint, and it imports
-// only the deny handler. It does not import the review policy.
+// Default-deny read-only machine route.
+// WITSML_MACHINE_CALLER_SECRET is read from the host environment by the handler.
+// This file does not set that variable, generate a value, or deploy one.
+// No valid secret => every request is denied and Adaga is not contacted.
 //
 // DEPLOY REVISION EQUIVALENCE: unverified.
-// The game proxy files already in this repo are the canonical source. Three
-// files attached from a local orphan checkout at /workspace/mg/netlify-proxy
-// (manual/CLI deploy of tryfecta-witsml-proxy, no git remote) were byte-identical
-// to that canonical copy when this draft was prepared. That match does not show
-// that the running Netlify site is this revision. Those game files are unchanged.
-// The game route still has its existing per-host certificate skip. This route
-// does not inherit that skip.
+// The game proxy files in this repo are unchanged, including the game route's
+// existing per-host certificate skip. This route does not inherit that skip.
+// Certificate verification here is mandatory. A TLS failure is fatal.
 //
-// GATES STILL REQUIRED BEFORE ANY ENABLEMENT (this draft does not grant them):
-// 1. Caller authentication. Per-request upstream Basic is approved only as the
-//    upstream credential, not as permission to invoke this route. A shared
-//    caller-secret is not implemented and was not approved. Do not add one in
-//    the host environment as a silent switch; this function does not read one.
-// 2. TLS. Certificate verification stays mandatory here. Do not copy the game
-//    route's Adaga certificate skip onto this route to force a connection.
-//    If the upstream certificate does not verify, this route must fail.
-// 3. Production approval. This draft is not permission to merge or deploy.
-//    Tests use a fake transport. They do not establish an Adaga connection.
-//    A direct Basic 401 from Adaga has an unknown cause and is not evidence of
-//    an egress rule or of this proxy working.
-// 4. Show this diff before any deploy. No production permission is implied.
+// The caller key is a proxy-held secret. It is not forwarded upstream.
+// Per-request upstream Basic is still required after the caller key matches,
+// and it is not stored. A random or invalid Basic value is not caller auth.
 //
-// Rollback later: remove this function file and redeploy the previous site
-// revision. The game function is not modified, so that rollback does not change
-// the game route. Leaving this file in place is still deny-only.
+// GATES BEFORE ROLLOUT (this change does not perform them):
+// 1. Operator generates an independent high-entropy secret (at least 32 bytes
+//    from a CSPRNG) and stores it only in the host secret store under
+//    WITSML_MACHINE_CALLER_SECRET. Do not commit it, log it, or paste it into
+//    chat. The synthetic test fixture must not be that value.
+// 2. Titto reviews this diff before any rollout. Code preparation is not
+//    runtime enablement, merge approval, or deploy approval.
+// 3. Do not copy the game route's Adaga certificate skip onto this route.
+// 4. Confirm the running Netlify revision separately. It is still unverified.
+//    A direct Basic 401 from Adaga has an unknown cause.
+//
+// Rollback: remove this function and redeploy the previous site revision.
+// Unsetting the host secret is an immediate deny switch and does not change
+// the game route. In-process rate limits are per isolate and reset on cold
+// start; the platform rateLimit below is the cross-instance control.
 
 export const DEPLOY_REVISION_EQUIVALENCE = "unverified";
 export const MACHINE_PATH = "/witsml-machine";
 
+const handle = createMachineHandler({ httpsImpl: https });
+
 export default function handler(req) {
-  return handleMachineRequest(req);
+  return handle(req);
 }
 
 export const config = {

@@ -1,29 +1,18 @@
-// Review-only policy for a separate read-only machine path to the same fixed
-// upstream as the game proxy. NOT WIRED to the Netlify function.
-//
-// The live function imports machine-disabled.mjs only and always denies.
-// Enabling this policy later is a code change, and it is still not safe to
-// enable until a caller-authentication design is approved. Per-request upstream
-// Basic is checked here only as the credential that would be forwarded upstream.
-// It does not authenticate the caller to this proxy. This module does not read
-// environment variables, does not mint a token, and does not implement a shared
-// caller-secret.
-//
-// TLS: the dispatcher below sets certificate verification on and pins the
-// destination to https://australia.adagasolutions.com/WMLS. It does not import
-// the Node HTTPS module, so tests can inject a fake and this file cannot open
-// a socket by itself. The game route's certificate skip is not used here.
-//
-// A direct Basic 401 from Adaga has an unknown cause. Nothing here treats that
-// 401 as an egress allow-list or as proof the upstream is reachable.
+// Post-authentication policy for the read-only machine route.
+// The handler supplies the host caller secret after its own check. This module
+// checks that secret again, then requires a separate per-request upstream Basic
+// value. The caller secret is never copied into the upstream request.
+// TLS verification is mandatory. Redirects are not followed. Certificate
+// failures are fatal. The game route's certificate skip is not used here.
+// A direct Basic 401 from Adaga has an unknown cause and is not treated as an
+// egress allow-list or as proof the upstream is reachable.
 
-import { clientKey } from "./limiter.mjs";
-import { denyResponse, rateResponse } from "./machine-disabled.mjs";
+import { authenticateCaller, headerValues, readCallerConfig } from "./machine-auth.mjs";
+import { authFailedResponse, deniedResponse, disabledResponse } from "./machine-disabled.mjs";
 
 export const FIXED_UPSTREAM = "https://australia.adagasolutions.com/WMLS";
 export const WITSML_NS = "http://www.witsml.org/message/120";
 export const SOAP_NS = "http://schemas.xmlsoap.org/soap/envelope/";
-export const REVIEW_GATE = "draft-review-not-production";
 export const READ_OP_LIST = Object.freeze(["WMLS_GetVersion", "WMLS_GetCap", "WMLS_GetFromStore"]);
 const READ_OPS = new Set(READ_OP_LIST);
 const PROHIBITED = Object.freeze(["WMLS_AddToStore", "WMLS_UpdateInStore", "WMLS_DeleteFromStore"]);
@@ -82,11 +71,17 @@ function tokenOf(auth) {
   return typeof auth === "string" && auth.startsWith("Basic ") ? auth.slice(6) : "";
 }
 
-function safeJson(status, obj, auth) {
-  const token = tokenOf(auth);
-  const secrets = [];
-  if (typeof auth === "string" && auth.length >= 8) secrets.push(auth);
+function pushSecret(secrets, value) {
+  if (typeof value === "string" && value.length >= 8) secrets.push(value);
+  const token = tokenOf(value);
   if (token.length >= 8) secrets.push(token);
+}
+
+function safeJson(status, obj, auth, extra) {
+  const secrets = [];
+  pushSecret(secrets, auth);
+  if (Array.isArray(extra)) extra.forEach((value) => pushSecret(secrets, value));
+  else pushSecret(secrets, extra);
   let text = JSON.stringify(obj);
   let outStatus = status;
   if (secrets.some((s) => text.includes(s))) {
@@ -96,11 +91,13 @@ function safeJson(status, obj, auth) {
   return new Response(text, { status: outStatus, headers: { ...BASE_HEADERS } });
 }
 
-function redact(value, auth) {
+function redact(value, auth, extra) {
   let out = String(value);
-  const token = tokenOf(auth);
-  if (typeof auth === "string" && auth) out = out.split(auth).join("[redacted]");
-  if (token.length >= 8) out = out.split(token).join("[redacted]");
+  const secrets = [];
+  pushSecret(secrets, auth);
+  if (Array.isArray(extra)) extra.forEach((item) => pushSecret(secrets, item));
+  else pushSecret(secrets, extra);
+  for (const secret of secrets) out = out.split(secret).join("[redacted]");
   out = out.replace(/Basic\s+[A-Za-z0-9+/=]{8,}/g, "Basic [redacted]");
   return out;
 }
@@ -366,6 +363,18 @@ function validateSpec(spec) {
   if (!isBasic(authorization)) throw coded("EFIXED");
   if (!/^\d{1,8}$/.test(contentLength)) throw coded("EFIXED");
   if (Number(contentLength) !== Buffer.byteLength(spec.body)) throw coded("EFIXED");
+  for (const value of [contentType, soapAction, authorization, contentLength]) {
+    if (typeof value !== "string" || /[\r\n\0]/.test(value)) throw coded("EFIXED");
+  }
+  if (spec.body.includes("\0")) throw coded("EFIXED");
+  for (const key of Object.keys(headers)) {
+    const lower = key.toLowerCase();
+    if (lower === "x-witsml-machine-key" || lower === "cookie" || lower === "proxy-authorization") throw coded("EFIXED");
+  }
+  if (typeof spec.callerSecret === "string" && spec.callerSecret.length >= 8) {
+    const blob = spec.body + "\n" + contentType + "\n" + soapAction + "\n" + authorization + "\n" + contentLength;
+    if (blob.includes(spec.callerSecret)) throw coded("EFIXED");
+  }
   const op = Object.keys(SOAP_ACTIONS).find((name) => SOAP_ACTIONS[name] === soapAction);
   assertOutgoingEnvelope(op, spec.body);
 }
@@ -405,19 +414,34 @@ export function createVerifiedDispatch(httpsImpl, timers = {}) {
       agent.destroy?.();
       throw coded("ETLS");
     }
+    if (spec.signal?.aborted) {
+      try { agent.destroy?.(); } catch { /* already closed */ }
+      throw coded("ECONN");
+    }
     return await new Promise((resolve, reject) => {
       let settled = false;
       let timer = null;
+      let req;
+      let resStream = null;
+      const signal = spec.signal;
+      let onAbort = null;
+      const cleanup = () => {
+        if (timer) cancel(timer);
+        timer = null;
+        if (signal && onAbort) signal.removeEventListener("abort", onAbort);
+        try { resStream?.destroy?.(); } catch { /* already closed */ }
+        try { req?.destroy?.(); } catch { /* already closed */ }
+        try { agent.destroy?.(); } catch { /* already closed */ }
+      };
       const finish = (fn, value) => {
         if (settled) return;
         settled = true;
-        if (timer) cancel(timer);
-        agent.destroy?.();
+        cleanup();
         fn(value);
       };
-      let req;
       try {
         req = httpsImpl.request(options, (res) => {
+          resStream = res;
           if (!res || typeof res.on !== "function") {
             finish(reject, coded("ECONN"));
             return;
@@ -431,7 +455,6 @@ export function createVerifiedDispatch(httpsImpl, timers = {}) {
             n += buf.length;
             if (n > LIMITS.maxResp) {
               failed = true;
-              req.destroy?.();
               finish(reject, coded("ETOOLARGE"));
               return;
             }
@@ -450,7 +473,7 @@ export function createVerifiedDispatch(httpsImpl, timers = {}) {
           res.on("error", () => finish(reject, coded("ECONN")));
         });
       } catch {
-        agent.destroy?.();
+        try { agent.destroy?.(); } catch { /* already closed */ }
         reject(coded("ECONN"));
         return;
       }
@@ -458,21 +481,21 @@ export function createVerifiedDispatch(httpsImpl, timers = {}) {
         finish(reject, coded("ECONN"));
         return;
       }
-      timer = schedule(() => {
-        req.destroy?.();
-        finish(reject, coded("ETIMEDOUT"));
-      }, LIMITS.timeoutMs);
-      if (settled) {
-        if (timer) cancel(timer);
-        return;
+      onAbort = () => finish(reject, coded("ECONN"));
+      if (signal) {
+        if (signal.aborted) {
+          finish(reject, coded("ECONN"));
+          return;
+        }
+        signal.addEventListener("abort", onAbort, { once: true });
       }
-      req.on?.("timeout", () => {
-        req.destroy?.();
-        finish(reject, coded("ETIMEDOUT"));
-      });
+      timer = schedule(() => finish(reject, coded("ETIMEDOUT")), LIMITS.timeoutMs);
+      if (settled) return;
+      req.on?.("timeout", () => finish(reject, coded("ETIMEDOUT")));
       req.on?.("error", (err) => {
         const code = String(err && err.code || "");
-        finish(reject, /CERT|TLS|SSL|UNABLE_TO_VERIFY|HOSTNAME/i.test(code) ? coded("ETLS") : coded("ECONN"));
+        const fatalTls = /CERT|TLS|SSL|UNABLE_TO_VERIFY|HOSTNAME/i.test(code);
+        finish(reject, fatalTls ? coded("ETLS") : coded("ECONN"));
       });
       if (settled) return;
       try {
@@ -556,45 +579,69 @@ function hasLocation(up) {
   return Array.isArray(loc) && loc.length > 0;
 }
 
-export async function reviewMachinePolicy(req, deps) {
-  if (!deps || deps.reviewGate !== REVIEW_GATE) return denyResponse();
-  if (!deps.dispatch || deps.dispatch.verifiedTransport !== true) return denyResponse();
-  if (typeof deps.limited !== "function") return denyResponse();
-  if (!req || typeof req.method !== "string" || !req.headers || typeof req.headers.get !== "function") return denyResponse();
-  if (deps.limited(clientKey(req))) return rateResponse();
+function smuggleProblem(req) {
+  if (headerValues(req, "transfer-encoding").length > 0) return "transfer-encoding";
+  const lengths = headerValues(req, "content-length");
+  if (lengths.length > 1) return "content-length";
+  if (lengths.length === 1 && !/^\d{1,8}$/.test(String(lengths[0]).trim())) return "content-length";
+  if (headerValues(req, "content-type").length > 1) return "content-type";
+  if (headerValues(req, "soapaction").length > 0) return "soapaction";
+  return "";
+}
+
+export async function enforceMachinePolicy(req, deps) {
+  const callerSecret = deps && deps.callerSecret;
+  const config = readCallerConfig({ WITSML_MACHINE_CALLER_SECRET: callerSecret });
+  if (!config.configured) return disabledResponse();
+  if (!req || typeof req.method !== "string") return disabledResponse();
+  if (!authenticateCaller(req, config.secret).ok) return authFailedResponse();
+  if (!deps.dispatch || deps.dispatch.verifiedTransport !== true) return deniedResponse();
+  const seal = (status, obj, auth) => safeJson(status, obj, auth, config.secret);
   if (req.method === "GET") {
-    return json(200, {
-      ok: false,
+    return seal(200, {
+      ok: true,
       service: "witsml-machine",
-      productionEnabled: false,
-      authGate: "unresolved",
+      configured: true,
+      upstreamContact: false,
       upstream: FIXED_UPSTREAM,
       acceptsClientUpstream: false,
       ops: READ_OP_LIST,
       tlsVerify: "required",
       certificateSkip: "not-used",
       inheritedGameCertificateSkip: "unchanged-on-game-route-only",
-      storesCredentials: false,
-      callerAuthentication: "not-approved",
-      tokenMinting: "not-used",
+      storesUpstreamCredentials: false,
+      callerAuthentication: "host-env-secret",
+      callerSecretForwarded: false,
+      deployRevisionEquivalence: "unverified",
     });
   }
   if (req.method !== "POST") return json(405, { result: -1, error: "method not allowed" });
-  const contentType = req.headers.get("content-type") || "";
-  if (!/^application\/json(?:\s*;\s*charset=utf-8)?$/i.test(contentType)) {
+  const smuggle = smuggleProblem(req);
+  if (smuggle === "soapaction") return json(400, { result: -1, error: "client SOAPAction is not accepted" });
+  if (smuggle) return json(400, { result: -1, error: "request rejected" });
+  const contentType = headerValues(req, "content-type")[0] || "";
+  if (!/^application\/json(?:\s*;\s*charset=utf-8)?$/i.test(String(contentType).trim())) {
     return json(415, { result: -1, error: "content-type must be application/json" });
   }
-  if (req.headers.get("soapaction")) return json(400, { result: -1, error: "client SOAPAction is not accepted" });
-  const declared = req.headers.get("content-length");
-  if (declared && /^\d+$/.test(declared) && Number(declared) > LIMITS.maxBody) {
+  const declared = headerValues(req, "content-length");
+  if (declared.length === 1 && Number(declared[0]) > LIMITS.maxBody) {
     return json(413, { result: -1, error: "request too large" });
   }
-  const raw = await req.text();
-  if (raw.length > LIMITS.maxBody) return json(413, { result: -1, error: "request too large" });
+  const raw = typeof req.text === "function" ? await req.text() : "";
+  if (raw.length > LIMITS.maxBody || Buffer.byteLength(raw) > LIMITS.maxBody) {
+    return json(413, { result: -1, error: "request too large" });
+  }
+  if (declared.length === 1 && Number(declared[0]) !== Buffer.byteLength(raw)) {
+    return seal(400, { result: -1, error: "request rejected" }, "");
+  }
+  if (raw.includes(config.secret)) return seal(400, { result: -1, error: "request rejected" }, "");
   const validated = validateFields(raw);
   if (validated.error) return validated.error;
-  const auth = req.headers.get("x-witsml-authorization") || "";
-  if (!isBasic(auth)) return safeJson(400, { result: -1, error: "credentials required" }, auth);
+  const authValues = headerValues(req, "x-witsml-authorization");
+  if (authValues.length !== 1) return seal(400, { result: -1, error: "credentials required" }, "");
+  const auth = String(authValues[0]);
+  if (auth.includes(config.secret)) return seal(400, { result: -1, error: "credentials required" }, "");
+  if (!isBasic(auth)) return seal(400, { result: -1, error: "credentials required" }, auth);
   let envelope;
   try {
     envelope = buildEnvelope(validated.op, validated.fields);
@@ -602,6 +649,7 @@ export async function reviewMachinePolicy(req, deps) {
   } catch (err) {
     return mapDispatchError(err);
   }
+  if (envelope.includes(config.secret)) return seal(400, { result: -1, error: "request rejected" }, "");
   const now = typeof deps.now === "function" ? deps.now : Date.now;
   const t0 = now();
   let up;
@@ -610,6 +658,8 @@ export async function reviewMachinePolicy(req, deps) {
       url: FIXED_UPSTREAM,
       method: "POST",
       body: envelope,
+      callerSecret: config.secret,
+      signal: req.signal,
       headers: {
         "Content-Type": "text/xml; charset=utf-8",
         SOAPAction: SOAP_ACTIONS[validated.op],
@@ -618,9 +668,9 @@ export async function reviewMachinePolicy(req, deps) {
       },
     });
   } catch (err) {
-    return safeJson(mapStatus(err), mapBody(err), auth);
+    return seal(mapStatus(err), mapBody(err), auth);
   }
-  return finishUpstream(validated.op, auth, up, Math.max(0, now() - t0));
+  return finishUpstream(validated.op, auth, up, Math.max(0, now() - t0), config.secret);
 }
 
 function mapStatus(err) {
@@ -638,48 +688,55 @@ function mapBody(err) {
   return { result: -1, error: "upstream connection failed" };
 }
 
-function finishUpstream(op, auth, up, ms) {
+function finishUpstream(op, auth, up, ms, callerSecret) {
+  const seal = (status, obj) => safeJson(status, obj, auth, callerSecret);
+  if (typeof callerSecret === "string" && callerSecret.length >= 8 && typeof up?.text === "string" && up.text.includes(callerSecret)) {
+    return seal(502, { result: -1, error: "upstream response refused" });
+  }
   if (!up || typeof up.status !== "number") {
-    return safeJson(502, { result: -1, error: "upstream connection failed" }, auth);
+    return seal(502, { result: -1, error: "upstream connection failed" });
   }
   if ((up.status >= 300 && up.status < 400) || hasLocation(up)) {
-    return safeJson(502, { result: -1, error: "upstream redirect refused" }, auth);
+    return seal(502, { result: -1, error: "upstream redirect refused" });
   }
   if (up.status === 401 || up.status === 403) {
-    return safeJson(up.status, { result: -1, error: "Authentication failed (" + up.status + ")" }, auth);
+    return seal(up.status, { result: -1, error: "Authentication failed (" + up.status + ")" });
   }
   if (up.status !== 200) {
     const code = String(up.status);
     const error = /^\d{3}$/.test(code) ? "HTTP " + code : "upstream connection failed";
-    return safeJson(502, { result: -1, error }, auth);
+    return seal(502, { result: -1, error });
   }
   const text = typeof up.text === "string" ? up.text : "";
   if (text.length > LIMITS.maxResp) {
-    return safeJson(502, { result: -1, error: "upstream response too large" }, auth);
+    return seal(502, { result: -1, error: "upstream response too large" });
   }
   const token = tokenOf(auth);
   if ((auth && text.includes(auth)) || (token.length >= 8 && text.includes(token))) {
-    return safeJson(502, { result: -1, error: "upstream response refused" }, auth);
+    return seal(502, { result: -1, error: "upstream response refused" });
   }
   let parsed;
   try { parsed = parseUpstreamSoap(op, text); }
   catch (err) {
-    if (err && err.code === "EMISMATCH") return safeJson(502, { result: -1, error: "response mismatch" }, auth);
-    return safeJson(502, { result: -1, error: "upstream response rejected" }, auth);
+    if (err && err.code === "EMISMATCH") return seal(502, { result: -1, error: "response mismatch" });
+    return seal(502, { result: -1, error: "upstream response rejected" });
   }
   if (parsed.kind === "fault") {
-    const fault = redact(parsed.fault, auth).slice(0, LIMITS.maxFault);
-    return safeJson(200, { result: -1, error: "SOAP fault: " + fault }, auth);
+    const fault = redact(parsed.fault, auth, callerSecret).slice(0, LIMITS.maxFault);
+    return seal(200, { result: -1, error: "SOAP fault: " + fault });
   }
-  const supp = redact(parsed.supp, auth).slice(0, LIMITS.maxFault);
+  const supp = redact(parsed.supp, auth, callerSecret).slice(0, LIMITS.maxFault);
+  if (typeof parsed.xml === "string" && typeof callerSecret === "string" && parsed.xml.includes(callerSecret)) {
+    return seal(502, { result: -1, error: "upstream response refused" });
+  }
   if (op === "WMLS_GetVersion") {
     if (!/^[0-9A-Za-z][0-9A-Za-z._-]{0,31}$/.test(parsed.resultText)) {
-      return safeJson(502, { result: -1, error: "upstream response rejected" }, auth);
+      return seal(502, { result: -1, error: "upstream response rejected" });
     }
-    return safeJson(200, { result: 1, version: parsed.resultText, xml: "", supp, ms }, auth);
+    return seal(200, { result: 1, version: parsed.resultText, xml: "", supp, ms });
   }
   if (!/^-?\d{1,9}$/.test(parsed.resultText)) {
-    return safeJson(502, { result: -1, error: "upstream response rejected" }, auth);
+    return seal(502, { result: -1, error: "upstream response rejected" });
   }
-  return safeJson(200, { result: Number(parsed.resultText), xml: parsed.xml, supp, ms }, auth);
+  return seal(200, { result: Number(parsed.resultText), xml: parsed.xml, supp, ms });
 }

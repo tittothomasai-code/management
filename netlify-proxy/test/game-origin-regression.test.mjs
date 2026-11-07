@@ -62,22 +62,23 @@ describe("game origin regression", { concurrency: 1 }, () => {
     const run = (args) => execFileSync("git", args, { cwd: root, encoding: "utf8" }).trim();
     const lines = (value) => value ? value.split("\n").filter(Boolean) : [];
     const names = new Set([
-      ...lines(run(["diff", "--name-only", BASE, "HEAD"])),
-      ...lines(run(["diff", "--name-only"])),
+      ...lines(run(["diff", "--name-only", BASE])),
       ...lines(run(["ls-files", "--others", "--exclude-standard"])),
     ]);
     assert.deepEqual([...names].sort(), [
       "netlify-proxy/netlify/functions/witsml-machine.mjs",
       "netlify-proxy/netlify/lib/limiter.mjs",
+      "netlify-proxy/netlify/lib/machine-auth.mjs",
       "netlify-proxy/netlify/lib/machine-disabled.mjs",
+      "netlify-proxy/netlify/lib/machine-handler.mjs",
       "netlify-proxy/netlify/lib/machine-policy.mjs",
       "netlify-proxy/test/game-origin-regression.test.mjs",
-      "netlify-proxy/test/machine-disabled.test.mjs",
+      "netlify-proxy/test/machine-handler.test.mjs",
       "netlify-proxy/test/machine-policy.test.mjs",
     ]);
   });
 
-  test("the new function's import graph cannot reach the review policy or a network module", () => {
+  test("the machine function wires verified TLS and does not import the game proxy", () => {
     const start = new URL("../netlify/functions/witsml-machine.mjs", import.meta.url);
     const seen = new Set();
     const walk = (url) => {
@@ -89,30 +90,40 @@ describe("game origin regression", { concurrency: 1 }, () => {
     };
     walk(start);
     const hrefs = [...seen];
-    assert.equal(hrefs.some((href) => href.includes("machine-policy")), false);
+    const entry = readFileSync(start, "utf8");
+    assert.match(entry, /from\s+"node:https"/);
     assert.equal(hrefs.some((href) => href.includes("witsml-proxy.mjs")), false);
     assert.equal(hrefs.some((href) => href.includes("core.mjs")), false);
-    assert.ok(hrefs.some((href) => href.endsWith("machine-disabled.mjs")));
-    assert.ok(hrefs.some((href) => href.endsWith("limiter.mjs")));
+    assert.ok(hrefs.some((href) => href.endsWith("machine-handler.mjs")));
+    assert.ok(hrefs.some((href) => href.endsWith("machine-policy.mjs")));
+    assert.ok(hrefs.some((href) => href.endsWith("machine-auth.mjs")));
     const names = readdirSync(new URL("../netlify/functions/", import.meta.url)).sort();
     assert.deepEqual(names, ["witsml-machine.mjs", "witsml-proxy.mjs"]);
     for (const rel of [
       "../netlify/functions/witsml-machine.mjs",
+      "../netlify/lib/machine-auth.mjs",
       "../netlify/lib/machine-disabled.mjs",
+      "../netlify/lib/machine-handler.mjs",
       "../netlify/lib/machine-policy.mjs",
       "../netlify/lib/limiter.mjs",
     ]) {
       const src = readFileSync(new URL(rel, import.meta.url), "utf8");
       assert.doesNotMatch(src, /rejectUnauthorized:\s*false/);
       assert.doesNotMatch(src, /skipHost/);
-      assert.doesNotMatch(src, /process\.env/);
       assert.doesNotMatch(src, /NODE_TLS_REJECT_UNAUTHORIZED/);
       assert.doesNotMatch(src, /\bconsole\./);
       assert.doesNotMatch(src, /from\(\s*[^)]*base64/);
       assert.doesNotMatch(src, /\batob\s*\(/);
-      assert.doesNotMatch(src, /node:https|node:http\b|node:net|node:dns|child_process/);
+      assert.doesNotMatch(src, /node:http\b|node:net|node:dns|child_process/);
       assert.doesNotMatch(src, /\bfetch\s*\(/);
+      if (!rel.endsWith("machine-auth.mjs") && !rel.endsWith("machine-handler.mjs")) {
+        assert.doesNotMatch(src, /process\.env/);
+      }
     }
+    const auth = readFileSync(new URL("../netlify/lib/machine-auth.mjs", import.meta.url), "utf8");
+    assert.match(auth, /timingSafeEqual/);
+    assert.match(auth, /WITSML_MACHINE_CALLER_SECRET/);
+    assert.doesNotMatch(auth, /process\.env\.[A-Za-z]/);
     assert.equal(DEPLOY_REVISION_EQUIVALENCE, "unverified");
   });
 

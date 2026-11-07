@@ -1,24 +1,22 @@
 import assert from "node:assert/strict";
 import https from "node:https";
 import { after, describe, test } from "node:test";
-import { createLimiter } from "../netlify/lib/limiter.mjs";
-import { handleMachineRequest } from "../netlify/lib/machine-disabled.mjs";
 import {
   FIXED_UPSTREAM,
   LIMITS,
   READ_OP_LIST,
-  REVIEW_GATE,
   WITSML_NS,
   assertOutgoingEnvelope,
   buildEnvelope,
   createVerifiedDispatch,
+  enforceMachinePolicy,
   parseUpstreamSoap,
-  reviewMachinePolicy,
 } from "../netlify/lib/machine-policy.mjs";
 
 const PASS = "test-secret-not-real";
 const AUTH = "Basic " + Buffer.from("box-user:" + PASS).toString("base64");
 const TOKEN = AUTH.slice(6);
+const CALLER_KEY = "synthetic-not-real-caller-key-0123456789abcd";
 const CALLER_SECRET = "not-a-real-secret";
 const SOAP_NS = "http://schemas.xmlsoap.org/soap/envelope/";
 const ACTION = {
@@ -98,9 +96,8 @@ function timers({ fire = false } = {}) {
 function depsFor(impl, extra = {}) {
   const clock = extra.timers || timers();
   return {
-    reviewGate: REVIEW_GATE,
+    callerSecret: Object.hasOwn(extra, "callerSecret") ? extra.callerSecret : CALLER_KEY,
     dispatch: createVerifiedDispatch(impl, clock),
-    limited: extra.limited || createLimiter({ perMin: extra.perMin ?? 30 }).limited,
     now: extra.now || (() => 5000),
     timers: clock,
     impl,
@@ -108,9 +105,11 @@ function depsFor(impl, extra = {}) {
 }
 
 let seq = 0;
-function makeReq({ method = "POST", ip, headers = {}, body, noIp = false } = {}) {
+function makeReq({ method = "POST", ip, headers = {}, body, noIp = false, key = CALLER_KEY } = {}) {
   seq += 1;
-  const h = { ...headers };
+  const h = {};
+  if (key) h["x-witsml-machine-key"] = key;
+  Object.assign(h, headers);
   if (method !== "GET" && method !== "HEAD" && !h["content-type"] && !h["Content-Type"]) h["content-type"] = "application/json";
   if (!noIp) h["x-nf-client-connection-ip"] = ip || `203.0.113.${(seq % 200) + 1}`;
   const init = { method, headers: h };
@@ -146,39 +145,48 @@ async function read(res) {
 }
 
 function assertClean(raw, ...extra) {
-  for (const secret of [PASS, AUTH, TOKEN, CALLER_SECRET, ...extra]) {
+  for (const secret of [PASS, AUTH, TOKEN, CALLER_KEY, CALLER_SECRET, ...extra]) {
     if (secret) assert.equal(raw.includes(secret), false, "leaked " + secret.slice(0, 12));
   }
 }
 
-describe("unwired machine policy", { concurrency: 1 }, () => {
-  test("review gate, brand, and limiter are required; the live handler ignores them", async () => {
+describe("machine read policy", { concurrency: 1 }, () => {
+  test("a caller key and a verified transport are required before any socket", async () => {
     const impl = fakeHttps({ text: fixture("WMLS_GetVersion") });
     const ready = depsFor(impl);
-    const missingGate = await reviewMachinePolicy(makeReq({ body: postBody("WMLS_GetVersion"), headers: { "x-witsml-authorization": AUTH } }), { ...ready, reviewGate: "yes" });
-    const unbranded = await reviewMachinePolicy(makeReq({ body: postBody("WMLS_GetVersion"), headers: { "x-witsml-authorization": AUTH } }), { ...ready, dispatch: async () => ({ status: 200, text: "" }) });
-    const asHttps = await reviewMachinePolicy(makeReq({ body: postBody("WMLS_GetVersion"), headers: { "x-witsml-authorization": AUTH } }), { reviewGate: REVIEW_GATE, dispatch: https.request, limited: () => false });
-    const live = await handleMachineRequest(makeReq({ body: postBody("WMLS_GetVersion"), headers: { "x-witsml-authorization": AUTH, "x-caller-secret": CALLER_SECRET } }), ready);
-    for (const res of [missingGate, unbranded, asHttps, live]) {
+    const noSecret = await enforceMachinePolicy(makeReq({ body: postBody("WMLS_GetVersion"), headers: { "x-witsml-authorization": AUTH } }), { dispatch: ready.dispatch });
+    const unbranded = await enforceMachinePolicy(makeReq({ body: postBody("WMLS_GetVersion"), headers: { "x-witsml-authorization": AUTH } }), { ...ready, dispatch: async () => ({ status: 200, text: "" }) });
+    const asHttps = await enforceMachinePolicy(makeReq({ body: postBody("WMLS_GetVersion"), headers: { "x-witsml-authorization": AUTH } }), { callerSecret: CALLER_KEY, dispatch: https.request });
+    const basicOnly = await enforceMachinePolicy(makeReq({ key: false, body: postBody("WMLS_GetVersion"), headers: { "x-witsml-authorization": AUTH, "x-caller-secret": CALLER_SECRET } }), ready);
+    const outNoSecret = await read(noSecret);
+    assert.equal(outNoSecret.status, 403);
+    assert.equal(outNoSecret.body.error, "machine route disabled");
+    for (const res of [unbranded, asHttps]) {
       const out = await read(res);
       assert.equal(out.status, 403);
-      assert.equal(out.body.error, "machine route disabled");
+      assert.equal(out.body.error, "machine route denied");
       assert.equal(out.body.upstreamContact, false);
       assertClean(out.raw);
     }
+    const outBasic = await read(basicOnly);
+    assert.equal(outBasic.status, 403);
+    assert.equal(outBasic.body.error, "caller authentication failed");
+    assertClean(outBasic.raw, outNoSecret.raw);
     assert.equal(impl.calls.filter((c) => c.type === "request").length, 0);
     assert.equal(netCalls, 0);
   });
 
-  test("environment variables do not enable the review policy or the live route", async () => {
-    const previous = ["WITSML_MACHINE_ENABLED", "WITSML_CALLER_SECRET"].map((key) => [key, process.env[key]]);
+  test("other environment names do not arm the policy", async () => {
+    const previous = ["WITSML_MACHINE_ENABLED", "WITSML_CALLER_SECRET", "WITSML_MACHINE_CALLER_SECRET"].map((key) => [key, process.env[key]]);
     process.env.WITSML_MACHINE_ENABLED = "true";
-    process.env.WITSML_CALLER_SECRET = CALLER_SECRET;
+    process.env.WITSML_CALLER_SECRET = CALLER_KEY;
+    process.env.WITSML_MACHINE_CALLER_SECRET = CALLER_KEY;
     try {
-      const res = await reviewMachinePolicy(makeReq({ headers: { "x-witsml-authorization": AUTH, "x-caller-secret": CALLER_SECRET } }), {});
+      const res = await enforceMachinePolicy(makeReq({ headers: { "x-witsml-authorization": AUTH } }), {});
       const out = await read(res);
       assert.equal(out.status, 403);
-      assert.equal(out.body.callerAuthentication, "not-approved");
+      assert.equal(out.body.error, "machine route disabled");
+      assert.equal(out.body.authGate, "unconfigured");
       assertClean(out.raw);
     } finally {
       for (const [key, value] of previous) {
@@ -192,7 +200,7 @@ describe("unwired machine policy", { concurrency: 1 }, () => {
     test("review policy accepts read op " + op + " on the fixed verified destination", async () => {
       const impl = fakeHttps({ text: fixture(op) });
       const d = depsFor(impl);
-      const res = await reviewMachinePolicy(makeReq({
+      const res = await enforceMachinePolicy(makeReq({
         body: postBody(op),
         headers: { "x-witsml-authorization": AUTH, "x-caller-secret": CALLER_SECRET },
       }), d);
@@ -244,7 +252,7 @@ describe("unwired machine policy", { concurrency: 1 }, () => {
   test("namespace can be declared on the element, the ancestor, or as the default", async () => {
     for (const how of ["ancestor", "element", "default"]) {
       const impl = fakeHttps({ text: fixture("WMLS_GetVersion", how) });
-      const out = await read(await reviewMachinePolicy(makeReq({
+      const out = await read(await enforceMachinePolicy(makeReq({
         body: postBody("WMLS_GetVersion"),
         headers: { "x-witsml-authorization": AUTH },
       }), depsFor(impl)));
@@ -253,7 +261,7 @@ describe("unwired machine policy", { concurrency: 1 }, () => {
     }
     const prefixed = soap("WMLS_GetVersion", "<q1:Result>1.4.1.1</q1:Result>", "ancestor");
     const impl = fakeHttps({ text: prefixed });
-    const out = await read(await reviewMachinePolicy(makeReq({
+    const out = await read(await enforceMachinePolicy(makeReq({
       body: postBody("WMLS_GetVersion"),
       headers: { "x-witsml-authorization": AUTH },
     }), depsFor(impl)));
@@ -264,7 +272,7 @@ describe("unwired machine policy", { concurrency: 1 }, () => {
   test("xml text is escaped and a write element cannot be injected into the query", async () => {
     const query = "a&b<c>d\"e'f</QueryIn><q1:WMLS_DeleteFromStore xmlns:q1=\"" + WITSML_NS + "\"/>";
     const impl = fakeHttps({ text: fixture("WMLS_GetFromStore") });
-    const out = await read(await reviewMachinePolicy(makeReq({
+    const out = await read(await enforceMachinePolicy(makeReq({
       body: JSON.stringify({ op: "WMLS_GetFromStore", wmlType: "log", query, options: "returnElements=id-only" }),
       headers: { "x-witsml-authorization": AUTH },
     }), depsFor(impl)));
@@ -295,7 +303,7 @@ describe("unwired machine policy", { concurrency: 1 }, () => {
     ];
     for (const item of cases) {
       const impl = fakeHttps({ text: fixture("WMLS_GetVersion") });
-      const out = await read(await reviewMachinePolicy(makeReq({
+      const out = await read(await enforceMachinePolicy(makeReq({
         body: item.body,
         headers: { "x-witsml-authorization": AUTH, ...item.headers },
       }), depsFor(impl)));
@@ -310,7 +318,7 @@ describe("unwired machine policy", { concurrency: 1 }, () => {
     const ops = ["WMLS_AddToStore", "WMLS_UpdateInStore", "WMLS_DeleteFromStore", "WMLS_GetBaseMsg", "wmls_getversion", "WMLS_GetVersion ", "WMLS_GetVersion\nWMLS_AddToStore", "q1:WMLS_GetVersion", "WMLS_GetVersion</q1:WMLS_GetVersion><q1:WMLS_AddToStore>", ""];
     for (const op of ops) {
       const impl = fakeHttps({ text: fixture("WMLS_GetVersion") });
-      const out = await read(await reviewMachinePolicy(makeReq({
+      const out = await read(await enforceMachinePolicy(makeReq({
         body: JSON.stringify({ op }),
         headers: { "x-witsml-authorization": AUTH },
       }), depsFor(impl)));
@@ -322,11 +330,11 @@ describe("unwired machine policy", { concurrency: 1 }, () => {
     assert.throws(() => buildEnvelope("WMLS_DeleteFromStore", {}), (err) => err.code === "EFIXED");
   });
 
-  test("missing and malformed upstream basic are rejected without a caller-secret config", async () => {
+  test("missing and malformed upstream basic are rejected after the caller key matches", async () => {
     const impl = fakeHttps({ text: fixture("WMLS_GetVersion") });
     const d = depsFor(impl);
-    const missing = await read(await reviewMachinePolicy(makeReq({ body: postBody("WMLS_GetVersion") }), d));
-    const wrong = await read(await reviewMachinePolicy(makeReq({
+    const missing = await read(await enforceMachinePolicy(makeReq({ body: postBody("WMLS_GetVersion") }), d));
+    const wrong = await read(await enforceMachinePolicy(makeReq({
       body: postBody("WMLS_GetVersion"),
       headers: { "x-witsml-authorization": "Basic !!!", "x-caller-secret": "wrong-" + CALLER_SECRET },
     }), d));
@@ -336,13 +344,14 @@ describe("unwired machine policy", { concurrency: 1 }, () => {
         const map = {
           "content-type": "application/json",
           "x-nf-client-connection-ip": "203.0.113.88",
+          "x-witsml-machine-key": CALLER_KEY,
           "x-witsml-authorization": "Basic " + TOKEN + "\r\nX-Injected: 1",
         };
         return map[String(name).toLowerCase()] || null;
       } },
       text: async () => postBody("WMLS_GetVersion"),
     };
-    const injected = await read(await reviewMachinePolicy(injectedReq, d));
+    const injected = await read(await enforceMachinePolicy(injectedReq, d));
     for (const out of [missing, wrong, injected]) {
       assert.equal(out.status, 400);
       assert.equal(out.body.error, "credentials required");
@@ -351,40 +360,51 @@ describe("unwired machine policy", { concurrency: 1 }, () => {
     assert.equal(impl.calls.some((c) => c.type === "request"), false);
   });
 
-  test("a caller-secret header is not forwarded and is not required", async () => {
+  test("the caller key is required and is not forwarded upstream", async () => {
     const impl = fakeHttps({ text: fixture("WMLS_GetVersion") });
-    const withSecret = await reviewMachinePolicy(makeReq({
+    const sent = await enforceMachinePolicy(makeReq({
       body: postBody("WMLS_GetVersion"),
       headers: { "x-witsml-authorization": AUTH, "x-caller-secret": "wrong-" + CALLER_SECRET },
     }), depsFor(impl));
-    const out = await read(withSecret);
+    const out = await read(sent);
     assert.equal(out.status, 200, out.raw);
     const headers = impl.calls.find((c) => c.type === "request").options.headers;
-    assert.equal(JSON.stringify(headers).includes(CALLER_SECRET), false);
-    assert.equal(Object.hasOwn(headers, "X-Caller-Secret"), false);
+    const flat = JSON.stringify(headers) + impl.calls.find((c) => c.type === "request").body;
+    assert.equal(flat.includes(CALLER_KEY), false);
+    assert.equal(flat.includes(CALLER_SECRET), false);
+    assert.equal(headers.Authorization, AUTH);
+    assert.equal(Object.hasOwn(headers, "X-Witsml-Machine-Key"), false);
+    assert.equal(Object.hasOwn(headers, "x-witsml-machine-key"), false);
     assertClean(out.raw);
+    const missing = await read(await enforceMachinePolicy(makeReq({
+      key: false,
+      body: postBody("WMLS_GetVersion"),
+      headers: { "x-witsml-authorization": AUTH },
+    }), depsFor(fakeHttps({ text: fixture("WMLS_GetVersion") }))));
+    assert.equal(missing.status, 403);
+    assert.equal(missing.body.error, "caller authentication failed");
   });
 
   test("bounds reject oversized input and cap maxReturnNodes", async () => {
     const big = "a".repeat(LIMITS.maxBody + 1);
     const impl = fakeHttps({ text: fixture("WMLS_GetFromStore") });
     const d = depsFor(impl);
-    const tooBig = await read(await reviewMachinePolicy(makeReq({ body: big, headers: { "x-witsml-authorization": AUTH } }), d));
+    const tooBig = await read(await enforceMachinePolicy(makeReq({ body: big, headers: { "x-witsml-authorization": AUTH } }), d));
     assert.equal(tooBig.status, 413);
     const query = "b".repeat(LIMITS.maxQuery + 1);
-    const tooQuery = await read(await reviewMachinePolicy(makeReq({
+    const tooQuery = await read(await enforceMachinePolicy(makeReq({
       body: JSON.stringify({ op: "WMLS_GetFromStore", wmlType: "log", query }),
       headers: { "x-witsml-authorization": AUTH },
     }), d));
     assert.equal(tooQuery.status, 413);
     assert.equal(tooQuery.body.error, "query too large");
-    const tooOpt = await read(await reviewMachinePolicy(makeReq({
+    const tooOpt = await read(await enforceMachinePolicy(makeReq({
       body: JSON.stringify({ op: "WMLS_GetFromStore", wmlType: "log", query: "<logs/>", options: "a".repeat(LIMITS.maxOptions + 1) }),
       headers: { "x-witsml-authorization": AUTH },
     }), d));
     assert.equal(tooOpt.status, 413);
     for (const options of ["maxReturnNodes=1001", "maxReturnNodes=0", "maxReturnNodes=1;maxReturnNodes=2", "MaxReturnNodes=5", "maxReturnNodes=1e2"]) {
-      const out = await read(await reviewMachinePolicy(makeReq({
+      const out = await read(await enforceMachinePolicy(makeReq({
         body: JSON.stringify({ op: "WMLS_GetFromStore", wmlType: "wellbore", query: "<wellbores/>", options }),
         headers: { "x-witsml-authorization": AUTH },
       }), d));
@@ -394,16 +414,16 @@ describe("unwired machine policy", { concurrency: 1 }, () => {
     const declared = {
       method: "POST",
       headers: { get(name) {
-        const map = { "content-type": "application/json", "content-length": String(LIMITS.maxBody + 5), "x-nf-client-connection-ip": "203.0.113.77", "x-witsml-authorization": AUTH };
+        const map = { "content-type": "application/json", "content-length": String(LIMITS.maxBody + 5), "x-nf-client-connection-ip": "203.0.113.77", "x-witsml-machine-key": CALLER_KEY, "x-witsml-authorization": AUTH };
         return map[name] || null;
       } },
       async text() { throw new Error("body should not be read"); },
     };
-    const early = await read(await reviewMachinePolicy(declared, d));
+    const early = await read(await enforceMachinePolicy(declared, d));
     assert.equal(early.status, 413);
     assert.equal(impl.calls.some((c) => c.type === "request"), false);
     for (const wmlType of ["l", "log1", "log-name", "wellbore ", "<log>"]) {
-      const out = await read(await reviewMachinePolicy(makeReq({
+      const out = await read(await enforceMachinePolicy(makeReq({
         body: JSON.stringify({ op: "WMLS_GetFromStore", wmlType, query: "<logs/>" }),
         headers: { "x-witsml-authorization": AUTH },
       }), depsFor(fakeHttps())));
@@ -422,17 +442,17 @@ describe("unwired machine policy", { concurrency: 1 }, () => {
     ];
     for (const [body, status, error] of samples) {
       const impl = fakeHttps();
-      const out = await read(await reviewMachinePolicy(makeReq({ body, headers: { "x-witsml-authorization": AUTH } }), depsFor(impl)));
+      const out = await read(await enforceMachinePolicy(makeReq({ body, headers: { "x-witsml-authorization": AUTH } }), depsFor(impl)));
       assert.equal(out.status, status, error + " " + out.raw);
       assert.equal(out.body.error, error);
       assert.equal(impl.calls.some((c) => c.type === "request"), false);
     }
-    const xml = await read(await reviewMachinePolicy(makeReq({
+    const xml = await read(await enforceMachinePolicy(makeReq({
       body: postBody("WMLS_GetVersion"),
       headers: { "content-type": "application/json-patch+json", "x-witsml-authorization": AUTH },
     }), d()));
     assert.equal(xml.status, 415);
-    const charset = await read(await reviewMachinePolicy(makeReq({
+    const charset = await read(await enforceMachinePolicy(makeReq({
       body: postBody("WMLS_GetVersion"),
       headers: { "content-type": "application/json; charset=utf-8", "x-witsml-authorization": AUTH },
     }), depsFor(fakeHttps({ text: fixture("WMLS_GetVersion") }))));
@@ -454,7 +474,7 @@ describe("unwired machine policy", { concurrency: 1 }, () => {
     const expectMismatch = new Set([0, 1, 2, 5, 6]);
     for (let i = 0; i < badResponses.length; i++) {
       const impl = fakeHttps({ text: badResponses[i] });
-      const out = await read(await reviewMachinePolicy(makeReq({
+      const out = await read(await enforceMachinePolicy(makeReq({
         body: postBody("WMLS_GetVersion"),
         headers: { "x-witsml-authorization": AUTH },
       }), depsFor(impl)));
@@ -472,7 +492,7 @@ describe("unwired machine policy", { concurrency: 1 }, () => {
       { status: 200, responseHeaders: { location: "https://australia.adagasolutions.com/elsewhere" }, text: fixture("WMLS_GetVersion") },
     ]) {
       const impl = fakeHttps(mode);
-      const out = await read(await reviewMachinePolicy(makeReq({
+      const out = await read(await enforceMachinePolicy(makeReq({
         body: postBody("WMLS_GetVersion"),
         headers: { "x-witsml-authorization": AUTH },
       }), depsFor(impl)));
@@ -489,7 +509,7 @@ describe("unwired machine policy", { concurrency: 1 }, () => {
     for (const key of Object.keys(orig)) console[key] = (...args) => logs.push(args.map(String).join(" "));
     try {
       const authFail = fakeHttps({ status: 401, text: "nope " + AUTH + " " + PASS });
-      const denied = await read(await reviewMachinePolicy(makeReq({
+      const denied = await read(await enforceMachinePolicy(makeReq({
         body: postBody("WMLS_GetVersion"),
         headers: { "x-witsml-authorization": AUTH },
       }), depsFor(authFail)));
@@ -497,7 +517,7 @@ describe("unwired machine policy", { concurrency: 1 }, () => {
       assert.equal(denied.body.error, "Authentication failed (401)");
       assertClean(denied.raw);
       const http = fakeHttps({ status: 500, text: "stack " + TOKEN });
-      const failed = await read(await reviewMachinePolicy(makeReq({
+      const failed = await read(await enforceMachinePolicy(makeReq({
         body: postBody("WMLS_GetVersion"),
         headers: { "x-witsml-authorization": AUTH },
       }), depsFor(http)));
@@ -505,7 +525,7 @@ describe("unwired machine policy", { concurrency: 1 }, () => {
       assert.equal(failed.body.error, "HTTP 500");
       assertClean(failed.raw);
       const leakedFault = fakeHttps({ text: `<soap:Envelope xmlns:soap="${SOAP_NS}"><soap:Body><soap:Fault><faultstring>bad ${TOKEN}</faultstring></soap:Fault></soap:Body></soap:Envelope>` });
-      const hidden = await read(await reviewMachinePolicy(makeReq({
+      const hidden = await read(await enforceMachinePolicy(makeReq({
         body: postBody("WMLS_GetVersion"),
         headers: { "x-witsml-authorization": AUTH },
       }), depsFor(leakedFault)));
@@ -514,7 +534,7 @@ describe("unwired machine policy", { concurrency: 1 }, () => {
       assertClean(hidden.raw);
       const faultXml = `<soap:Envelope xmlns:soap="${SOAP_NS}"><soap:Body><soap:Fault><faultstring>bad news\r\nSet-Cookie: x Basic AAAAAAAAAAAA</faultstring></soap:Fault></soap:Body></soap:Envelope>`;
       const faulted = fakeHttps({ text: faultXml });
-      const fault = await read(await reviewMachinePolicy(makeReq({
+      const fault = await read(await enforceMachinePolicy(makeReq({
         body: postBody("WMLS_GetVersion"),
         headers: { "x-witsml-authorization": AUTH },
       }), depsFor(faulted)));
@@ -526,7 +546,7 @@ describe("unwired machine policy", { concurrency: 1 }, () => {
       assert.equal(fault.raw.includes("AAAAAAAAAAAA"), false);
       assertClean(fault.raw);
       const echoed = fakeHttps({ text: fixture("WMLS_GetFromStore").replace("&lt;logs/&gt;", TOKEN) });
-      const refused = await read(await reviewMachinePolicy(makeReq({
+      const refused = await read(await enforceMachinePolicy(makeReq({
         body: postBody("WMLS_GetFromStore"),
         headers: { "x-witsml-authorization": AUTH },
       }), depsFor(echoed)));
@@ -545,7 +565,7 @@ describe("unwired machine policy", { concurrency: 1 }, () => {
   test("timeouts and oversized responses stop at one attempt", async () => {
     const hang = fakeHttps({ hang: true });
     const timed = depsFor(hang, { timers: timers({ fire: true }) });
-    const timeout = await read(await reviewMachinePolicy(makeReq({
+    const timeout = await read(await enforceMachinePolicy(makeReq({
       body: postBody("WMLS_GetVersion"),
       headers: { "x-witsml-authorization": AUTH },
     }), timed));
@@ -556,7 +576,7 @@ describe("unwired machine policy", { concurrency: 1 }, () => {
     assertClean(timeout.raw);
     const marker = "LEAK-MARKER-END";
     const huge = fakeHttps({ text: "x".repeat(LIMITS.maxResp) + marker });
-    const sized = await read(await reviewMachinePolicy(makeReq({
+    const sized = await read(await enforceMachinePolicy(makeReq({
       body: postBody("WMLS_GetVersion"),
       headers: { "x-witsml-authorization": AUTH },
     }), depsFor(huge)));
@@ -568,7 +588,7 @@ describe("unwired machine policy", { concurrency: 1 }, () => {
 
   test("tls failures stay on the verified path and do not copy the socket error", async () => {
     const impl = fakeHttps({ error: { code: "CERT_HAS_EXPIRED", message: "expired " + AUTH + " " + PASS } });
-    const out = await read(await reviewMachinePolicy(makeReq({
+    const out = await read(await enforceMachinePolicy(makeReq({
       body: postBody("WMLS_GetVersion"),
       headers: { "x-witsml-authorization": AUTH },
     }), depsFor(impl)));
@@ -660,40 +680,29 @@ describe("unwired machine policy", { concurrency: 1 }, () => {
     assert.equal(Object.isFrozen(opt), true);
   });
 
-  test("review metadata stays disabled and does not call upstream", async () => {
+  test("authenticated metadata names the inherited game TLS skip and does not call upstream", async () => {
     const impl = fakeHttps();
-    const out = await read(await reviewMachinePolicy(makeReq({
+    const out = await read(await enforceMachinePolicy(makeReq({
       method: "GET",
       headers: { "x-witsml-authorization": AUTH },
     }), depsFor(impl)));
     assert.equal(out.status, 200);
-    assert.equal(out.body.productionEnabled, false);
-    assert.equal(out.body.authGate, "unresolved");
+    assert.equal(out.body.configured, true);
+    assert.equal(out.body.upstreamContact, false);
     assert.equal(out.body.tlsVerify, "required");
     assert.equal(out.body.certificateSkip, "not-used");
-    assert.equal(out.body.callerAuthentication, "not-approved");
+    assert.equal(out.body.inheritedGameCertificateSkip, "unchanged-on-game-route-only");
+    assert.equal(out.body.callerAuthentication, "host-env-secret");
+    assert.equal(out.body.callerSecretForwarded, false);
+    assert.equal(out.body.deployRevisionEquivalence, "unverified");
     assert.equal(out.body.upstream, FIXED_UPSTREAM);
     assert.deepEqual(out.body.ops, READ_OP_LIST);
     assert.equal(out.headers.get("access-control-allow-origin"), null);
     assertClean(out.raw);
     assert.equal(impl.calls.length, 0);
-    const options = await read(await reviewMachinePolicy(makeReq({ method: "OPTIONS" }), depsFor(fakeHttps())));
+    const options = await read(await enforceMachinePolicy(makeReq({ method: "OPTIONS" }), depsFor(fakeHttps())));
     assert.equal(options.status, 405);
     assert.equal(options.headers.get("access-control-allow-origin"), null);
-  });
-
-  test("rate limit on the review policy stops the second dispatch", async () => {
-    const impl = fakeHttps({ text: fixture("WMLS_GetVersion") });
-    const d = depsFor(impl, { perMin: 1, limited: createLimiter({ perMin: 1 }).limited });
-    const ip = "198.51.100.40";
-    const first = await reviewMachinePolicy(makeReq({ ip, body: postBody("WMLS_GetVersion"), headers: { "x-witsml-authorization": AUTH } }), d);
-    assert.equal(first.status, 200);
-    await first.text();
-    const second = await read(await reviewMachinePolicy(makeReq({ ip, body: postBody("WMLS_GetVersion"), headers: { "x-witsml-authorization": AUTH } }), d));
-    assert.equal(second.status, 429);
-    assert.equal(second.body.upstreamContact, false);
-    assert.equal(impl.calls.filter((c) => c.type === "request").length, 1);
-    assertClean(second.raw);
   });
 
   test("parser accepts a numeric character reference and rejects an unknown entity without echoing it", () => {
