@@ -6,13 +6,17 @@ import {drilledIntervals, feedJoints, feedSource, imageRows, jointProgress, read
 const env = {window:{}, localStorage:{getItem:()=>null}, document:{readyState:'loading',addEventListener(){}}};
 runInNewContext(readFileSync(new URL('./units.js',import.meta.url),'utf8'),env);
 const now = 1700000000000;
-const w = {log:{w:'A',b:'B'},connected:true,lastRowMs:now-2000,healthy:()=>true};
+const w = {log:{w:'A',b:'B',indexType:'date time'},hist:[{t:now-2000}],connected:true,lastRowMs:now-2000,healthy:()=>true};
 assert.equal(feedSource(null,now),'SIM');
 assert.equal(feedSource({...w,log:null},now),'WITSML WAITING');
 assert.equal(feedSource(w,now),'WITSML LIVE');
 assert.equal(feedSource({...w,simulated:true},now),'WITSML SIM-TEST');
 assert.equal(feedSource({...w,lastRowMs:now-180000},now),'WITSML STALE');
 assert.equal(feedSource({...w,mode:'replay',rp:{}},now),'REPLAY');
+assert.equal(feedSource({...w,hist:[]},now),'WITSML WAITING','header timestamp alone is not a source sample');
+assert.equal(feedSource({...w,hist:[{t:NaN}]},now),'WITSML WAITING');
+assert.equal(feedSource({...w,hist:[{t:now-180000}],lastRowMs:now},now),'WITSML STALE','source timestamp, not receipt time, controls freshness');
+assert.equal(feedSource({...w,log:{...w.log,indexType:'measured depth'}},now),'WITSML TIME LOG REQUIRED');
 
 const input = {
   ml:['TIME','CUSTOM_HD','BITDEP','RPM','MFIA','SPPA','WOB','CUSTOM_RET','AC_MIN_SF','MOTOR_STALL_ALARM','ECD','TGAS'],

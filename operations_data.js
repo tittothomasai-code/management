@@ -52,8 +52,12 @@ export function feedSource(w, now = Date.now()) {
   if (w.mode === 'loading') return 'WITSML WAITING';
   if (w.mode === 'replay' && w.rp) return w.simulated ? 'SIM-TEST REPLAY' : 'REPLAY';
   if (!w.log && !w.liveMode && !w.connected) return 'SIM';
-  if (!w.log || !w.lastRowMs) return 'WITSML WAITING';
-  if (!w.healthy?.() || now - w.lastRowMs > MAX_AGE) return 'WITSML STALE';
+  if (!w.log) return 'WITSML WAITING';
+  // A successful header read or a depth log is not a fresh drilling sample.
+  if (!/time/i.test(w.log.indexType || '')) return 'WITSML TIME LOG REQUIRED';
+  const sample = w.hist?.at(-1);
+  if (!finite(sample?.t) || !finite(w.lastRowMs) || !w.lastRowMs) return 'WITSML WAITING';
+  if (!w.healthy?.() || now - w.lastRowMs > MAX_AGE || now - sample.t > MAX_AGE) return 'WITSML STALE';
   return w.simulated ? 'WITSML SIM-TEST' : 'WITSML LIVE';
 }
 
