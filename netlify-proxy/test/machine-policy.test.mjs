@@ -764,6 +764,7 @@ describe("machine read policy", { concurrency: 1 }, () => {
     }), depsFor(echoed)));
     assert.equal(leaked.status, 502);
     assert.equal(leaked.body.error, "upstream response refused");
+    assert.equal(leaked.body.reason, "credential-reflection");
     assert.equal(leaked.raw.includes(password), false);
     assert.equal(leaked.raw.includes(shortToken), false);
     assert.equal(leaked.raw.includes(echoAuth), false);
@@ -968,11 +969,78 @@ describe("machine read policy", { concurrency: 1 }, () => {
         headers: { "x-witsml-authorization": header },
       }), depsFor(impl)));
       assert.notEqual(out.status, 200, name);
+      assert.equal(out.body.reason, "format-character", name);
       assert.equal(out.raw.includes(password), false, name);
       assert.equal(out.raw.includes("echo"), false, name);
       assert.equal(out.body.xml, undefined, name);
       assert.equal(out.body.version, undefined, name);
     }
+  });
+
+  test("a username that matches well identity is returned unchanged, while secret echoes are refused", async () => {
+    const user = "rig-user-id";
+    const password = "secret-pass-99";
+    const header = "Basic " + Buffer.from(user + ":" + password).toString("base64");
+    const token = header.slice(6);
+    const wells = `<wells xmlns="http://www.witsml.org/schemas/1series" version="1.4.1.1"><well uid="${user}"><name>${user}</name><operator>${user}</operator></well></wells>`;
+    const okImpl = fakeHttps({ text: soap("WMLS_GetFromStore", "<Result>1</Result><XMLout>" + wells.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") + "</XMLout>") });
+    const ok = await read(await enforceMachinePolicy(makeReq({
+      body: postBody("WMLS_GetFromStore"),
+      headers: { "x-witsml-authorization": header },
+    }), depsFor(okImpl)));
+    assert.equal(ok.status, 200, ok.raw);
+    assert.equal(ok.body.xml.includes(`uid="${user}"`), true);
+    assert.equal(ok.body.xml.includes(`<name>${user}</name>`), true);
+    assert.equal(ok.body.xml.includes(`<operator>${user}</operator>`), true);
+    assert.equal(ok.body.xml.includes("[redacted]"), false);
+    assert.equal(ok.raw.includes(password), false);
+    assert.equal(ok.raw.includes(token), false);
+    const secretXml = soap("WMLS_GetFromStore", "<Result>1</Result><XMLout>&lt;name&gt;" + password + "&lt;/name&gt;</XMLout>");
+    const secretImpl = fakeHttps({ text: secretXml });
+    const secret = await read(await enforceMachinePolicy(makeReq({
+      body: postBody("WMLS_GetFromStore"),
+      headers: { "x-witsml-authorization": header },
+    }), depsFor(secretImpl)));
+    assert.equal(secret.status, 502);
+    assert.equal(secret.body.reason, "credential-reflection");
+    assert.equal(secret.raw.includes(password), false);
+    assert.equal(secret.raw.includes(user + ":" + password), false);
+    const encodedXml = soap("WMLS_GetFromStore", "<Result>1</Result><XMLout>" + token + "</XMLout>");
+    const encodedImpl = fakeHttps({ text: encodedXml });
+    const encoded = await read(await enforceMachinePolicy(makeReq({
+      body: postBody("WMLS_GetFromStore"),
+      headers: { "x-witsml-authorization": header },
+    }), depsFor(encodedImpl)));
+    assert.equal(encoded.status, 502);
+    assert.equal(encoded.body.reason, "credential-reflection");
+    assert.equal(encoded.raw.includes(token), false);
+    assert.equal(encoded.raw.includes("Basic " + token), false);
+    const entity = "secr&#101;t-pass-99";
+    const parsedImpl = fakeHttps({ text: soap("WMLS_GetFromStore", "<Result>1</Result><XMLout>&lt;name&gt;" + entity + "&lt;/name&gt;</XMLout>") });
+    const parsedEcho = await read(await enforceMachinePolicy(makeReq({
+      body: postBody("WMLS_GetFromStore"),
+      headers: { "x-witsml-authorization": header },
+    }), depsFor(parsedImpl)));
+    assert.equal(parsedEcho.status, 502);
+    assert.equal(parsedEcho.body.reason, "credential-reflection");
+    assert.equal(parsedEcho.raw.includes(password), false);
+    const keyImpl = fakeHttps({ text: soap("WMLS_GetFromStore", "<Result>1</Result><XMLout>&lt;name&gt;" + CALLER_KEY + "&lt;/name&gt;</XMLout>") });
+    const keyEcho = await read(await enforceMachinePolicy(makeReq({
+      body: postBody("WMLS_GetFromStore"),
+      headers: { "x-witsml-authorization": header },
+    }), depsFor(keyImpl)));
+    assert.equal(keyEcho.status, 502);
+    assert.equal(keyEcho.body.reason, "credential-reflection");
+    assert.equal(keyEcho.raw.includes(CALLER_KEY), false);
+    const bothImpl = fakeHttps({ text: soap("WMLS_GetFromStore", "<Result>1</Result><XMLout>&lt;name&gt;" + password + "\u200b&lt;/name&gt;</XMLout>") });
+    const both = await read(await enforceMachinePolicy(makeReq({
+      body: postBody("WMLS_GetFromStore"),
+      headers: { "x-witsml-authorization": header },
+    }), depsFor(bothImpl)));
+    assert.equal(both.status, 502);
+    assert.equal(both.body.reason, "credential-reflection-and-format-character");
+    assert.equal(both.raw.includes(password), false);
+    assert.equal(both.raw.includes(user), false);
   });
 
   test("GetVersion accepts a spec version list and labels a bad list without echoing it", async () => {

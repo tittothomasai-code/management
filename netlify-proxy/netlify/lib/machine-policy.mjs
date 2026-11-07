@@ -104,9 +104,12 @@ function credentialFields(parsed, callerSecret) {
     if (typeof value === "string" && value.length >= 4) long.push(value);
   };
   if (parsed) {
+    // The username is an identifier. It may occur in a well uid, name, or
+    // operator and must not be treated as a secret, redacted, or used to
+    // rewrite those fields. Password, raw user:password, the Basic token,
+    // and the caller key remain reflection secrets.
     add(parsed.header);
     add(parsed.token);
-    add(parsed.user);
     add(parsed.password);
     add(parsed.raw);
   }
@@ -125,14 +128,27 @@ function carriesCallerSecret(parsed, callerSecret) {
   return [parsed.header, parsed.token, parsed.user, parsed.password, parsed.raw].some((part) => typeof part === "string" && part.includes(callerSecret));
 }
 
+function refusalBody(texts, fields) {
+  const present = texts.filter((value) => typeof value === "string" && value.length > 0);
+  const credential = present.some((value) => containsCredential(value, fields));
+  const format = present.some((value) => hasFormatChar(value));
+  if (!credential && !format) return null;
+  let reason = "credential-reflection";
+  if (credential && format) reason = "credential-reflection-and-format-character";
+  else if (format) reason = "format-character";
+  return { result: -1, error: "upstream response refused", reason };
+}
+
+function refusalResponse(texts, fields) {
+  const body = refusalBody(texts, fields);
+  if (!body) return null;
+  return new Response(JSON.stringify(body), { status: 502, headers: { ...BASE_HEADERS } });
+}
+
 function safeJson(status, obj, fields) {
-  let text = JSON.stringify(obj);
-  let outStatus = status;
-  if (containsCredential(text, fields)) {
-    text = JSON.stringify({ result: -1, error: "upstream response refused" });
-    outStatus = 502;
-  }
-  return new Response(text, { status: outStatus, headers: { ...BASE_HEADERS } });
+  const refused = refusalResponse([JSON.stringify(obj)], fields);
+  if (refused) return refused;
+  return new Response(JSON.stringify(obj), { status, headers: { ...BASE_HEADERS } });
 }
 
 function redactFault(value, fields) {
@@ -751,7 +767,6 @@ function mapBody(err) {
 
 function finishUpstream(op, up, ms, fields) {
   const seal = (status, obj) => safeJson(status, obj, fields);
-  const refused = () => seal(502, { result: -1, error: "upstream response refused" });
   if (!up || typeof up.status !== "number") {
     return seal(502, { result: -1, error: "upstream connection failed" });
   }
@@ -768,27 +783,25 @@ function finishUpstream(op, up, ms, fields) {
   }
   const text = typeof up.text === "string" ? up.text : "";
   if (text.length > LIMITS.maxResp) return seal(502, { result: -1, error: "upstream response too large" });
-  if (hasFormatChar(text)) return refused();
-  if (containsCredential(text, fields)) return refused();
+  const rawRefusal = refusalResponse([text], fields);
+  if (rawRefusal) return rawRefusal;
   let parsed;
   try { parsed = parseUpstreamSoap(op, text); }
   catch (err) {
     if (err && err.code === "EMISMATCH") return seal(502, { result: -1, error: "response mismatch" });
     return seal(502, { result: -1, error: "upstream response rejected", reason: "parser-format" });
   }
-  if (hasFormatChar(parsed.fault) || hasFormatChar(parsed.xml) || hasFormatChar(parsed.supp) || hasFormatChar(parsed.resultText)) {
-    return refused();
-  }
+  const decodedRefusal = refusalResponse([parsed.fault, parsed.xml, parsed.supp, parsed.resultText], fields);
+  if (decodedRefusal) return decodedRefusal;
   if (parsed.kind === "fault") {
-    if (containsCredential(parsed.fault, fields)) return refused();
     const fault = redactFault(parsed.fault, fields).slice(0, LIMITS.maxFault);
-    if (containsCredential(fault, fields)) return refused();
+    const again = refusalResponse([fault], fields);
+    if (again) return again;
     return seal(200, { result: -1, error: "SOAP fault: " + fault });
   }
   const supp = redactFault(parsed.supp, fields).slice(0, LIMITS.maxFault);
-  if (containsCredential(parsed.xml, fields) || containsCredential(supp, fields) || containsCredential(parsed.resultText, fields)) {
-    return refused();
-  }
+  const again = refusalResponse([parsed.xml, supp, parsed.resultText], fields);
+  if (again) return again;
   if (op === "WMLS_GetVersion") {
     const versions = parseVersionList(parsed.resultText);
     if (!versions) return seal(502, { result: -1, error: "upstream response rejected", reason: "version-format" });
