@@ -79,6 +79,8 @@ describe("game origin regression", { concurrency: 1 }, () => {
       "netlify-proxy/netlify/lib/machine-handler.mjs",
       "netlify-proxy/netlify/lib/machine-policy.mjs",
       "netlify-proxy/netlify/lib/machine-reader-adapter.mjs",
+      "netlify-proxy/test/fixtures/rtoc_hist.js",
+      "netlify-proxy/test/fixtures/wdash_core.js",
       "netlify-proxy/test/game-origin-regression.test.mjs",
       "netlify-proxy/test/machine-handler.test.mjs",
       "netlify-proxy/test/machine-policy.test.mjs",

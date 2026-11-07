@@ -37,9 +37,12 @@ import { createMachineHandler } from "../lib/machine-handler.mjs";
 //   the uid to remove that overlap. Homoglyphs and ordinary inserted characters
 //   still pass the exact-substring scan.
 // * The reader adapter is a separate server-side library. It is not a new
-//   route and it is not imported by this function. The browser reader is not
-//   wired to this route, and the machine key must not be placed in a browser
-//   bundle or an API response.
+//   route and it is not imported by this function. A refused or failed
+//   GetVersion, GetCap, or GetFromStore throws. It does not return empty xml
+//   and supp, which the frozen reader would treat as an assumed 1.4.1.1.
+//   The reader's own assumption remains for an older transport that is not
+//   this adapter. The browser reader is not wired to this route, and the
+//   machine key must not be placed in a browser bundle or an API response.
 //
 // GATES BEFORE ROLLOUT (this change does not perform them):
 // 1. Operator generates an independent high-entropy secret (at least 32 bytes
