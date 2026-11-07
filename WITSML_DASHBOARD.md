@@ -19,3 +19,16 @@ Most WITSML stores do not send CORS headers, so a browser cannot call them direc
 2. Local proxy: `node witsml_proxy.mjs` → `http://localhost:8796/soap` (any store, runs on the user's machine; credentials never leave it except to the store).
 3. Per-customer proxy (future): same function as (1) with an allow-list per store URL, rate limit, no logging of bodies or auth headers, origin check for the game domain. Needs the store URL from the operator before adding to the allow-list. Can run on a free tier; not deployed.
 4. ETP 2.0 (future): server-side WebSocket bridge (ETP needs Basic/Bearer on the WS upgrade, which browsers cannot set).
+
+## Drilling Operations dashboard
+
+Open **Monitor → Drilling operations** from the start screen. In the game, use **Tools → Replay and sequences → Drilling operations dashboard**. You can also open `?operations`.
+
+- In training mode, the dashboard reads the current rig simulation. The tally uses the simulator's stand length and records connections during the session. Hold, Slide, Rotary, Take survey and Make connection call the existing simulator controls and interlocks.
+- Select **WITSML** to open the game connection panel. Connect to a WITSML 1.4.1.1 store using the existing proxy or direct configuration. Select the well, wellbore and a **time-indexed drilling log**. Start the log or load the well, then reopen the dashboard. A fresh sample gets the **WITSML LIVE** or **WITSML SIM-TEST** badge. After two minutes without a current sample, the dashboard marks the feed stale. Controls stay disabled while the dashboard is observing the store.
+- Use the connection panel's **Map to simulator** column to map nonstandard channel names. Dashboard-only options include flow out, ECD, active pit volume, gas, toolface, 0/1 alarm flags and anti-collision values. Units are taken from the log data or curve header. Unknown units and null values leave gaps.
+- Connections and slide/rotary intervals are inferred from available drilling channels. An estimated end MD carries an approximation marker. A progress percentage requires an end MD. A bit position beyond the surveyed line is shown as an estimate only when it is within 30 m of the last station. Surveys and explicitly planned trajectories must belong to the selected wellbore. The rock cutaway is illustrative.
+- Select **Load WITSML image** for depth-indexed azimuth bins from the same wellbore. The image track stays blank where bins are missing or beyond drilled depth. Replay excludes rows ahead of the replay cursor and leaves the untimestamped image log blank. This dashboard respects the existing replay availability setting.
+- In training mode, the radar shows the simulator's simplified separation model. In WITSML mode, map upstream separation factor and centreline distance to show reported values. Map relative offset east and north to place the radar contact. Alarm rows reflect mapped flags. Missing channels display as unavailable.
+
+Run `node operations_data_test.mjs`, `node conn_test.mjs` and `node wdash_unit_test.mjs` to check the data handling.
