@@ -15,10 +15,12 @@ with sync_playwright() as pw:
  b=pw.chromium.launch(executable_path='/usr/bin/google-chrome',headless=True,args=['--no-sandbox','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader'])
  for mode,width,height in [('desktop',1440,1000),('mobile',390,844)]:
   c=b.new_context(viewport={'width':width,'height':height},is_mobile=mode=='mobile',has_touch=mode=='mobile')
+  c.add_init_script('Object.defineProperty(navigator, "webdriver", {get:()=>false})')
   p=c.new_page(); errors=[]; calls=[]
   p.on('pageerror',lambda e:errors.append(str(e)))
   p.on('request',lambda r:calls.append(json.loads(r.post_data or '{}').get('op')) if r.url==args.proxy else None)
   p.goto(args.base_url.rstrip('/')+'/?operations');p.wait_for_selector('#dwOperations');p.wait_for_function('window.GX?.witsml?.start && window.GEO');p.wait_for_timeout(1500)
+  assert p.locator('#intro').count()==0,'Operations deep link must skip the startup intro'
   assert p.locator('#opsSource').inner_text()=='TRAINING SIMULATION'
   assert p.locator('#opsScene').evaluate('(c)=>c.width>0 && c.height>0')
   assert p.locator('#opsEmpty').is_hidden()

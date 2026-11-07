@@ -21,7 +21,7 @@ node operations_release.mjs BASELINE EMPTY_CANDIDATE BASELINE_MANIFEST
 /workspace/drill-sim/drilling-guard.sh EMPTY_CANDIDATE
 ```
 
-The script checks every baseline file hash, applies only the dashboard changes, and preserves unrelated production files. It resolves overlapping import-cache hooks explicitly. It refuses unexpected conflicts. It writes `operations-release.json` with the dashboard commit and baseline deploy ID. Keep the manifest and baseline with the release evidence, not in the public repository.
+The script checks every baseline file hash, applies only the dashboard changes, and preserves unrelated production files. It resolves overlapping import-cache hooks explicitly. The operations deep link skips the startup intro; other routes keep the intro. It refuses unexpected conflicts. It writes `operations-release.json` with the dashboard commit and baseline deploy ID. Keep the manifest and baseline with the release evidence, not in the public repository.
 
 Before publication, check that the published Netlify deploy is still the recorded baseline. If it changed, stop and assemble against the new baseline. Use the existing CLI artifact workflow with `--no-build`, the exact site ID, and the assembled directory. Do not stage or deploy the repository directory directly. Run browser and asset-hash smoke tests after publication. Restore the recorded deploy with Netlify's `restoreSiteDeploy` operation if smoke tests fail.
 
@@ -44,7 +44,7 @@ MOCK_PORT=8847 MOCK_START=52 node mock_upstream.mjs
 python3 operations_browser_test.py --base-url http://127.0.0.1:8845
 ```
 
-The browser test needs Python Playwright and Chrome. It uses only the local SIM-TEST store. It checks desktop and mobile, the 3D view and overlays, joint tally, execution controls, mapped and missing channels, sample updates, matching image log, waiting/depth-log states, stale state and read-only SOAP operations. Fixture timestamps are not proof of a real feed.
+The browser test needs Python Playwright and Chrome. It uses only the local SIM-TEST store. It checks the non-automated startup path on desktop and mobile, the 3D view and overlays, joint tally, execution controls, mapped and missing channels, sample updates, matching image log, waiting/depth-log states, stale state and read-only SOAP operations. Fixture timestamps are not proof of a real feed.
 
 ## Real feed gate
 

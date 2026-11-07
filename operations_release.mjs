@@ -17,12 +17,15 @@ for(const f of manifest.files){
 }
 fs.mkdirSync(out,{recursive:true});
 for(const f of manifest.files){const p=path.join(out,f.path);fs.mkdirSync(path.dirname(p),{recursive:true});fs.copyFileSync(path.join(baseline,f.path),p)}
-const runtime=['ext.js','ext2.js','ext3.js','ext4.js','index.html','main.js','operations.css','operations.js','operations_data.js','operations_plots.js','operations_scene.js','physics.js','start.js','ui.js'];
+const runtime=['intro.js','ext.js','ext2.js','ext3.js','ext4.js','index.html','main.js','operations.css','operations.js','operations_data.js','operations_plots.js','operations_scene.js','physics.js','start.js','ui.js'];
 const base='e0ae66a061d1a6cf5c5cb7da0449ea4c5c1afa82';
 const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'operations-release-'));
 function replace(s,a,b){if(!s.includes(a))throw new Error('Integration anchor missing: '+a);return s.replace(a,b)}
 try{
+ const intro=path.join(out,'intro.js');
+ fs.writeFileSync(intro,replace(fs.readFileSync(intro,'utf8'),"'safety','wdash'","'safety','wdash','operations'"));
  for(const f of runtime){
+  if(f==='intro.js')continue;
   const target=path.join(out,f),current=fs.readFileSync(path.join(repo,f),'utf8');
   if(!fs.existsSync(target)){fs.writeFileSync(target,current);continue}
   let production=fs.readFileSync(target,'utf8');
@@ -37,6 +40,7 @@ try{
    production=replace(production,'./ext.js?v=c5151','./ext.js?v=ops1');
    production=replace(production,'setUnder,startConn,explode:','setUnder,startConn,act,explode:');
   }else if(f==='index.html'){
+   production=replace(production,'./intro.js?v=i1','./intro.js?v=ops1');
    production=replace(production,'./main.js?v=c5151','./main.js?v=ops1');
    production=replace(production,'./start.js?v=s39','./start.js?v=ops1');
    production=replace(production,'<button id="conn">','<button id="opsDashboard" type="button">Drilling operations dashboard</button>\n<button id="conn">');
