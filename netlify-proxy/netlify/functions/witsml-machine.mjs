@@ -55,7 +55,12 @@ export default function handler(req) {
   return handle(req);
 }
 
+// Netlify's in-source config parser (zip-it-and-ship-it parsePrimitive) keeps
+// only string, number, boolean, null, array, and object literals. An identifier
+// such as MACHINE_PATH becomes undefined, and getRoutes then returns no custom
+// route, leaving only the default /.netlify/functions/witsml-machine endpoint.
+// path must be a string literal.
 export const config = {
-  path: MACHINE_PATH,
+  path: "/witsml-machine",
   rateLimit: { windowLimit: 30, windowSize: 60, aggregateBy: ["ip", "domain"] },
 };

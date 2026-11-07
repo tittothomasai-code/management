@@ -153,6 +153,22 @@ function hasFormatChar(value) {
   return typeof value === "string" && FORMAT_CHAR.test(value);
 }
 
+// WITSML STORE API 1.4.1 section 6.2.1: GetVersion returns one string, a
+// comma-separated list of Data Schema Versions with no spaces, oldest to newest.
+// Example: 1.2.0.0,1.3.1.0,1.4.1.1. This check accepts that shape. It does not
+// reorder the list and does not decide which guard produced a previous live 502.
+const VERSION_TOKEN = /^\d{1,2}(?:\.\d{1,4}){1,3}$/;
+const MAX_VERSION_TOKENS = 8;
+const MAX_VERSION_LIST = 128;
+
+function parseVersionList(text) {
+  if (typeof text !== "string" || text.length === 0 || text.length > MAX_VERSION_LIST) return null;
+  if (/\s/.test(text) || text.includes(",,")) return null;
+  const parts = text.split(",");
+  if (parts.length > MAX_VERSION_TOKENS || parts.some((part) => !VERSION_TOKEN.test(part))) return null;
+  return parts;
+}
+
 const esc = (s) => String(s)
   .replace(/&/g, "&amp;")
   .replace(/</g, "&lt;")
@@ -758,7 +774,7 @@ function finishUpstream(op, up, ms, fields) {
   try { parsed = parseUpstreamSoap(op, text); }
   catch (err) {
     if (err && err.code === "EMISMATCH") return seal(502, { result: -1, error: "response mismatch" });
-    return seal(502, { result: -1, error: "upstream response rejected" });
+    return seal(502, { result: -1, error: "upstream response rejected", reason: "parser-format" });
   }
   if (hasFormatChar(parsed.fault) || hasFormatChar(parsed.xml) || hasFormatChar(parsed.supp) || hasFormatChar(parsed.resultText)) {
     return refused();
@@ -774,13 +790,12 @@ function finishUpstream(op, up, ms, fields) {
     return refused();
   }
   if (op === "WMLS_GetVersion") {
-    if (!/^[0-9A-Za-z][0-9A-Za-z._-]{0,31}$/.test(parsed.resultText)) {
-      return seal(502, { result: -1, error: "upstream response rejected" });
-    }
-    return seal(200, { result: 1, version: parsed.resultText, xml: "", supp, ms });
+    const versions = parseVersionList(parsed.resultText);
+    if (!versions) return seal(502, { result: -1, error: "upstream response rejected", reason: "version-format" });
+    return seal(200, { result: 1, version: parsed.resultText, versions, xml: "", supp, ms });
   }
   if (!/^-?\d{1,9}$/.test(parsed.resultText)) {
-    return seal(502, { result: -1, error: "upstream response rejected" });
+    return seal(502, { result: -1, error: "upstream response rejected", reason: "result-format" });
   }
   return seal(200, { result: Number(parsed.resultText), xml: parsed.xml, supp, ms });
 }
