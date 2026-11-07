@@ -970,6 +970,7 @@ describe("machine read policy", { concurrency: 1 }, () => {
       }), depsFor(impl)));
       assert.notEqual(out.status, 200, name);
       assert.equal(out.body.reason, "format-character", name);
+      assert.equal(out.body.credentialClass, undefined, name);
       assert.equal(out.raw.includes(password), false, name);
       assert.equal(out.raw.includes("echo"), false, name);
       assert.equal(out.body.xml, undefined, name);
@@ -1003,6 +1004,8 @@ describe("machine read policy", { concurrency: 1 }, () => {
     }), depsFor(secretImpl)));
     assert.equal(secret.status, 502);
     assert.equal(secret.body.reason, "credential-reflection");
+    assert.equal(secret.body.credentialClass, "password");
+    assert.equal(secret.raw, '{"result":-1,"error":"upstream response refused","reason":"credential-reflection","credentialClass":"password"}');
     assert.equal(secret.raw.includes(password), false);
     assert.equal(secret.raw.includes(user + ":" + password), false);
     const encodedXml = soap("WMLS_GetFromStore", "<Result>1</Result><XMLout>" + token + "</XMLout>");
@@ -1013,6 +1016,7 @@ describe("machine read policy", { concurrency: 1 }, () => {
     }), depsFor(encodedImpl)));
     assert.equal(encoded.status, 502);
     assert.equal(encoded.body.reason, "credential-reflection");
+    assert.equal(encoded.body.credentialClass, "basic");
     assert.equal(encoded.raw.includes(token), false);
     assert.equal(encoded.raw.includes("Basic " + token), false);
     const entity = "secr&#101;t-pass-99";
@@ -1023,6 +1027,7 @@ describe("machine read policy", { concurrency: 1 }, () => {
     }), depsFor(parsedImpl)));
     assert.equal(parsedEcho.status, 502);
     assert.equal(parsedEcho.body.reason, "credential-reflection");
+    assert.equal(parsedEcho.body.credentialClass, "password");
     assert.equal(parsedEcho.raw.includes(password), false);
     const keyImpl = fakeHttps({ text: soap("WMLS_GetFromStore", "<Result>1</Result><XMLout>&lt;name&gt;" + CALLER_KEY + "&lt;/name&gt;</XMLout>") });
     const keyEcho = await read(await enforceMachinePolicy(makeReq({
@@ -1031,6 +1036,7 @@ describe("machine read policy", { concurrency: 1 }, () => {
     }), depsFor(keyImpl)));
     assert.equal(keyEcho.status, 502);
     assert.equal(keyEcho.body.reason, "credential-reflection");
+    assert.equal(keyEcho.body.credentialClass, "caller-key");
     assert.equal(keyEcho.raw.includes(CALLER_KEY), false);
     const bothImpl = fakeHttps({ text: soap("WMLS_GetFromStore", "<Result>1</Result><XMLout>&lt;name&gt;" + password + "\u200b&lt;/name&gt;</XMLout>") });
     const both = await read(await enforceMachinePolicy(makeReq({
@@ -1039,8 +1045,76 @@ describe("machine read policy", { concurrency: 1 }, () => {
     }), depsFor(bothImpl)));
     assert.equal(both.status, 502);
     assert.equal(both.body.reason, "credential-reflection-and-format-character");
+    assert.equal(both.body.credentialClass, "password");
     assert.equal(both.raw.includes(password), false);
     assert.equal(both.raw.includes(user), false);
+  });
+
+  test("credential class names overlaps and encoded echoes without changing the refusal", async () => {
+    const user = "rig-user-id";
+    const password = "secret-pass-99";
+    const rawPair = user + ":" + password;
+    const header = "Basic " + Buffer.from(rawPair).toString("base64");
+    const token = header.slice(6);
+    const logs = [];
+    const orig = { log: console.log, info: console.info, warn: console.warn, error: console.error, debug: console.debug };
+    for (const key of Object.keys(orig)) console[key] = (...args) => logs.push(args.map(String).join(" "));
+    const forbidden = [password, rawPair, token, header, CALLER_KEY, user];
+    try {
+    const absent = (out, label) => {
+      for (const secret of forbidden) assert.equal(out.raw.includes(secret), false, label + " " + secret);
+      assert.equal(out.raw.includes("uid="), false, label);
+      assert.equal(out.body.xml, undefined, label);
+      assert.equal(out.body.supp, undefined, label);
+    };
+    const echo = async (inner, label) => {
+      const impl = fakeHttps({ text: soap("WMLS_GetFromStore", inner) });
+      const out = await read(await enforceMachinePolicy(makeReq({
+        body: postBody("WMLS_GetFromStore"),
+        headers: { "x-witsml-authorization": header },
+      }), depsFor(impl)));
+      assert.equal(out.status, 502, label + " " + out.raw);
+      assert.equal(out.body.error, "upstream response refused", label);
+      assert.equal(out.body.reason, "credential-reflection", label);
+      absent(out, label);
+      return out;
+    };
+    const passwordOnly = await echo("<Result>1</Result><XMLout>&lt;name&gt;" + password + "&lt;/name&gt;</XMLout>", "password");
+    assert.equal(passwordOnly.body.credentialClass, "password");
+    const pairOnly = await echo("<Result>1</Result><XMLout>&lt;name&gt;" + rawPair + "&lt;/name&gt;</XMLout>", "raw-pair");
+    assert.equal(pairOnly.body.credentialClass, "password+raw-pair");
+    const separate = await echo("<Result>1</Result><XMLout>&lt;name&gt;" + password + "&lt;/name&gt;&lt;operator&gt;" + rawPair + "&lt;/operator&gt;</XMLout>", "both");
+    assert.equal(separate.body.credentialClass, "password+raw-pair");
+    const tokenOnly = await echo("<Result>1</Result><XMLout>" + token + "</XMLout>", "token");
+    assert.equal(tokenOnly.body.credentialClass, "basic");
+    const headerOnly = await echo("<Result>1</Result><SuppMsgOut>Basic " + token + "</SuppMsgOut><XMLout>logs</XMLout>", "header");
+    assert.equal(headerOnly.body.credentialClass, "basic");
+    const keyOnly = await echo("<Result>1</Result><XMLout>&lt;name&gt;" + CALLER_KEY + "&lt;/name&gt;</XMLout>", "key");
+    assert.equal(keyOnly.body.credentialClass, "caller-key");
+    const keyAndPassword = await echo("<Result>1</Result><XMLout>&lt;name&gt;" + password + "&lt;/name&gt;&lt;operator&gt;" + CALLER_KEY + "&lt;/operator&gt;</XMLout>", "key-password");
+    assert.equal(keyAndPassword.body.credentialClass, "caller-key+password");
+    const all = await echo("<Result>1</Result><XMLout>&lt;name&gt;" + password + " " + rawPair + " " + token + " " + CALLER_KEY + "&lt;/name&gt;</XMLout>", "all");
+    assert.equal(all.body.credentialClass, "basic+caller-key+password+raw-pair");
+    const entity = await echo("<Result>1</Result><XMLout>&lt;name&gt;secr&#101;t-pass-99&lt;/name&gt;</XMLout>", "entity");
+    assert.equal(entity.body.credentialClass, "password");
+    const tokenChar = token.charCodeAt(4);
+    const tokenEncoded = token.slice(0, 4) + "&#" + tokenChar + ";" + token.slice(5);
+    const headerEntity = await echo("<Result>1</Result><XMLout>" + tokenEncoded + "</XMLout>", "basic-entity");
+    assert.equal(headerEntity.body.credentialClass, "basic");
+    const kept = `<wells xmlns="http://www.witsml.org/schemas/1series" version="1.4.1.1"><well uid="${user}"><name>${user}</name><operator>${user}</operator></well></wells>`;
+    const okImpl = fakeHttps({ text: soap("WMLS_GetFromStore", "<Result>1</Result><XMLout>" + kept.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") + "</XMLout>") });
+    const ok = await read(await enforceMachinePolicy(makeReq({
+      body: postBody("WMLS_GetFromStore"),
+      headers: { "x-witsml-authorization": header },
+    }), depsFor(okImpl)));
+    assert.equal(ok.status, 200, ok.raw);
+    assert.equal(ok.body.credentialClass, undefined);
+    assert.equal(ok.body.xml.includes(`uid="${user}"`), true);
+    const blob = logs.join("\n");
+    for (const secret of forbidden) assert.equal(blob.includes(secret), false);
+    } finally {
+      Object.assign(console, orig);
+    }
   });
 
   test("GetVersion accepts a spec version list and labels a bad list without echoing it", async () => {
