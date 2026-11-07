@@ -2,7 +2,12 @@
 let C,S,el,PANEL,BTN;const $=id=>document.getElementById(id);
 const NS='xmlns="http://www.witsml.org/schemas/1series" version="1.4.1.1"';
 const PKEY='dw34-witsml-ui';// stores ONLY proxy URL, server URL, poll interval, mapping. Never username/password.
-const SIGNALS={spp:'Standpipe pressure',Q:'Flow in',hook:'Hookload',wob:'WOB',rpm:'Top drive RPM',md:'Measured depth',quill:'Block height',tq:'Top drive torque','p1.spm':'Pump 1 SPM','p2.spm':'Pump 2 SPM','p3.spm':'Pump 3 SPM','p4.spm':'Pump 4 SPM',rop:'ROP',bitdepth:'Bit depth',holedepth:'Hole depth (MD)'};
+const SIGNALS={spp:'Standpipe pressure',Q:'Flow in',hook:'Hookload',wob:'WOB',rpm:'Top drive RPM',md:'Measured depth',quill:'Block height',tq:'Top drive torque','p1.spm':'Pump 1 SPM','p2.spm':'Pump 2 SPM','p3.spm':'Pump 3 SPM','p4.spm':'Pump 4 SPM',rop:'ROP',bitdepth:'Bit depth',holedepth:'Hole depth (MD)',
+ 'ops.ecd':'Dashboard: ECD','ops.out':'Dashboard: Flow out','ops.pit':'Dashboard: Active pit volume',
+ 'ops.gas':'Dashboard: Total gas','ops.tf':'Dashboard: Toolface','ops.stick':'Dashboard: Stick-slip alarm (0/1)',
+ 'ops.pack':'Dashboard: Pack-off alarm (0/1)','ops.stall':'Dashboard: Motor stall alarm (0/1)',
+ 'ops.sf':'Dashboard: Reported separation factor','ops.ctc':'Dashboard: Reported centreline distance',
+ 'ops.north':'Dashboard: Offset relative north','ops.east':'Dashboard: Offset relative east'};
 const AUTO=[[/^(SPPA|SPP|STPP|PRES_SP|SPPRESS)$/i,'spp'],[/^(MFIA|TFLO|FLOWIN|MFI|FLOW_IN|TFLOW|FLOW)$/i,'Q'],[/^(ROPA|ROP)$/i,'rop'],[/^(BDE|BITDEP|DBTM_BIT)$/i,'bitdepth'],[/^(DMEA|DBTM|HOLEDEP)$/i,'holedepth'],[/^(BHE|BPOS|BLKPOS|HKHT)$/i,'quill'],[/^(HKLA|HKLD|HOOKLOAD|HKL)/i,'hook'],[/^(SWOB|WOBA|WOB)/i,'wob'],[/^(RPMA|TDRPM|RPM|SRPM)/i,'rpm'],
  [/^(TQA|STOR|TORQ|TDTQ|TQ|TORQUE)/i,'tq'],[/^SPM ?1|^PUMP1|^SPM_1|^SPMA1/i,'p1.spm'],[/^SPM ?2|^PUMP2|^SPM_2|^SPMA2/i,'p2.spm'],[/^SPM ?3|^PUMP3|^SPM_3/i,'p3.spm'],[/^SPM ?4|^PUMP4|^SPM_4/i,'p4.spm']];
 const HOSTED_PROXY='https://tryfecta-witsml-proxy.netlify.app/witsml-proxy';// default (Netlify: per-request cert skip for the Adaga host only)
@@ -67,7 +72,7 @@ async function poll(){const L=WML.log;if(!L)return;if(WML.inflight){WML.miss++;c
  if(WML.last==null){const st=time?new Date(Date.parse(L.end)-60000).toISOString():String((+L.end||0)-10);q=time?`<startDateTimeIndex>${st}</startDateTimeIndex>`:`<startIndex uom="${L.uom||'m'}">${st}</startIndex>`}
  else q=time?`<startDateTimeIndex>${WML.last}</startDateTimeIndex>`:`<startIndex uom="${L.uom||'m'}">${WML.last}</startIndex>`;
  WML.inflight=true;
- try{const j=await call('WMLS_GetFromStore','log',`<logs ${NS}><log uidWell="${L.w}" uidWellbore="${L.b}" uid="${L.uid}">${q}<logData><mnemonicList/><data/></logData></log></logs>`,'returnElements=data-only;maxReturnNodes=500');
+ try{const j=await call('WMLS_GetFromStore','log',`<logs ${NS}><log uidWell="${L.w}" uidWellbore="${L.b}" uid="${L.uid}">${q}<logData><mnemonicList/><unitList/><data/></logData></log></logs>`,'returnElements=data-only;maxReturnNodes=500');
   WML.polls++;WML.okAt=Date.now();WML.miss=0;const d=xml(j.xml);const ml=txt(d,'mnemonicList').split(',').map(s=>s.trim()),ul=txt(d,'unitList').split(',');let rows=kids(d,'data').map(n=>n.textContent.split(','));
   const ix=Math.max(0,ml.indexOf(L.indexCurve));const key=r=>time?Date.parse(r[ix]):+r[ix];if(WML.last!=null){const lk=time?Date.parse(WML.last):+WML.last;rows=rows.filter(r=>key(r)>lk)}
   if(time&&rows.length){WML.hist=WML.hist||[];for(const x of rows)WML.hist.push({t:Date.parse(x[ix]),x});WML.histMl=ml;WML.histUl=ul;WML.histIx=ix;if(WML.hist.length>60000)WML.hist.splice(0,WML.hist.length-60000)}

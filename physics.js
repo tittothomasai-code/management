@@ -1,6 +1,7 @@
 // Drilling physics ported from v2 sandbox (first-pass, uncalibrated values). SIMULATED.
 import {ropMudFactor} from './ropmud.js';
 export const R=Math.PI/180, FT=0.3048;
+export const STAND_LENGTH_M=27.4;
 export function minCurv(p,m1,i1,a1,m2,i2,a2){i1*=R;a1*=R;i2*=R;a2*=R;const cb=Math.cos(i2-i1)-Math.sin(i1)*Math.sin(i2)*(1-Math.cos(a2-a1));const b=Math.acos(Math.max(-1,Math.min(1,cb)));const rf=b<1e-6?1:2/b*Math.tan(b/2),dm=m2-m1;
  return [p[0]+dm/2*(Math.sin(i1)*Math.cos(a1)+Math.sin(i2)*Math.cos(a2))*rf,p[1]+dm/2*(Math.sin(i1)*Math.sin(a1)+Math.sin(i2)*Math.sin(a2))*rf,p[2]+dm/2*(Math.cos(i1)+Math.cos(i2))*rf]}
 export const PLAN={kop_md:1500,bur:3,hold_inc:35,azi:45,td_md:3500};
@@ -93,10 +94,10 @@ export function connectionSteps(S){const keep={spm:new Map(S.pumps.map(p=>[p,p.c
  ['Iron roughneck in',s=>{s.rough=1},s=>true,4,null,'roughin'],
  ['Break out',s=>{s.seq.tdOverride=-20},s=>true,6,s=>{s.seq.tdOverride=null;s.connected=false},'break'],
  ['Iron roughneck out',s=>{s.rough=0},s=>true,3],
- ['Hoist top drive to top',s=>{s.dw.mode='hoist'},s=>s.dw.quill>=s.stickup+27.4+0.2,0,s=>{s.dw.mode='hold'}],
+ ['Hoist top drive to top',s=>{s.dw.mode='hoist'},s=>s.dw.quill>=s.stickup+STAND_LENGTH_M+0.2,0,s=>{s.dw.mode='hold'}],
  ['Catwalk delivers joint',s=>{s.catwalk=1},s=>true,10],
- ['Stab joint, lower to box',s=>{s.newJoint=1;s.catwalk=0;s.dw.mode='lower'},s=>s.dw.quill<=s.stickup+27.4,0,s=>{s.dw.mode='hold';s.dw.quill=s.stickup+27.4}],
- ['Iron roughneck in, make up',s=>{s.rough=1;s.seq.tdOverride=20},s=>true,6,s=>{s.seq.tdOverride=null;s.connected=true;s.L+=27.4/FT;s.newJoint=0},'roughin'],
+ ['Stab joint, lower to box',s=>{s.newJoint=1;s.catwalk=0;s.dw.mode='lower'},s=>s.dw.quill<=s.stickup+STAND_LENGTH_M,0,s=>{s.dw.mode='hold';s.dw.quill=s.stickup+STAND_LENGTH_M}],
+ ['Iron roughneck in, make up',s=>{s.rough=1;s.seq.tdOverride=20},s=>true,6,s=>{s.seq.tdOverride=null;s.connected=true;s.L+=STAND_LENGTH_M/FT;s.newJoint=0},'roughin'],
  ['Iron roughneck out',s=>{s.rough=0},s=>true,3],
  ['Release slips',s=>{s.slips=false},s=>true,3,null,'sliprel'],
  ['Pumps on',s=>{s.pumps.forEach(p=>{p.on=true;if(keep.spm.has(p))p.cmd=keep.spm.get(p)})},s=>s.Q>0.9*s.pumps.reduce((a,p)=>a+p.cmd*4.2,0)||true,15,null,'pumpson'],

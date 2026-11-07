@@ -9,7 +9,7 @@ const GROUPS=[['equip','Equipment and exploded view'],['bha','BHA'],['geo','Surv
 const MAP=[['addeq','equip','Add equipment'],['Equipment library ▾','equip','Equipment library'],['Add sensor','equip'],['Export layout','equip'],['Import layout','equip'],['dsgbtn','equip','Rig designer'],['btnExpl','equip','Exploded view'],
  ['btnBhaB','bha','BHA builder'],
  ['btnSur','geo','Surveys'],['btnLay','geo','Subsurface layers'],['btnBit','geo','Bit depth'],['g8btn','geo','Geosteering'],['under','geo','Underground view'],['btnStrat','geo','Earth model (lithology)'],
- ['conn','seq','Run connection'],['btnConn','seq','Connections'],['seqedbtn','seq','Sequence editor'],['pause','seq'],['spd','seq'],
+ ['opsDashboard','seq','Drilling operations dashboard'],['conn','seq','Run connection'],['btnConn','seq','Connections'],['seqedbtn','seq','Sequence editor'],['pause','seq'],['spd','seq'],
  ['wbtn','set','WITSML connection'],['wlm','set'],['units','set'],['btnPlayer','set','Switch player']];
 const TOOL_TGT={wbtn:'witsml',addeq:'eqmenu','Equipment library':'libmenu'};const STAY=new Set(['pause','spd','units','wlm','clr','uiLog','uiFrm']);const FULL=new Set(['wshop','ss56','designer','seqeditor']);
 const PANEL_SKIP=new Set(['uiTop','uiNav','uiTools','uiX','mdock','sim','clock','log','appVer','bithud','wtoast','panels','plJoin','g8btn','svhud','eqmenu','libmenu','nosurv','vpad','edmmap']);

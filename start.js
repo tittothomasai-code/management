@@ -6,7 +6,7 @@
 const q=new URLSearchParams(location.search);
 const SK='dw_start_snd',$=id=>document.getElementById(id);
 const ST={el:null,items:[],i:0,menu:'main',snd:false,ac:null,raf:0,gp:{t:0,prev:{}},last:null};
-export function shouldShow(){if(['nosplash','s','session','demo','join','player','edm','monitor','workover','safety','wdash'].some(k=>q.has(k)))return false;if(navigator.webdriver&&!q.has('start'))return false;return true}
+export function shouldShow(){if(['nosplash','s','session','demo','join','player','edm','monitor','workover','safety','wdash','operations'].some(k=>q.has(k)))return false;if(navigator.webdriver&&!q.has('start'))return false;return true}
 export function hasSave(){try{return ['dw_start_save','dw_sess_code'].some(k=>localStorage.getItem(k))}catch(e){return false}}
 const ver=()=>($('appVer')?.textContent||document.querySelector('meta[name=app-version]')?.content||'').trim();
 const wait=(f,ms=15000)=>new Promise((ok,no)=>{const t0=Date.now();(function p(){let v;try{v=f()}catch(e){}if(v)return ok(v);if(Date.now()-t0>ms)return no(new Error('timeout'));setTimeout(p,60)})()});
@@ -63,7 +63,7 @@ function tile(id,ic,t,s){return `<button class=tile data-go="${id}" id="st_${id}
 const GRP={drill:['🛢','Drill','Simulate, train and steer · Continue, New simulation, DD Training, DD Tracks, Rig showroom'],plan:['📐','Plan','Wells and sites · New well, Import EDM, Saved sites'],monitor:['📈','Monitor','Real wells · WITSML dashboard, Monitor a well'],ops:['🔧','Operations','Workover & intervention, Safety World']};
 const LEAF=()=>({drill:[hasSave()&&['continue','▶','Continue','Resume your saved SIM rig and well'],['sim','🛢','New simulation','Pick a SIM well and start drilling'],['ddcab','🧭','DD Training','Directional driller cabin · steer the driller, manage the mud motor · SIM'],['ddtracks','🏎','DD Tracks','Select a steering track · cups, stars, best times · SIM'],['showroom','🏁','Rig showroom','Browse <span id=st_rigN>all</span> rig types · spin, compare, use · SIM']],
  plan:[['well','📐','New well','Well Planning with a blank proposal'],['edm','📂','Import EDM','All sites & wells from an EDM file · stays on this device'],ST.saved?.length&&['saved','💾','Saved sites',ST.saved.length+' saved on this device · open without importing']],
- monitor:[['wdash','📊','WITSML dashboard','Vertical depth/time logs + image logs · your WITSML store or SIM'],['monitor','📈','Monitor a well','Track progress · saved WITSML well or SIM']],
+ monitor:[['operations','◈','Drilling operations','3D well, joint tally and trends · SIM or WITSML'],['wdash','📊','WITSML dashboard','Vertical depth/time logs + image logs · your WITSML store or SIM'],['monitor','📈','Monitor a well','Track progress · saved WITSML well or SIM']],
  ops:[['workover','🔧','Workover & intervention','Completions, workover, fishing, P&A, slickline, e-line, CT · SIM'],['safety','🦺','Safety World','Close corrective actions · hunt hazards on the rig · SIM']]});/* v5.12.18 paged menu; safety hook */
 const PARENT={sim:'drill',saved:'plan'};
 export function groupOf(id){const L=LEAF();for(const g in L)if(L[g].some(t=>t&&t[0]==id))return g;return null}
@@ -82,10 +82,11 @@ function focus(k){if(!ST.items.length)return;k=(k+ST.items.length)%ST.items.leng
 function cols(){return innerWidth>=820?2:1}
 function move(d){const c=cols();if(d=='l')focus(ST.i-1);else if(d=='r')focus(ST.i+1);else if(d=='u')focus(ST.i-c);else focus(ST.i+c)}
 function back(){if(ST.menu!='main'){const from=ST.menu;ST.menu=PARENT[from]||'main';beep(300);render();if(ST.menu=='main'){const k=Object.keys(GRP).indexOf(from);if(k>=0)focus(k)}}}
-function close(dest){ST.last=dest;const A=api();A.last=dest;if(dest!='join'&&dest!='continue'&&dest!='edm'&&dest!='monitor'&&dest!='wdash'&&dest!='workover'&&dest!='ddcab'&&dest!='ddtracks'&&dest!='safety')try{localStorage.setItem('dw_start_save',JSON.stringify({t:Date.now(),dest}))}catch(err){}removeEventListener('keydown',key,true);cancelAnimationFrame(ST.raf);clearInterval(ST.padT);const e=ST.el;ST.el=null;e.classList.add('out');setTimeout(()=>e.remove(),360);try{dispatchEvent(new CustomEvent('dw:start',{detail:dest}))}catch(err){}}
+function close(dest){ST.last=dest;const A=api();A.last=dest;if(dest!='join'&&dest!='continue'&&dest!='edm'&&dest!='monitor'&&dest!='wdash'&&dest!='operations'&&dest!='workover'&&dest!='ddcab'&&dest!='ddtracks'&&dest!='safety')try{localStorage.setItem('dw_start_save',JSON.stringify({t:Date.now(),dest}))}catch(err){}removeEventListener('keydown',key,true);cancelAnimationFrame(ST.raf);clearInterval(ST.padT);const e=ST.el;ST.el=null;e.classList.add('out');setTimeout(()=>e.remove(),360);try{dispatchEvent(new CustomEvent('dw:start',{detail:dest}))}catch(err){}}
 async function choose(g){const go=g||ST.items[ST.i]?.dataset.go;beep(880,.1);
  if(go?.startsWith('grp:')){ST.menu=go.slice(4);return render()}
  if(go=='sim'){ST.menu='sim';return render()}
+ if(go=='operations'){close('operations');await openOperations();return}
  if(go=='wdash'){close('wdash');const m=await import('./wdash.js?v=w5');m.open();return}
  if(go=='monitor'){close('monitor');const m=await import('./monitor.js?v=b12');m.open();return}
  if(go=='ddtracks'){close('ddtracks');const m=await import('./ddtracks.js?v=t2');m.open();return}
@@ -125,3 +126,7 @@ const API={ST,show,shouldShow,hasSave,reveal,groupOf,last:null};function api(){w
 if(shouldShow()){if(document.body)show();else addEventListener('DOMContentLoaded',show)}
 
 if(new URLSearchParams(location.search).has('workover'))import('./workover.js?v=b15');
+
+const openOperations = () => import('./operations.js?v=1').then(m => m.open()).catch(e => console.error('Drilling operations',e));
+$('opsDashboard').addEventListener('click',openOperations);
+if(q.has('operations')) openOperations();
