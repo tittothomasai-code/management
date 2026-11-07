@@ -914,6 +914,66 @@ describe("machine read policy", { concurrency: 1 }, () => {
     assert.equal(sent <= LIMITS.maxBody + huge.length, true);
   });
 
+  test("user or password shorter than 4 characters is refused before upstream", async () => {
+    const pairs = [
+      ["q", "long-pass"],
+      ["q7", "long-pass"],
+      ["q7z", "long-pass"],
+      ["long-user", "q"],
+      ["long-user", "q7"],
+      ["long-user", "q7z"],
+      ["a", "b"],
+      ["ab", "long-pass"],
+      ["log", "long-pass"],
+    ];
+    for (const [user, password] of pairs) {
+      const rawCred = user + ":" + password;
+      const header = "Basic " + Buffer.from(rawCred).toString("base64");
+      const impl = fakeHttps({ text: fixture("WMLS_GetVersion") });
+      const out = await read(await enforceMachinePolicy(makeReq({
+        body: postBody("WMLS_GetVersion"),
+        headers: { "x-witsml-authorization": header },
+      }), depsFor(impl)));
+      assert.equal(impl.calls.filter((c) => c.type === "request").length, 0, rawCred);
+      assert.equal(out.status, 400, rawCred);
+      assert.equal(out.body.error, "credentials required");
+      assert.equal(out.raw.includes(rawCred), false, rawCred);
+      if (user.length >= 2) assert.equal(out.raw.includes(user), false, user);
+      if (password.length >= 2) assert.equal(out.raw.includes(password), false, password);
+    }
+  });
+
+  test("format characters in decoded fields are refused before they can split a secret", async () => {
+    for (const cp of [0x00ad, 0x200b, 0x200c, 0x200d, 0x2060, 0xfeff]) {
+      assert.match(String.fromCodePoint(cp), /\p{Cf}/u);
+    }
+    const password = "echo-password";
+    const header = "Basic " + Buffer.from("box-user:" + password).toString("base64");
+    const forms = [
+      ["fault-decimal", `<soap:Envelope xmlns:soap="${SOAP_NS}"><soap:Body><soap:Fault><faultstring>echo&#8203;-password</faultstring></soap:Fault></soap:Body></soap:Envelope>`],
+      ["fault-hex", `<soap:Envelope xmlns:soap="${SOAP_NS}"><soap:Body><soap:Fault><faultstring>echo&#x200B;-password</faultstring></soap:Fault></soap:Body></soap:Envelope>`],
+      ["fault-literal", `<soap:Envelope xmlns:soap="${SOAP_NS}"><soap:Body><soap:Fault><faultstring>echo\u200b-password</faultstring></soap:Fault></soap:Body></soap:Envelope>`],
+      ["xml", soap("WMLS_GetFromStore", "<Result>1</Result><XMLout>echo&#8203;-password</XMLout><SuppMsgOut>ok</SuppMsgOut>")],
+      ["supp", soap("WMLS_GetFromStore", "<Result>1</Result><XMLout>logs</XMLout><SuppMsgOut>echo\u200c-password</SuppMsgOut>")],
+      ["version", soap("WMLS_GetVersion", "<Result>1.4\u200d.1.1</Result>")],
+      ["numeric", soap("WMLS_GetFromStore", "<Result>1&#8203;</Result><XMLout>logs</XMLout>")],
+      ["word-joiner", soap("WMLS_GetFromStore", "<Result>1</Result><XMLout>echo\u2060-password</XMLout>")],
+      ["bom", soap("WMLS_GetFromStore", "<Result>1</Result><XMLout>echo\ufeff-password</XMLout>")],
+    ];
+    for (const [name, text] of forms) {
+      const impl = fakeHttps({ text });
+      const out = await read(await enforceMachinePolicy(makeReq({
+        body: name === "version" ? postBody("WMLS_GetVersion") : postBody("WMLS_GetFromStore"),
+        headers: { "x-witsml-authorization": header },
+      }), depsFor(impl)));
+      assert.notEqual(out.status, 200, name);
+      assert.equal(out.raw.includes(password), false, name);
+      assert.equal(out.raw.includes("echo"), false, name);
+      assert.equal(out.body.xml, undefined, name);
+      assert.equal(out.body.version, undefined, name);
+    }
+  });
+
   test("no real network from the review policy", () => {
     assert.equal(netCalls, 0);
   });

@@ -67,6 +67,18 @@ function json(status, obj) {
   return new Response(JSON.stringify(obj), { status, headers: { ...BASE_HEADERS } });
 }
 
+// Compatibility gate for this route only. Both the decoded upstream user and
+// the decoded upstream password must be at least 4 Unicode code points.
+// Shorter Basic values are refused before any upstream call. This is not a
+// claim that a real Adaga account meets that minimum, and this code does not
+// change anyone's username or password. Short values are not searched for
+// inside normal WITSML XML.
+export const MIN_UPSTREAM_CRED_CHARS = 4;
+
+function codePointLength(value) {
+  return [...String(value)].length;
+}
+
 function parseBasic(auth) {
   if (typeof auth !== "string") return null;
   const match = /^Basic ([A-Za-z0-9+/]+={0,2})$/.exec(auth);
@@ -80,16 +92,16 @@ function parseBasic(auth) {
   if (raw.includes("\0") || /[\r\n]/.test(raw)) return null;
   const colon = raw.indexOf(":");
   if (colon <= 0 || colon === raw.length - 1) return null;
-  return { header: "Basic " + token, token, user: raw.slice(0, colon), password: raw.slice(colon + 1), raw };
+  const user = raw.slice(0, colon);
+  const password = raw.slice(colon + 1);
+  if (codePointLength(user) < MIN_UPSTREAM_CRED_CHARS || codePointLength(password) < MIN_UPSTREAM_CRED_CHARS) return null;
+  return { header: "Basic " + token, token, user, password, raw };
 }
 
 function credentialFields(parsed, callerSecret) {
   const long = [];
-  const exact = [];
   const add = (value) => {
-    if (typeof value !== "string" || value.length === 0) return;
-    if (value.length >= 4) long.push(value);
-    else exact.push(value);
+    if (typeof value === "string" && value.length >= 4) long.push(value);
   };
   if (parsed) {
     add(parsed.header);
@@ -99,13 +111,12 @@ function credentialFields(parsed, callerSecret) {
     add(parsed.raw);
   }
   add(callerSecret);
-  return { long, exact };
+  return { long };
 }
 
 function containsCredential(text, fields) {
   if (typeof text !== "string" || text.length === 0 || !fields) return false;
-  if (fields.long.some((part) => text.includes(part))) return true;
-  return fields.exact.some((part) => text === part);
+  return fields.long.some((part) => text.includes(part));
 }
 
 function carriesCallerSecret(parsed, callerSecret) {
@@ -126,12 +137,20 @@ function safeJson(status, obj, fields) {
 
 function redactFault(value, fields) {
   let out = String(value);
-  if (fields) {
-    for (const part of fields.long) out = out.split(part).join("[redacted]");
-    for (const part of fields.exact) if (out === part) out = "[redacted]";
-  }
+  if (fields) for (const part of fields.long) out = out.split(part).join("[redacted]");
   out = out.replace(/Basic\s+[A-Za-z0-9+/=]{4,}/g, "Basic [redacted]");
   return out;
+}
+
+// Unicode Format (Cf) characters, as classified by this Node runtime.
+// This is a conservative output boundary for that category only, including
+// U+200B–U+200D, U+2060, and U+FEFF. It is not a general normalization pass.
+// The substring scanner below is not protection against arbitrary
+// transformations such as homoglyphs or inserted ordinary characters.
+const FORMAT_CHAR = /\p{Cf}/u;
+
+function hasFormatChar(value) {
+  return typeof value === "string" && FORMAT_CHAR.test(value);
 }
 
 const esc = (s) => String(s)
@@ -733,12 +752,16 @@ function finishUpstream(op, up, ms, fields) {
   }
   const text = typeof up.text === "string" ? up.text : "";
   if (text.length > LIMITS.maxResp) return seal(502, { result: -1, error: "upstream response too large" });
+  if (hasFormatChar(text)) return refused();
   if (containsCredential(text, fields)) return refused();
   let parsed;
   try { parsed = parseUpstreamSoap(op, text); }
   catch (err) {
     if (err && err.code === "EMISMATCH") return seal(502, { result: -1, error: "response mismatch" });
     return seal(502, { result: -1, error: "upstream response rejected" });
+  }
+  if (hasFormatChar(parsed.fault) || hasFormatChar(parsed.xml) || hasFormatChar(parsed.supp) || hasFormatChar(parsed.resultText)) {
+    return refused();
   }
   if (parsed.kind === "fault") {
     if (containsCredential(parsed.fault, fields)) return refused();

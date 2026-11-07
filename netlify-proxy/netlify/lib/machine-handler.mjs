@@ -11,7 +11,7 @@
 
 import { createLimiter, clientKey } from "./limiter.mjs";
 import { authenticateCaller, callerBucket, callerKeysMatch, readCallerConfig } from "./machine-auth.mjs";
-import { authFailedResponse, deniedResponse, disabledResponse, rateResponse } from "./machine-disabled.mjs";
+import { deniedResponse, rateResponse } from "./machine-disabled.mjs";
 import { createVerifiedDispatch, enforceMachinePolicy } from "./machine-policy.mjs";
 
 export const RATE_LIMITS = Object.freeze({
@@ -40,14 +40,11 @@ export function createMachineHandler(options = {}) {
       const ip = clientKey(req);
       if (ipLimiter.limited(ip)) return rateResponse();
       const config = readCallerConfig(env);
-      if (!config.configured) {
-        callerKeysMatch("unconfigured", "placeholder-not-a-secret");
-        return disabledResponse();
-      }
-      const decision = authenticateCaller(req, config.secret);
-      if (!decision.ok) {
+      const authed = config.configured && authenticateCaller(req, config.secret).ok;
+      if (!config.configured) callerKeysMatch("unconfigured", "placeholder-not-a-secret");
+      if (!authed) {
         if (failLimiter.limited(ip)) return rateResponse();
-        return authFailedResponse();
+        return deniedResponse();
       }
       if (callerLimiter.limited(callerBucket(config.secret))) return rateResponse();
       return await enforceMachinePolicy(req, { dispatch, callerSecret: config.secret, now });

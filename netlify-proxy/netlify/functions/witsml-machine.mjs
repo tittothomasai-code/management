@@ -15,6 +15,17 @@ import { createMachineHandler } from "../lib/machine-handler.mjs";
 // Per-request upstream Basic is still required after the caller key matches,
 // and it is not stored. A random or invalid Basic value is not caller auth.
 //
+// COMPATIBILITY GATES, for review before any use with a real account:
+// * Both the decoded upstream user and the decoded upstream password must be
+//   at least 4 Unicode code points. Shorter Basic values are refused before
+//   any upstream call. This draft does not know whether an existing Adaga
+//   user or password meets that minimum, and it does not change those
+//   credentials. A short account cannot use this route unless that
+//   restriction is separately accepted.
+// * Decoded upstream fields that contain a Unicode Format (Cf) character are
+//   refused. The substring scan is only an exact-substring check. It is not
+//   protection against arbitrary transformations.
+//
 // GATES BEFORE ROLLOUT (this change does not perform them):
 // 1. Operator generates an independent high-entropy secret (at least 32 bytes
 //    from a CSPRNG) and stores it only in the host secret store under

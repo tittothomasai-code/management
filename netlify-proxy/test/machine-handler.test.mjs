@@ -259,6 +259,37 @@ describe("configured machine handler", { concurrency: 1 }, () => {
     assertClean(stopped.raw);
   });
 
+  test("unconfigured and wrong-key failures share one status and body sequence", async () => {
+    const ip = "198.51.100.50";
+    const fresh = () => ({
+      globalLimiter: createLimiter({ perMin: 100 }),
+      ipLimiter: createLimiter({ perMin: 100 }),
+      callerLimiter: createLimiter({ perMin: 100 }),
+    });
+    const unconfigured = createMachineHandler({ httpsImpl: fakeHttps(VERSION_XML), env: {}, ...fresh() });
+    const configured = createMachineHandler({
+      httpsImpl: fakeHttps(VERSION_XML),
+      env: { WITSML_MACHINE_CALLER_SECRET: KEY },
+      ...fresh(),
+    });
+    const seqU = [];
+    const seqC = [];
+    for (let i = 0; i < RATE_LIMITS.authFailPerMin + 1; i++) {
+      const u = await read(await unconfigured(make({ ip, key: WRONG })));
+      const c = await read(await configured(make({ ip, key: WRONG })));
+      seqU.push([u.status, u.body]);
+      seqC.push([c.status, c.body]);
+      assertClean(u.raw);
+      assertClean(c.raw);
+    }
+    assert.deepEqual(seqU, seqC);
+    assert.equal(seqU.filter((row) => row[0] === 403).length, RATE_LIMITS.authFailPerMin);
+    assert.equal(seqU.at(-1)[0], 429);
+    assert.equal(seqU.at(-1)[1].error, "rate limit");
+    assert.equal(seqU[0][1].error, "machine route denied");
+    assert.equal(seqU[0][1].authGate, undefined);
+  });
+
   test("the default entrypoint stays denied until the host secret exists, then uses node https", async () => {
     const previous = process.env.WITSML_MACHINE_CALLER_SECRET;
     delete process.env.WITSML_MACHINE_CALLER_SECRET;
