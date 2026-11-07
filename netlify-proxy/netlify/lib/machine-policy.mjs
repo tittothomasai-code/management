@@ -145,13 +145,44 @@ function credentialClass(texts, fields) {
   return ordered.join("+");
 }
 
+// Where an existing scan matched. Not a new scan. HTTP headers are not included.
+const MATCH_SURFACE_ORDER = Object.freeze([
+  "raw-body",
+  "decoded-xml",
+  "supp-message",
+  "fault",
+  "result",
+  "response-json",
+]);
+
+function matchSurface(entries, fields) {
+  const names = new Set();
+  for (const entry of entries) {
+    if (!entry || typeof entry.text !== "string" || entry.text.length === 0) continue;
+    if (containsCredential(entry.text, fields)) names.add(entry.name);
+  }
+  const ordered = MATCH_SURFACE_ORDER.filter((name) => names.has(name));
+  if (ordered.length === 0) return "ambiguous";
+  return ordered.join("+");
+}
+
+function decodedEntries(parsed) {
+  if (!parsed) return [];
+  return [
+    { name: "fault", text: parsed.fault },
+    { name: "decoded-xml", text: parsed.xml },
+    { name: "supp-message", text: parsed.supp },
+    { name: "result", text: parsed.resultText },
+  ];
+}
+
 function carriesCallerSecret(parsed, callerSecret) {
   if (typeof callerSecret !== "string" || callerSecret.length === 0) return false;
   if (!parsed) return false;
   return [parsed.header, parsed.token, parsed.user, parsed.password, parsed.raw].some((part) => typeof part === "string" && part.includes(callerSecret));
 }
 
-function refusalBody(texts, fields) {
+function refusalBody(texts, fields, entries) {
   const present = texts.filter((value) => typeof value === "string" && value.length > 0);
   const credential = present.some((value) => containsCredential(value, fields));
   const format = present.some((value) => hasFormatChar(value));
@@ -163,20 +194,24 @@ function refusalBody(texts, fields) {
   // Class names only. A raw pair also matches password, and a Basic header
   // also matches its token; those overlaps stay in the joined name. The
   // refusal decision is still any match of the same strings as before.
-  if (credential) body.credentialClass = credentialClass(present, fields);
+  if (credential) {
+    body.credentialClass = credentialClass(present, fields);
+    if (entries) body.matchSurface = matchSurface(entries, fields);
+  }
   return body;
 }
 
-function refusalResponse(texts, fields) {
-  const body = refusalBody(texts, fields);
+function refusalResponse(texts, fields, entries) {
+  const body = refusalBody(texts, fields, entries);
   if (!body) return null;
   return new Response(JSON.stringify(body), { status: 502, headers: { ...BASE_HEADERS } });
 }
 
 function safeJson(status, obj, fields) {
-  const refused = refusalResponse([JSON.stringify(obj)], fields);
-  if (refused) return refused;
-  return new Response(JSON.stringify(obj), { status, headers: { ...BASE_HEADERS } });
+  const text = JSON.stringify(obj);
+  const refused = refusalBody([text], fields, [{ name: "response-json", text }]);
+  if (refused) return new Response(JSON.stringify(refused), { status: 502, headers: { ...BASE_HEADERS } });
+  return new Response(text, { status, headers: { ...BASE_HEADERS } });
 }
 
 function redactFault(value, fields) {
@@ -811,24 +846,45 @@ function finishUpstream(op, up, ms, fields) {
   }
   const text = typeof up.text === "string" ? up.text : "";
   if (text.length > LIMITS.maxResp) return seal(502, { result: -1, error: "upstream response too large" });
-  const rawRefusal = refusalResponse([text], fields);
-  if (rawRefusal) return rawRefusal;
+  const rawEntries = [{ name: "raw-body", text }];
+  const rawHit = refusalBody([text], fields, rawEntries);
+  if (rawHit) {
+    if (rawHit.credentialClass) {
+      let parsed = null;
+      try { parsed = parseUpstreamSoap(op, text); } catch { parsed = null; }
+      rawHit.matchSurface = matchSurface(rawEntries.concat(decodedEntries(parsed)), fields);
+    }
+    return new Response(JSON.stringify(rawHit), { status: 502, headers: { ...BASE_HEADERS } });
+  }
   let parsed;
   try { parsed = parseUpstreamSoap(op, text); }
   catch (err) {
     if (err && err.code === "EMISMATCH") return seal(502, { result: -1, error: "response mismatch" });
     return seal(502, { result: -1, error: "upstream response rejected", reason: "parser-format" });
   }
-  const decodedRefusal = refusalResponse([parsed.fault, parsed.xml, parsed.supp, parsed.resultText], fields);
+  const decoded = decodedEntries(parsed);
+  const decodedRefusal = refusalResponse(
+    [parsed.fault, parsed.xml, parsed.supp, parsed.resultText],
+    fields,
+    decoded,
+  );
   if (decodedRefusal) return decodedRefusal;
   if (parsed.kind === "fault") {
     const fault = redactFault(parsed.fault, fields).slice(0, LIMITS.maxFault);
-    const again = refusalResponse([fault], fields);
+    const again = refusalResponse([fault], fields, [{ name: "fault", text: fault }]);
     if (again) return again;
     return seal(200, { result: -1, error: "SOAP fault: " + fault });
   }
   const supp = redactFault(parsed.supp, fields).slice(0, LIMITS.maxFault);
-  const again = refusalResponse([parsed.xml, supp, parsed.resultText], fields);
+  const again = refusalResponse(
+    [parsed.xml, supp, parsed.resultText],
+    fields,
+    [
+      { name: "decoded-xml", text: parsed.xml },
+      { name: "supp-message", text: supp },
+      { name: "result", text: parsed.resultText },
+    ],
+  );
   if (again) return again;
   if (op === "WMLS_GetVersion") {
     const versions = parseVersionList(parsed.resultText);
