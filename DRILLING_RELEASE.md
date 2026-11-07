@@ -48,6 +48,6 @@ The browser test needs Python Playwright and Chrome. It uses only the local SIM-
 
 ## Real feed gate
 
-The approved proxy currently returns HTTP 403 to an OPTIONS preflight from `https://drilling.robotyx.systems`. No credentials were sent in that check. Its documented origin allow-list only includes the GitHub Pages origin. The proxy owner must approve and release the exact drilling-origin addition before this site can connect. Do not use another origin or proxy to bypass this restriction.
+The approved proxy currently returns HTTP 403 to an OPTIONS preflight from `https://drilling.robotyx.systems`. No credentials were sent in that check. Its documented origin allow-list only includes the GitHub Pages origin. Titto must approve the exact drilling-origin allow-list addition. The proxy owner can then release that change before this site can connect. Do not use another origin or proxy to bypass this restriction.
 
 Credential availability does not prove access or freshness. Mark live validation complete only after two successive new source samples appear for an authorised well, matching wellbore and active time log, with execution disabled. Record the source timestamps, not request or receipt times. Keep credentials out of output, screenshots and source files.
