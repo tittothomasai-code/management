@@ -85,6 +85,7 @@ describe("game origin regression", { concurrency: 1 }, () => {
       "netlify-proxy/test/fixtures/wdash_core.js",
       "netlify-proxy/test/game-origin-regression.test.mjs",
       "netlify-proxy/test/machine-handler.test.mjs",
+      "netlify-proxy/test/machine-one-well-query.test.mjs",
       "netlify-proxy/test/machine-policy.test.mjs",
       "netlify-proxy/test/machine-reader-adapter.test.mjs",
     ]);
