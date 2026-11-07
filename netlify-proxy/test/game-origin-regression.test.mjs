@@ -98,6 +98,11 @@ describe("game origin regression", { concurrency: 1 }, () => {
     const hrefs = [...seen];
     const entry = readFileSync(start, "utf8");
     assert.match(entry, /from\s+"node:https"/);
+    const configBlock = entry.match(/export const config = \{[\s\S]*?\n\};/);
+    assert.ok(configBlock);
+    assert.match(configBlock[0], /path:\s*"\/witsml-machine"/);
+    assert.doesNotMatch(configBlock[0], /MACHINE_PATH/);
+    assert.match(entry, /export const MACHINE_PATH = "\/witsml-machine"/);
     assert.equal(hrefs.some((href) => href.includes("witsml-proxy.mjs")), false);
     assert.equal(hrefs.some((href) => href.includes("core.mjs")), false);
     assert.ok(hrefs.some((href) => href.endsWith("machine-handler.mjs")));

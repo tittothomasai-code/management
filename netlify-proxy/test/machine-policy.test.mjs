@@ -507,6 +507,7 @@ describe("machine read policy", { concurrency: 1 }, () => {
       }), depsFor(impl)));
       assert.equal(out.status, 502, String(i) + " " + out.raw);
       assert.equal(out.body.error, expectMismatch.has(i) ? "response mismatch" : "upstream response rejected");
+      if (!expectMismatch.has(i)) assert.equal(out.body.reason, "parser-format");
       assertClean(out.raw, "SUPERSECRET", "evil.example");
       assert.equal(impl.calls.filter((c) => c.type === "request").length, 1);
     }
@@ -972,6 +973,30 @@ describe("machine read policy", { concurrency: 1 }, () => {
       assert.equal(out.body.xml, undefined, name);
       assert.equal(out.body.version, undefined, name);
     }
+  });
+
+  test("GetVersion accepts a spec version list and labels a bad list without echoing it", async () => {
+    const list = "1.2.0.0,1.3.1.0,1.4.1.1";
+    const impl = fakeHttps({ text: soap("WMLS_GetVersion", "<Result>" + list + "</Result>") });
+    const out = await read(await enforceMachinePolicy(makeReq({
+      body: postBody("WMLS_GetVersion"),
+      headers: { "x-witsml-authorization": AUTH },
+    }), depsFor(impl)));
+    assert.equal(out.status, 200, out.raw);
+    assert.equal(out.body.version, list);
+    assert.deepEqual(out.body.versions, ["1.2.0.0", "1.3.1.0", "1.4.1.1"]);
+    const spaced = "1.4.1.1, 1.3.1.0";
+    const bad = fakeHttps({ text: soap("WMLS_GetVersion", "<Result>" + spaced + "</Result><SuppMsgOut>VERSIONMARKER</SuppMsgOut>") });
+    const rejected = await read(await enforceMachinePolicy(makeReq({
+      body: postBody("WMLS_GetVersion"),
+      headers: { "x-witsml-authorization": AUTH },
+    }), depsFor(bad)));
+    assert.equal(rejected.status, 502);
+    assert.equal(rejected.body.error, "upstream response rejected");
+    assert.equal(rejected.body.reason, "version-format");
+    assert.equal(rejected.raw.includes(spaced), false);
+    assert.equal(rejected.raw.includes("VERSIONMARKER"), false);
+    assert.equal(rejected.body.version, undefined);
   });
 
   test("no real network from the review policy", () => {
