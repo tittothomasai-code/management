@@ -27,9 +27,13 @@ import { createMachineHandler } from "../lib/machine-handler.mjs";
 //    A direct Basic 401 from Adaga has an unknown cause.
 //
 // Rollback: remove this function and redeploy the previous site revision.
-// Unsetting the host secret is an immediate deny switch and does not change
-// the game route. In-process rate limits are per isolate and reset on cold
-// start; the platform rateLimit below is the cross-instance control.
+// That does not change the game route. This handler reads the host environment
+// on each request, but a warm isolate can keep the environment it booted with.
+// Clearing the secret is not an instant deny until the platform has propagated
+// the new environment and the runtime is shown to be using it, which can require
+// a redeploy or isolate recycle. Verify that before treating the route as denied.
+// In-process rate limits are per isolate and reset on cold start. The platform
+// rateLimit below is the cross-instance control and is not exercised by unit tests.
 
 export const DEPLOY_REVISION_EQUIVALENCE = "unverified";
 export const MACHINE_PATH = "/witsml-machine";

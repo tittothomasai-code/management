@@ -4,22 +4,29 @@
 // the function is the cross-instance control.
 // Keys are whatever the caller passes (an address, "global", or a hash of the
 // caller secret). Values are only [windowStart, count]. The raw secret is not a key.
+// The map has a hard cap. Fresh keys are not evicted. A new key is denied when
+// the cap is full, which does not reset an existing key's count. The platform
+// rate limit is a separate control and is not exercised here.
 
 export function createLimiter({ perMin, now = Date.now, windowMs = 60000, maxKeys = 5000 } = {}) {
-  if (!Number.isInteger(perMin) || perMin < 0) throw new Error("bad limit");
+  if (!Number.isInteger(perMin) || perMin < 1 || !Number.isInteger(maxKeys) || maxKeys < 1) throw new Error("bad limit");
   const hits = new Map();
+  const prune = (t) => {
+    for (const [kk, v] of hits) if (t - v[0] >= windowMs) hits.delete(kk);
+  };
   return {
+    size() { return hits.size; },
     limited(key) {
       const k = key || "unknown";
       const t = now();
       let entry = hits.get(k);
-      if (!entry || t - entry[0] >= windowMs) {
-        entry = [t, 0];
-        hits.set(k, entry);
-      }
-      if (hits.size > maxKeys) {
-        for (const [kk, v] of hits) if (t - v[0] >= windowMs) hits.delete(kk);
-      }
+      if (entry && t - entry[0] < windowMs) return ++entry[1] > perMin;
+      prune(t);
+      entry = hits.get(k);
+      if (entry && t - entry[0] < windowMs) return ++entry[1] > perMin;
+      if (hits.size >= maxKeys) return true;
+      entry = [t, 0];
+      hits.set(k, entry);
       return ++entry[1] > perMin;
     },
   };

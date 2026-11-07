@@ -25,11 +25,17 @@ const PASS = "test-secret-not-real";
 const AUTH = "Basic " + Buffer.from("box-user:" + PASS).toString("base64");
 
 let netCalls = 0;
+const originalRequest = https.request;
+const originalGet = https.get;
+const originalFetch = globalThis.fetch;
 https.request = () => { netCalls += 1; throw new Error("network forbidden"); };
 https.get = () => { netCalls += 1; throw new Error("network forbidden"); };
-const originalFetch = globalThis.fetch;
 globalThis.fetch = () => { netCalls += 1; throw new Error("network forbidden"); };
-after(() => { globalThis.fetch = originalFetch; });
+after(() => {
+  https.request = originalRequest;
+  https.get = originalGet;
+  globalThis.fetch = originalFetch;
+});
 
 const proxy = makeProxy({
   upstream: "https://australia.adagasolutions.com/WMLS",
@@ -112,7 +118,7 @@ describe("game origin regression", { concurrency: 1 }, () => {
       assert.doesNotMatch(src, /skipHost/);
       assert.doesNotMatch(src, /NODE_TLS_REJECT_UNAUTHORIZED/);
       assert.doesNotMatch(src, /\bconsole\./);
-      assert.doesNotMatch(src, /from\(\s*[^)]*base64/);
+      if (!rel.endsWith("machine-policy.mjs")) assert.doesNotMatch(src, /from\(\s*[^)]*base64/);
       assert.doesNotMatch(src, /\batob\s*\(/);
       assert.doesNotMatch(src, /node:http\b|node:net|node:dns|child_process/);
       assert.doesNotMatch(src, /\bfetch\s*\(/);
@@ -205,7 +211,8 @@ describe("game origin regression", { concurrency: 1 }, () => {
     }));
     const raw = await res.text();
     assert.equal(res.status, 403);
-    assert.equal(JSON.parse(raw).error, "machine route disabled");
+    assert.equal(JSON.parse(raw).error, "machine route denied");
+    assert.equal(JSON.parse(raw).authGate, undefined);
     assert.equal(res.headers.get("access-control-allow-origin"), null);
     assert.equal(raw.includes(PASS), false);
   });

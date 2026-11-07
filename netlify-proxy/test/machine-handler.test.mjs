@@ -13,11 +13,17 @@ const KEY = "synthetic-not-real-caller-key-0123456789abcd";
 const WRONG = "synthetic-not-real-caller-key-ffffffffffffffff";
 
 let netCalls = 0;
+const originalRequest = https.request;
+const originalGet = https.get;
+const originalFetch = globalThis.fetch;
 https.request = () => { netCalls += 1; throw new Error("network forbidden"); };
 https.get = () => { netCalls += 1; throw new Error("network forbidden"); };
-const originalFetch = globalThis.fetch;
 globalThis.fetch = () => { netCalls += 1; throw new Error("network forbidden"); };
-after(() => { globalThis.fetch = originalFetch; });
+after(() => {
+  https.request = originalRequest;
+  https.get = originalGet;
+  globalThis.fetch = originalFetch;
+});
 
 function fakeHttps(text = "") {
   const calls = [];
@@ -90,6 +96,8 @@ describe("configured machine handler", { concurrency: 1 }, () => {
     assert.equal(callerKeysMatch(WRONG, KEY), false);
     assert.equal(callerKeysMatch("", KEY), false);
     assert.equal(callerKeysMatch(KEY.slice(0, -1) + "q", KEY), false);
+    assert.equal(callerKeysMatch("a".repeat(500), "b".repeat(500)), false);
+    assert.equal(callerKeysMatch("a".repeat(500), "a".repeat(500)), true);
     assert.equal(callerKeysMatch("a".repeat(5000), KEY), false);
     assert.equal(readCallerConfig({}).configured, false);
     assert.equal(readCallerConfig({ WITSML_MACHINE_CALLER_SECRET: "" }).configured, false);
@@ -102,6 +110,13 @@ describe("configured machine handler", { concurrency: 1 }, () => {
     assert.equal(callerBucket(KEY).includes(KEY), false);
     assert.equal(DEPLOY_REVISION_EQUIVALENCE, "unverified");
     assert.equal(RATE_LIMITS.processLocal, true);
+    const bounded = createLimiter({ perMin: 1, maxKeys: 2, now: () => 1000 });
+    assert.equal(bounded.limited("a"), false);
+    assert.equal(bounded.limited("a"), true);
+    assert.equal(bounded.limited("b"), false);
+    for (let i = 0; i < 50; i++) assert.equal(bounded.limited("z" + i), true);
+    assert.equal(bounded.size(), 2);
+    assert.equal(bounded.limited("a"), true);
   });
 
   test("no config denies every caller, including a valid-looking key and basic", async () => {
@@ -128,7 +143,6 @@ describe("configured machine handler", { concurrency: 1 }, () => {
       method: "POST",
       rawHeaders: ["X-Witsml-Machine-Key", KEY, "x-witsml-machine-key", KEY, "content-type", "application/json", "x-witsml-authorization", AUTH],
       headers: { get: (name) => name === "content-type" ? "application/json" : null },
-      async text() { return JSON.stringify({ op: "WMLS_GetVersion" }); },
     };
     const dup = await read(await handle(duplicate));
     const oversized = "OVERSIZE" + "a".repeat(300);
@@ -174,7 +188,8 @@ describe("configured machine handler", { concurrency: 1 }, () => {
     assert.equal((await globalHandle(make({ ip: "198.51.100.1" }))).status, 200);
     const blocked = await read(await globalHandle(make({ ip: "198.51.100.2" })));
     assert.equal(blocked.status, 429);
-    assert.equal(blocked.body.limiter, "process-local");
+    assert.equal(blocked.body.limiter, undefined);
+    assert.equal(blocked.body.error, "rate limit");
     assert.equal(blocked.body.upstreamContact, false);
     assertClean(blocked.raw);
     const failHandle = open(fakeHttps(), { failLimiter: createLimiter({ perMin: 1 }) });
@@ -193,23 +208,42 @@ describe("configured machine handler", { concurrency: 1 }, () => {
     const smuggle = {
       method: "POST",
       rawHeaders: ["content-length", "5", "content-length", "80", "content-type", "application/json", "x-witsml-machine-key", KEY, "x-witsml-authorization", AUTH, "transfer-encoding", "chunked"],
-      async text() { return JSON.stringify({ op: "WMLS_GetVersion" }); },
     };
     const rejected = await read(await handle(smuggle));
     assert.equal(rejected.status, 400);
     assert.equal(rejected.body.error, "request rejected");
     assertClean(rejected.raw);
+    const payload = JSON.stringify({ op: "WMLS_GetVersion" });
+    let readPast = false;
     const mismatch = {
       method: "POST",
       headers: { get(name) {
         const map = { "content-type": "application/json", "content-length": "2", "x-witsml-machine-key": KEY, "x-witsml-authorization": AUTH };
         return map[name] || null;
       } },
-      async text() { return JSON.stringify({ op: "WMLS_GetVersion" }); },
+      body: {
+        getReader() {
+          const first = Buffer.from(payload.slice(0, 2));
+          const rest = Buffer.from(payload.slice(2));
+          let n = 0;
+          return {
+            async read() {
+              n += 1;
+              if (n === 1) return { done: false, value: first };
+              if (n === 2) { readPast = true; return { done: false, value: rest }; }
+              return { done: true, value: undefined };
+            },
+            async cancel() { this.cancelled = true; },
+            releaseLock() {},
+          };
+        },
+      },
     };
     const lied = await read(await handle(mismatch));
     assert.equal(lied.status, 400);
     assert.equal(lied.body.error, "request rejected");
+    assert.equal(readPast, true);
+    assert.equal(lied.raw.includes("WMLS_GetVersion"), false);
     const ac = new AbortController();
     ac.abort();
     const aborted = new Request("https://machine.invalid/witsml-machine", {
@@ -231,7 +265,7 @@ describe("configured machine handler", { concurrency: 1 }, () => {
     try {
       const denied = await read(await handler(make()));
       assert.equal(denied.status, 403);
-      assert.equal(denied.body.error, "machine route disabled");
+      assert.equal(denied.body.error, "machine route denied");
       assert.equal(netCalls, 0);
       process.env.WITSML_MACHINE_CALLER_SECRET = KEY;
       const attempted = await handler(make({ ip: "198.51.100.77" }));

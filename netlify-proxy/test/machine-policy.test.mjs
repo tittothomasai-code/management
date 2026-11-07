@@ -26,11 +26,17 @@ const ACTION = {
 };
 
 let netCalls = 0;
+const originalRequest = https.request;
+const originalGet = https.get;
+const originalFetch = globalThis.fetch;
 https.request = () => { netCalls += 1; throw new Error("network forbidden"); };
 https.get = () => { netCalls += 1; throw new Error("network forbidden"); };
-const originalFetch = globalThis.fetch;
 globalThis.fetch = () => { netCalls += 1; throw new Error("network forbidden"); };
-after(() => { globalThis.fetch = originalFetch; });
+after(() => {
+  https.request = originalRequest;
+  https.get = originalGet;
+  globalThis.fetch = originalFetch;
+});
 
 function fakeHttps(mode = {}) {
   const calls = [];
@@ -117,6 +123,24 @@ function makeReq({ method = "POST", ip, headers = {}, body, noIp = false, key = 
   return new Request("https://machine.invalid/witsml-machine", init);
 }
 
+function bodyStream(text) {
+  const data = Buffer.from(text);
+  let sent = false;
+  return {
+    getReader() {
+      return {
+        async read() {
+          if (sent) return { done: true, value: undefined };
+          sent = true;
+          return { done: false, value: data };
+        },
+        async cancel() { sent = true; },
+        releaseLock() {},
+      };
+    },
+  };
+}
+
 function soap(op, inner, how = "ancestor") {
   const env = how === "ancestor" ? ` xmlns:q1="${WITSML_NS}"` : "";
   const el = how === "element" ? ` xmlns:q1="${WITSML_NS}"` : "";
@@ -160,7 +184,8 @@ describe("machine read policy", { concurrency: 1 }, () => {
     const basicOnly = await enforceMachinePolicy(makeReq({ key: false, body: postBody("WMLS_GetVersion"), headers: { "x-witsml-authorization": AUTH, "x-caller-secret": CALLER_SECRET } }), ready);
     const outNoSecret = await read(noSecret);
     assert.equal(outNoSecret.status, 403);
-    assert.equal(outNoSecret.body.error, "machine route disabled");
+    assert.equal(outNoSecret.body.error, "machine route denied");
+    assert.equal(outNoSecret.body.authGate, undefined);
     for (const res of [unbranded, asHttps]) {
       const out = await read(res);
       assert.equal(out.status, 403);
@@ -170,8 +195,10 @@ describe("machine read policy", { concurrency: 1 }, () => {
     }
     const outBasic = await read(basicOnly);
     assert.equal(outBasic.status, 403);
-    assert.equal(outBasic.body.error, "caller authentication failed");
-    assertClean(outBasic.raw, outNoSecret.raw);
+    assert.equal(outBasic.body.error, "machine route denied");
+    assert.deepEqual(outBasic.body, outNoSecret.body);
+    assertClean(outBasic.raw);
+    assertClean(outNoSecret.raw);
     assert.equal(impl.calls.filter((c) => c.type === "request").length, 0);
     assert.equal(netCalls, 0);
   });
@@ -185,8 +212,8 @@ describe("machine read policy", { concurrency: 1 }, () => {
       const res = await enforceMachinePolicy(makeReq({ headers: { "x-witsml-authorization": AUTH } }), {});
       const out = await read(res);
       assert.equal(out.status, 403);
-      assert.equal(out.body.error, "machine route disabled");
-      assert.equal(out.body.authGate, "unconfigured");
+      assert.equal(out.body.error, "machine route denied");
+      assert.equal(out.body.authGate, undefined);
       assertClean(out.raw);
     } finally {
       for (const [key, value] of previous) {
@@ -349,7 +376,7 @@ describe("machine read policy", { concurrency: 1 }, () => {
         };
         return map[String(name).toLowerCase()] || null;
       } },
-      text: async () => postBody("WMLS_GetVersion"),
+      body: bodyStream(postBody("WMLS_GetVersion")),
     };
     const injected = await read(await enforceMachinePolicy(injectedReq, d));
     for (const out of [missing, wrong, injected]) {
@@ -382,7 +409,7 @@ describe("machine read policy", { concurrency: 1 }, () => {
       headers: { "x-witsml-authorization": AUTH },
     }), depsFor(fakeHttps({ text: fixture("WMLS_GetVersion") }))));
     assert.equal(missing.status, 403);
-    assert.equal(missing.body.error, "caller authentication failed");
+    assert.equal(missing.body.error, "machine route denied");
   });
 
   test("bounds reject oversized input and cap maxReturnNodes", async () => {
@@ -710,6 +737,181 @@ describe("machine read policy", { concurrency: 1 }, () => {
     assert.equal(ok.xml, "<logs/>");
     assert.equal(ok.resultText, "2");
     assert.throws(() => parseUpstreamSoap("WMLS_GetVersion", fixture("WMLS_GetVersion").replace("1.4.1.1", "&SUPERSECRET;")), (err) => err.code === "EBADXML" && !String(err).includes("SUPERSECRET"));
+  });
+
+  test("encoded caller secret is not forwarded and echoed credentials are not returned", async () => {
+    const encoded = "Basic " + Buffer.from("box-user:" + CALLER_KEY).toString("base64");
+    assert.equal(encoded.includes(CALLER_KEY), false);
+    const impl = fakeHttps({ text: fixture("WMLS_GetVersion") });
+    const hidden = await read(await enforceMachinePolicy(makeReq({
+      body: postBody("WMLS_GetVersion"),
+      headers: { "x-witsml-authorization": encoded },
+    }), depsFor(impl)));
+    assert.equal(hidden.status, 400);
+    assert.equal(hidden.body.error, "credentials required");
+    assert.equal(impl.calls.some((c) => c.type === "request"), false);
+    assertClean(hidden.raw);
+    const password = "echo-password";
+    const shortToken = Buffer.from("a:b").toString("base64");
+    assert.ok(shortToken.length >= 4 && shortToken.length <= 7);
+    const echoAuth = "Basic " + Buffer.from("box-user:" + password).toString("base64");
+    const xml = soap("WMLS_GetFromStore", "<Result>1</Result><XMLout>" + password + shortToken + "</XMLout><SuppMsgOut>ok</SuppMsgOut>");
+    const echoed = fakeHttps({ text: xml });
+    const leaked = await read(await enforceMachinePolicy(makeReq({
+      body: postBody("WMLS_GetFromStore"),
+      headers: { "x-witsml-authorization": echoAuth },
+    }), depsFor(echoed)));
+    assert.equal(leaked.status, 502);
+    assert.equal(leaked.body.error, "upstream response refused");
+    assert.equal(leaked.raw.includes(password), false);
+    assert.equal(leaked.raw.includes(shortToken), false);
+    assert.equal(leaked.raw.includes(echoAuth), false);
+    const faultXml = `<soap:Envelope xmlns:soap="${SOAP_NS}"><soap:Body><soap:Fault><faultstring>${password}</faultstring></soap:Fault></soap:Body></soap:Envelope>`;
+    const faulted = fakeHttps({ text: faultXml });
+    const fault = await read(await enforceMachinePolicy(makeReq({
+      body: postBody("WMLS_GetVersion"),
+      headers: { "x-witsml-authorization": echoAuth },
+    }), depsFor(faulted)));
+    assert.equal(fault.status, 502);
+    assert.equal(fault.raw.includes(password), false);
+    assert.equal(fault.body.xml, undefined);
+  });
+
+  test("real Agent options require verification and a sync abort does not end the request twice", async () => {
+    let seen = null;
+    let ended = 0;
+    let requests = 0;
+    const impl = {
+      Agent: class extends https.Agent {
+        constructor(opts) {
+          super(opts);
+          seen = this.options;
+        }
+      },
+      request(options, cb) {
+        requests += 1;
+        assert.equal(options.rejectUnauthorized, true);
+        assert.equal(netCalls, 0);
+        const req = {
+          on() { return req; },
+          write() { return true; },
+          end() { ended += 1; cb({ statusCode: 200, headers: {}, on(ev, fn) { if (ev === "end") fn(); return this; } }); },
+          destroy() {},
+        };
+        return req;
+      },
+    };
+    const dispatch = createVerifiedDispatch(impl, timers());
+    const body = buildEnvelope("WMLS_GetVersion", {});
+    const up = await dispatch({
+      url: FIXED_UPSTREAM,
+      method: "POST",
+      body,
+      headers: {
+        "Content-Type": "text/xml; charset=utf-8",
+        SOAPAction: ACTION.WMLS_GetVersion,
+        Authorization: AUTH,
+        "Content-Length": String(Buffer.byteLength(body)),
+      },
+    });
+    assert.equal(up.status, 200);
+    assert.equal(seen.rejectUnauthorized, true);
+    assert.equal(requests, 1);
+    assert.equal(ended, 1);
+    const ac = new AbortController();
+    let abortEnded = 0;
+    let completions = 0;
+    const abortImpl = {
+      Agent: class { constructor(opts) { this.opts = { ...opts }; } destroy() {} },
+      request(_options, _cb) {
+        const req = {
+          on() { return req; },
+          write() { ac.abort(); return true; },
+          end() { abortEnded += 1; },
+          destroy() {},
+        };
+        return req;
+      },
+    };
+    const aborting = createVerifiedDispatch(abortImpl, timers());
+    const pending = aborting({
+      url: FIXED_UPSTREAM,
+      method: "POST",
+      body,
+      signal: ac.signal,
+      headers: {
+        "Content-Type": "text/xml; charset=utf-8",
+        SOAPAction: ACTION.WMLS_GetVersion,
+        Authorization: AUTH,
+        "Content-Length": String(Buffer.byteLength(body)),
+      },
+    });
+    pending.then(() => { completions += 1; }, () => { completions += 1; });
+    await assert.rejects(pending, (err) => err.code === "ECONN");
+    assert.equal(abortEnded, 0);
+    assert.equal(completions, 1);
+  });
+
+  test("missing, understated, malformed, and chunked bodies stay inside the cap", async () => {
+    const payload = postBody("WMLS_GetVersion");
+    const missing = fakeHttps({ text: fixture("WMLS_GetVersion") });
+    const noLength = {
+      method: "POST",
+      headers: { get(name) {
+        const map = { "content-type": "application/json", "x-witsml-machine-key": CALLER_KEY, "x-witsml-authorization": AUTH };
+        return map[name] || null;
+      } },
+      body: bodyStream(payload),
+    };
+    const ok = await read(await enforceMachinePolicy(noLength, depsFor(missing)));
+    assert.equal(ok.status, 200, ok.raw);
+    let reads = 0;
+    const chunked = {
+      method: "POST",
+      rawHeaders: ["transfer-encoding", "chunked", "content-type", "application/json", "x-witsml-machine-key", CALLER_KEY, "x-witsml-authorization", AUTH],
+      body: { getReader() { return { async read() { reads += 1; return { done: true, value: undefined }; }, async cancel() {}, releaseLock() {} }; } },
+    };
+    const chunk = await read(await enforceMachinePolicy(chunked, depsFor(fakeHttps())));
+    assert.equal(chunk.status, 400);
+    assert.equal(reads, 0);
+    const malformed = {
+      method: "POST",
+      headers: { get(name) {
+        const map = { "content-type": "application/json", "content-length": "10abc", "x-witsml-machine-key": CALLER_KEY, "x-witsml-authorization": AUTH };
+        return map[name] || null;
+      } },
+      body: bodyStream(payload),
+    };
+    const badLen = await read(await enforceMachinePolicy(malformed, depsFor(fakeHttps())));
+    assert.equal(badLen.status, 400);
+    assert.equal(badLen.raw.includes(CALLER_KEY), false);
+    let cancelled = false;
+    const huge = Buffer.alloc(1024, 120);
+    let sent = 0;
+    const over = {
+      method: "POST",
+      headers: { get(name) {
+        const map = { "content-type": "application/json", "x-witsml-machine-key": CALLER_KEY, "x-witsml-authorization": AUTH };
+        return map[name] || null;
+      } },
+      body: {
+        getReader() {
+          return {
+            async read() {
+              if (sent > LIMITS.maxBody) return { done: true, value: undefined };
+              sent += huge.length;
+              return { done: false, value: huge };
+            },
+            async cancel() { cancelled = true; },
+            releaseLock() {},
+          };
+        },
+      },
+    };
+    const tooBig = await read(await enforceMachinePolicy(over, depsFor(fakeHttps())));
+    assert.equal(tooBig.status, 413);
+    assert.equal(cancelled, true);
+    assert.equal(sent <= LIMITS.maxBody + huge.length, true);
   });
 
   test("no real network from the review policy", () => {

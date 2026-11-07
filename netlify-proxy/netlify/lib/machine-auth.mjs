@@ -22,10 +22,17 @@ const WIDTH = MAX_SECRET_LENGTH;
 
 function fixedDigest(value) {
   const src = Buffer.from(typeof value === "string" ? value : "", "utf8");
-  const buf = Buffer.alloc(4 + WIDTH);
-  const tooLong = src.length > WIDTH;
-  buf.writeUInt32BE(tooLong ? 0xffffffff : src.length, 0);
-  if (!tooLong && src.length > 0) src.copy(buf, 4, 0, src.length);
+  // In-range values hash a fixed-width buffer so compare time does not track length.
+  // Longer values are not collapsed to one sentinel: each full input is hashed under
+  // a different domain byte, so distinct oversized strings do not compare equal.
+  // The request path never reaches that branch; it rejects length before compare.
+  if (src.length > WIDTH) {
+    return createHash("sha256").update(Buffer.from([1])).update(src).digest();
+  }
+  const buf = Buffer.alloc(1 + 4 + WIDTH);
+  buf[0] = 0;
+  buf.writeUInt32BE(src.length, 1);
+  if (src.length > 0) src.copy(buf, 5, 0, src.length);
   return createHash("sha256").update(buf).digest();
 }
 

@@ -67,43 +67,71 @@ function json(status, obj) {
   return new Response(JSON.stringify(obj), { status, headers: { ...BASE_HEADERS } });
 }
 
-function tokenOf(auth) {
-  return typeof auth === "string" && auth.startsWith("Basic ") ? auth.slice(6) : "";
+function parseBasic(auth) {
+  if (typeof auth !== "string") return null;
+  const match = /^Basic ([A-Za-z0-9+/]+={0,2})$/.exec(auth);
+  if (!match) return null;
+  const token = match[1];
+  if (token.length < 4 || token.length > 1024 || token.length % 4 !== 0) return null;
+  const buf = Buffer.from(token, "base64");
+  if (!buf.length || buf.toString("base64") !== token) return null;
+  const raw = buf.toString("utf8");
+  if (Buffer.from(raw, "utf8").equals(buf) === false) return null;
+  if (raw.includes("\0") || /[\r\n]/.test(raw)) return null;
+  const colon = raw.indexOf(":");
+  if (colon <= 0 || colon === raw.length - 1) return null;
+  return { header: "Basic " + token, token, user: raw.slice(0, colon), password: raw.slice(colon + 1), raw };
 }
 
-function pushSecret(secrets, value) {
-  if (typeof value === "string" && value.length >= 8) secrets.push(value);
-  const token = tokenOf(value);
-  if (token.length >= 8) secrets.push(token);
+function credentialFields(parsed, callerSecret) {
+  const long = [];
+  const exact = [];
+  const add = (value) => {
+    if (typeof value !== "string" || value.length === 0) return;
+    if (value.length >= 4) long.push(value);
+    else exact.push(value);
+  };
+  if (parsed) {
+    add(parsed.header);
+    add(parsed.token);
+    add(parsed.user);
+    add(parsed.password);
+    add(parsed.raw);
+  }
+  add(callerSecret);
+  return { long, exact };
 }
 
-function safeJson(status, obj, auth, extra) {
-  const secrets = [];
-  pushSecret(secrets, auth);
-  if (Array.isArray(extra)) extra.forEach((value) => pushSecret(secrets, value));
-  else pushSecret(secrets, extra);
+function containsCredential(text, fields) {
+  if (typeof text !== "string" || text.length === 0 || !fields) return false;
+  if (fields.long.some((part) => text.includes(part))) return true;
+  return fields.exact.some((part) => text === part);
+}
+
+function carriesCallerSecret(parsed, callerSecret) {
+  if (typeof callerSecret !== "string" || callerSecret.length === 0) return false;
+  if (!parsed) return false;
+  return [parsed.header, parsed.token, parsed.user, parsed.password, parsed.raw].some((part) => typeof part === "string" && part.includes(callerSecret));
+}
+
+function safeJson(status, obj, fields) {
   let text = JSON.stringify(obj);
   let outStatus = status;
-  if (secrets.some((s) => text.includes(s))) {
+  if (containsCredential(text, fields)) {
     text = JSON.stringify({ result: -1, error: "upstream response refused" });
     outStatus = 502;
   }
   return new Response(text, { status: outStatus, headers: { ...BASE_HEADERS } });
 }
 
-function redact(value, auth, extra) {
+function redactFault(value, fields) {
   let out = String(value);
-  const secrets = [];
-  pushSecret(secrets, auth);
-  if (Array.isArray(extra)) extra.forEach((item) => pushSecret(secrets, item));
-  else pushSecret(secrets, extra);
-  for (const secret of secrets) out = out.split(secret).join("[redacted]");
-  out = out.replace(/Basic\s+[A-Za-z0-9+/=]{8,}/g, "Basic [redacted]");
+  if (fields) {
+    for (const part of fields.long) out = out.split(part).join("[redacted]");
+    for (const part of fields.exact) if (out === part) out = "[redacted]";
+  }
+  out = out.replace(/Basic\s+[A-Za-z0-9+/=]{4,}/g, "Basic [redacted]");
   return out;
-}
-
-function isBasic(auth) {
-  return typeof auth === "string" && /^Basic [A-Za-z0-9+/=]{4,1024}$/.test(auth);
 }
 
 const esc = (s) => String(s)
@@ -360,7 +388,8 @@ function validateSpec(spec) {
   const contentLength = headers["Content-Length"];
   if (contentType !== "text/xml; charset=utf-8") throw coded("EFIXED");
   if (!Object.values(SOAP_ACTIONS).includes(soapAction)) throw coded("EFIXED");
-  if (!isBasic(authorization)) throw coded("EFIXED");
+  const parsedBasic = parseBasic(authorization);
+  if (!parsedBasic) throw coded("EFIXED");
   if (!/^\d{1,8}$/.test(contentLength)) throw coded("EFIXED");
   if (Number(contentLength) !== Buffer.byteLength(spec.body)) throw coded("EFIXED");
   for (const value of [contentType, soapAction, authorization, contentLength]) {
@@ -371,9 +400,8 @@ function validateSpec(spec) {
     const lower = key.toLowerCase();
     if (lower === "x-witsml-machine-key" || lower === "cookie" || lower === "proxy-authorization") throw coded("EFIXED");
   }
-  if (typeof spec.callerSecret === "string" && spec.callerSecret.length >= 8) {
-    const blob = spec.body + "\n" + contentType + "\n" + soapAction + "\n" + authorization + "\n" + contentLength;
-    if (blob.includes(spec.callerSecret)) throw coded("EFIXED");
+  if (carriesCallerSecret(parsedBasic, spec.callerSecret) || (typeof spec.callerSecret === "string" && spec.callerSecret.length > 0 && (spec.body.includes(spec.callerSecret) || contentType.includes(spec.callerSecret) || soapAction.includes(spec.callerSecret)))) {
+    throw coded("EFIXED");
   }
   const op = Object.keys(SOAP_ACTIONS).find((name) => SOAP_ACTIONS[name] === soapAction);
   assertOutgoingEnvelope(op, spec.body);
@@ -389,8 +417,9 @@ export function createVerifiedDispatch(httpsImpl, timers = {}) {
   async function dispatch(spec) {
     validateSpec(spec);
     const agent = new httpsImpl.Agent({ rejectUnauthorized: true, keepAlive: false, maxSockets: 1 });
-    if (agent && agent.opts && agent.opts.rejectUnauthorized !== true) {
-      agent.destroy?.();
+    const stores = [agent && agent.options, agent && agent.opts].filter(Boolean);
+    if (stores.length === 0 || stores.some((store) => store.rejectUnauthorized !== true)) {
+      try { agent.destroy?.(); } catch { /* already closed */ }
       throw coded("ETLS");
     }
     const options = Object.freeze({
@@ -500,6 +529,7 @@ export function createVerifiedDispatch(httpsImpl, timers = {}) {
       if (settled) return;
       try {
         if (spec.body) req.write(spec.body);
+        if (settled) return;
         req.end();
       } catch {
         finish(reject, coded("ECONN"));
@@ -596,7 +626,7 @@ export async function enforceMachinePolicy(req, deps) {
   if (!req || typeof req.method !== "string") return disabledResponse();
   if (!authenticateCaller(req, config.secret).ok) return authFailedResponse();
   if (!deps.dispatch || deps.dispatch.verifiedTransport !== true) return deniedResponse();
-  const seal = (status, obj, auth) => safeJson(status, obj, auth, config.secret);
+  const seal = (status, obj) => safeJson(status, obj, credentialFields(null, config.secret));
   if (req.method === "GET") {
     return seal(200, {
       ok: true,
@@ -623,25 +653,21 @@ export async function enforceMachinePolicy(req, deps) {
   if (!/^application\/json(?:\s*;\s*charset=utf-8)?$/i.test(String(contentType).trim())) {
     return json(415, { result: -1, error: "content-type must be application/json" });
   }
-  const declared = headerValues(req, "content-length");
-  if (declared.length === 1 && Number(declared[0]) > LIMITS.maxBody) {
-    return json(413, { result: -1, error: "request too large" });
-  }
-  const raw = typeof req.text === "function" ? await req.text() : "";
-  if (raw.length > LIMITS.maxBody || Buffer.byteLength(raw) > LIMITS.maxBody) {
-    return json(413, { result: -1, error: "request too large" });
-  }
-  if (declared.length === 1 && Number(declared[0]) !== Buffer.byteLength(raw)) {
-    return seal(400, { result: -1, error: "request rejected" }, "");
-  }
-  if (raw.includes(config.secret)) return seal(400, { result: -1, error: "request rejected" }, "");
+  const bodyResult = await readBoundedBody(req, LIMITS.maxBody);
+  if (bodyResult.error === "too-large") return json(413, { result: -1, error: "request too large" });
+  if (bodyResult.error) return seal(400, { result: -1, error: "request rejected" });
+  const raw = bodyResult.raw;
+  if (raw.includes(config.secret)) return seal(400, { result: -1, error: "request rejected" });
   const validated = validateFields(raw);
   if (validated.error) return validated.error;
   const authValues = headerValues(req, "x-witsml-authorization");
-  if (authValues.length !== 1) return seal(400, { result: -1, error: "credentials required" }, "");
-  const auth = String(authValues[0]);
-  if (auth.includes(config.secret)) return seal(400, { result: -1, error: "credentials required" }, "");
-  if (!isBasic(auth)) return seal(400, { result: -1, error: "credentials required" }, auth);
+  if (authValues.length !== 1) return seal(400, { result: -1, error: "credentials required" });
+  const parsedBasic = parseBasic(String(authValues[0]));
+  if (!parsedBasic || carriesCallerSecret(parsedBasic, config.secret)) {
+    return safeJson(400, { result: -1, error: "credentials required" }, credentialFields(parsedBasic, config.secret));
+  }
+  const fields = credentialFields(parsedBasic, config.secret);
+  const sealCred = (status, obj) => safeJson(status, obj, fields);
   let envelope;
   try {
     envelope = buildEnvelope(validated.op, validated.fields);
@@ -649,7 +675,7 @@ export async function enforceMachinePolicy(req, deps) {
   } catch (err) {
     return mapDispatchError(err);
   }
-  if (envelope.includes(config.secret)) return seal(400, { result: -1, error: "request rejected" }, "");
+  if (envelope.includes(config.secret)) return sealCred(400, { result: -1, error: "request rejected" });
   const now = typeof deps.now === "function" ? deps.now : Date.now;
   const t0 = now();
   let up;
@@ -663,14 +689,14 @@ export async function enforceMachinePolicy(req, deps) {
       headers: {
         "Content-Type": "text/xml; charset=utf-8",
         SOAPAction: SOAP_ACTIONS[validated.op],
-        Authorization: auth,
+        Authorization: parsedBasic.header,
         "Content-Length": String(Buffer.byteLength(envelope)),
       },
     });
   } catch (err) {
-    return seal(mapStatus(err), mapBody(err), auth);
+    return sealCred(mapStatus(err), mapBody(err));
   }
-  return finishUpstream(validated.op, auth, up, Math.max(0, now() - t0), config.secret);
+  return finishUpstream(validated.op, up, Math.max(0, now() - t0), fields);
 }
 
 function mapStatus(err) {
@@ -688,11 +714,9 @@ function mapBody(err) {
   return { result: -1, error: "upstream connection failed" };
 }
 
-function finishUpstream(op, auth, up, ms, callerSecret) {
-  const seal = (status, obj) => safeJson(status, obj, auth, callerSecret);
-  if (typeof callerSecret === "string" && callerSecret.length >= 8 && typeof up?.text === "string" && up.text.includes(callerSecret)) {
-    return seal(502, { result: -1, error: "upstream response refused" });
-  }
+function finishUpstream(op, up, ms, fields) {
+  const seal = (status, obj) => safeJson(status, obj, fields);
+  const refused = () => seal(502, { result: -1, error: "upstream response refused" });
   if (!up || typeof up.status !== "number") {
     return seal(502, { result: -1, error: "upstream connection failed" });
   }
@@ -708,13 +732,8 @@ function finishUpstream(op, auth, up, ms, callerSecret) {
     return seal(502, { result: -1, error });
   }
   const text = typeof up.text === "string" ? up.text : "";
-  if (text.length > LIMITS.maxResp) {
-    return seal(502, { result: -1, error: "upstream response too large" });
-  }
-  const token = tokenOf(auth);
-  if ((auth && text.includes(auth)) || (token.length >= 8 && text.includes(token))) {
-    return seal(502, { result: -1, error: "upstream response refused" });
-  }
+  if (text.length > LIMITS.maxResp) return seal(502, { result: -1, error: "upstream response too large" });
+  if (containsCredential(text, fields)) return refused();
   let parsed;
   try { parsed = parseUpstreamSoap(op, text); }
   catch (err) {
@@ -722,12 +741,14 @@ function finishUpstream(op, auth, up, ms, callerSecret) {
     return seal(502, { result: -1, error: "upstream response rejected" });
   }
   if (parsed.kind === "fault") {
-    const fault = redact(parsed.fault, auth, callerSecret).slice(0, LIMITS.maxFault);
+    if (containsCredential(parsed.fault, fields)) return refused();
+    const fault = redactFault(parsed.fault, fields).slice(0, LIMITS.maxFault);
+    if (containsCredential(fault, fields)) return refused();
     return seal(200, { result: -1, error: "SOAP fault: " + fault });
   }
-  const supp = redact(parsed.supp, auth, callerSecret).slice(0, LIMITS.maxFault);
-  if (typeof parsed.xml === "string" && typeof callerSecret === "string" && parsed.xml.includes(callerSecret)) {
-    return seal(502, { result: -1, error: "upstream response refused" });
+  const supp = redactFault(parsed.supp, fields).slice(0, LIMITS.maxFault);
+  if (containsCredential(parsed.xml, fields) || containsCredential(supp, fields) || containsCredential(parsed.resultText, fields)) {
+    return refused();
   }
   if (op === "WMLS_GetVersion") {
     if (!/^[0-9A-Za-z][0-9A-Za-z._-]{0,31}$/.test(parsed.resultText)) {
@@ -739,4 +760,46 @@ function finishUpstream(op, auth, up, ms, callerSecret) {
     return seal(502, { result: -1, error: "upstream response rejected" });
   }
   return seal(200, { result: Number(parsed.resultText), xml: parsed.xml, supp, ms });
+}
+
+async function readBoundedBody(req, max) {
+  const declared = headerValues(req, "content-length");
+  if (declared.length > 1) return { error: "rejected" };
+  let declaredN = null;
+  if (declared.length === 1) {
+    const rawLen = String(declared[0]).trim();
+    if (!/^[0-9]{1,8}$/.test(rawLen)) return { error: "rejected" };
+    declaredN = Number(rawLen);
+    if (!Number.isSafeInteger(declaredN) || declaredN > max) return { error: declaredN > max ? "too-large" : "rejected" };
+  }
+  const stream = req && req.body;
+  if (!stream || typeof stream.getReader !== "function") return { error: "rejected" };
+  const reader = stream.getReader();
+  const chunks = [];
+  let total = 0;
+  let cancelled = false;
+  try {
+    while (true) {
+      const step = await reader.read();
+      if (!step || step.done) break;
+      const buf = Buffer.isBuffer(step.value) ? step.value : Buffer.from(step.value);
+      total += buf.length;
+      if (total > max || (declaredN !== null && total > declaredN)) {
+        cancelled = true;
+        try { await reader.cancel(); } catch { /* already closed */ }
+        return { error: total > max ? "too-large" : "rejected" };
+      }
+      chunks.push(buf);
+    }
+  } catch {
+    cancelled = true;
+    try { await reader.cancel(); } catch { /* already closed */ }
+    return { error: "rejected" };
+  } finally {
+    if (!cancelled) {
+      try { reader.releaseLock?.(); } catch { /* already released */ }
+    }
+  }
+  if (declaredN !== null && total !== declaredN) return { error: "rejected" };
+  return { raw: Buffer.concat(chunks).toString("utf8") };
 }

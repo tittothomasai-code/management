@@ -1,38 +1,24 @@
 // Static responses for /witsml-machine. No secret is read or written here.
-// Unconfigured and failed-auth bodies are distinct so an operator can see
-// whether the host secret is loaded. Neither body contains a credential.
-
-export const UNCONFIGURED_BODY = Object.freeze({
-  result: -1,
-  error: "machine route disabled",
-  authGate: "unconfigured",
-  callerAuthentication: "host-env-secret",
-  upstreamContact: false,
-  tlsVerify: "required",
-  storesUpstreamCredentials: false,
-});
-
-export const AUTH_FAILED_BODY = Object.freeze({
-  result: -1,
-  error: "caller authentication failed",
-  authGate: "configured",
-  upstreamContact: false,
-  tlsVerify: "required",
-  storesUpstreamCredentials: false,
-});
+// Unconfigured and failed-auth requests share one 403 body. Whether a host
+// secret is loaded is an operator fact (readCallerConfig), not a public field.
+// The in-process limiter is also not described in the response. Its process-local
+// limit is documented next to the handler.
 
 export const DENIED_BODY = Object.freeze({
   result: -1,
   error: "machine route denied",
   upstreamContact: false,
   tlsVerify: "required",
+  storesUpstreamCredentials: false,
 });
+
+export const UNCONFIGURED_BODY = DENIED_BODY;
+export const AUTH_FAILED_BODY = DENIED_BODY;
 
 const RATE_BODY = Object.freeze({
   result: -1,
   error: "rate limit",
   upstreamContact: false,
-  limiter: "process-local",
 });
 
 function headers(extra) {
