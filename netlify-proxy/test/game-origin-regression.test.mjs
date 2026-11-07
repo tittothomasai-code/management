@@ -5,7 +5,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import https from "node:https";
 import { after, describe, test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { ORIGIN, makeProxy } from "../netlify/lib/core.mjs";
+import { ORIGIN, ORIGINS, makeProxy } from "../netlify/lib/core.mjs";
 import handler, { DEPLOY_REVISION_EQUIVALENCE } from "../netlify/functions/witsml-machine.mjs";
 
 // DEPLOY REVISION EQUIVALENCE: unverified.
@@ -16,10 +16,11 @@ import handler, { DEPLOY_REVISION_EQUIVALENCE } from "../netlify/functions/witsm
 // revision, and a green test is not an Adaga connection.
 
 const CANONICAL = {
-  "../netlify/lib/core.mjs": "9a995e9fbb0fd6f7440514bd6f2102d574f6ab4eaf6e6948a6cd0dd0fd8731d5",
+  "../netlify/lib/core.mjs": "74c687f08f4499bacb89b5d3a394859102e17707a8804c277cf4121589eb7825",
   "../netlify/functions/witsml-proxy.mjs": "d8c4e95580c2544567fe658d6ae41d1b5cce4b02c47da6a7c0d93eb205736b34",
   "../netlify.toml": "ecf28bdecdd81726a880eab4ddf070d74f2d1f011a7c6d2d0c1c247d2484bb39",
 };
+const DRILLING_ORIGIN = "https://drilling.robotyx.systems";
 const BASE = "68115abee8a388d2669f4d96ab4ef2ba44d15fcc";
 const PASS = "test-secret-not-real";
 const AUTH = "Basic " + Buffer.from("box-user:" + PASS).toString("base64");
@@ -73,6 +74,7 @@ describe("game origin regression", { concurrency: 1 }, () => {
     ]);
     assert.deepEqual([...names].sort(), [
       "netlify-proxy/netlify/functions/witsml-machine.mjs",
+      "netlify-proxy/netlify/lib/core.mjs",
       "netlify-proxy/netlify/lib/limiter.mjs",
       "netlify-proxy/netlify/lib/machine-auth.mjs",
       "netlify-proxy/netlify/lib/machine-disabled.mjs",
@@ -154,6 +156,10 @@ describe("game origin regression", { concurrency: 1 }, () => {
       { origin: ORIGIN + "/" },
       { origin: "https://Tittothomasai-code.github.io" },
       { origin: "" },
+      { origin: DRILLING_ORIGIN + ".evil.example" },
+      { origin: DRILLING_ORIGIN + "/" },
+      { origin: "http://drilling.robotyx.systems" },
+      { origin: "https://Drilling.robotyx.systems" },
     ];
     for (const item of cases) {
       const res = await proxy(gameReq({
@@ -169,6 +175,35 @@ describe("game origin regression", { concurrency: 1 }, () => {
       assert.equal(raw.includes(AUTH), false);
       assert.equal(raw.includes("machine route"), false);
     }
+  });
+
+  test("approved origins pass preflight and other origins stay closed", async () => {
+    assert.deepEqual([...ORIGINS], [ORIGIN, DRILLING_ORIGIN]);
+    for (const origin of [ORIGIN, DRILLING_ORIGIN]) {
+      const allowed = await proxy(gameReq({ method: "OPTIONS", origin }));
+      assert.equal(allowed.status, 204, origin);
+      assert.equal(await allowed.text(), "");
+      assert.equal(allowed.headers.get("access-control-allow-origin"), origin);
+      assert.equal(allowed.headers.get("access-control-allow-methods"), "POST, GET, OPTIONS");
+      assert.equal(allowed.headers.get("access-control-allow-headers"), "Content-Type, X-Witsml-Authorization");
+      assert.equal(allowed.headers.get("access-control-allow-origin").includes("*"), false);
+      const info = await proxy(gameReq({ method: "GET", origin }));
+      const body = await info.json();
+      assert.equal(info.status, 200, origin);
+      assert.equal(body.storesCredentials, false);
+      assert.equal(body.rateLimitPerMin, 60);
+      assert.deepEqual(body.ops, ["WMLS_GetVersion", "WMLS_GetCap", "WMLS_GetFromStore"]);
+      assert.equal(info.headers.get("access-control-allow-origin"), origin);
+    }
+    for (const origin of ["https://evil.example", DRILLING_ORIGIN + ".evil.example", "null"]) {
+      const denied = await proxy(gameReq({ method: "OPTIONS", origin }));
+      assert.equal(denied.status, 403, origin);
+      assert.equal(denied.headers.get("access-control-allow-origin"), null);
+    }
+    const missing = await proxy(gameReq({ method: "OPTIONS" }));
+    assert.equal(missing.status, 403);
+    assert.equal(missing.headers.get("access-control-allow-origin"), null);
+    assert.equal(netCalls, 0);
   });
 
   test("the game origin still unlocks only the existing CORS preflight and GET metadata", async () => {
@@ -215,8 +250,9 @@ describe("game origin regression", { concurrency: 1 }, () => {
   });
 
   test("the machine route does not accept the game origin as authentication", async () => {
+    for (const origin of [ORIGIN, DRILLING_ORIGIN]) {
     const res = await handler(gameReq({
-      origin: ORIGIN,
+      origin,
       headers: { "x-witsml-authorization": AUTH },
       body: JSON.stringify({ op: "WMLS_GetVersion" }),
     }));
@@ -226,6 +262,7 @@ describe("game origin regression", { concurrency: 1 }, () => {
     assert.equal(JSON.parse(raw).authGate, undefined);
     assert.equal(res.headers.get("access-control-allow-origin"), null);
     assert.equal(raw.includes(PASS), false);
+    }
   });
 
   test("no real network", () => {
