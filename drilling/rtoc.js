@@ -140,7 +140,7 @@ export function open(){if(ST.el){render();return API}startRecorder();
  layout();render();loop();setTimeout(()=>$('rtClose')?.focus(),0);return API}
 function showSummary(){
  const box=$('rtSummary'),body=$('rtSummaryBody'),d=data(),src=d.src;
- box.hidden=false;
+ box.hidden=false;ST.summaryKey=src.key;
  if(src.kind!=='WITSML'||src.test||!src.D){
   $('rtSummaryTitle').textContent='Historical well summary';
   body.innerHTML='';
@@ -226,7 +226,7 @@ function data(){const src=source(),rec=recorded(src.key);ST.sel=(ST.pins||{})[sr
  else x={plan:planPath(),cas:casing(),lay:layers(),td:PLAN.td_md,az:PLAN.azi,ref:null,planSrc:'SIM physics plan',casSrc:'SIM casing program',ro:false};
  return {src,rec,J,S,...x,j:selJoint(J),cur:curJoint(J)}}
 export function state(){const d=data();return {open:!!ST.el,sel:ST.sel,layer:ST.layer,roof:ST.roof,ctx:ST.ctx,src:d.src,joints:d.J.map(j=>({n:j.n,startMd:j.startMd,endMd:j.endMd,open:j.open,partial:j.partial})),shown:d.j&&{n:d.j.n,startMd:d.j.startMd,endMd:d.j.endMd}}}
-function render(force){if(!ST.el)return;const d=data(),{J,S,j,src}=d,review=ST.sel!=null;
+function render(force){if(!ST.el)return;const d=data(),{J,S,j,src}=d,review=ST.sel!=null;if($('rtSummary')&&!$('rtSummary').hidden&&ST.summaryKey!==src.key)hideSummary();
  $('rtSrc').textContent=src.kind=='SIM'?'SIMULATED DEMO':src.kind=='SIMHIST'?'SIM HISTORY · read-only':src.kind=='WITSMLWAIT'?'WITSML NOT CONNECTED':src.test?'TEST FIXTURE · synthetic, not a real well':'WITSML · read-only';$('rtSrc').className='badge'+(src.kind=='WITSML'?' w':'');wsel(src);
  $('rtConnectW').disabled=!!WL.busy;$('rtConnectW').textContent=WL.io?'Refresh WITSML wells':'Connect live WITSML';
  $('rtWell').textContent=(src.kind=='SIM'?'SIMULATED DEMO':src.kind=='WITSMLWAIT'?'Connect to an authorized WITSML store':src.label)+(S.formation?' · '+S.formation:'')+(src.D?(src.D.current?' · CURRENT':' · HISTORIC'):'');
