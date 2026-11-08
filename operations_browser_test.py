@@ -22,7 +22,15 @@ with sync_playwright() as pw:
   p.goto(args.base_url.rstrip('/')+'/?operations');p.wait_for_selector('#dwOperations');p.wait_for_function('window.GX?.witsml?.start && window.GEO && window.GX?.player',timeout=120000);p.wait_for_timeout(1500)
   assert p.locator('#intro').count()==0,'Operations deep link must skip the startup intro'
   assert p.locator('#plJoin').count()==0,'Observer mode must not require a simulator player profile'
-  assert p.locator('#opsSource').inner_text()=='TRAINING SIMULATION'
+  def badge():
+    return p.locator('#opsSource').inner_text()
+  def kind(text):
+    return text.split(' · ',1)[0]
+  assert badge()=='TRAINING SIMULATION'
+  p.evaluate('GX.witsml.open()');p.wait_for_selector('#wproxy')
+  assert p.locator('#dwOperations').is_visible()
+  assert p.locator('#wproxy').evaluate('(e)=>{const r=e.getBoundingClientRect();return e===document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)}'),'WITSML panel must stay above the operations overlay'
+  p.locator('#wx').click();p.wait_for_function('!document.getElementById("witsml")')
   assert p.locator('#opsScene').evaluate('(c)=>c.width>0 && c.height>0')
   assert p.locator('#opsEmpty').is_hidden()
   assert p.locator('#opsTally li').count()>0
@@ -43,28 +51,41 @@ with sync_playwright() as pw:
   p.wait_for_function('document.querySelector("#wlog option[value=TLOG]") && !document.querySelector("#wgo").disabled && GX.witsml.WML.preview?.w==="DR101L" && GX.witsml.WML.preview?.b==="WB01B02"')
   p.locator('#wlog').select_option('TLOG');p.locator('#wgo').click();p.wait_for_function('GX.witsml.WML.rows>0');p.wait_for_timeout(1500)
   p.locator('#wx').click();p.evaluate('import("./operations.js").then(m=>m.open())');p.wait_for_selector('#dwOperations');p.wait_for_timeout(700)
-  assert p.locator('#opsSource').inner_text()=='WITSML SIM-TEST',p.locator('#opsSource').inner_text()
+  live=badge();assert kind(live)=='WITSML SIM-TEST' and 'last source row ' in live and not live.startswith('WITSML LIVE'),live
+  p.evaluate('''() => {
+    const W = GX.witsml.WML, C = GX.witsml.CFG;
+    window.__prov = {sim:W.simulated, name:W.log.name, well:W.log.nameWell, url:C.url};
+    W.simulated = false; W.log.name = 'General Time-Based'; W.log.nameWell = 'SYNTHETIC WELL'; W.log.nameWellbore = 'SYNTHETIC WB';
+    C.url = 'https://australia.adagasolutions.com/WMLS';
+  }''')
+  p.wait_for_timeout(600)
+  synthetic=badge();assert kind(synthetic)=='WITSML SIM-TEST' and not synthetic.startswith('WITSML LIVE'),synthetic
+  p.evaluate('''() => { const W = GX.witsml.WML, C = GX.witsml.CFG, k = window.__prov; W.simulated = k.sim; W.log.name = k.name; W.log.nameWell = k.well; C.url = k.url; }''')
+  p.wait_for_timeout(500)
+  fitted=p.locator('#dwOperations').evaluate('(e)=>({width:e.clientWidth,scroll:e.scrollWidth})')
+  assert fitted['scroll']<=fitted['width']+1,fitted
   assert p.locator('[data-cmd]:enabled').count()==0
   assert 'WB01B02' in p.locator('#opsWell').inner_text(),p.locator('#opsWell').inner_text()
   assert p.evaluate('GX.witsml.WML.log.b')=='WB01B02'
   assert 'No channel' in p.locator('#opsControl').inner_text()
   assert 'No mapped anti-collision data' in p.locator('#opsRadarDetail').inner_text()
   p.evaluate('window.fixtureHistory=GX.witsml.WML.hist;GX.witsml.WML.hist=[]');p.wait_for_timeout(600)
-  assert p.locator('#opsSource').inner_text()=='WITSML WAITING'
+  assert badge()=='WITSML WAITING'
   assert p.locator('[data-cmd]:enabled').count()==0
   p.evaluate('GX.witsml.WML.hist=window.fixtureHistory;window.fixtureIndexType=GX.witsml.WML.log.indexType;GX.witsml.WML.log.indexType="measured depth"');p.wait_for_timeout(600)
-  assert p.locator('#opsSource').inner_text()=='WITSML TIME LOG REQUIRED'
+  assert badge()=='WITSML TIME LOG REQUIRED'
   p.evaluate('GX.witsml.WML.log.indexType=window.fixtureIndexType');p.wait_for_timeout(600)
-  assert p.locator('#opsSource').inner_text()=='WITSML SIM-TEST'
-  first=p.locator('#opsFooter').inner_text()
-  p.wait_for_timeout(11000);second=p.locator('#opsFooter').inner_text();assert first!=second,(first,second)
+  restored=badge();assert kind(restored)=='WITSML SIM-TEST' and not restored.startswith('WITSML LIVE'),restored
+  first=p.locator('#opsFooter').inner_text();first_row=badge().split('row ',1)[1].split(' ',1)[0]
+  p.wait_for_timeout(11000);second=p.locator('#opsFooter').inner_text();second_row=badge().split('row ',1)[1].split(' ',1)[0]
+  assert first!=second and first_row!=second_row and first_row.endswith('Z') and second_row.endswith('Z'),(first,second,first_row,second_row)
   assert p.locator('#opsTrack0').evaluate('(c)=>c.width>0 && c.height>0')
   p.locator('#opsLoadImage').click();p.wait_for_function('!document.querySelector("#opsLoadImage").disabled');p.wait_for_timeout(500)
   image=p.locator('#opsDepth').inner_text()
   assert 'MWD Image' in image,image
   p.screenshot(path=str(OUT/(mode+'-fixture.png')),full_page=True)
   p.evaluate('clearInterval(GX.witsml.WML.timer);GX.witsml.WML.timer=null;GX.witsml.WML.lastRowMs=Date.now()-180000')
-  p.wait_for_timeout(650);assert p.locator('#opsSource').inner_text()=='WITSML STALE'
+  p.wait_for_timeout(650);stale=badge();assert kind(stale)=='WITSML STALE' and 'last source row ' in stale,stale
   assert p.locator('[data-cmd]:enabled').count()==0
   assert 'Feed stale' in p.locator('#opsControl').inner_text()
   p.screenshot(path=str(OUT/(mode+'-stale.png')),full_page=True)

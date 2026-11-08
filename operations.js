@@ -1,5 +1,5 @@
 import {FT, TRACKS, drilledIntervals, feedJoints, feedSource, finite, imageRows,
-  jointProgress, readSamples, surveyMatches} from './operations_data.js';
+  jointProgress, readSamples, sourceStamp, surveyMatches} from './operations_data.js';
 import {chart, imageLog} from './operations_plots.js';
 import {minCurvStations, pointAt, samplePath} from './geo.js';
 import {pair, radius} from './ac.js';
@@ -316,10 +316,10 @@ function render() {
   if (!root) return;
   const g = window.G, api = window.GX?.witsml;
   if (!g) return;
-  const source = feedSource(api?.WML);
+  const source = feedSource(api?.WML, Date.now(), api?.CFG);
   const m = source === 'SIM' ? gameModel(g) : feedModel(api,source);
   set('opsWell','DRILLING OPERATIONS  •  ' + m.label);
-  set('opsSource',source === 'SIM' ? 'TRAINING SIMULATION' : source);
+  set('opsSource',(source === 'SIM' ? 'TRAINING SIMULATION' : source) + sourceStamp(api?.WML, source));
   $('opsSource').dataset.live = source === 'WITSML LIVE';
   $('opsConnect').disabled = !api?.open;
   renderTally(m); radar(m); renderSignals(m); renderScene(m); renderPlots(m);
@@ -344,7 +344,8 @@ function render() {
 
 function command(cmd) {
   const {S:s,PH:ph,act,startConn} = window.G;
-  if (feedSource(window.GX?.witsml?.WML) !== 'SIM' || s.seq) return;
+  const api = window.GX?.witsml;
+  if (feedSource(api?.WML, Date.now(), api?.CFG) !== 'SIM' || s.seq) return;
   if (cmd === 'survey') {
     if (s.md > s.lastS + .001) ph.survey(s);
     message = 'Survey recorded at ' + fmt(s.md*FT) + ' m MD';
@@ -387,7 +388,7 @@ function keydown(e) {
 function loadCSS() {
   if ($('opsCSS')) return;
   const link = document.createElement('link');
-  link.id = 'opsCSS'; link.rel = 'stylesheet'; link.href = new URL('./operations.css',import.meta.url);
+  link.id = 'opsCSS'; link.rel = 'stylesheet'; link.href = new URL('./operations.css?v=ol2',import.meta.url);
   document.head.append(link);
 }
 

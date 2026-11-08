@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {runInNewContext} from 'node:vm';
-import {drilledIntervals, feedJoints, feedSource, imageRows, jointProgress, readSamples, surveyMatches} from './operations_data.js';
+import {drilledIntervals, feedJoints, feedSource, fixtureFeed, imageRows, jointProgress, readSamples, sourceStamp, surveyMatches} from './operations_data.js';
 
 const env = {window:{}, localStorage:{getItem:()=>null}, document:{readyState:'loading',addEventListener(){}}};
 runInNewContext(readFileSync(new URL('./units.js',import.meta.url),'utf8'),env);
@@ -17,6 +17,29 @@ assert.equal(feedSource({...w,hist:[]},now),'WITSML WAITING','header timestamp a
 assert.equal(feedSource({...w,hist:[{t:NaN}]},now),'WITSML WAITING');
 assert.equal(feedSource({...w,hist:[{t:now-180000}],lastRowMs:now},now),'WITSML STALE','source timestamp, not receipt time, controls freshness');
 assert.equal(feedSource({...w,log:{...w.log,indexType:'measured depth'}},now),'WITSML TIME LOG REQUIRED');
+const approved = {url:'https://australia.adagasolutions.com/WMLS', proxy:'https://tryfecta-witsml-proxy.netlify.app/witsml-proxy'};
+const synthetic = {...w, simulated:false, log:{...w.log, name:'General Time-Based', nameWell:'SYNTHETIC WELL', nameWellbore:'SYNTHETIC WB'}};
+assert.equal(feedSource(synthetic, now, approved), 'WITSML SIM-TEST', 'synthetic fixture on the approved proxy is not LIVE');
+assert.equal(fixtureFeed({...w, simulated:false, log:{...w.log, nameWell:'Highland 22', nameWellbore:'SYNTHETIC WB', name:'Time'}}, approved), true, 'wellbore identity counts, not only the well name');
+assert.equal(feedSource({...w, simulated:false, supp:'SIM-TEST mock', log:{...w.log, nameWell:'Highland 22', name:'Time'}}, now, approved), 'WITSML SIM-TEST', 'store SuppMsgOut is provenance');
+assert.equal(feedSource({...w, simulated:false, log:{...w.log, nameWell:'Highland 22', name:'Time'}}, now, {url:'https://customer.example/witsml', proxy:'https://logs.example/custom-proxy'}), 'WITSML LIVE', 'custom store with ordinary names can be LIVE');
+assert.equal(feedSource({...w, simulated:false, log:{...w.log, nameWell:'Highland 22', name:'Time'}}, now, approved), 'WITSML LIVE', 'approved proxy plus a real well name can be LIVE');
+assert.equal(feedSource({...w, simulated:false, log:{...w.log, nameWell:'Highland 22', name:'Time'}}, now, {url:'https://sim.example.com/witsml', proxy:approved.proxy}), 'WITSML LIVE', 'a sim hostname or the approved proxy is not itself a fixture');
+assert.equal(feedSource({...w, simulated:false, log:{...w.log, nameWell:'Highland 22', name:'Time'}}, now, {url:'http://127.0.0.1:8952/witsml'}), 'WITSML SIM-TEST');
+assert.equal(feedSource({...w, simulated:false, log:{...w.log, nameWell:'Highland 22', name:'Time'}}, now, {url:'https://customer.example/sim/witsml'}), 'WITSML SIM-TEST');
+assert.equal(feedSource({...synthetic, lastRowMs:now-180000}, now, approved), 'WITSML STALE');
+assert.notEqual(feedSource(synthetic, now, approved), 'WITSML LIVE');
+const headerEnd = now - 1000;
+assert.equal(sourceStamp({lastRowMs: headerEnd, hist: [], okAt: now}, 'WITSML WAITING', now), '', 'log header end is not a source row');
+assert.equal(sourceStamp({lastRowMs: now, hist: [], okAt: now}, 'WITSML LIVE', now), '', 'client clock in lastRowMs is not a source row');
+assert.equal(sourceStamp({lastRowMs: headerEnd, hist: [{t: headerEnd}], okAt: now}, 'WITSML TIME LOG REQUIRED', now), '');
+assert.equal(sourceStamp({hist: [{t: headerEnd}]}, 'SIM', now), '');
+const stamped = sourceStamp({lastRowMs: headerEnd, hist: [{t: headerEnd}], okAt: now, simulated: true}, 'WITSML SIM-TEST', now);
+assert.equal(stamped, ' · last source row ' + new Date(headerEnd).toISOString().replace(/\.\d{3}Z$/, 'Z') + ' (age 1 s)');
+assert.equal(stamped.includes('WITSML LIVE'), false);
+const split = sourceStamp({lastRowMs: now, hist: [{t: now - 5000}], okAt: now}, 'WITSML STALE', now);
+assert.match(split, /age 5 s/, 'age follows the parsed sample, not okAt or lastRowMs');
+assert.match(split, new RegExp('index ' + new Date(now).toISOString().replace(/\.\d{3}Z$/, 'Z')));
 
 const input = {
   ml:['TIME','CUSTOM_HD','BITDEP','RPM','MFIA','SPPA','WOB','CUSTOM_RET','AC_MIN_SF','MOTOR_STALL_ALARM','ECD','TGAS'],

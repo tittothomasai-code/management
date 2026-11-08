@@ -84,3 +84,7 @@
   #dwOperations .ops-meta {order:3;width:100%;text-align:left;padding-bottom:5px}
   #dwOperations .ops-legend {gap:4px}
 }
+/* Connection panel opened while Operations is open stays above that overlay. */
+body:has(#dwOperations) #witsml{z-index:100021 !important}
+/* The source-row status wraps on a phone instead of pushing WITSML / Exit off screen. */
+@media (max-width:620px){#dwOperations .ops-header .ops-flex{flex-wrap:wrap;gap:6px;max-width:100%}#dwOperations .ops-badge{white-space:normal;flex:1 1 100%}}
