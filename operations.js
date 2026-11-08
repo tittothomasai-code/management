@@ -26,10 +26,13 @@ const MARKUP = `
   <div class="ops-shell">
     <header class="ops-header">
       <h1 class="ops-brand"><em>ROBOTYX</em><i>/</i>DRILLING WORLD</h1>
-      <div class="ops-meta" id="opsWell">DRILLING OPERATIONS</div>
+      <div class="ops-meta"><div id="opsWell">DRILLING OPERATIONS</div><time id="opsSourceTime" class="ops-muted"></time></div>
       <div class="ops-flex"><span class="ops-badge" id="opsSource" role="status">STARTING</span>
-        <button id="opsConnect" type="button">WITSML</button><button id="opsClose" type="button">Exit dashboard</button></div>
+        <button id="opsConnect" type="button" aria-expanded="false" aria-controls="opsWitsmlDock">WITSML</button><button id="opsClose" type="button">Exit dashboard</button></div>
     </header>
+    <div class="ops-layout">
+    <aside id="opsWitsmlDock" aria-label="WITSML connection" hidden></aside>
+    <div class="ops-content">
     <div class="ops-grid">
       <aside class="ops-panel">
         <div class="ops-heading ops-flex"><h2>Joint tally</h2><span class="ops-muted">End MD (m)</span></div>
@@ -71,6 +74,8 @@ const MARKUP = `
     </section>
     <div class="ops-tracks">${TRACK_HTML}</div>
     <footer class="ops-footer"><span id="opsSurvey"></span><span id="opsFooter"></span></footer>
+    </div>
+    </div>
   </div>`;
 
 let root, scene, timer, view = 'mode', origin, message = '', messageAt = 0;
@@ -316,7 +321,7 @@ function render() {
   if (!root) return;
   const g = window.G, api = window.GX?.witsml;
   if (!g) return;
-  const source = feedSource(api?.WML);
+  const source = feedSource(api?.WML,Date.now(),api?.CFG);
   const m = source === 'SIM' ? gameModel(g) : feedModel(api,source);
   set('opsWell','DRILLING OPERATIONS  •  ' + m.label);
   set('opsSource',source === 'SIM' ? 'TRAINING SIMULATION' : source);
@@ -335,6 +340,12 @@ function render() {
     s.dw.mode === 'hold' ? 'Hold active' : s.mode === 'slide' ? 'Slide active' : 'Rotary active';
   set('opsExecution',Date.now() < messageAt+3500 ? message : state);
   const latest = m.rows.at(-1);
+  const sourceTime = $('opsSourceTime');
+  const iso = source === 'SIM' || !finite(latest?.t) ? '' : new Date(latest.t * 1000).toISOString();
+  sourceTime.hidden = source === 'SIM';
+  sourceTime.textContent = iso ? 'SOURCE ' + iso.slice(0,16).replace('T',' ') + ' UTC' : 'SOURCE TIME UNAVAILABLE';
+  if (iso) sourceTime.dateTime = iso;
+  else sourceTime.removeAttribute('datetime');
   set('opsSurvey','LAST SURVEY  ' + fmt(m.lastSurvey) + ' m MD  •  TOOLFACE  ' +
     (finite(latest?.tf) ? fmt(latest.tf,0) + '°' : '—'));
   set('opsFooter',source === 'SIM' ? 'SIMULATED SIGNALS · SESSION STAND TALLY' :
@@ -344,7 +355,8 @@ function render() {
 
 function command(cmd) {
   const {S:s,PH:ph,act,startConn} = window.G;
-  if (feedSource(window.GX?.witsml?.WML) !== 'SIM' || s.seq) return;
+  const api = window.GX?.witsml;
+  if (feedSource(api?.WML,Date.now(),api?.CFG) !== 'SIM' || s.seq) return;
   if (cmd === 'survey') {
     if (s.md > s.lastS + .001) ph.survey(s);
     message = 'Survey recorded at ' + fmt(s.md*FT) + ' m MD';
@@ -381,8 +393,38 @@ async function loadFeedImage() {
   }
 }
 
+function syncDock() {
+  const dock = $('opsWitsmlDock');
+  if (!dock) return;
+  const panel = $('witsml');
+  const open = panel?.parentElement === dock && panel.style.display !== 'none';
+  dock.hidden = !open;
+  $('opsConnect').setAttribute('aria-expanded', String(open));
+  if (!open && dock.dataset.wasOpen === 'true' && document.activeElement === document.body) {
+    $('opsConnect').focus({preventScroll:true});
+  }
+  dock.dataset.wasOpen = String(open);
+}
+function dockWitsml(open) {
+  const dock = $('opsWitsmlDock'), api = window.GX?.witsml;
+  if (!api?.open) return;
+  if (!open) api.close();
+  else {
+    api.open();
+    const panel = $('witsml');
+    if (panel) {
+      if (panel.parentElement !== dock) dock.append(panel);
+      syncDock();
+      panel.querySelector('#wX')?.focus({preventScroll:true});
+    }
+  }
+  syncDock();
+}
 function keydown(e) {
-  if (e.key === 'Escape') { e.stopPropagation(); close(); }
+  if (e.key !== 'Escape') return;
+  e.stopPropagation();
+  if (!$('opsWitsmlDock').hidden) dockWitsml(false);
+  else close();
 }
 function loadCSS() {
   if ($('opsCSS')) return;
@@ -404,12 +446,10 @@ export function open() {
   root.style.visibility = '';
   $('opsClose').onclick = () => close();
   $('opsLoadImage').onclick = loadFeedImage;
-  $('opsConnect').onclick = () => {
-    close(); window.GX?.witsml?.open?.();
-    // Keep this workflow above unrelated floating simulator controls.
-    const panel = $('witsml');
-    if (panel) panel.style.zIndex = '100021';
-  };
+  const dock = $('opsWitsmlDock');
+  window.addEventListener('witsml:panel',syncDock);
+  $('opsConnect').onclick = () => dockWitsml(dock.hidden);
+  if (window.GX?.witsml?.isOpen?.()) dockWitsml(true);
   root.addEventListener('click',e => {
     const button = e.target.closest('button');
     if (button?.dataset.view) {
@@ -422,13 +462,15 @@ export function open() {
   root.querySelector('[data-view="' + view + '"]').setAttribute('aria-pressed','true');
   if (view !== 'mode') root.querySelector('[data-view=mode]').setAttribute('aria-pressed','false');
   root.addEventListener('keydown',keydown);
-  $('opsClose').focus({preventScroll:true});
+  if (dock.hidden) $('opsClose').focus({preventScroll:true});
   render();
   timer = setInterval(render,400);
 }
 export function close() {
   if (!root) return;
   clearInterval(timer);
+  window.removeEventListener('witsml:panel',syncDock);
+  if ($('opsWitsmlDock').contains($('witsml'))) window.GX?.witsml?.close?.();
   scene?.dispose();
   scene = null; lastSceneKey = '';
   root.remove(); root = null;

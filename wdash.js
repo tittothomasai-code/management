@@ -2,7 +2,7 @@
 // borehole image tracks (unwrapped 0-360°, colour map, sinusoids). Data: WITSML 1.4.1.1 store (via proxy or direct) or SIM.
 // Credentials: held ONLY in this module's memory while the panel is connected. Never written to browser storage (local or session),
 // cookies, URLs, the console or error text. Cleared on Disconnect and on close. SIM data is labelled SIM, never LIVE.
-import * as K from './wdash_core.js?v=w2';import * as WW from './wwell.js?v=ww1';
+import * as K from './wdash_core.js?v=w2';import * as WW from './wwell.js?v=ww2';
 const $=id=>document.getElementById(id);
 const HOSTED='https://tryfecta-witsml-proxy.netlify.app/witsml-proxy',LOCAL='http://localhost:8796/soap';
 const NS='xmlns="http://www.witsml.org/schemas/1series" version="1.4.1.1"';
@@ -28,7 +28,7 @@ function simTick(){const r=D.dep.rows.at(-1),rop=r[1]||20,dmd=Math.max(0.05,rop/
  const t=Date.now();D.tim.rows.push([t,...K.simRow(+D.simMd.toFixed(2))]);trim()}
 function trim(){for(const s of [D.dep,D.tim])if(s.rows.length>40000)s.rows.splice(0,s.rows.length-40000)}
 // ---------- WITSML transport ----------
-export function normProxy(p){try{const u=new URL(p);if(u.hostname=='tryfecta-witsml-proxy.netlify.app'&&u.pathname!='/witsml-proxy'){u.pathname='/witsml-proxy';return u.href}}catch(e){}return p}
+export function normProxy(p){try{const u=new URL(p);if(u.hostname=='tryfecta-witsml-proxy.netlify.app'&&u.pathname==='/'){u.pathname='/witsml-proxy';return u.href}}catch(e){}return p}
 export const isLocalProxy=p=>/^https?:\/\/(localhost|127\.0\.0\.1)(:|\/)/.test(p);
 const AUTH=m=>Object.assign(new Error('Login problem: '+m+' — type the password and press Connect again.'),{auth:1});
 const NOPRX=m=>new Error('Proxy/CORS problem: '+m);
@@ -36,7 +36,8 @@ const NOPRX=m=>new Error('Proxy/CORS problem: '+m);
 // opt-in "remember" = AES-GCM ciphertext in localStorage, key non-extractable in IndexedDB. Never in logs / sync / cloud.
 const SAVEK='dw_wdash_conn',PWS='dw_wdash_pw',PWE='dw_wdash_pwenc',IDB='dw_wdash_keys';
 function saveCfg(){try{const C=D.conn;localStorage.setItem(SAVEK,JSON.stringify({proto:'soap',via:C.via,proxy:C.proxy,url:C.url,user:CRED?.user||'',remember:!!C.remember,well:C.well,wb:C.wb,log:C.log,logTime:!!C.logTime}))}catch(e){}}
-function loadCfg(){try{const o=JSON.parse(localStorage.getItem(SAVEK)||'null');if(o){for(const k of ['via','proxy','url'])if(typeof o[k]=='string')D.conn[k]=o[k];D.conn.remember=!!o.remember}return o}catch(e){return null}}
+function readCfg(){try{return JSON.parse(localStorage.getItem(SAVEK)||'null')}catch{return null}}
+function loadCfg(){try{const o=readCfg();if(o){for(const k of ['via','proxy','url'])if(typeof o[k]=='string')D.conn[k]=o[k];D.conn.remember=!!o.remember}return o}catch(e){return null}}
 function idb(){return new Promise((res,rej)=>{const r=indexedDB.open(IDB,1);r.onupgradeneeded=()=>r.result.createObjectStore('k');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
 async function idbOp(mode,f){const db=await idb();return new Promise((res,rej)=>{const t=db.transaction('k',mode),q=f(t.objectStore('k'));t.oncomplete=()=>{db.close();res(q?.result)};t.onerror=()=>{db.close();rej(t.error)}})}
 async function aesKey(create){let k=await idbOp('readonly',o=>o.get('aes'));if(!k&&create){k=await crypto.subtle.generateKey({name:'AES-GCM',length:256},false,['encrypt','decrypt']);await idbOp('readwrite',o=>o.put(k,'aes'))}return k}
@@ -44,34 +45,43 @@ const b64=u=>btoa(String.fromCharCode(...new Uint8Array(u))),ub64=t=>Uint8Array.
 async function savePw(pw,remember){try{sessionStorage.setItem(PWS,pw)}catch(e){}try{if(remember){const k=await aesKey(true),iv=crypto.getRandomValues(new Uint8Array(12));const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},k,new TextEncoder().encode(pw));localStorage.setItem(PWE,JSON.stringify({iv:b64(iv),ct:b64(ct)}))}else localStorage.removeItem(PWE)}catch(e){}}
 async function loadPw(){try{const s=sessionStorage.getItem(PWS);if(s)return s}catch(e){}try{const e=JSON.parse(localStorage.getItem(PWE)||'null');if(!e)return '';const k=await aesKey(false);if(!k)return '';return new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:ub64(e.iv)},k,ub64(e.ct)))}catch(e){return ''}}
 async function forgetCfg(){try{localStorage.removeItem(SAVEK);localStorage.removeItem(PWE);sessionStorage.removeItem(PWS)}catch(e){}try{await idbOp('readwrite',o=>o.delete('aes'))}catch(e){}}
-async function savedCred(){const o=loadCfg();if(!o||!o.user)return null;const pass=await loadPw();return pass?{user:o.user,pass}:null}
+const sameStore = (a,b) => !!a && !!b && a.via === b.via && a.url === b.url &&
+ (a.via === 'direct' || normProxy(a.proxy) === normProxy(b.proxy));
+async function savedCred(user) {
+ const o=readCfg(), route={...D.conn};
+ if (!o?.user || (user && o.user !== user) || !sameStore(o,route)) return null;
+ const pass=await loadPw();
+ return pass && sameStore(route,D.conn) ? {user:o.user,pass} : null;
+}
 async function autoReconnect(){const o=loadCfg(),c=await savedCred();if(!o||!c||!o.url||!o.well)return;CRED=c;const C=D.conn;
  try{await call('WMLS_GetVersion');Object.assign(C,{connected:true,sim:/\/sim\b|simulated/i.test(C.url),well:o.well,okAt:0,hdr:null});await loadWell(o.well)}
  catch(e){C.connected=false;C.err='Auto-reconnect failed: '+e.message;render()}}
-async function call(op,wmlType,query,options){try{return await call1(op,wmlType,query,options)}catch(e){if(TYPED||!(e.auth||e.timeout))throw e;const c=await savedCred();if(c)CRED=c;return await call1(op,wmlType,query,options)}}
+async function call(op,wmlType,query,options){try{return await call1(op,wmlType,query,options)}catch(e){if(TYPED||!(e.auth||e.timeout))throw e;const c=await savedCred(CRED?.user);if(!c)throw e;CRED=c;return await call1(op,wmlType,query,options)}}
 async function call1(op,wmlType,query,options){const C=D.conn,u=CRED||{user:'',pass:''};let body,h;const ac=new AbortController(),to=setTimeout(()=>ac.abort(),45000);
  try{if(C.via=='direct'){const r=await fetch(C.url,{method:'POST',signal:ac.signal,headers:{'Content-Type':'text/xml; charset=utf-8',SOAPAction:'"http://www.witsml.org/action/120/Store.'+op+'"',...(u.user?{Authorization:'Basic '+btoa(unescape(encodeURIComponent(u.user+':'+u.pass)))}:{})},body:K.soapEnvelope(op,{wmlType,query,options})});
    if(r.status==401||r.status==403)throw Object.assign(new Error('login refused by the store (HTTP '+r.status+')'),{auth:1});const s=K.soapResult(await r.text());if(s.fault)throw new Error('store fault: '+s.fault);if(s.result!=null&&s.result<0)throw new Error('store result '+s.result+' '+s.supp);return s}
-  h={'Content-Type':'application/json'};C.proxy=normProxy(C.proxy);const hosted=!isLocalProxy(C.proxy);if(hosted&&!u.user)throw AUTH('no login in this session');if(hosted&&u.user)h['X-Witsml-Authorization']='Basic '+btoa(unescape(encodeURIComponent(u.user+':'+u.pass)));
+  h={'Content-Type':'application/json'};C.proxy=normProxy(C.proxy);if(/(?:^|\/)witsml-machine\/?(?:[?#]|$)/.test(C.proxy))throw NOPRX('the machine route requires a server-side reader');
+  const hosted=!isLocalProxy(C.proxy);if(hosted&&!u.user)throw AUTH('no login in this session');if(hosted&&u.user)h['X-Witsml-Authorization']='Basic '+btoa(unescape(encodeURIComponent(u.user+':'+u.pass)));
   body=JSON.stringify(hosted?{url:C.url,op,wmlType,query,options}:{url:C.url,user:u.user,pass:u.pass,op,wmlType,query,options});
   const r=await fetch(C.proxy,{method:'POST',headers:h,body,signal:ac.signal});if(r.status==401||r.status==403&&!/origin|upstream not allowed|op not allowed/.test(await r.clone().text().catch(()=>'')))throw AUTH('the store refused the user name/password (HTTP '+r.status+')');
   const j=await r.json().catch(()=>null);if(!j)throw NOPRX('proxy answered HTTP '+r.status+(r.status==404?' — check the proxy URL':'')+' (not JSON)');
+  const refusal=WW.guardRefusal(j);if(refusal)throw refusal;
   if(j.error){const m=String(j.error);if(/credentials required|Authentication failed/i.test(m))throw AUTH(m);if(/origin not allowed|upstream not allowed|rate limit|upstream (connection|timeout)|TLS/i.test(m))throw NOPRX(m);if(/SOAP fault/i.test(m))throw new Error('Store error ('+m+')');throw new Error('Proxy: '+m)}
   if(op!='WMLS_GetVersion'&&typeof j.result=='number'&&j.result<0)throw new Error('Store error (result '+j.result+(j.supp?': '+j.supp:'')+')');return {xml:j.xml||'',version:j.version||j.result,result:j.result,supp:j.supp}}
- catch(e){if(e.name=='AbortError')throw Object.assign(new Error('no answer within 45 s'),{timeout:1});if(e instanceof TypeError)throw NOPRX(C.via=='direct'?'browser blocked the request (CORS) or the store is unreachable — use a proxy (see guide)':'cannot reach the proxy (check the proxy URL / network)');throw Object.assign(new Error(K.redact(e.message,[u.user,u.pass])),{auth:e.auth})}
+ catch(e){if(e.name=='AbortError')throw Object.assign(new Error('no answer within 45 s'),{timeout:1});if(e instanceof TypeError)throw NOPRX(C.via=='direct'?'browser blocked the request (CORS) or the store is unreachable — use a proxy (see guide)':'cannot reach the proxy (check the proxy URL / network)');if(e.guardRefusal)throw e;throw Object.assign(new Error(K.redact(e.message,[u.user,u.pass])),{auth:e.auth})}
  finally{clearTimeout(to)}}
 export const ids=(x,t)=>[...String(x).matchAll(new RegExp('<(?:\\w+:)?'+t+'\\b([^>]*?)(?:/>|>([\\s\\S]*?)</(?:\\w+:)?'+t+'>)','g'))].map(m=>({uid:(m[1].match(/\buid="([^"]*)"/)||[])[1],name:(((m[2]||'').match(/<(?:\w+:)?name>([^<]*)</)||[])[1]||'').trim()})).filter(w=>w.uid);
 const IO=WW.makeIO((...a)=>call(...a));const listWbs=IO.listWbs,readLog=s=>IO.readLog(D.conn.well,s);
 async function listWells(){const j=await call('WMLS_GetFromStore','well',`<wells ${NS}><well uid=""><name/></well></wells>`,'returnElements=id-only');return ids(j.xml,'well')}
 // discover EVERY object in the well: all wellbores -> all logs (time+depth, FE, mud, survey logs), trajectories, mudLogs; then read data; live branch selected
-export async function loadWell(well,note=()=>{}){const C=D.conn;C.well=well;const R=await WW.discoverWell(IO,well,note);// shared with the simulator (wwell.js)
+export async function loadWell(well,note=()=>{}){const C=D.conn;const R=await WW.discoverWell(IO,well,note);C.well=well;// shared with the simulator (wwell.js)
  D.sets=R.sets;D.disc=R.disc;select(R.P,true);C.lastPoll=Date.now();saveCfg();return D.disc}
 function wbSets(){return D.sets.filter(s=>s.wb==D.P.wb&&s.rows?.length)}
 function rebuild(){if(!D.P)return;const V=WW.buildViews(D.sets,D.P);D.M=V.M;D.dep=V.dep;D.tim=V.tim}
 function select(P,first){D.P=P;Object.assign(D.conn,{wb:P.wb,log:P.uid,logTime:!!P.time});saveCfg();rebuild();D.src='WITSML';if(first||true)D.mode=P.time?'time':'depth';D.top=null;D.auto=true;D.tracks=cur().ml?.length?defaultTracks(cur().ml):[];D.conn.okAt=Date.now();head();render()}
 async function pollLive(){const C=D.conn,P=D.P;if(!C.connected||!P||P.obj!='log'||C.busy)return;C.busy=true;
  try{const n=await readLog(P);if(n){const had=cur().ml?.length;rebuild();if(!had||!D.tracks.length)D.tracks=defaultTracks(cur().ml||[])}
-  C.okAt=Date.now();C.err='';C.polls=(C.polls||0)+1}catch(e){C.err=e.message;if(e.auth){disconnect('Login refused — polling stopped. Check user name and password.')}}finally{C.busy=false;render()}}
+  C.okAt=Date.now();C.err='';C.polls=(C.polls||0)+1}catch(e){C.err=e.message;if(e.auth){disconnect('Login refused — polling stopped. Check user name and password.')}else if(e.guardRefusal){C.connected=false;C.okAt=0;head()}}finally{C.busy=false;render()}}
 function disconnect(msg){CRED=null;Object.assign(D.conn,{connected:false,log:'',okAt:0,err:msg||''});D.sets=[];D.P=null;D.M=null;D.disc=null;$('wdSet')&&($('wdSet').style.display='none');['wdUser','wdPass'].forEach(i=>{if($(i))$(i).value=''});D.src='SIM';simInit();D.tracks=defaultTracks(cur().ml);D.top=null;D.auto=true;head();render()}
 // ---------- UI ----------
 const CSS=`body.mob #wdash.msheet,body.mob #wdash.mcol,#wdash.msheet{display:flex!important;top:0!important;bottom:0!important;left:0!important;right:0!important;width:auto!important;max-height:none!important;height:auto!important;overflow:hidden!important;border-radius:0!important;z-index:100002!important}body.mob #wdash.msheet::before{display:none!important}
@@ -185,15 +195,18 @@ function connPanel(){$('wdPick')?.remove();if($('wdConn')){$('wdConn').remove();
  <label>Store URL<input id=wdUrl value="${C.url}" placeholder="https://your-store/WMLS" autocomplete=off spellcheck=false></label>
  <label>User name<input id=wdUser value="${(CRED?.user||loadCfg()?.user||'').replace(/["<&]/g,'')}" autocomplete=off autocapitalize=off spellcheck=false></label><label>Password<input id=wdPass type=password autocomplete=off placeholder="(saved — leave blank to reuse)"></label><label style="display:flex;gap:6px;align-items:center"><input id=wdRem type=checkbox ${C.remember?'checked':''} style="width:auto">Remember password on this device</label>
  <div style="display:flex;gap:6px;flex-wrap:wrap"><button id=wdGo>${C.connected?'Reconnect':'Connect'}</button><button id=wdDis ${C.connected?'':'disabled'}>Disconnect</button><button id=wdCX>Close</button><button id=wdForget title="Clears the saved route, URLs, user name, password and last picks on this device">Forget saved connection</button></div>
+ <label>Known well UID (optional)<input id=wdKnownWell autocomplete=off spellcheck=false></label>
  <div id=wdPickLog style="margin-top:6px"></div><div id=wdCSt style="margin-top:6px;color:#ffcc80"></div>
  <small>Saved on this device only: route, proxy URL, store URL, user name and last-picked well/wellbore/log. The password is kept for this browser tab (until it closes); tick <b>Remember password on this device</b> to keep it encrypted (AES-GCM, key locked in this browser) so the dashboard reconnects by itself next time. Leave the password blank to reuse the saved one. Nothing is synced, exported or logged. <b>Forget saved connection</b> clears all of it. Without a store the dashboard shows SIM data. The default proxy only reaches its one allowed store; for other stores run <code>node witsml_proxy.mjs</code> (local) or ask for a proxy for that store. WITSML 2.0 (ETP) is not in this build.</small>`;
  D.el.appendChild(P);$('wdCX').onclick=()=>P.remove();const sv=()=>{$('wdProxyL').style.display=$('wdVia').value=='proxy'?'':'none'};$('wdVia').onchange=sv;sv();
  $('wdDis').onclick=()=>{disconnect('Disconnected');P.remove()};if($('wdForget'))$('wdForget').onclick=async()=>{await forgetCfg();CRED=null;$('wdUser').value='';$('wdPass').value='';$('wdRem').checked=false;C.remember=false;$('wdCSt').textContent='Saved connection, user name and password cleared from this device'};
  $('wdGo').onclick=async()=>{const st=$('wdCSt');if($('wdProto').value=='etp'){st.textContent='WITSML 2.0 / ETP 1.2 is not in this build. Use a 1.4.1.1 SOAP endpoint (most stores have both).';return}
+  const priorRoute={...C};
   Object.assign(C,{via:$('wdVia').value,proxy:$('wdProxy').value.trim(),url:$('wdUrl').value.trim(),connected:false,err:''});if(!/^https?:\/\//.test(C.url)){st.textContent='Enter the store URL (https://…)';return}
-  {const nu=$('wdUser').value.trim(),np=$('wdPass').value;C.remember=$('wdRem').checked;if(np===''&&!(CRED&&CRED.user==nu&&CRED.pass)){const sc=await savedCred();if(sc&&sc.user==nu)CRED=sc}TYPED=np!=='';if(!(np===''&&CRED&&CRED.user==nu&&CRED.pass))CRED={user:nu,pass:np}}$('wdPass').value='';st.textContent='Connecting…';
-  try{await call('WMLS_GetVersion');C.connected=true;C.sim=/\/sim\b|simulated/i.test(C.url);saveCfg();await savePw(CRED.pass,C.remember);TYPED=false;const ws=await listWells();if(!ws.length){st.textContent='Connected, but the store returned no wells for this login (empty result)';return}
-   st.textContent='Connected · '+ws.length+' wells';const L=$('wdPickLog');L.innerHTML=`<label>Well<select id=wdW>${ws.map(w=>`<option value="${w.uid}">${w.name||w.uid}</option>`).join('')}</select></label><button id=wdUse>Load everything in this well</button><div id=wdDisc style="margin-top:4px;color:#9fb3c6"></div>`;
+  if(!sameStore(priorRoute,C))CRED=null;
+  {const nu=$('wdUser').value.trim(),np=$('wdPass').value;C.remember=$('wdRem').checked;if(np===''&&!(CRED&&CRED.user==nu&&CRED.pass)){const sc=await savedCred(nu);if(sc)CRED=sc}TYPED=np!=='';if(!(np===''&&CRED&&CRED.user==nu&&CRED.pass))CRED={user:nu,pass:np}}$('wdPass').value='';st.textContent='Connecting…';
+  try{await call('WMLS_GetVersion');C.connected=true;C.sim=/\/sim\b|simulated/i.test(C.url);saveCfg();await savePw(CRED.pass,C.remember);TYPED=false;const known=$('wdKnownWell').value.trim();const ws=known?[await WW.readKnownWell(call,known)]:await listWells();if(!ws.length){st.textContent='Connected, but the store returned no wells for this login (empty result)';return}
+   st.textContent='Connected · '+ws.length+' wells';const L=$('wdPickLog');L.innerHTML='<label>Well<select id=wdW></select></label><button id=wdUse>Load everything in this well</button><div id=wdDisc style="margin-top:4px;color:#9fb3c6"></div>';for(const w of ws)$('wdW').add(new Option(w.name||w.uid,w.uid));
    {const sv=loadCfg();if(sv&&ws.some(x=>x.uid==sv.well))$('wdW').value=sv.well}
-   const go=async cl=>{$('wdUse').disabled=true;try{const d=await loadWell($('wdW').value,m=>st.textContent=m);st.textContent='Connected · loaded '+discText(d)+' · showing the live branch';if(cl)setTimeout(()=>P.remove(),1500)}catch(e){st.textContent=e.message}finally{if($('wdUse'))$('wdUse').disabled=false}};$('wdUse').onclick=()=>go(true);$('wdW').onchange=()=>go(false);await go(false)}
-  catch(e){C.connected=false;CRED=null;TYPED=false;st.textContent='Connect failed: '+e.message}}}
+   const go=async cl=>{$('wdUse').disabled=true;try{const d=await loadWell($('wdW').value,m=>st.textContent=m);st.textContent='Connected · loaded '+discText(d)+' · showing the live branch';if(cl)setTimeout(()=>P.remove(),1500)}catch(e){if(e.guardRefusal||e.closed){C.connected=false;C.okAt=0;head()}st.textContent=e.message}finally{if($('wdUse'))$('wdUse').disabled=false}};$('wdUse').onclick=()=>go(true);$('wdW').onchange=()=>go(false);await go(false)}
+  catch(e){C.connected=false;C.okAt=0;CRED=null;TYPED=false;head();st.textContent='Connect failed: '+e.message}}}

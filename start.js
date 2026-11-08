@@ -87,7 +87,7 @@ async function choose(g){const go=g||ST.items[ST.i]?.dataset.go;beep(880,.1);
  if(go?.startsWith('grp:')){ST.menu=go.slice(4);return render()}
  if(go=='sim'){ST.menu='sim';return render()}
  if(go=='operations'){close('operations');await openOperations();return}
- if(go=='wdash'){close('wdash');const m=await import('./wdash.js?v=w5');m.open();return}
+ if(go=='wdash'){close('wdash');const m=await import('./wdash.js?v=w6');m.open();return}
  if(go=='monitor'){close('monitor');const m=await import('./monitor.js?v=b12');m.open();return}
  if(go=='ddtracks'){close('ddtracks');const m=await import('./ddtracks.js?v=t2');m.open();return}
  if(go=='ddcab'){close('ddcab');const m=await import('./ddcab.js?v=r2');m.open();return}
@@ -120,13 +120,13 @@ export function show(){api();if(ST.el)return;const st=document.createElement('st
  addEventListener('keydown',key,true);ST.padT=setInterval(pad,50);ST.menu='main';render();
  import('./edmstore.js?v=5941').then(S=>S.list()).then(L=>{ST.saved=L;if(ST.el&&L.length){const k=ST.i;render();focus(k)}}).catch(()=>{})}
 /* v5.12.19: guide link in Settings installed at module load (phones often skip the start screen, so show() never ran) */
-function installGuide(){const gl=()=>{const g=document.getElementById('uig_set');if(!g||document.getElementById('setGuide'))return;const a=document.createElement('a');a.id='setGuide';a.href='./user-guide.html';a.target='_blank';a.rel='noopener';a.textContent='User guide (HTML / PDF)';a.style.cssText='display:block;color:#9cf;font-size:12px;margin:6px 0';g.appendChild(a);const b=document.createElement('a');b.id='setWdash';b.href='#';b.textContent='📊 WITSML dashboard (logs + image logs)';b.style.cssText=a.style.cssText;b.onclick=e=>{e.preventDefault();import('./wdash.js?v=w5').then(m=>m.open())};g.appendChild(b)};gl();if(!window.__dwGuideMO){window.__dwGuideMO=new MutationObserver(gl);window.__dwGuideMO.observe(document.body,{childList:true,subtree:true})}}
+function installGuide(){const gl=()=>{const g=document.getElementById('uig_set');if(!g||document.getElementById('setGuide'))return;const a=document.createElement('a');a.id='setGuide';a.href='./user-guide.html';a.target='_blank';a.rel='noopener';a.textContent='User guide (HTML / PDF)';a.style.cssText='display:block;color:#9cf;font-size:12px;margin:6px 0';g.appendChild(a);const b=document.createElement('a');b.id='setWdash';b.href='#';b.textContent='📊 WITSML dashboard (logs + image logs)';b.style.cssText=a.style.cssText;b.onclick=e=>{e.preventDefault();import('./wdash.js?v=w6').then(m=>m.open())};g.appendChild(b)};gl();if(!window.__dwGuideMO){window.__dwGuideMO=new MutationObserver(gl);window.__dwGuideMO.observe(document.body,{childList:true,subtree:true})}}
 installGuide();
 const API={ST,show,shouldShow,hasSave,reveal,groupOf,last:null};function api(){window.dwStart=API;window.GX=window.GX||{};if(window.GX.start!==API)window.GX.start=API;return API}api();addEventListener('load',api);setTimeout(api,3000);
 if(shouldShow()){if(document.body)show();else addEventListener('DOMContentLoaded',show)}
 
 if(new URLSearchParams(location.search).has('workover'))import('./workover.js?v=b15');
 
-const openOperations = () => import('./operations.js?v=1').then(m => m.open()).catch(e => console.error('Drilling operations',e));
+const openOperations = () => import('./operations.js?v=3').then(m => m.open()).catch(e => console.error('Drilling operations',e));
 $('opsDashboard').addEventListener('click',openOperations);
 if(q.has('operations')) openOperations();

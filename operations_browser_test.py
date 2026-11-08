@@ -1,6 +1,6 @@
 # Local-only SIM-TEST browser regression. See DRILLING_RELEASE.md.
 from playwright.sync_api import sync_playwright
-import json, pathlib, argparse
+import json, pathlib, argparse, os, shutil
 parser=argparse.ArgumentParser()
 parser.add_argument('--base-url',default='http://127.0.0.1:8845')
 parser.add_argument('--proxy',default='http://127.0.0.1:8846/soap')
@@ -12,7 +12,7 @@ assert all(urlparse(u).hostname in ['127.0.0.1','localhost'] for u in [args.base
 OUT=pathlib.Path(args.output);OUT.mkdir(parents=True,exist_ok=True)
 results=[]
 with sync_playwright() as pw:
- b=pw.chromium.launch(executable_path='/usr/bin/google-chrome',headless=True,args=['--no-sandbox','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader'])
+ b=pw.chromium.launch(executable_path=os.environ.get('CHROME_PATH') or shutil.which('google-chrome') or shutil.which('chromium'),headless=True,args=['--no-sandbox','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader'])
  for mode,width,height in [('desktop',1440,1000),('mobile',390,844)]:
   c=b.new_context(viewport={'width':width,'height':height},is_mobile=mode=='mobile',has_touch=mode=='mobile')
   c.add_init_script('Object.defineProperty(navigator, "webdriver", {get:()=>false})')
@@ -34,7 +34,13 @@ with sync_playwright() as pw:
   assert dimensions['scroll']<=dimensions['width']+1,dimensions
   assert p.locator('#opsBar').evaluate('(e)=>{const r=e.getBoundingClientRect();return e.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2))}'),'Floating simulator controls cover dashboard progress'
   p.screenshot(path=str(OUT/(mode+'-training.png')),full_page=True)
-  p.locator('#opsConnect').click();p.wait_for_selector('#wproxy')
+  p.locator('#opsConnect').click();p.wait_for_selector('#opsWitsmlDock #wproxy')
+  assert p.locator('#dwOperations').count()==1
+  assert p.locator('#opsConnect').get_attribute('aria-expanded')=='true'
+  p.locator('#wX').click()
+  assert p.locator('#opsWitsmlDock').is_hidden()
+  assert p.locator('#opsConnect').get_attribute('aria-expanded')=='false'
+  p.locator('#opsConnect').click();p.wait_for_selector('#opsWitsmlDock #wproxy')
   assert p.locator('#wproxy').evaluate('(e)=>{const r=e.getBoundingClientRect();return e===document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)}'),'Connection inputs must stay above floating controls'
   for k,v in [('wproxy',args.proxy),('wurl',args.store),('wuser','SIM-TEST'),('wpass','SIM-TEST'),('wint','10000')]:p.locator('#'+k).fill(v)
   p.locator('#wcon').click();p.wait_for_function('GX.witsml.WML.connected && document.querySelector("#wwb option[value=WB01B02]")')
@@ -42,7 +48,12 @@ with sync_playwright() as pw:
   p.locator('#wwb').select_option('WB01B02')
   p.wait_for_function('document.querySelector("#wlog option[value=TLOG]") && !document.querySelector("#wgo").disabled && GX.witsml.WML.preview?.w==="DR101L" && GX.witsml.WML.preview?.b==="WB01B02"')
   p.locator('#wlog').select_option('TLOG');p.locator('#wgo').click();p.wait_for_function('GX.witsml.WML.rows>0');p.wait_for_timeout(1500)
-  p.locator('#wx').click();p.evaluate('import("./operations.js").then(m=>m.open())');p.wait_for_selector('#dwOperations');p.wait_for_timeout(700)
+  p.locator('#wlmc').check()
+  assert p.evaluate('GX.witsml.WML.liveMode') is True
+  p.locator('#wX').click();p.wait_for_selector('#opsWitsmlDock',state='hidden')
+  assert p.locator('#dwOperations').count()==1
+  assert p.evaluate('GX.witsml.WML.liveMode && GX.witsml.WML.timer !== null')
+  p.wait_for_timeout(700)
   assert p.locator('#opsSource').inner_text()=='WITSML SIM-TEST',p.locator('#opsSource').inner_text()
   assert p.locator('[data-cmd]:enabled').count()==0
   assert 'WB01B02' in p.locator('#opsWell').inner_text(),p.locator('#opsWell').inner_text()
@@ -56,8 +67,11 @@ with sync_playwright() as pw:
   assert p.locator('#opsSource').inner_text()=='WITSML TIME LOG REQUIRED'
   p.evaluate('GX.witsml.WML.log.indexType=window.fixtureIndexType');p.wait_for_timeout(600)
   assert p.locator('#opsSource').inner_text()=='WITSML SIM-TEST'
-  first=p.locator('#opsFooter').inner_text()
-  p.wait_for_timeout(11000);second=p.locator('#opsFooter').inner_text();assert first!=second,(first,second)
+  first=p.locator('#opsSourceTime').get_attribute('datetime')
+  p.wait_for_function('(first) => document.querySelector("#opsSourceTime").dateTime > first',arg=first,timeout=25000)
+  second=p.locator('#opsSourceTime').get_attribute('datetime')
+  assert first < second and first.endswith('Z') and second.endswith('Z'),(first,second)
+  assert p.locator('#opsSourceTime').inner_text()=='SOURCE '+second[:16].replace('T',' ')+' UTC'
   assert p.locator('#opsTrack0').evaluate('(c)=>c.width>0 && c.height>0')
   p.locator('#opsLoadImage').click();p.wait_for_function('!document.querySelector("#opsLoadImage").disabled');p.wait_for_timeout(500)
   image=p.locator('#opsDepth').inner_text()
