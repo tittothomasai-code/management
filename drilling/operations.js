@@ -388,6 +388,10 @@ function loadCSS() {
 
 export function open() {
   if (root) return;
+  // Operations is a read-only, WITSML-backed surface. Reset and suppress the
+  // separate sample-only DROPZ training UI while this dashboard is visible.
+  window.dropz?.modes?.reset?.();
+  document.body.classList.add('operations-active');
   loadCSS();
   origin = document.activeElement;
   root = document.createElement('section');
@@ -428,5 +432,6 @@ export function close() {
   feed = {}; loadedImage = null; imageError = '';
   feedSource(null,Date.now(),null,observation);
   root.remove(); root = null;
+  document.body.classList.remove('operations-active');
   origin?.focus?.({preventScroll:true});
 }
