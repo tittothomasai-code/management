@@ -328,3 +328,5 @@ window.G={EXT,S,PH,ents,cam,ctl,_scene:scene,select:n=>select(ents.find(e=>e.nam
 window.G.animProbe=()=>({vth:pumps.map(e=>e.st.vth||0),spm:pumps.map(e=>e.st.spm||0),pp:pPos?Array.from(pPos.slice(0,90)):[],vtd:S.vtd||0,quill:quill.rotation.y,rot:rotary.rotation.y,vis:!!pMesh?.visible,t:S.t,anim:S._anim});
 
 restoreLayout().catch(e=>console.warn('layout restore',e));
+
+import('./flow_pressure_view.js?v=1').then(m=>m.mount(window.G)).catch(e=>console.warn('Flow and Pressure view',e));

@@ -1,0 +1,23 @@
+#flowPressure {position:fixed;z-index:9800;right:8px;top:calc(56px + env(safe-area-inset-top));color:#e6f4ff;font:13px/1.35 system-ui}
+#flowPressure [hidden],#flowPressure[hidden] {display:none!important}
+#flowPressure .fp-buttons {display:flex;gap:5px;justify-content:flex-end}
+#flowPressure button {border:1px solid #476983;border-radius:6px;background:#142b3d;color:inherit;font:inherit;padding:6px 10px;min-height:38px;cursor:pointer}
+#flowPressure button[aria-pressed=true] {background:#125768;border-color:#50dfdf}
+#flowPressure .fp-panel {box-sizing:border-box;margin-top:6px;padding:10px;width:min(390px,calc(100vw - 16px));max-height:calc(100dvh - 164px);overflow:auto;background:#0a1926f5;border:1px solid #476983;border-radius:8px}
+#flowPressure header {display:flex;align-items:center;gap:8px;justify-content:space-between}
+#flowPressure h3 {margin:9px 0 6px}
+#flowPressure p {margin:5px 0;color:#b6cede}
+#flowPressure .fp-sim {color:#ffda89;border:1px solid #9b712d;padding:2px 6px;border-radius:4px;font-size:10px}
+#flowPressure .fp-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+#flowPressure .fp-grid div {padding:5px;background:#142b3d;border-radius:4px}
+#flowPressure small {display:block;color:#a9c3d5}
+#flowPressure label {display:flex;gap:6px;align-items:center;margin-top:6px}
+#flowPressure input {min-width:50px;flex:1}
+#flowPressure canvas {display:block;width:100%;height:145px;background:#08121d}
+#flowPressure .fp-dp {color:#62dbf7}
+#flowPressure .fp-ann {color:#ffb34a}
+@media (pointer:coarse),(max-width:620px){#flowPressure button {min-height:44px}#flowPressure .fp-panel {max-height:55dvh}}
+
+#flowPressure[data-docked=true] {position:relative;inset:auto;margin:8px 12px}
+#flowPressure[data-docked=true] .fp-buttons {justify-content:flex-start}
+#flowPressure[data-docked=true] .fp-panel {width:min(720px,100%);max-height:none}

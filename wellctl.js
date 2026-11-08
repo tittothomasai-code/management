@@ -12,27 +12,42 @@ export function geom(w=defWell()){const segs=[];let md=w.md;for(const s of [...w
 function annMdFromBottomVol(g,V){let v=0;for(let i=g.N-1;i>=0;i--){const c=g.annCap((i+0.5)*g.dz)*g.dz;if(v+c>=V)return (i+1)*g.dz-(V-v)/c*g.dz;v+=c}return 0}
 function strMdFromTopVol(g,V){let v=0;for(const r of g.str){const c=r.cap*r.len;if(v+c>=V)return r.top+(V-v)/r.cap;v+=c}return g.w.md}
 export const FLUIDS={gas:0.20,oil:0.75,water:1.05};
-export function newWC(o={}){const w=o.well||defWell(),g=geom(w),mud=clone(o.mud||MUDS.wbm),win=window_(w.tvd);
+export function newWC(o={}){const w=clone(o.well||defWell()),g=geom(w),mud=clone(o.mud||MUDS.wbm),win=window_(w.tvd);
  const pore=o.poreSG??(mud.sg+0.06),shoeFrac=o.shoeFracSG??window_(w.shoeTVD).frac;
  const p=w.pump,scrSpm=o.scrSpm??30;const S={t:0,w,g,mud,omw:mud.sg,kmw:null,pore,shoeFrac,win,kickType:o.kickType||'gas',PI:o.PI??(2.0e-9),// m³/s/Pa
   pits:{active:o.active??60,reserve:120,trip:3.0,alarm:o.pitAlarm??1.0,ref:o.active??60},
   spm:o.spm??100,pumpsOn:true,bop:false,choke:1,auto:false,mode:'drill',//drill|shutin|kill|trip
-  gasV:0,gasN:0,gasTop:w.md,gasBot:w.md,influxTot:0,lossTot:0,qInf:0,qLoss:0,Pc:0,Pdp:0,BHP:0,Pshoe:0,Qin:0,Qout:0,flowDiff:0,
+  gasV:0,gasN:0,gasTop:w.md,gasBot:w.md,influxTot:0,lossTot:0,qInf:0,qLoss:0,Pc:0,Pdp:0,BHP:0,Pshoe:0,Qin:0,Qout:0,Qloop:0,flowDiff:0,
   scrSpm,scrP:null,method:null,phase:'',killV:0,circV:0,events:[],hist:[],cm:4.5e-10,// mud compressibility 1/Pa
   trip:{v:0,pulled:0,expected:0,measured:0},tripDirection:0,flags:{kick:false,loss:false,shutin:false,killed:false,fracExceeded:false}};
  S.scrP=scrPressure(S,scrSpm);return S}
 export function scrPressure(S,spm){const Q=pumpOutput(S.w.pump,spm)*S.w.pump.n;const H=hydraulics(S.mud,S.w,Q,{mwdDp:0});return H.spp}// slow circulating rate pressure (all pumps, open well)
 function ev(S,m){S.events.push([S.t,m]);if(S.events.length>60)S.events.shift()}
 // annular hydrostatic from surface to md (Pa), with gas bubble and kill mud front
-function annHydro(S,toMD,fromMD=0){const g=S.g,n=60,dz=(toMD-fromMD)/n;let p=0;const kTop=S.killAnnTop;for(let i=0;i<n;i++){const md=fromMD+(i+0.5)*dz;let sg=S.omw;
- if(md>=S.gasTop&&md<=S.gasBot&&S.gasV>0)sg=FLUIDS[S.kickType];else if(kTop!=null&&md>=kTop)sg=S.kmw;p+=sg*1000*G*(g.tvd(md+dz/2)-g.tvd(md-dz/2))}return p}
-function strHydro(S){const g=S.g;const kf=S.killStrBot;if(kf==null||kf<=0)return S.omw*1000*G*S.w.tvd;const kt=g.tvd(Math.min(kf,S.w.md));return S.kmw*1000*G*kt+S.omw*1000*G*(S.w.tvd-kt)}
+function annHydro(S,toMD,fromMD=0){
+ const overlap=(a,b)=>Math.max(0,Math.min(toMD,b)-Math.max(fromMD,a));
+ const bubble=S.gasV>0?overlap(S.gasTop,S.gasBot):0;
+ const kill=S.killAnnTop==null?0:overlap(S.killAnnTop,S.w.md);
+ const gasInKill=bubble&&kill?overlap(Math.max(S.gasTop,S.killAnnTop),S.gasBot):0;
+ const head=S.omw*(toMD-fromMD)+(bubble?(FLUIDS[S.kickType]-S.omw)*bubble:0)
+   +(kill?(S.kmw-S.omw)*(kill-gasInKill):0);
+ return head*1000*G*S.w.tvd/S.w.md;
+}
+function strHydro(S,md=S.w.md){
+ const kf=Math.max(0,Math.min(S.killStrBot||0,md));
+ return (S.omw*(md-kf)+(kf?S.kmw*kf:0))*1000*G*S.w.tvd/S.w.md;
+}
+export function hydrostaticHeads(S,md=S.w.md){
+ const d=Math.max(0,Math.min(md,S.w.md));
+ return {string:strHydro(S,d),annulus:annHydro(S,d)};
+}
 function setGasPos(S){const V=S.gasV;if(V<=0){S.gasTop=S.gasBot=S.w.md;return}const g=S.g;// bubble bottom at gasBot, find top by capacity
  let v=0,md=S.gasBot;while(v<V&&md>0){const c=g.annCap(md);const d=Math.min(1,md);v+=c*d;md-=d}S.gasTop=Math.max(0,md)}
 export function bhpOf(S,Pc,fr=0){return Pc+annHydro(S,S.w.md)+fr}
 export function step(S,dt){S.t+=dt;const w=S.w,g=S.g,mud=S.mud;
  const Qin=S.pumpsOn&&S.mode!='shutin'?pumpOutput(w.pump,S.spm)*w.pump.n:0;S.Qin=Qin;
- const H=Qin>0?hydraulics({...mud,sg:S.omw},w,Qin,{mwdDp:0}):null,fr=H?H.ann:0;
+ const Qloop=S.bop&&S.choke<=0?0:Qin;S.Qloop=Qloop;
+ const H=Qloop>0?hydraulics({...mud,sg:S.omw},w,Qloop,{mwdDp:0}):null,fr=H?H.ann:0;
  const closed=S.bop,rho=S.omw*1000;
  // gas state: n = P·V (isothermal). Bubble pressure = BHP − hydro below bubble mid.
  const below=md=>annHydro(S,w.md,md);
@@ -41,7 +56,7 @@ export function step(S,dt){S.t+=dt;const w=S.w,g=S.g,mud=S.mud;
  const Cv=0.0035;// choke flow coefficient (m³/s per sqrt(Pa/ρ) fully open)
  const PoreP=S.pore*1000*G*w.tvd;const PfrShoe=S.shoeFrac*1000*G*w.shoeTVD;
  let Pc=0;const P0=bhpOf(S,S.Pc,fr);
- if(closed){const vol=w.g?0:g.Vann+g.Vstr;const resid=Pc_=>{const BHP=bhpOf(S,Pc_,fr),qi=S.kickType&&BHP<PoreP?S.PI*(PoreP-BHP):0,
+ if(closed){const vol=g.Vann+g.Vstr;const resid=Pc_=>{const BHP=bhpOf(S,Pc_,fr),qi=S.kickType&&BHP<PoreP?S.PI*(PoreP-BHP):0,
    Pshoe=Pc_+annHydro(S,w.shoeMD)+fr*w.shoeMD/w.md,ql=Pshoe>PfrShoe?2e-8*(Pshoe-PfrShoe):0,
    qo=S.choke>0?Cv*S.choke*Math.sqrt(Math.max(0,Pc_)/rho):0,dVg=(S.kickType=='gas'?Vg(Pc_)-S.gasV:0);
    return {r:qo*dt-(Qin*dt+qi*dt+dVg-vol*S.cm*(BHP-P0)-ql*dt),qi,qo,ql,BHP,Pshoe}};
@@ -53,16 +68,16 @@ export function step(S,dt){S.t+=dt;const w=S.w,g=S.g,mud=S.mud;
  if(S.qInf>0){if(!S.flags.kick&&S.qInf*dt>0){}const dv=S.qInf*dt;S.influxTot+=dv;if(S.kickType=='gas'){const Pb=bhpOf(S,Pc,fr);S.gasN+=Pb*dv}else S.gasV+=dv}
  if(S.kickType=='gas'&&S.gasN>0&&S.gasTop>0)S.gasV=S.gasN/Math.max(1e5,Pgas(Pc));
  // bubble motion: migration when static, carried + slip when circulating
- const vmig=0.08,va=Qin>0?Qin/g.annCap(Math.max(1,S.gasBot)):0;if(S.gasV>0){S.gasBot=Math.max(0,S.gasBot-(va+(S.kickType=='gas'?vmig:0.02))*dt);setGasPos(S);
+ const vmig=0.08,va=Qloop>0?Qloop/g.annCap(Math.max(1,S.gasBot)):0;if(S.gasV>0&&(!closed||Qloop>0)){S.gasBot=Math.max(0,S.gasBot-(va+(S.kickType=='gas'?vmig:0.02))*dt);setGasPos(S);
   if(S.gasTop<=0){// gas at surface: vent through choke/flowline, keep only the part still in the hole
    if(!S._vent){S._vent=1;ev(S,'Gas at surface: hold casing pressure with the choke')}let v=0;for(let md=0;md<S.gasBot;md+=1)v+=g.annCap(md);const Pg=Math.max(1e5,Pgas(Pc));S.gasV=v;S.gasN=v*Pg;S.gasTop=0;
    if(S.gasBot<=1){S.gasN=0;S.gasV=0;S._vent=0;ev(S,'Influx out of the well')}}}
  if(S.gasV<=1e-4&&S.gasN<=0){S.gasTop=S.gasBot=w.md}
  // kill fluid fronts
- if(Qin>0){S.circV+=Qin*dt;if(S.kmw&&S.pumpingKill){S.killV+=Qin*dt;S.killStrBot=strMdFromTopVol(g,S.killV);const va2=S.killV-g.Vstr;S.killAnnTop=va2>0?annMdFromBottomVol(g,va2):null;if(S.killAnnTop!=null&&S.killAnnTop<=0.5&&!S.flags.killed){S.flags.killed=true;ev(S,'Kill mud at surface. Well dead check: stop pumps and flow check')}}}
+ if(Qloop>0){S.circV+=Qloop*dt;if(S.kmw&&S.pumpingKill){S.killV+=Qloop*dt;S.killStrBot=strMdFromTopVol(g,S.killV);const va2=S.killV-g.Vstr;S.killAnnTop=va2>0?annMdFromBottomVol(g,va2):null;if(S.killAnnTop!=null&&S.killAnnTop<=0.5&&!S.flags.killed){S.flags.killed=true;ev(S,'Kill mud at surface. Well dead check: stop pumps and flow check')}}}
  // pressures
  const BHP=bhpOf(S,Pc,fr);S.BHP=BHP;S.Pshoe=Pc+annHydro(S,w.shoeMD)+fr*w.shoeMD/w.md;if(S.mode=='kill'&&!S.done)scoreStep(S,BHP,dt);
- S.Pdp=Qin>0?BHP-strHydro(S)+(H.spp-H.ann):Math.max(0,BHP-strHydro(S));
+ S.Pdp=H?BHP-strHydro(S)+(H.spp-H.ann):Math.max(0,BHP-strHydro(S));
  // pits: returns into active, suction out
  const dPit=(S.Qout-Qin)*dt;S.pits.active+=dPit;S.flowDiff=S.Qout-Qin;
  const gain=S.pits.active-S.pits.ref;if(gain>S.pits.alarm&&!S.flags.kick){S.flags.kick=true;ev(S,`Pit gain ${gain.toFixed(1)} m³: possible kick. Stop drilling, flow check, shut in`)}
