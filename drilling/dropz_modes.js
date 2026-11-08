@@ -1,0 +1,70 @@
+/** DROPZ-only integration. Does not modify the simulation sources.
+ * Red zone is an editable TRAINING ASSUMPTION, not a DROPS calculation.
+ */
+export const ZONE_RULE=Object.freeze({heightFactor:0.1,minRadius:.75,maxRadius:6});
+export function zoneFootprint(item,position,floorY=0,rule=ZONE_RULE){
+ const {heightFactor,minRadius,maxRadius}=rule;
+ if(![...position,floorY,heightFactor,minRadius,maxRadius,item.heightM].every(Number.isFinite)||heightFactor<0||minRadius<=0||maxRadius<minRadius||item.heightM<0)throw Error('Invalid red zone rule / position');
+ if(item.heightM===0||position[1]<=floorY)return null;
+ return {id:item.id,x:position[0],y:floorY+.04,z:position[2],radius:Math.max(minRadius,Math.min(maxRadius,item.heightM*heightFactor))};
+}
+export function createKeySequence(windowMs=800){let presses=[];return {reset(){presses=[]},press(now){presses=presses.filter(t=>now>=t&&now-t<=windowMs);presses.push(now);if(presses.length===3){presses=[];return 'mode'}return 'isolate'}}}
+export function acceptsKey(e){return !(e.defaultPrevented||e.repeat||e.isComposing||e.ctrlKey||e.altKey||e.metaKey||e.shiftKey||e.target?.closest?.('input,textarea,select,[contenteditable]:not([contenteditable=false])'))}
+export function shouldHandleD({armed,overlayOpen,event}){return !!armed&&!overlayOpen&&acceptsKey(event)}
+export function normalizeMatch(s){return String(s??'').normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim()}
+// Whole identity fields only; never infer that an entire top drive is a "Sensor".
+export function matchItems(identities,items){const keys=new Set(identities.map(normalizeMatch).filter(Boolean));return items.filter(i=>[i.id,i.name].some(v=>keys.has(normalizeMatch(v))))}
+export function createIsolation(scene,keep,darkBackground){let saved=null;const flags=new Map();return {
+ get active(){return !!saved},
+ enter(){if(saved)return;saved={background:scene.background,fog:scene.fog,environment:scene.environment};scene.traverse(o=>flags.set(o,o.visible));this.enforce()},
+ enforce(){if(!saved)return;scene.traverse(o=>{if(!flags.has(o))flags.set(o,o.visible)});for(const o of scene.children)o.visible=o===keep;keep.visible=true;scene.background=darkBackground;scene.fog=null;scene.environment=null},
+ exit(){if(!saved)return;for(const [o,v] of flags)o.visible=v;Object.assign(scene,saved);flags.clear();saved=null}
+}}
+export const LIST_SELECTORS={
+ assets:'#srList tr[data-k],#srList tr[data-c],.srAsList tr[data-k],.srAsList tr[data-c],#rbItems button[data-id]',
+ bom:'#bomT tr.bom,#rbBom tr:not(:first-child),#srcBom tr[data-p],#srbBom tr[data-p]'
+};
+export function rowIdentities(row){
+ const ids=['id','key','k','p'].map(k=>row.dataset[k]);
+ const cell=row.matches('#bomT tr,#rbBom tr')?row.querySelector('td:nth-child(2)'):row.querySelector('td:first-child');
+ if(cell){const c=cell.cloneNode(true);c.querySelectorAll('small,.id,.wsSim,.lv').forEach(x=>x.remove());ids.push(c.textContent.replace(/^[▾▸▶\s]+/,''))}
+ if(row.matches('button'))ids.push(row.querySelector('span')?.textContent);
+ return ids;
+}
+export function attachModes(scene,THREE,api,opts={}){
+ const host=opts.host||document.body,root=api.root,seq=createKeySequence(),isolation=createIsolation(scene,api.group,new THREE.Color(0x02040b));
+ let mode=false,disposed=false,raf=0,previousMarkers=false,previousModeMarkers=false,rule={...ZONE_RULE},coverage={assets:[],bom:[],scanned:{assets:0,bom:0}},lastSummary='';
+ const zones=new THREE.Group();zones.name='DROPZ red exclusion zones — training assumption';zones.visible=false;scene.add(zones);
+ const style=document.createElement('style');style.textContent=`.dropz-native-hit,.dropz-native-hit td,.dropz-native-hit span{background:#6b1523!important;color:#ffb4bb!important;outline-color:#ff5269!important}.dropz-modebar{position:fixed;left:50%;transform:translateX(-50%);top:90px;z-index:100012;background:#101820ef;color:#dce8ef;border:1px solid #6a7b87;border-radius:6px;padding:6px 9px;font:12px system-ui;max-width:calc(100vw - 24px);box-sizing:border-box}.dropz-modebar[data-mode=true]{background:#671221;color:#fff;border-color:#ff5269}.dropz-modebar button{background:#263746;color:inherit;border:1px solid #72818e;border-radius:4px;padding:5px;margin-left:4px}@media(min-width:900px){.dropz-game.dropz-with-native{left:85px;right:auto;width:500px}}.dropz-mode-info{border:1px solid #61424a;padding:7px;margin:8px 0}.dropz-mode-info summary{cursor:pointer;color:#ff9aa6}.dropz-mode-info ul{max-height:130px;overflow:auto;padding-left:20px}.dropz-registered{color:#ff9aa6}@media(max-width:650px){.dropz-modebar{top:84px;width:calc(100vw - 16px);font-size:10px}.dropz-modebar button{padding:6px 4px}}`;host.append(style);
+ const bar=document.createElement('div');bar.className='dropz-modebar';bar.innerHTML='<strong data-label>DROPZ VIEW</strong> <button data-isolate>Isolate · D</button><button data-mode>DROPS mode · D×3</button><button data-reset>Restore · Esc</button>';host.append(bar);
+ const info=document.createElement('div');info.className='dropz-mode-info';info.innerHTML='<b>View controls</b><p>D: floating markers only; D again: restore. D × 3 within 800 ms: DROPS MODE + red zones. Esc restores (native mobile Esc may also open Home; Restore button avoids that). F8 / Drops enables D controls. When markers are OFF, D keeps its native camera strafe. When enabled, D is captured (no strafe). In start / intro / other overlays, native keys win; use these buttons.</p><p>Only coloured sample markers are isolated, not equipment meshes. Names / IDs must match native lists exactly; no inferred component links. Red row tint means register membership, not a changed DROPS consequence band.</p><label>Red-zone radius factor (m per m height)<input data-zone-factor type=number min=0 step=.01 value=.1></label><p data-zone-rule></p><p data-coverage role=status></p><details><summary>Register → native asset / BOM coverage</summary><ul data-links></ul></details><details><summary>Red zone footprints (training assumption)</summary><ul data-zones></ul></details>';root.querySelector('h2').after(info);
+ const q=s=>info.querySelector(s);
+ function clearZones(){for(const m of [...zones.children]){zones.remove(m);m.traverse(o=>{o.geometry?.dispose();o.material?.dispose()})}}
+ function refreshZones(){const items=api.getRegister().items,byId=new Map(api.group.children.map(m=>[m.userData.dropz.id,m]));const footprints=[];
+ for(const item of items){const m=byId.get(item.id);if(!m)continue;const v=m.getWorldPosition(new THREE.Vector3());const floor=opts.floorY?.(item)??0,p=zoneFootprint(item,[v.x,v.y,v.z],floor,rule);if(p)footprints.push(p)}
+ const signature=JSON.stringify(footprints);if(signature!==zones.userData.signature){zones.userData.signature=signature;clearZones();for(const p of footprints){const m=new THREE.Mesh(new THREE.CircleGeometry(p.radius,48),new THREE.MeshBasicMaterial({color:0xff183e,side:THREE.DoubleSide,transparent:true,opacity:.24,depthWrite:false}));m.rotation.x=-Math.PI/2;m.position.set(p.x,p.y,p.z);m.userData.noLod=true;m.userData.dropzZone=p;const rim=new THREE.Mesh(new THREE.RingGeometry(Math.max(0,p.radius-.07),p.radius,48),new THREE.MeshBasicMaterial({color:0xff2648,side:THREE.DoubleSide,transparent:true,opacity:.9,depthWrite:false}));rim.position.z=.005;m.add(rim);zones.add(m)}q('[data-zones]').replaceChildren(...footprints.map(p=>{const li=document.createElement('li');li.textContent=`${p.id}: radius ${p.radius.toFixed(2)} m, floor Y ${(p.y-.04).toFixed(2)} m`;return li}))}
+ q('[data-zone-rule]').textContent=`ASSUMPTION — not official DROPS: radius = clamp(${rule.heightFactor} × entered fall height, ${rule.minRadius}–${rule.maxRadius} m). Flat discs projected beneath elevated markers onto rig-floor height (pipe deck: pad surface). May extend beyond deck edges; no trajectory / bounce / wind model.`;
+ }
+ function scan(){const workshop=document.getElementById('wshop');root.classList.toggle('dropz-with-native',!!(mode&&workshop&&workshop.getClientRects().length));const items=api.getRegister().items,links=new Map(items.map(x=>[x.id,new Set()]));coverage={assets:[],bom:[],scanned:{assets:0,bom:0}};for(const [kind,selector] of Object.entries(LIST_SELECTORS)){for(const row of document.querySelectorAll(selector)){coverage.scanned[kind]++;const hits=matchItems(rowIdentities(row),items);row.classList.toggle('dropz-native-hit',mode&&hits.length>0);if(hits.length){coverage[kind].push({text:row.textContent.trim(),ids:hits.map(x=>x.id)});for(const h of hits)links.get(h.id).add(kind)}}}
+ const n=[...links.values()].filter(s=>s.size).length;const summary=`Native lists examined: ${coverage.scanned.assets} asset / ${coverage.scanned.bom} BOM rows. Matches: ${coverage.assets.length} asset rows / ${coverage.bom.length} BOM rows matched; ${n}/${items.length} register items linked. Unopened / unloaded lists are not assessed. Unmatched items are NOT mapped to parent equipment.`;
+ if(summary!==lastSummary){lastSummary=summary;q('[data-coverage]').textContent=summary}
+ const signature=JSON.stringify([...links].map(([id,s])=>[id,items.find(i=>i.id===id)?.name,[...s]]));if(q('[data-links]').dataset.signature!==signature){q('[data-links]').dataset.signature=signature;q('[data-links]').replaceChildren(...items.map(i=>{const li=document.createElement('li');li.textContent=`${i.id} · ${i.name} → ${[...links.get(i.id)].join(', ')||'no exact native match loaded'}`;li.dataset.registerId=i.id;return li}))}
+ q('[data-links]').classList.toggle('dropz-registered',mode);
+ }
+ function update(){bar.dataset.mode=String(mode);bar.querySelector('[data-label]').textContent=mode?'DROPS MODE':isolation.active?'ISOLATE · FLOATING ITEMS':api.isVisible()?'DROPZ ARMED · D':'DROPZ OFF · F8';bar.querySelector('[data-isolate]').setAttribute('aria-pressed',String(isolation.active));bar.querySelector('[data-mode]').setAttribute('aria-pressed',String(mode));zones.visible=mode&&!isolation.active;refreshZones();scan()}
+ function setIsolate(on){if(on===isolation.active)return;if(on){previousMarkers=api.isVisible();api.setVisible(true);isolation.enter()}else{isolation.exit();api.setVisible(previousMarkers)}update()}
+ function setMode(on){setIsolate(false);on=!!on;if(on!==mode){if(on){previousModeMarkers=api.isVisible();api.setVisible(true)}else api.setVisible(previousModeMarkers)}mode=on;update()}
+ function reset(){seq.reset();setIsolate(false);setMode(false)}
+ bar.querySelector('[data-isolate]').onclick=()=>{seq.reset();setIsolate(!isolation.active)};bar.querySelector('[data-mode]').onclick=()=>{seq.reset();setMode(!mode)};bar.querySelector('[data-reset]').onclick=reset;
+ q('[data-zone-factor]').onchange=e=>{const v=Number(e.target.value);if(e.target.value.trim()&&Number.isFinite(v)&&v>=0){rule.heightFactor=v;update()}else e.target.value=rule.heightFactor};
+ const overlayOpen=()=>[...document.querySelectorAll('[role=dialog],[aria-modal=true],#intro,#start,#splash,#ddTracks,#showroom,#showroomB,#showroomC,#wshop,#ddCab,#ddRun')].some(e=>!host.contains(e)&&e.getClientRects().length>0&&getComputedStyle(e).visibility!=='hidden'&&getComputedStyle(e).display!=='none');
+ const key=e=>{const escGuard={repeat:e.repeat,isComposing:e.isComposing,ctrlKey:e.ctrlKey,altKey:e.altKey,metaKey:e.metaKey,shiftKey:e.shiftKey,target:e.target};if(e.key==='Escape'&&(isolation.active||mode)&&acceptsKey(escGuard)){const nativeOverlay=overlayOpen();reset();if(!nativeOverlay){e.preventDefault();e.stopImmediatePropagation()}return}if(e.repeat){const once={repeat:false,defaultPrevented:e.defaultPrevented,isComposing:e.isComposing,ctrlKey:e.ctrlKey,altKey:e.altKey,metaKey:e.metaKey,shiftKey:e.shiftKey,target:e.target};if(e.key.toLowerCase()==='d'&&shouldHandleD({armed:api.isVisible(),overlayOpen:overlayOpen(),event:once})){e.preventDefault();e.stopImmediatePropagation()}return}if(!acceptsKey(e))return;if(overlayOpen()){seq.reset();return}if(e.key.toLowerCase()==='d'&&shouldHandleD({armed:api.isVisible(),overlayOpen:false,event:e})){e.preventDefault();e.stopImmediatePropagation();const action=seq.press(performance.now());if(action==='mode')setMode(!mode);else setIsolate(!isolation.active)}};
+ // Capture D only while F8/markers are enabled and no other overlay owns input.
+
+ window.addEventListener('keydown',key,true);window.addEventListener('blur',seq.reset);
+ // Enforce immediately before Three projects scene objects, after game updates visibility.
+ const before=scene.onBeforeRender;function hook(...args){before?.apply(this,args);if(isolation.active)isolation.enforce()}scene.onBeforeRender=hook;
+ let rescanTimer=0;const observer=new MutationObserver(records=>{if(records.every(r=>host.contains(r.target)))return;if(!rescanTimer)rescanTimer=setTimeout(()=>{rescanTimer=0;if(!disposed)scan()},50)});observer.observe(document.body,{childList:true,subtree:true});
+ let lastScan=0;function tick(t){if(disposed)return;if(isolation.active)isolation.enforce();if(mode&&!isolation.active)refreshZones();if(t-lastScan>250){scan();lastScan=t}raf=requestAnimationFrame(tick)}raf=requestAnimationFrame(tick);update();
+ return {zones,bar,info,isolation,refresh:update,setIsolate,setMode,reset,get mode(){return mode},getCoverage:()=>structuredClone(coverage),getRule:()=>({...rule}),dispose(){reset();disposed=true;observer.disconnect();clearTimeout(rescanTimer);cancelAnimationFrame(raf);window.removeEventListener('keydown',key,true);window.removeEventListener('blur',seq.reset);if(scene.onBeforeRender===hook)scene.onBeforeRender=before;document.querySelectorAll('.dropz-native-hit').forEach(r=>r.classList.remove('dropz-native-hit'));clearZones();scene.remove(zones);bar.remove();info.remove();style.remove()}};
+}

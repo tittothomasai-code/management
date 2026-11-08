@@ -1,0 +1,18 @@
+@page{size:A4;margin:20mm 18mm 20mm 18mm;@bottom-center{content:"Page " counter(page) " of " counter(pages);font:9pt sans-serif;color:#666}@top-right{content:"Drilling World user guide v5.12.10";font:8pt sans-serif;color:#999}}
+@page:first{@bottom-center{content:none}@top-right{content:none}}
+body{font-family:Carlito,"DejaVu Sans";font-size:10.5pt;line-height:1.45;color:#1b2430}
+.title{page-break-after:always;padding-top:70mm}.title h1{font-size:30pt;color:#0f3b5f;margin:0 0 6mm}.brand{color:#b07a10;font-weight:bold;letter-spacing:.5px;margin-bottom:8mm}.title .subt{font-size:13pt;font-weight:bold}.date,.note{color:#555}
+.toc{page-break-after:always}.toc ol{list-style:none;padding:0}.toc li{margin:2.2mm 0}.toc a{color:#1b2430;text-decoration:none}
+.toc a::after{content:leader('.') target-counter(attr(href),page)}
+section.top{page-break-before:always}.toc+section.top{page-break-before:auto}
+h2{font-size:17pt;color:#0f3b5f;border-bottom:2px solid #b07a10;padding-bottom:2mm}h3{font-size:12.5pt;color:#0f3b5f;margin-top:6mm;page-break-after:avoid}
+section.sub section.sub h3{font-size:11pt}
+table{width:100%;border-collapse:collapse;margin:3mm 0;font-size:9pt}th,td{border:1px solid #c9d2dc;padding:1.6mm 2mm;text-align:left;vertical-align:top}thead th{background:#0f3b5f;color:#fff}tr{page-break-inside:avoid}tbody tr:nth-child(even) td{background:#f3f6f9}
+.props th{width:32%;background:#eef2f6}
+ol.steps li{margin:1.2mm 0}code{font-family:"Liberation Mono",monospace;font-size:8.5pt;background:#eef1f4;padding:0 1mm}
+.callout{border-left:4px solid #2b6cb0;background:#eef4fb;padding:2.5mm 4mm;margin:3mm 0}.callout.warning{border-color:#c77d00;background:#fff6e5}
+figure{margin:3mm 0;text-align:center;page-break-inside:avoid}figure img{max-height:90mm;max-width:100%;border:1px solid #c9d2dc}figcaption{font-size:8pt;color:#666}
+.emo{font-family:"Noto Color Emoji"}
+li,td,p{font-weight:normal} b,thead th,.props th{font-weight:bold}
+.pair{display:flex;gap:4mm;align-items:flex-start;justify-content:center}.pair figure{flex:1}.pair figure.ph{flex:0 0 42mm}.pair figure.ph img{max-height:90mm}
+ol.steps{padding-left:7mm}.sim{background:#e7f0e0;color:#2c5e1a;font-weight:bold;padding:0 1mm;border-radius:2px;font-size:8.5pt}

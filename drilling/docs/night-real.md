@@ -1,0 +1,9 @@
+# Night realism (feat/night-real)
+nightsky.js replaces the flat night sky, stars and moon of night.js when it loads (guarded dynamic import; old path stays as fallback).
+- Sky: single-pass shader. Zenith blue-black, brighter neutral horizon (airglow layer ~6° up), warm skyglow dome from site lighting (sodium/LED), moon aureole (forward scattering, two lobes), Milky Way along a fixed galactic plane with low-contrast value noise and dust lanes (reduced on Low).
+- Stars: magnitude-limited field -1.2..6.3 mag. Cumulative count N(<m) ∝ 10^(≈0.5 m) (Seares/van Rhijn star counts; ~6,000–9,000 stars to mag 6.5 over the sky), flux ∝ 10^(-0.4 m) (Pogson). Extinction ~0.11 mag per airmass (typical V band, clear site). Scintillation amplitude grows with airmass. Colour mix by spectral class (Harvard B/A/F/G/K/M ~ bright-star census) mapped to blackbody RGB.
+- Moon: phase-correct terminator (phase angle ~54°, waxing gibbous), low-contrast maria, limb darkening, earthshine on the dark side, soft aureole in sky shader.
+- Lighting: day key/fill lights fade to ~10 % and shift to moonlight colour (#8fa3c4, Purkinje-style cool cast) and act as the moonlight key on all qualities (no extra light, so Low keeps 0 real lights and shader light count is unchanged). Image-based light (envMapIntensity) drops 85 % at night (no more day-bright grass). Fog matches horizon. Exposure: ACES Filmic, existing night exposure curve.
+- Light sources: neutral LED (#f2f4ff) work/crown lights, warm flood (#fff1dc), sodium-tone derrick lights; smaller cores, halos at 16 % (bloom only on sources), ground pools at 55 %. Windows warm-neutral. Max sprite saturation 0.37 (test).
+- UI: body.dw-night; showroom rig card at night uses neutral grey border, no amber.
+Sources: Allen's Astrophysical Quantities (star counts, extinction); Pogson magnitude scale; Bortle (2001) sky brightness scale; ICAO Annex 14 obstruction light (beacon).
