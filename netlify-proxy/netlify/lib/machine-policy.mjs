@@ -166,6 +166,64 @@ function matchSurface(entries, fields) {
   return ordered.join("+");
 }
 
+// Diagnose only a reply that the existing exact-match policy already refused.
+const XML_MATCH_ORDER = Object.freeze([
+  "namespace-uri", "well-uid", "well-name", "well-field", "well-country",
+  "wellbore-identity", "credential-element", "credential-attribute",
+  "log-data", "other-attribute", "other-text", "unclassified-xml",
+]);
+const XML_CREDENTIAL_NAME = /^(?:password|passwd|pwd|authorization|basicauth|credential|credentials|clientsecret|token)$/i;
+
+function passwordXmlLocation(xml, fields) {
+  const secret = fields.named.find(item => item.name === "password")?.value;
+  if (!secret || typeof xml !== "string" || !xml.includes(secret)) return undefined;
+  const matches = new Set();
+  try {
+    const doc = walk(xml);
+    const attribute = /([^\s=]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g;
+    const visit = (el, parent) => {
+      for (const m of el.attrs.matchAll(attribute)) {
+        if (!(m[2] ?? m[3]).includes(secret)) continue;
+        const name = m[1].split(":").at(-1);
+        if (/^xmlns(?::|$)/.test(m[1])) matches.add("namespace-uri");
+        else if (XML_CREDENTIAL_NAME.test(name)) matches.add("credential-attribute");
+        else if (el.local === "well" && name === "uid") matches.add("well-uid");
+        else if (el.local === "wellbore" && /^(uid|uidWell)$/.test(name)) matches.add("wellbore-identity");
+        else matches.add("other-attribute");
+      }
+      if (el.selfClosing) return;
+      let start = el.gt + 1;
+      const inspect = end => {
+        if (!doc.xml.slice(start, end).includes(secret)) return;
+        if (XML_CREDENTIAL_NAME.test(el.local)) matches.add("credential-element");
+        else if (parent?.local === "well" && ["name", "field", "country"].includes(el.local)) {
+          matches.add("well-" + el.local);
+        } else if (el.local === "data" && parent?.local === "logData") matches.add("log-data");
+        else matches.add("other-text");
+      };
+      for (const child of el.children) {
+        inspect(child.start);
+        visit(child, el);
+        start = child.selfClosing ? child.gt + 1 : child.end;
+      }
+      inspect(el.innerEnd);
+    };
+    for (const root of doc.roots) visit(root, null);
+  } catch {
+    // Malformed XML, CDATA or comments may defeat structural location.
+  }
+  if (!matches.size) matches.add("unclassified-xml");
+  const names = XML_MATCH_ORDER.filter(name => matches.has(name));
+  const label = names.join("+");
+  return containsCredential(label, fields) ? undefined : label;
+}
+
+function addPasswordLocation(body, entries, fields) {
+  const xml = entries.find(entry => entry.name === "decoded-xml")?.text;
+  const location = passwordXmlLocation(xml, fields);
+  if (location) body.passwordXmlLocation = location;
+}
+
 function decodedEntries(parsed) {
   if (!parsed) return [];
   return [
@@ -196,7 +254,10 @@ function refusalBody(texts, fields, entries) {
   // refusal decision is still any match of the same strings as before.
   if (credential) {
     body.credentialClass = credentialClass(present, fields);
-    if (entries) body.matchSurface = matchSurface(entries, fields);
+    if (entries) {
+      body.matchSurface = matchSurface(entries, fields);
+      addPasswordLocation(body, entries, fields);
+    }
   }
   return body;
 }
@@ -355,6 +416,7 @@ function walk(xmlText) {
       nsStack.pop();
       if (!top || top.qualified !== name) bad("nesting");
       top.innerEnd = lt;
+      top.end = gt + 1;
       i = gt + 1;
       continue;
     }
@@ -372,7 +434,7 @@ function walk(xmlText) {
     const prefix = colon < 0 ? "" : qualified.slice(0, colon);
     const local = colon < 0 ? qualified : qualified.slice(colon + 1);
     const uri = prefix ? (ns.get(prefix) || "") : (ns.get("") || "");
-    const el = { qualified, local, ns: uri, gt, innerEnd: null, selfClosing, children: [] };
+    const el = { qualified, local, ns: uri, attrs, start: lt, gt, innerEnd: null, selfClosing, children: [] };
     const parent = stack[stack.length - 1];
     if (parent) parent.children.push(el);
     else roots.push(el);
@@ -852,7 +914,9 @@ function finishUpstream(op, up, ms, fields) {
     if (rawHit.credentialClass) {
       let parsed = null;
       try { parsed = parseUpstreamSoap(op, text); } catch { parsed = null; }
-      rawHit.matchSurface = matchSurface(rawEntries.concat(decodedEntries(parsed)), fields);
+      const entries = rawEntries.concat(decodedEntries(parsed));
+      rawHit.matchSurface = matchSurface(entries, fields);
+      addPasswordLocation(rawHit, entries, fields);
     }
     return new Response(JSON.stringify(rawHit), { status: 502, headers: { ...BASE_HEADERS } });
   }

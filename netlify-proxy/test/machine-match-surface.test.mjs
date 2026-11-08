@@ -125,6 +125,7 @@ test("literal, decoded, supp, fault, result, and comment surfaces stay distinct"
   assert.equal(literal.body.credentialClass, "password");
   assert.equal(literal.body.matchSurface, "raw-body+decoded-xml");
   assert.equal(literal.impl.calls[0].body.includes(PASSWORD), false);
+  assert.equal(literal.body.passwordXmlLocation, "well-name");
   hidden(literal);
 
   const entityXml = "&lt;wells xmlns=&quot;http://www.witsml.org/schemas/1series&quot; version=&quot;1.4.1.1&quot;&gt;&lt;well uid=&quot;SYNTH-WELL-1&quot;&gt;&lt;name&gt;secr&#101;t-pass-99&lt;/name&gt;&lt;/well&gt;&lt;/wells&gt;";
@@ -132,6 +133,7 @@ test("literal, decoded, supp, fault, result, and comment surfaces stay distinct"
   assert.equal(decoded.status, 502);
   assert.equal(decoded.body.credentialClass, "password");
   assert.equal(decoded.body.matchSurface, "decoded-xml");
+  assert.equal(decoded.body.passwordXmlLocation, "well-name");
   hidden(decoded);
 
   const supp = await call({ text: store(well("Synth North"), "<SuppMsgOut>secr&#101;t-pass-99</SuppMsgOut>") });
@@ -198,6 +200,7 @@ test("a normal well document can match a password that is only ordinary markup",
   assert.equal(out.body.credentialClass, "password");
   assert.equal(out.body.matchSurface, "raw-body+decoded-xml");
   assert.equal(QUERY.includes(needle), true);
+  assert.equal(out.body.passwordXmlLocation, "namespace-uri");
   assert.equal(out.raw.includes(needle), false);
   assert.equal(out.raw.includes("Synth"), false);
   assert.equal(out.impl.calls[0].headers.Authorization, auth);
@@ -212,4 +215,30 @@ test("the request password is not inserted into the scanned response", async () 
   assert.equal(out.impl.calls[0].headers.Authorization, AUTH);
   assert.equal(out.impl.calls.length, 1);
   assert.equal(netCalls, 0);
+});
+
+
+test("reports a credential field and well UID without returning any values", async () => {
+  const xml = `<wells xmlns="${NS}"><well uid="${PASSWORD}"><credentials Authorization='${PASSWORD}'><password>${PASSWORD}</password></credentials></well></wells>`;
+  const out = await call({ text: store(xml) });
+  assert.equal(out.status, 502);
+  assert.equal(out.body.passwordXmlLocation, "well-uid+credential-element+credential-attribute");
+  hidden(out);
+});
+
+test("malformed matched XML still refuses without revealing its tags", async () => {
+  const out = await call({ text: store(`<wells><unexpected>${PASSWORD}</wells>`) });
+  assert.equal(out.status, 502);
+  assert.equal(out.body.passwordXmlLocation, "unclassified-xml");
+  assert.equal(out.raw.includes("unexpected"), false);
+  hidden(out);
+});
+
+test("location label cannot reflect an exact password itself", async () => {
+  const pass = "well-name";
+  const auth = "Basic " + Buffer.from(USER + ":" + pass).toString("base64");
+  const out = await call({ text: store(well(pass)) }, auth);
+  assert.equal(out.status, 502);
+  assert.equal(out.body.passwordXmlLocation, undefined);
+  assert.equal(out.raw.includes(pass), false);
 });

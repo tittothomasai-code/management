@@ -363,3 +363,25 @@ test("reader helpers still drop planted secrets and unknown refusal labels", asy
   assert.deepEqual(machineRequestBody("WMLS_GetVersion", "well", "<x/>", "returnElements=all"), { op: "WMLS_GetVersion" });
   assert.deepEqual(machineRequestBody("WMLS_GetCap", "", "", "dataVersion=1.4.1.1"), { op: "WMLS_GetCap", options: "dataVersion=1.4.1.1" });
 });
+
+
+test("reader exposes only allow-listed refusal diagnostics", () => {
+  assert.throws(() => adaptMachineResult({
+    result: -1,
+    reason: "credential-reflection",
+    credentialClass: "password",
+    matchSurface: "raw-body+decoded-xml",
+    passwordXmlLocation: "well-name",
+    xml: "<name>fixture-refused</name>",
+  }, "WMLS_GetFromStore"), error => error.closed && error.credentialClass === "password" &&
+    error.matchSurface === "raw-body+decoded-xml" && error.passwordXmlLocation === "well-name" &&
+    !JSON.stringify(error).includes("fixture-refused"));
+
+  assert.throws(() => adaptMachineResult({
+    reason: "credential-reflection",
+    credentialClass: "password+unknown-secret",
+    matchSurface: "decoded-xml+unknown-secret",
+    passwordXmlLocation: "well-name+unknown-secret",
+  }, "WMLS_GetFromStore"), error => error.closed && !JSON.stringify(error).includes("unknown-secret") &&
+    !error.credentialClass && !error.matchSurface && !error.passwordXmlLocation);
+});

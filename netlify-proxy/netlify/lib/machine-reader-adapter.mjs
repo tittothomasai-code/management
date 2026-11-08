@@ -20,6 +20,19 @@
 // machine key.
 
 const VERSION_LIST = /^\d{1,2}(?:\.\d{1,4}){1,3}(?:,\d{1,2}(?:\.\d{1,4}){1,3}){0,7}$/;
+const MATCH_SURFACES = new Set([
+  "raw-body", "decoded-xml", "supp-message", "fault", "result", "response-json", "ambiguous",
+]);
+const MATCH_CLASSES = new Set(["basic", "password", "raw-pair", "caller-key", "ambiguous"]);
+const MATCH_LOCATIONS = new Set([
+  "namespace-uri", "well-uid", "well-name", "well-field", "well-country",
+  "wellbore-identity", "credential-element", "credential-attribute", "log-data",
+  "other-attribute", "other-text", "unclassified-xml",
+]);
+function allowLabels(value, allowed) {
+  if (typeof value !== "string" || value.length > 240) return "";
+  return value.split("+").every(label => allowed.has(label)) ? value : "";
+}
 const REFUSAL_REASONS = new Set([
   "credential-reflection",
   "format-character",
@@ -35,9 +48,12 @@ export class MachineCallClosed extends Error {
     this.op = op;
     this.reason = reason || "";
     this.closed = true;
+    this.credentialClass = allowLabels(options.credentialClass, MATCH_CLASSES);
+    this.matchSurface = allowLabels(options.matchSurface, MATCH_SURFACES);
+    this.passwordXmlLocation = allowLabels(options.passwordXmlLocation, MATCH_LOCATIONS);
     if (options.escape) {
       this.escape = true;
-      const revealed = new MachineCallClosed(op, code, reason);
+      const revealed = new MachineCallClosed(op, code, reason, { ...options, escape: false });
       Object.defineProperty(this, "message", {
         get() { throw revealed; },
       });
@@ -84,13 +100,15 @@ function throwIfAborted(signal, escape) {
   if (signal && signal.aborted) throw abortError(signal.reason, escape);
 }
 
-function close(op, code, reason, escape) {
-  throw new MachineCallClosed(op, code, reason, { escape: !!escape });
+function close(op, code, reason, escape, diagnostic = {}) {
+  throw new MachineCallClosed(op, code, reason, { ...diagnostic, escape: !!escape });
 }
 
 export function revealClosed(err) {
   if (err && err.escape && err.code === "ABORTED") return abortError(err.cause, false);
-  if (err && err.escape) return new MachineCallClosed(err.op, err.code, err.reason);
+  if (err && err.escape) return new MachineCallClosed(err.op, err.code, err.reason, {
+    credentialClass: err.credentialClass, matchSurface: err.matchSurface, passwordXmlLocation: err.passwordXmlLocation,
+  });
   return err;
 }
 
@@ -98,7 +116,9 @@ export function adaptMachineResult(machine, op) {
   const operation = op || "WMLS_GetFromStore";
   const reason = machine && typeof machine.reason === "string" ? machine.reason : "";
   const result = resultCode(machine && machine.result);
-  if (REFUSAL_REASONS.has(reason)) close(operation, "MACHINE_REFUSED", reason, operation === "WMLS_GetVersion");
+  if (REFUSAL_REASONS.has(reason)) close(operation, "MACHINE_REFUSED", reason, operation === "WMLS_GetVersion", {
+    credentialClass: machine.credentialClass, matchSurface: machine.matchSurface, passwordXmlLocation: machine.passwordXmlLocation,
+  });
   if (operation === "WMLS_GetVersion") {
     const version = text(machine && machine.version);
     if (result !== 1 || !VERSION_LIST.test(version)) close(operation, "MACHINE_FAILED", "", true);

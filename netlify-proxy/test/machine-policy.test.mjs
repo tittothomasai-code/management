@@ -1005,7 +1005,7 @@ describe("machine read policy", { concurrency: 1 }, () => {
     assert.equal(secret.status, 502);
     assert.equal(secret.body.reason, "credential-reflection");
     assert.equal(secret.body.credentialClass, "password");
-    assert.equal(secret.raw, '{"result":-1,"error":"upstream response refused","reason":"credential-reflection","credentialClass":"password","matchSurface":"raw-body+decoded-xml"}');
+    assert.equal(secret.raw, '{"result":-1,"error":"upstream response refused","reason":"credential-reflection","credentialClass":"password","matchSurface":"raw-body+decoded-xml","passwordXmlLocation":"other-text"}');
     assert.equal(secret.raw.includes(password), false);
     assert.equal(secret.raw.includes(user + ":" + password), false);
     const encodedXml = soap("WMLS_GetFromStore", "<Result>1</Result><XMLout>" + token + "</XMLout>");
