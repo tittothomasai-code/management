@@ -2,15 +2,19 @@
 
 ## Production baseline (verified 8 November 2026, AEST)
 
-- Host: Netlify site `robotyx-drilling`, ID `d548e1ee-91eb-4166-a2bd-d8fdb7fbd5a9`.
-- Published deploy and rollback target: `6aef9d63111effabca016bae`.
-- Immutable URL: https://6aef9d63111effabca016bae--robotyx-drilling.netlify.app
-- Published at 07:51:36 AEST. CLI artifact deployment, no build ID, branch or source commit recorded by Netlify.
+- Host: Netlify site `robotyx-drilling`, ID `d548e1ee-91eb-4166-a2bd-d8fdb7fbd5a9`. Direct CLI artifact. No linked repository, branch, build ID, or commit.
+- Public site checked 8 November 2026 at 14:02 AEST: https://drilling.robotyx.systems matches deploy `6aefa5b44e57e24ef002a2f3` (title recorded by the host audit as Drilling operations PR5). 371 platform files = 370 published files plus Netlify's `netlify.toml`.
+- That deploy's public `operations-release.json` records `dashboard_commit` `21ccbad3ddb4a71f3fd6d02a914838c877396f26` and `baseline_deploy` `6aef9d63111effabca016bae`. The commit is provenance. It is not byte identity for `index.html`, `start.js`, `intro.js`, or `dropz_boot.js`.
+- `final-candidate-v6` is not this baseline: its `operations-release.json` says `f5131ebc3d81142169613897414289921ff95d7d`. Do not publish that candidate or `ops-live-fix/rev2` as a directory. Rev2's manifest repeats the stale commit and differs from production by more than the four overlay files.
+- The next authorized publication copies `operations.js`, `operations.css`, and `operations_data.js` onto deploy `6aefa5b44e57e24ef002a2f3`. The published production loaders are `operations.js?v=1` inside `start.js` and `start.js?v=ops1` inside `index.html`. Change only those two query strings to `r12c`. `ol2` was a branch token, not a published production loader. Do not replace `index.html` or `start.js` with the release-branch copies. Plan-before-Drill, the intro, DROPZ, and RTOC stay. `operations.js` imports `operations_data.js?v=r12c` and `operations.css?v=r12c`, so a returning browser cannot keep the old adapter with the new UI. The WITSML button docks the existing panel inside Operations and does not stop the poll when the panel closes. `draft-fixture/` is a separate draft-only package. Do not copy it onto this production deploy.
+- Earlier rollback target recorded for the pre-operations artifact: `6aef9d63111effabca016bae`. Confirm the live deploy again before any restore.
+- Pre-operations artifact: https://6aef9d63111effabca016bae--robotyx-drilling.netlify.app published at 07:51:36 AEST. Its index does not match the current public site.
+- Current public index matches https://6aefa5b44e57e24ef002a2f3--robotyx-drilling.netlify.app. Netlify recorded no build ID, branch, or source commit for either artifact.
 - The GitHub Pages workflow deploys `gh-pages`, not this production artifact.
-- Production assets do not match the release branch. Do not deploy the repository directory wholesale.
-- The baseline includes the startup intro, Plan-before-Drill menu, DROPZ, RTOC and newer game imports. Preserve these files and hooks.
+- Production `index.html` and `start.js` do not match this release branch. Do not deploy the repository directory wholesale.
+- The live site includes the startup intro, Plan-before-Drill menu, DROPZ, RTOC and newer game imports. Preserve these files and hooks.
 
-The published file manifest has 365 entries. The local production backup matches all 364 downloadable runtime assets by SHA-1. Netlify's generated `netlify.toml` is not publicly downloadable. The immutable baseline index also matches production by SHA-256.
+The 07:51 manifest had 365 entries. The 14:02 host audit counts 371 platform files on the current deploy. Netlify's generated `netlify.toml` is not publicly downloadable. This VM does not have the nightly stage folder; do not upload an older stage tree.
 
 ## Candidate assembly
 
@@ -35,7 +39,7 @@ node wdash_unit_test.mjs
 
 The connection picker ignores out-of-order responses, disables Start while headers load, and rejects log headers from a different wellbore.
 
-The adapter rejects false LIVE states: no time-indexed log, no actual source rows, invalid sample timestamps, and stale source timestamps.
+The adapter rejects false LIVE states: no time-indexed log, no actual source rows, invalid sample timestamps, stale source timestamps, and fixture provenance. A fixture is the existing simulated flag, SIM-TEST, SIMULATED, synthetic, or FIXTURE / NOT LIVE text on the well, wellbore, or log, SuppMsgOut, a localhost store, a `.invalid` store host, or a `/sim/witsml` store path. A loopback or custom proxy in front of an ordinary https store is not itself a fixture. The approved proxy and a custom https store with ordinary names can still be WITSML LIVE. A test feed never uses that badge.
 
 For the local-only browser regression, start these in separate terminals:
 

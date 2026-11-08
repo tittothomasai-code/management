@@ -1,0 +1,47 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {fixtureResponse, WELL, LOGNAME} from './netlify/functions/witsml-fixture.mjs';
+
+const src = readFileSync(new URL('./netlify/functions/witsml-fixture.mjs', import.meta.url), 'utf8');
+assert.equal(/fetch\s*\(|https?\.request|net\.connect|child_process|fs\.write/.test(src), false);
+const secret = 'super-secret-token';
+const planted = JSON.stringify({ url: 'https://australia.adagasolutions.com/WMLS', user: 'person', pass: secret, op: 'WMLS_GetFromStore', wmlType: 'log', query: '<logs><log><logData/></log></logs>' });
+const now = Date.parse('2026-11-08T04:32:23.000Z');
+const later = now + 15_000;
+function post(mode, at, body = planted, op) {
+  const payload = op ? JSON.stringify({ ...JSON.parse(body), op }) : body;
+  return fixtureResponse({ method: 'POST', url: 'https://draft.example.netlify.app/.netlify/functions/witsml-fixture?mode=' + mode, origin: 'https://random-draft.netlify.app', bodyText: payload, now: at });
+}
+const header = fixtureResponse({ method: 'POST', url: 'https://draft.example.netlify.app/.netlify/functions/witsml-fixture?mode=advance', origin: 'https://random-draft.netlify.app', bodyText: JSON.stringify({ op: 'WMLS_GetFromStore', wmlType: 'log', query: '<logs><log uid="GT"/></logs>' }), now });
+assert.equal(header.status, 200);
+assert.equal(header.json.xml.includes(WELL), true);
+assert.equal(header.json.xml.includes(LOGNAME), true);
+assert.equal(header.json.xml.includes('SIM-TEST'), true);
+const advance = post('advance', now);
+assert.equal(advance.status, 200);
+assert.equal(advance.json.xml.includes(secret), false);
+assert.equal(JSON.stringify(advance.json).includes('australia.adagasolutions.com'), false);
+const times = [...advance.json.xml.matchAll(/<data>([^,]+),/g)].map(m => m[1]);
+assert.equal(times.length >= 2 && times[0] !== times[1], true);
+const next = post('advance', later);
+const nextTimes = [...next.json.xml.matchAll(/<data>([^,]+),/g)].map(m => m[1]);
+assert.notEqual(nextTimes.at(-1), times.at(-1));
+const missing = post('missing', now);
+const rows = [...missing.json.xml.matchAll(/<data>([^<]+)<\/data>/g)].map(m => m[1].split(','));
+assert.equal(rows.at(-1)[3], '');
+assert.equal(rows.at(-1)[4], '');
+assert.equal(rows[0][3], '90');
+assert.notEqual(rows.at(-1)[3], '0');
+const stale = post('stale', now);
+const staleTime = Date.parse([...stale.json.xml.matchAll(/<data>([^,]+),/g)].at(-1)[1]);
+assert.equal(now - staleTime > 120_000, true);
+const denied = post('401', now);
+assert.equal(denied.status, 401);
+assert.equal(JSON.stringify(denied.json).includes(secret), false);
+assert.equal(denied.json.error, 'Authentication failed');
+const write = post('advance', now, planted, 'WMLS_AddToStore');
+assert.equal(write.status, 403);
+assert.equal(JSON.stringify(write.json).includes(secret), false);
+const blocked = fixtureResponse({ method: 'POST', url: 'https://draft.example.netlify.app/.netlify/functions/witsml-fixture', origin: 'https://evil.example', bodyText: planted, now });
+assert.equal(blocked.status, 403);
+console.log('PASS draft fixture: advance, missing, stale, 401, no forward');

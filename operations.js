@@ -1,5 +1,5 @@
 import {FT, TRACKS, drilledIntervals, feedJoints, feedSource, finite, imageRows,
-  jointProgress, readSamples, surveyMatches} from './operations_data.js';
+  jointProgress, latestChannel, readSamples, sourceStamp, surveyMatches} from './operations_data.js?v=r12c';
 import {chart, imageLog} from './operations_plots.js';
 import {minCurvStations, pointAt, samplePath} from './geo.js';
 import {pair, radius} from './ac.js';
@@ -15,7 +15,7 @@ const surveyPoint = p => ({md:p.md*FT, n:p.ns*FT, e:p.ew*FT, tvd:p.tvd*FT});
 const MODES = [['mode','Slide / Rotary'], ['torque','Torque'], ['wob','WOB'], ['plan','Plan vs Actual']];
 const MODE_NAMES = {slide:'Slide', rotary:'Rotary', remaining:'Remaining', unknown:'Unclassified'};
 const TRACK_HTML = TRACKS.map(([name], i) =>
-  '<section class="ops-panel"><h3>' + name + '</h3><canvas id="opsTrack' + i + '" role="img" aria-label="' + name + ' trend"></canvas></section>'
+  '<section class="ops-panel"><h3>' + name + '</h3><p class="ops-muted" id="opsLatest' + i + '"></p><canvas id="opsTrack' + i + '" role="img" aria-label="' + name + ' trend"></canvas></section>'
 ).join('');
 const RADAR = '<svg viewBox="0 0 124 124" role="img" aria-label="Anti-collision radar, plan view">' +
   '<g fill="none" stroke="#426478" stroke-width="1"><circle cx="62" cy="62" r="56"/><circle cx="62" cy="62" r="37"/>' +
@@ -28,8 +28,11 @@ const MARKUP = `
       <h1 class="ops-brand"><em>ROBOTYX</em><i>/</i>DRILLING WORLD</h1>
       <div class="ops-meta" id="opsWell">DRILLING OPERATIONS</div>
       <div class="ops-flex"><span class="ops-badge" id="opsSource" role="status">STARTING</span>
-        <button id="opsConnect" type="button">WITSML</button><button id="opsClose" type="button">Exit dashboard</button></div>
+        <button id="opsConnect" type="button" aria-expanded="false" aria-controls="opsWitsmlDock">WITSML</button><button id="opsClose" type="button">Exit dashboard</button></div>
     </header>
+    <div class="ops-layout">
+    <aside id="opsWitsmlDock" aria-label="WITSML connection" hidden></aside>
+    <div class="ops-content">
     <div class="ops-grid">
       <aside class="ops-panel">
         <div class="ops-heading ops-flex"><h2>Joint tally</h2><span class="ops-muted">End MD (m)</span></div>
@@ -71,9 +74,11 @@ const MARKUP = `
     </section>
     <div class="ops-tracks">${TRACK_HTML}</div>
     <footer class="ops-footer"><span id="opsSurvey"></span><span id="opsFooter"></span></footer>
+    </div>
+    </div>
   </div>`;
 
-let root, scene, timer, view = 'mode', origin, message = '', messageAt = 0;
+let root, scene, timer, dockObserver, view = 'mode', origin, message = '', messageAt = 0;
 let sim = {rows:[], joints:[]}, feed = {}, lastSceneKey = '';
 let loadedImage, loadingImage = false, imageError = '';
 
@@ -124,7 +129,8 @@ function feedModel(api, source) {
   const data = w?.log ? api?.data?.() : null, cursor = w?.mode === 'replay' ? w.rp.t : Infinity;
   const key = JSON.stringify([api?.CFG?.url,w?.log?.w,w?.log?.b,w?.log?.uid,source]);
   const history = data?.rows;
-  const stamp = [history?.length,history?.at(-1)?.t,cursor,JSON.stringify(api?.CFG?.map)].join('|');
+  const tail = history?.at(-1);
+  const stamp = [history?.length, tail?.t, Array.isArray(tail?.x) ? tail.x.join('\u001f') : '', cursor, JSON.stringify(api?.CFG?.map)].join('|');
   if (feed.key !== key || feed.stamp !== stamp || feed.history !== history) {
     const rows = readSamples(data, w?.log, api?.CFG?.map, cursor, window.U);
     feed = {key,stamp,history,rows,joints:feedJoints(rows),intervals:drilledIntervals(rows)};
@@ -299,13 +305,23 @@ function renderPlots(model) {
   const depth = finite(start) && end > start;
   const rows = depth ? recent.filter(r => r.hd >= start && r.hd <= Math.min(end,model.hd)).map(r => ({...r,x:r.hd})) :
     recent.slice(-150).map(r => ({...r,x:r.t}));
+  const stale = model.source === 'WITSML STALE';
+  const noteFor = key => {
+    const state = latestChannel(model.rows, key, stale);
+    if (state === 'value') return fmt(model.rows.at(-1)[key]);
+    if (state === 'blank') return '— no sample';
+    if (state === 'stale') return 'feed stale';
+    return 'no channel';
+  };
   for (const [i,track] of TRACKS.entries()) {
     chart($('opsTrack'+i),track,rows,depth ? start : rows[0]?.t,depth ? end : rows.at(-1)?.t,
       depth ? 'depth' : model.source === 'SIM' ? 'simtime' : 'time');
+    set('opsLatest'+i, track.slice(1).map(([key,name]) => name + ' ' + noteFor(key)).join(' · '));
   }
   imageLog($('opsImage'),model.image,start,end,model.bd,model.hd);
   set('opsDepth',(finite(model.bd) ? 'BIT  ' + fmt(model.bd) + ' m MD' : 'BIT MD unavailable') +
-    (model.source === 'SIM' ? ' · synthetic image' : model.imageName ? ' · ' + model.imageName : imageError ? ' · ' + imageError : ''));
+    (model.source === 'SIM' ? ' · synthetic image' :
+      model.imageName ? ' · ' + model.imageName : imageError ? ' · ' + imageError : ' · image unavailable'));
   const button = $('opsLoadImage');
   button.hidden = !['WITSML LIVE','WITSML SIM-TEST'].includes(model.source) || !window.GX?.geo8?.load;
   button.disabled = loadingImage;
@@ -316,10 +332,10 @@ function render() {
   if (!root) return;
   const g = window.G, api = window.GX?.witsml;
   if (!g) return;
-  const source = feedSource(api?.WML);
+  const source = feedSource(api?.WML, Date.now(), api?.CFG);
   const m = source === 'SIM' ? gameModel(g) : feedModel(api,source);
   set('opsWell','DRILLING OPERATIONS  •  ' + m.label);
-  set('opsSource',source === 'SIM' ? 'TRAINING SIMULATION' : source);
+  set('opsSource',(source === 'SIM' ? 'TRAINING SIMULATION' : source) + sourceStamp(api?.WML, source));
   $('opsSource').dataset.live = source === 'WITSML LIVE';
   $('opsConnect').disabled = !api?.open;
   renderTally(m); radar(m); renderSignals(m); renderScene(m); renderPlots(m);
@@ -344,7 +360,8 @@ function render() {
 
 function command(cmd) {
   const {S:s,PH:ph,act,startConn} = window.G;
-  if (feedSource(window.GX?.witsml?.WML) !== 'SIM' || s.seq) return;
+  const api = window.GX?.witsml;
+  if (feedSource(api?.WML, Date.now(), api?.CFG) !== 'SIM' || s.seq) return;
   if (cmd === 'survey') {
     if (s.md > s.lastS + .001) ph.survey(s);
     message = 'Survey recorded at ' + fmt(s.md*FT) + ' m MD';
@@ -381,13 +398,39 @@ async function loadFeedImage() {
   }
 }
 
+function syncDock() {
+  const dock = $('opsWitsmlDock');
+  if (!dock || !root) return;
+  const panel = $('witsml');
+  const open = panel?.parentElement === dock && panel.style.display !== 'none';
+  dock.hidden = !open;
+  $('opsConnect')?.setAttribute('aria-expanded', String(open));
+}
+function dockWitsml(open) {
+  const dock = $('opsWitsmlDock'), api = window.GX?.witsml;
+  if (!dock || !api?.open) return;
+  if (!open) api.close();
+  else {
+    api.open();
+    const panel = $('witsml');
+    if (panel) {
+      dock.append(panel);
+      panel.querySelector('#wX')?.focus({preventScroll:true});
+    }
+  }
+  syncDock();
+}
 function keydown(e) {
-  if (e.key === 'Escape') { e.stopPropagation(); close(); }
+  if (e.key !== 'Escape') return;
+  e.stopPropagation();
+  const dock = $('opsWitsmlDock');
+  if (dock && !dock.hidden) dockWitsml(false);
+  else close();
 }
 function loadCSS() {
   if ($('opsCSS')) return;
   const link = document.createElement('link');
-  link.id = 'opsCSS'; link.rel = 'stylesheet'; link.href = new URL('./operations.css',import.meta.url);
+  link.id = 'opsCSS'; link.rel = 'stylesheet'; link.href = new URL('./operations.css?v=r12c',import.meta.url);
   document.head.append(link);
 }
 
@@ -404,12 +447,11 @@ export function open() {
   root.style.visibility = '';
   $('opsClose').onclick = () => close();
   $('opsLoadImage').onclick = loadFeedImage;
-  $('opsConnect').onclick = () => {
-    close(); window.GX?.witsml?.open?.();
-    // Keep this workflow above unrelated floating simulator controls.
-    const panel = $('witsml');
-    if (panel) panel.style.zIndex = '100021';
-  };
+  const dock = $('opsWitsmlDock');
+  dockObserver = new MutationObserver(syncDock);
+  dockObserver.observe(dock, {childList:true});
+  $('opsConnect').onclick = () => dockWitsml(dock.hidden);
+  if (window.GX?.witsml?.isOpen?.()) dockWitsml(true);
   root.addEventListener('click',e => {
     const button = e.target.closest('button');
     if (button?.dataset.view) {
@@ -429,6 +471,10 @@ export function open() {
 export function close() {
   if (!root) return;
   clearInterval(timer);
+  dockObserver?.disconnect();
+  dockObserver = null;
+  // Hide the connection panel only. Leave its poll timer running.
+  if ($('opsWitsmlDock')?.contains($('witsml'))) window.GX?.witsml?.close?.();
   scene?.dispose();
   scene = null; lastSceneKey = '';
   root.remove(); root = null;
