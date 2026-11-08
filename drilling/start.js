@@ -63,7 +63,7 @@ function tile(id,ic,t,s){return `<button class=tile data-go="${id}" id="st_${id}
 const GRP={plan:['📐','Plan','Wells and sites · New well, Import EDM, Saved sites'],drill:['🛢','Drill','Simulate, train and steer · Continue, New simulation, DD Training, DD Tracks, Rig showroom'],monitor:['📈','Monitor','Real wells · WITSML dashboard, Monitor a well'],ops:['🔧','Operations','Workover & intervention, Safety World']};
 const LEAF=()=>({drill:[hasSave()&&['continue','▶','Continue','Resume your saved SIM rig and well'],['sim','🛢','New simulation','Pick a SIM well and start drilling'],['ddcab','🧭','DD Training','Directional driller cabin · steer the driller, manage the mud motor · SIM'],['ddtracks','🏎','DD Tracks','Select a steering track · cups, stars, best times · SIM'],['rtoc','📡',"Steve's RTOC",'Per-joint RTOC dashboard · tally, 3D joint, geosteering, whole-well context · SIM'],['showroom','🏁','Rig showroom','Browse <span id=st_rigN>all</span> rig types · spin, compare, use · SIM']],
  plan:[['well','📐','New well','Well Planning with a blank proposal'],['edm','📂','Import EDM','All sites & wells from an EDM file · stays on this device'],ST.saved?.length&&['saved','💾','Saved sites',ST.saved.length+' saved on this device · open without importing']],
- monitor:[['operations','◈','Drilling operations','3D well, joint tally and trends · SIM or WITSML'],['wdash','📊','WITSML dashboard','Vertical depth/time logs + image logs · your WITSML store or SIM'],['monitor','📈','Monitor a well','Track progress · saved WITSML well or SIM']],
+ monitor:[['operations','◈','Drilling operations','Read-only WITSML · 3D well, joint tally and trends'],['wdash','📊','WITSML dashboard','Vertical depth/time logs + image logs · your WITSML store or SIM'],['monitor','📈','Monitor a well','Track progress · saved WITSML well or SIM']],
  ops:[['workover','🔧','Workover & intervention','Completions, workover, fishing, P&A, slickline, e-line, CT · SIM'],['safety','🦺','Safety World','Close corrective actions · hunt hazards on the rig · SIM']]});/* v5.12.18 paged menu; safety hook */
 const PARENT={sim:'drill',saved:'plan'};
 export function groupOf(id){const L=LEAF();for(const g in L)if(L[g].some(t=>t&&t[0]==id))return g;return null}
@@ -129,6 +129,6 @@ if(shouldShow()){if(document.body)show();else addEventListener('DOMContentLoaded
 
 if(new URLSearchParams(location.search).has('workover'))import('./workover.js?v=b15');
 
-const openOperations = () => import('./operations.js?v=fp-ops-r2-20261108').then(m => m.open()).catch(e => console.error('Drilling operations',e));
+const openOperations = () => import('./operations.js?v=ops-observer-r4').then(m => m.open()).catch(e => console.error('Drilling operations',e));
 $('opsDashboard').addEventListener('click',openOperations);
 if(q.has('operations')) openOperations();

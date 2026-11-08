@@ -110,3 +110,39 @@
 
 /* PR12 phone wrap, preserving PR11 native dock rules. */
 @media (max-width:620px){#dwOperations .ops-header .ops-flex{flex-wrap:wrap;gap:6px;max-width:100%}#dwOperations .ops-badge{white-space:normal;flex:1 1 100%}#dwOperations #opsSourceTime{white-space:normal;overflow-wrap:anywhere}}
+
+/* Read-only control room. The trajectory gets the primary visual area. */
+#dwOperations {
+  --line:#33495e; --dim:#b4c6d7;
+  background:#071019; padding-inline:max(8px,env(safe-area-inset-left),env(safe-area-inset-right));
+}
+#dwOperations .ops-header {min-height:47px; gap:8px; margin-bottom:7px}
+#dwOperations .ops-meta {font-weight:700;color:#e4f1ff}
+#dwOperations .ops-panel {background:linear-gradient(145deg,#10202f,#0a1521 88%)}
+#dwOperations .ops-grid {gap:7px}
+#dwOperations .ops-center {grid-template-rows:auto minmax(310px,49vh) auto}
+#dwOperations .ops-stage {background:radial-gradient(ellipse at 32% 17%,#1b4163,#0a1d31 66%,#060e17)}
+#dwOperations .ops-tabs {top:9px;left:10px}
+#dwOperations .ops-tabs button {min-height:32px;padding-inline:13px}
+#dwOperations .ops-empty-view {font-size:14px;font-weight:600}
+#dwOperations .ops-stage canvas {position:absolute;inset:0}
+#dwOperations .ops-progress .ops-flex > strong:first-child {text-transform:uppercase}
+#dwOperations .ops-progress .ops-flex > strong + strong {border-left:1px solid var(--line);padding-left:10px}
+#dwOperations .ops-readonly {font-size:11px;font-weight:800;letter-spacing:.04em;color:#89d4ff;border:1px solid #31536c;border-radius:4px;padding:3px 7px}
+#dwOperations .ops-commands .ops-muted {flex:1;min-width:160px;text-align:right}
+#dwOperations .ops-tracks .ops-muted {padding:0 9px}
+#dwOperations .ops-badge[data-live="true"] {background:#09332a}
+@media(max-width:620px) {
+  #dwOperations .ops-center {grid-template-rows:auto minmax(270px,39vh) auto}
+  #dwOperations .ops-tabs {gap:4px;left:6px;right:6px}
+  #dwOperations .ops-tabs button {padding-inline:7px;min-height:38px}
+  #dwOperations .ops-commands .ops-muted {text-align:left}
+  #dwOperations .ops-header button {min-height:42px}
+  #dwOperations .ops-progress strong {white-space:normal}
+}
+#dwOperations #opsWitsmlDock :is(#wsim,#wrbox,div:has(> #wrep),div:has(> label > #wlmc)) {display:none!important}
+
+#dwOperations .ops-stage [hidden] {display:none}
+#dwOperations .ops-dls {position:absolute;inset:51px 9px 8px;display:grid;grid-template-rows:auto minmax(0,1fr)}
+#dwOperations .ops-dls canvas {position:static;touch-action:auto;cursor:default}
+#dwOperations #opsTrackWindow {padding-bottom:0}
