@@ -10,6 +10,7 @@ import * as THREE from 'three';
 import {OrbitControls} from './vendor/OrbitControls.js';
 import * as WML from './rtoc_wml.js?v=a2';
 import * as HI from './rtoc_hist.js?v=h1';
+import * as SUM from './rtoc_summary.js?v=s1';
 import * as C from './rtoc_core.js?v=r1';
 import {planPath,PLAN} from './physics.js?v=b4';
 import {compose} from './rtoc_scene_model.js?v=u1';import {createScene3D,loadRig} from './rtoc_scene3d.js?v=u1';import {mapKey,SHORTCUTS} from './rtoc_input.js?v=u1';import {fromGame} from './rtoc_adapter.js?v=u1';import {antiCollision} from './rtoc_status.js?v=u1';import {GLTFLoader} from './vendor/loaders/GLTFLoader.js';
@@ -114,11 +115,11 @@ function wsel(src){const sel=$('rtWsel');if(!sel)return;const I=histIdx(),runs=O
  const cur=src.kind=='SIM'?DEMO_KEY:src.D?(WL.disc.get(src.D.well)?.wbs.length>1?src.D.key:src.D.source+'|'+src.D.well):src.key;if(sel.value!==cur&&document.activeElement!==sel)sel.value=cur;$('rtWselL').hidden=false;$('rtBusy').textContent=WL.busy}
 export function open(){if(ST.el){render();return API}startRecorder();
  window.dropz?.modes?.reset?.();
- if(!$('rtocCss')){const s=document.createElement('style');s.id='rtocCss';s.textContent=CSS+CSS2;document.head.appendChild(s)}
+ if(!$('rtocCss')){const s=document.createElement('style');s.id='rtocCss';s.textContent=CSS+CSS2+`#rtoc .summary{z-index:30;background:rgba(3,8,14,.76)}#rtoc .summaryBox{width:min(920px,calc(100vw - 24px));max-height:calc(100vh - 28px);overflow:auto}#rtoc .summaryHead{display:flex;justify-content:space-between;align-items:center;gap:12px;position:sticky;top:-12px;background:#0d1c2e;padding:4px 0 8px;z-index:1}#rtoc .summaryHead h3{margin:0}#rtoc .summaryLead{color:#9fc3ea;margin:2px 0 10px}#rtoc .summaryGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:8px 0}#rtoc .summaryStat,#rtoc .summaryFact{border:1px solid #23405f;background:#091727;border-radius:4px;padding:7px;min-width:0}#rtoc .summaryStat small,#rtoc .summaryFact small{display:block;color:#9fc3ea;font-size:10px;text-transform:uppercase}#rtoc .summaryStat b{display:block;font-size:16px;margin-top:3px}#rtoc .summaryFacts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}#rtoc .summaryFact b{display:block;margin:3px 0;color:#f0c36a}#rtoc .summaryFact p{margin:0;color:#a9bbcc;font-size:10px;line-height:1.4}#rtoc .summaryQuality{margin:8px 0 0;padding-left:18px;color:#a9bbcc;font-size:10px}@media(max-width:650px){#rtoc .summaryGrid{grid-template-columns:repeat(2,minmax(0,1fr))}#rtoc .summaryFacts{grid-template-columns:1fr}#rtoc .summaryBox{padding:9px;min-width:0}}`;document.head.appendChild(s)}
  if(RIG.st=='idle'){RIG.st='loading';loadRig(GLTFLoader,new URL('./assets/codex/land_rig.glb',import.meta.url).href).then(m=>{RIG.m=m;RIG.st=m?'glb':'fallback';ST._k=null;ST.scenes.forEach(s=>s.fitKey=null)})}
  const el=document.createElement('section');el.id='rtoc';el.setAttribute('role','dialog');el.setAttribute('aria-label',"Steve's RTOC");
  el.innerHTML=`<div class="hdr pn"><span class=brand>ROBOTYX <b>/</b> DRILLING WORLD <b>·</b> STEVE'S RTOC</span><span id=rtSrc class=badge>WITSML NOT CONNECTED</span><span id=rtWell style="flex:1;text-align:center;font-weight:700"></span><label id=rtWselL style=font-size:11px>Source <select id=rtWsel aria-label="Select live WITSML well or explicit demo"></select></label><span id=rtBusy class=na style=font-size:11px></span>
- <button id=rtConnectW type=button>Connect live WITSML</button>
+ <button id=rtConnectW type=button>Connect live WITSML</button><button id=rtSummaryB type=button>Well summary · 10 facts</button>
  <button id=rtKeys title="Keyboard shortcuts (?)">Keys<kbd>?</kbd></button><button id=rtCtxB aria-pressed=true title="Whole-well framing and context card (C)">Whole-well context<kbd>C</kbd></button><button id=rtClose aria-label="Close RTOC">Close<kbd>Esc</kbd></button></div>
  <div class=main><div class=left><div class="pn tally"><h3>Joint tally <span>MD (m)</span></h3><div id=rtTally></div></div><div class=pn><h3>Next up</h3><div id=rtNext></div></div></div>
  <div class=ctr><div class="pn score" id=rtScore></div><div class="viewrow" id=rtViews><div class="pn ctxw" id=rtCtx><h3>Whole-well snapshot <span id=rtCtxAs></span></h3><div class=ctxin><div class=v3 id=rtCtx3><div class=cap><span>WHOLE WELL · <span id=rtCtxSrc></span></span><span id=rtCtxGeo>ILLUSTRATIVE GEOLOGY · NOT TO SCALE</span></div><div class=leg><span style=color:#38d6c8>━ Surveyed</span> · <span style=color:#ffb347>┅ Estimate to bit</span> · <span style=color:#ccd>┅ Plan</span> · <span style=color:#9ab>▮ Casing</span></div></div><div class=kp id=rtKpi></div></div></div>
@@ -126,10 +127,10 @@ export function open(){if(ST.el){render();return API}startRecorder();
  <div class=mnav><button id=rtPrevJ aria-label="Previous joint">◀ Prev joint</button><button id=rtCurJ>Current</button><button id=rtNextJ aria-label="Next joint">Next joint ▶</button></div><div class=rstrip id=rtStrip></div><div class="pn exe"><h3 style="margin:0 6px 0 0">Execution</h3><span id=rtMode class=badge></span><button id=rtHold>Hold / Resume</button><button id=rtSlide>Slide</button><button id=rtRot>Rotary</button><button id=rtAuto>Auto-steer</button><button id=rtSurv>Take survey</button><span id=rtRev></span></div></div>
  <div class=right><div class=pn><h3>Anti-collision</h3><div id=rtAC></div></div><div class=pn><h3>Early alerts <span id=rtAlN></span></h3><div id=rtAl></div></div><div class=pn><h3>Well control</h3><div id=rtWC></div></div></div></div>
  <div class="bottom pn" id=rtBottom><h3><span id=rtLayT></span><button id=rtCyc aria-label="Cycle bottom layer (G)">Bottom layer: <span id=rtCycN></span><kbd>G</kbd></button></h3><div id=rtTele><div class=lwd><canvas id=rtLwd height=34></canvas></div><div class=tracks id=rtTracks></div></div><div class=geo id=rtGeo hidden><div style="display:flex;gap:6px;align-items:center;margin-bottom:4px"><button id=rtRoof aria-pressed=true aria-label="Toggle roof and floor lines (A)">Roof / floor lines<kbd>A</kbd></button><span id=rtGeoN class=na></span></div><canvas id=rtGeoC height=175></canvas></div></div>
- <div class="foot pn" id=rtFoot></div><div class=ov id=rtOv hidden role=document aria-label="Keyboard shortcuts"><div class=ovb><h3>Keyboard shortcuts</h3><table>${SHORTCUTS.map(([k,t])=>`<tr><td><kbd>${k}</kbd></td><td>${t}</td></tr>`).join('')}</table><p class=na style=font-size:10.5px>Tab and F1 are never captured. No execution keys are bound.</p><button id=rtOvC>Close<kbd>Esc</kbd></button></div></div>`;
+ <div class="foot pn" id=rtFoot></div><div class=ov id=rtOv hidden role=document aria-label="Keyboard shortcuts"><div class=ovb><h3>Keyboard shortcuts</h3><table>${SHORTCUTS.map(([k,t])=>`<tr><td><kbd>${k}</kbd></td><td>${t}</td></tr>`).join('')}</table><p class=na style=font-size:10.5px>Tab and F1 are never captured. No execution keys are bound.</p><button id=rtOvC>Close<kbd>Esc</kbd></button></div></div><div class="ov summary" id=rtSummary hidden role=dialog aria-label="Historical well summary"><div class="ovb summaryBox"><div class=summaryHead><h3 id=rtSummaryTitle>Well summary</h3><div><button id=rtSummaryCopy>Copy summary</button> <button id=rtSummaryClose>Close</button></div></div><div id=rtSummaryBody></div></div></div>`;
  document.body.appendChild(el);ST.el=el;ST._tk=null;ST._k=null;document.body.classList.add('rtoc-open');
  $('rtTracks').innerHTML=[['ROP / WOB','rop','wob'],['Torque / RPM','tq','rpm'],['SPP / ECD','spp','ecd'],['Flow in / out','q','qout']].map(([t,a,b])=>`<div><div style="font-size:10px;color:#9fc3ea" id=rtTt_${a}>${t}</div><canvas data-a=${a} data-b=${b} height=96></canvas></div>`).join('');
- $('rtClose').onclick=close;$('rtKeys').onclick=()=>ov(true);$('rtOvC').onclick=()=>ov(false);$('rtPrevJ').onclick=()=>stepJoint(-1);$('rtNextJ').onclick=()=>stepJoint(1);$('rtCurJ').onclick=current;$('rtCtxB').onclick=toggleCtx;$('rtCtx').querySelector('h3').onclick=()=>$('rtCtx').classList.toggle('open');$('rtCyc').onclick=cycle;$('rtRoof').onclick=roof;$('rtConnectW').onclick=connectLive;
+ $('rtClose').onclick=close;$('rtKeys').onclick=()=>ov(true);$('rtOvC').onclick=()=>ov(false);$('rtSummaryB').onclick=showSummary;$('rtSummaryClose').onclick=hideSummary;$('rtSummary').onclick=e=>{if(e.target===$('rtSummary'))hideSummary()};$('rtSummaryCopy').onclick=copySummary;$('rtPrevJ').onclick=()=>stepJoint(-1);$('rtNextJ').onclick=()=>stepJoint(1);$('rtCurJ').onclick=current;$('rtCtxB').onclick=toggleCtx;$('rtCtx').querySelector('h3').onclick=()=>$('rtCtx').classList.toggle('open');$('rtCyc').onclick=cycle;$('rtRoof').onclick=roof;$('rtConnectW').onclick=connectLive;
  const S=()=>window.S,live=()=>ST.sel==null;
  const ctl=(id,f)=>{$(id).onclick=()=>{if(!live()||!S())return;f(S());render()}};
  ctl('rtSlide',s=>{s.autoSteer=false;s.mode='slide'});ctl('rtRot',s=>{s.autoSteer=false;s.mode='rotate'});ctl('rtAuto',s=>{s.autoSteer=true});ctl('rtHold',()=>{$('pause')?.click()});
@@ -137,6 +138,33 @@ export function open(){if(ST.el){render();return API}startRecorder();
  ST.scenes=[mkScene($('rtJ3'),'joint')];
  ST.ro=new ResizeObserver(()=>{ST.scenes.forEach(sz);ST._k=null;render()});ST.ro.observe(el);
  layout();render();loop();setTimeout(()=>$('rtClose')?.focus(),0);return API}
+function showSummary(){
+ const box=$('rtSummary'),body=$('rtSummaryBody'),d=data(),src=d.src;
+ box.hidden=false;
+ if(src.kind!=='WITSML'||src.test||!src.D){
+  $('rtSummaryTitle').textContent='Historical well summary';
+  body.innerHTML='';
+  const p=document.createElement('p');p.className='summaryLead';p.textContent=src.kind==='WITSMLWAIT'?'Connect to the authorized WITSML store, then select a historical well. No simulated values are used in this summary.':'Select a real WITSML well to generate a source-derived summary. Demo runs are excluded.';
+  body.append(p);$('rtSummaryCopy').disabled=true;return
+ }
+ const m=SUM.build(src.D);$('rtSummaryTitle').textContent=m.wellName+' · '+m.wellboreName;
+ $('rtSummaryCopy').disabled=false;
+ const lead=document.createElement('p');lead.className='summaryLead';lead.textContent=(m.current?'Current well snapshot':'Historical WITSML data')+' · read-only · '+d.rec.samples.length+' time-log samples · source values only';
+ body.replaceChildren(lead);
+ const stats=document.createElement('div');stats.className='summaryGrid';
+ for(const x of m.stats){const card=document.createElement('div');card.className='summaryStat';const l=document.createElement('small');l.textContent=x.label;const v=document.createElement('b');v.textContent=x.value;card.append(l,v);stats.append(card)}
+ body.append(stats);
+ const h=document.createElement('h3');h.textContent='10 data-derived facts';body.append(h);
+ const facts=document.createElement('div');facts.className='summaryFacts';
+ for(const [i,x] of m.facts.entries()){const card=document.createElement('div');card.className='summaryFact';const l=document.createElement('small');l.textContent='FACT '+(i+1)+' · '+x.label;const v=document.createElement('b');v.textContent=x.value;const p=document.createElement('p');p.textContent=x.detail;card.append(l,v,p);facts.append(card)}
+ body.append(facts);
+ const qh=document.createElement('h3');qh.textContent='Source quality and limits';body.append(qh);
+ const ul=document.createElement('ul');ul.className='summaryQuality';for(const line of m.quality){const li=document.createElement('li');li.textContent=line;ul.append(li)}body.append(ul);
+ ST.summaryText=m.copyText
+}
+function hideSummary(){if($('rtSummary'))$('rtSummary').hidden=true}
+async function copySummary(){if(!ST.summaryText)return;try{await navigator.clipboard.writeText(ST.summaryText);$('rtSummaryCopy').textContent='Copied'}catch(e){$('rtSummaryCopy').textContent='Copy unavailable'}setTimeout(()=>{if($('rtSummaryCopy'))$('rtSummaryCopy').textContent='Copy summary'},1800)}
+
 export function close(){if(!ST.el)return;ST.ov=false;cancelAnimationFrame(ST.raf);ST.ro?.disconnect();ST.scenes.forEach(s=>{s.ctl.dispose();s.r.dispose();s.r.forceContextLoss?.()});ST.scenes=[];ST.el.remove();ST.el=null;document.body.classList.remove('rtoc-open')}
 function layout(){if(!ST.el)return;$('rtCtx').hidden=!ST.ctx;$('rtViews').classList.toggle('ctx',ST.ctx);$('rtCtxB').classList.toggle('on',ST.ctx);$('rtCtxB').setAttribute('aria-pressed',ST.ctx);
  $('rtTele').hidden=ST.layer!='tele';$('rtGeo').hidden=ST.layer!='geo';$('rtCycN').textContent=ST.layer=='tele'?'Telemetry → Geosteering':'Geosteering → Telemetry';$('rtLayT').textContent=ST.layer=='tele'?'LWD + telemetry (selected joint)':'Geosteering profile (selected joint)';
