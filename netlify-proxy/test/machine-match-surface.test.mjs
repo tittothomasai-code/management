@@ -4,7 +4,9 @@
 import assert from "node:assert/strict";
 import https from "node:https";
 import { after, test } from "node:test";
+import { inspect } from "node:util";
 import { createVerifiedDispatch, enforceMachinePolicy } from "../netlify/lib/machine-policy.mjs";
+import { adaptMachineResult } from "../netlify/lib/machine-reader-adapter.mjs";
 
 const NS = "http://www.witsml.org/schemas/1series";
 const WELL = "SYNTH-WELL-1";
@@ -240,5 +242,69 @@ test("location label cannot reflect an exact password itself", async () => {
   const out = await call({ text: store(well(pass)) }, auth);
   assert.equal(out.status, 502);
   assert.equal(out.body.passwordXmlLocation, undefined);
+  assert.equal(out.body.reason, "credential-reflection");
   assert.equal(out.raw.includes(pass), false);
+});
+
+test("refusal keys that contain a short password are removed from the serialized body", async () => {
+  for (const pass of ["XmlL", "dXml", "Location", "XmlLocation"]) {
+    const auth = "Basic " + Buffer.from(USER + ":" + pass).toString("base64");
+    const out = await call({ text: store(well(pass)) }, auth);
+    assert.equal(out.status, 502, pass);
+    assert.equal(out.body.reason, "credential-reflection", pass);
+    assert.equal(out.body.passwordXmlLocation, undefined, pass);
+    assert.equal(out.body.xml, undefined, pass);
+    assert.equal(out.raw.includes(pass), false, pass + " " + out.raw);
+    assert.equal(out.raw.includes(USER + ":" + pass), false, pass);
+    let closed;
+    assert.throws(() => adaptMachineResult(out.body, "WMLS_GetFromStore"), (err) => {
+      closed = err;
+      return err.closed === true;
+    });
+    const packed = JSON.stringify(closed);
+    const shown = inspect(closed, { showHidden: true, getters: true, depth: null });
+    assert.equal(packed.includes(pass), false, packed);
+    assert.equal(shown.includes(pass), false, shown);
+    assert.equal(String(closed).includes(pass), false);
+    assert.equal(closed.passwordXmlLocation, undefined);
+  }
+});
+
+test("a password spanning the location delimiter is removed with that field", async () => {
+  const pass = "Location\":\"well";
+  const auth = "Basic " + Buffer.from(USER + ":" + pass).toString("base64");
+  const out = await call({ text: store(well(pass)) }, auth);
+  assert.equal(out.status, 502, out.raw);
+  assert.equal(out.body.reason, "credential-reflection");
+  assert.equal(out.body.passwordXmlLocation, undefined);
+  assert.equal(out.raw.includes(pass), false, out.raw);
+  assert.equal(out.body.xml, undefined);
+});
+
+test("an existing refusal field that equals the password is removed", async () => {
+  const pass = "password";
+  const auth = "Basic " + Buffer.from(USER + ":" + pass).toString("base64");
+  const out = await call({ text: store(well(pass)) }, auth);
+  assert.equal(out.status, 502, out.raw);
+  assert.equal(out.body.reason, "credential-reflection");
+  assert.equal(out.body.credentialClass, undefined);
+  assert.equal(out.body.passwordXmlLocation, undefined);
+  assert.equal(out.raw.includes(pass), false, out.raw);
+  assert.equal(out.body.xml, undefined);
+});
+
+test("a password that collides with the static refusal skeleton becomes an empty object", async () => {
+  const pass = "result";
+  const auth = "Basic " + Buffer.from(USER + ":" + pass).toString("base64");
+  const out = await call({ text: store(well(pass)) }, auth);
+  assert.equal(out.status, 502);
+  assert.equal(out.raw, "{}");
+  assert.equal(out.raw.includes(pass), false);
+  let closed;
+  assert.throws(() => adaptMachineResult(out.body, "WMLS_GetFromStore"), (err) => {
+    closed = err;
+    return err.closed === true && err.code === "MACHINE_FAILED";
+  });
+  assert.equal(JSON.stringify(closed).includes(pass), false);
+  assert.equal(inspect(closed, { showHidden: true }).includes(pass), false);
 });

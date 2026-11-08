@@ -18,6 +18,15 @@
 // not import that file. A server caller passes negotiate in. Pointing the page
 // at this route would be a frontend change, and that page must not embed the
 // machine key.
+//
+// Diagnostic fields are readable on the error object. They are omitted from
+// JSON, String, and util.inspect, including hidden inspection. A later log of
+// the error must not rebuild a property name or label that could equal a
+// credential. Read code, reason, credentialClass, matchSurface, and
+// passwordXmlLocation directly. An absent location means it was not safe to
+// copy, and the call is still closed.
+
+import { inspect } from "node:util";
 
 const VERSION_LIST = /^\d{1,2}(?:\.\d{1,4}){1,3}(?:,\d{1,2}(?:\.\d{1,4}){1,3}){0,7}$/;
 const MATCH_SURFACES = new Set([
@@ -39,22 +48,34 @@ const REFUSAL_REASONS = new Set([
   "credential-reflection-and-format-character",
 ]);
 
+function hide(target, key, value) {
+  Object.defineProperty(target, key, { value, enumerable: false, writable: false, configurable: true });
+}
+
 export class MachineCallClosed extends Error {
   constructor(op, code, reason, options = {}) {
-    const detail = reason ? ": " + reason : "";
-    super("machine call closed" + detail);
-    this.name = "MachineCallClosed";
-    this.code = code;
-    this.op = op;
-    this.reason = reason || "";
-    this.closed = true;
-    this.credentialClass = allowLabels(options.credentialClass, MATCH_CLASSES);
-    this.matchSurface = allowLabels(options.matchSurface, MATCH_SURFACES);
-    this.passwordXmlLocation = allowLabels(options.passwordXmlLocation, MATCH_LOCATIONS);
+    super("");
+    hide(this, "name", "MachineCallClosed");
+    hide(this, "code", code);
+    hide(this, "op", op);
+    hide(this, "reason", reason || "");
+    hide(this, "closed", true);
+    hide(this, "stack", "");
+    const credentialClass = allowLabels(options.credentialClass, MATCH_CLASSES);
+    const matchSurface = allowLabels(options.matchSurface, MATCH_SURFACES);
+    const passwordXmlLocation = allowLabels(options.passwordXmlLocation, MATCH_LOCATIONS);
+    if (credentialClass) hide(this, "credentialClass", credentialClass);
+    if (matchSurface) hide(this, "matchSurface", matchSurface);
+    if (passwordXmlLocation) hide(this, "passwordXmlLocation", passwordXmlLocation);
+    hide(this, "toJSON", () => ({}));
+    hide(this, "toString", () => "");
+    hide(this, inspect.custom, () => "{}");
     if (options.escape) {
-      this.escape = true;
+      hide(this, "escape", true);
       const revealed = new MachineCallClosed(op, code, reason, { ...options, escape: false });
       Object.defineProperty(this, "message", {
+        enumerable: false,
+        configurable: true,
         get() { throw revealed; },
       });
     }

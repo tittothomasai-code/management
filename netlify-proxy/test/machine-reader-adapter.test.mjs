@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { inspect } from "node:util";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { registerHooks } from "node:module";
@@ -384,4 +385,35 @@ test("reader exposes only allow-listed refusal diagnostics", () => {
     passwordXmlLocation: "well-name+unknown-secret",
   }, "WMLS_GetFromStore"), error => error.closed && !JSON.stringify(error).includes("unknown-secret") &&
     !error.credentialClass && !error.matchSurface && !error.passwordXmlLocation);
+});
+
+test("serialized adapter errors omit diagnostic names, labels, and short key collisions", () => {
+  let err;
+  assert.throws(() => adaptMachineResult({
+    result: -1,
+    reason: "credential-reflection",
+    credentialClass: "password",
+    matchSurface: "raw-body+decoded-xml",
+    passwordXmlLocation: "well-name",
+    xml: "<name>fixture-refused</name>",
+  }, "WMLS_GetFromStore"), (error) => {
+    err = error;
+    return error.closed === true;
+  });
+  assert.equal(err.credentialClass, "password");
+  assert.equal(err.matchSurface, "raw-body+decoded-xml");
+  assert.equal(err.passwordXmlLocation, "well-name");
+  assert.equal(err.reason, "credential-reflection");
+  const packed = JSON.stringify(err);
+  const shown = inspect(err, { showHidden: true, getters: true, depth: null });
+  assert.equal(packed, "{}");
+  assert.equal(shown, "{}");
+  assert.equal(String(err), "");
+  for (const secret of ["XmlL", "dXml", "Location", "XmlLocation", "well-name", "fixture-refused", "password", "raw-body"]) {
+    assert.equal(packed.includes(secret), false, secret);
+    assert.equal(shown.includes(secret), false, secret);
+    assert.equal(String(err).includes(secret), false, secret);
+    assert.equal(String(err.message).includes(secret), false, secret);
+    assert.equal(String(err.stack).includes(secret), false, secret);
+  }
 });

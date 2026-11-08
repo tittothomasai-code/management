@@ -134,6 +134,20 @@ function containsCredential(text, fields) {
   return matchCredential(text, fields).length > 0;
 }
 
+// The serialized refusal is checked again, including property names, punctuation,
+// and JSON escapes. A value such as a"b is stored as a\"b.
+function serializedContainsCredential(text, fields) {
+  if (containsCredential(text, fields)) return true;
+  const named = fields && fields.named;
+  if (!named) return false;
+  for (const item of named) {
+    if (typeof item.value !== "string" || item.value.length < 4) continue;
+    const escaped = JSON.stringify(item.value).slice(1, -1);
+    if (escaped !== item.value && text.includes(escaped)) return true;
+  }
+  return false;
+}
+
 function credentialClass(texts, fields) {
   const names = new Set();
   for (const text of texts) {
@@ -262,16 +276,51 @@ function refusalBody(texts, fields, entries) {
   return body;
 }
 
+// Drop refusal fields until the serialized body contains no credential.
+// Order keeps the refusal marker as long as it is safe: location, then the
+// older diagnostic fields, then reason, error, and result. {} is the closed
+// body when every remainder still collides. It is not well data.
+// Clients stop on HTTP 502, on a missing reason, and on {}. They must not
+// read it as XML or retry a wider query. A password that does not collide
+// keeps the existing fields and passwordXmlLocation.
+const REFUSAL_DROP_ORDER = Object.freeze([
+  "passwordXmlLocation",
+  "matchSurface",
+  "credentialClass",
+  "reason",
+  "error",
+  "result",
+]);
+
+function sealRefusal(status, body, fields) {
+  const current = {};
+  if (body && typeof body === "object") {
+    for (const key of Object.keys(body)) current[key] = body[key];
+  }
+  for (let step = 0; step <= REFUSAL_DROP_ORDER.length; step++) {
+    const text = JSON.stringify(current);
+    if (!serializedContainsCredential(text, fields)) {
+      return new Response(text, { status, headers: { ...BASE_HEADERS } });
+    }
+    if (step === REFUSAL_DROP_ORDER.length) break;
+    delete current[REFUSAL_DROP_ORDER[step]];
+  }
+  return new Response("{}", { status, headers: { ...BASE_HEADERS } });
+}
+
 function refusalResponse(texts, fields, entries) {
   const body = refusalBody(texts, fields, entries);
   if (!body) return null;
-  return new Response(JSON.stringify(body), { status: 502, headers: { ...BASE_HEADERS } });
+  return sealRefusal(502, body, fields);
 }
 
 function safeJson(status, obj, fields) {
   const text = JSON.stringify(obj);
-  const refused = refusalBody([text], fields, [{ name: "response-json", text }]);
-  if (refused) return new Response(JSON.stringify(refused), { status: 502, headers: { ...BASE_HEADERS } });
+  let refused = refusalBody([text], fields, [{ name: "response-json", text }]);
+  if (!refused && serializedContainsCredential(text, fields)) {
+    refused = { result: -1, error: "upstream response refused", reason: "credential-reflection" };
+  }
+  if (refused) return sealRefusal(502, refused, fields);
   return new Response(text, { status, headers: { ...BASE_HEADERS } });
 }
 
@@ -849,7 +898,7 @@ export async function enforceMachinePolicy(req, deps) {
     envelope = buildEnvelope(validated.op, validated.fields);
     assertOutgoingEnvelope(validated.op, envelope);
   } catch (err) {
-    return mapDispatchError(err);
+    return sealCred(mapStatus(err), mapBody(err));
   }
   if (envelope.includes(config.secret)) return sealCred(400, { result: -1, error: "request rejected" });
   const now = typeof deps.now === "function" ? deps.now : Date.now;
@@ -918,7 +967,7 @@ function finishUpstream(op, up, ms, fields) {
       rawHit.matchSurface = matchSurface(entries, fields);
       addPasswordLocation(rawHit, entries, fields);
     }
-    return new Response(JSON.stringify(rawHit), { status: 502, headers: { ...BASE_HEADERS } });
+    return sealRefusal(502, rawHit, fields);
   }
   let parsed;
   try { parsed = parseUpstreamSoap(op, text); }
