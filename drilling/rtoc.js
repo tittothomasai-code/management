@@ -3,7 +3,7 @@
 // DATA HONESTY: WITSML is the default source; simulator data appears only after the user selects the explicit demo.
 // Joint history is RECORDED from the selected time log: joints are
 // split at connections (slips set -> slips released), never at a fixed length. Nothing is back-filled or invented; missing
-// items show "not available". Geology in 3D/profile is the SIM formation model (illustrative), not measured.
+// items show "not available". SIM geology is illustrative; live WITSML uses store markers or neutral context.
 // Keys while open: G = cycle bottom layer (telemetry / geosteering profile), A = roof/floor guide lines on the profile.
 // Historical review is read-only: SIM controls are disabled until "Return to current".
 import * as THREE from 'three';
