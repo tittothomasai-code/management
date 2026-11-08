@@ -39,7 +39,7 @@ node wdash_unit_test.mjs
 
 The connection picker ignores out-of-order responses, disables Start while headers load, and rejects log headers from a different wellbore.
 
-The adapter rejects false LIVE states: no time-indexed log, no actual source rows, invalid sample timestamps, stale source timestamps, and fixture provenance. A fixture is the existing simulated flag, SIM-TEST or SIMULATED text, a synthetic well, wellbore, or log name, SuppMsgOut, a localhost store, or a `/sim/witsml` store path. The approved proxy and a custom https store with ordinary names can still be WITSML LIVE. A test feed never uses that badge.
+The adapter rejects false LIVE states: no time-indexed log, no actual source rows, invalid sample timestamps, stale source timestamps, and fixture provenance. A fixture is the existing simulated flag, SIM-TEST, SIMULATED, synthetic, or FIXTURE / NOT LIVE text on the well, wellbore, or log, SuppMsgOut, a localhost store, a `.invalid` store host, or a `/sim/witsml` store path. A loopback or custom proxy in front of an ordinary https store is not itself a fixture. The approved proxy and a custom https store with ordinary names can still be WITSML LIVE. A test feed never uses that badge.
 
 For the local-only browser regression, start these in separate terminals:
 

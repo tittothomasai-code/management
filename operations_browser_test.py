@@ -54,13 +54,15 @@ with sync_playwright() as pw:
   live=badge();assert kind(live)=='WITSML SIM-TEST' and 'last source row ' in live and not live.startswith('WITSML LIVE'),live
   p.evaluate('''() => {
     const W = GX.witsml.WML, C = GX.witsml.CFG;
-    window.__prov = {sim:W.simulated, name:W.log.name, well:W.log.nameWell, url:C.url};
-    W.simulated = false; W.log.name = 'General Time-Based'; W.log.nameWell = 'SYNTHETIC WELL'; W.log.nameWellbore = 'SYNTHETIC WB';
-    C.url = 'https://australia.adagasolutions.com/WMLS';
+    window.__prov = {sim:W.simulated, name:W.log.name, well:W.log.nameWell, url:C.url, proxy:C.proxy};
+    W.simulated = false; W.log.name = 'General Time-Based'; W.log.nameWell = 'FIXTURE TEST WELL (NOT LIVE)';
+    C.url = 'https://fixture.invalid/WMLS'; C.proxy = 'http://127.0.0.1:8952/witsml-proxy';
   }''')
   p.wait_for_timeout(600)
-  synthetic=badge();assert kind(synthetic)=='WITSML SIM-TEST' and not synthetic.startswith('WITSML LIVE'),synthetic
-  p.evaluate('''() => { const W = GX.witsml.WML, C = GX.witsml.CFG, k = window.__prov; W.simulated = k.sim; W.log.name = k.name; W.log.nameWell = k.well; C.url = k.url; }''')
+  reported=badge();assert kind(reported)=='WITSML SIM-TEST' and not reported.startswith('WITSML LIVE'),reported
+  assert p.evaluate("({well:GX.witsml.WML.log.nameWell,sim:GX.witsml.WML.simulated,url:GX.witsml.CFG.url,proxy:GX.witsml.CFG.proxy})")=={'well':'FIXTURE TEST WELL (NOT LIVE)','sim':False,'url':'https://fixture.invalid/WMLS','proxy':'http://127.0.0.1:8952/witsml-proxy'}
+  assert 'FIXTURE TEST WELL (NOT LIVE)' in p.locator('#opsWell').inner_text()
+  p.evaluate('''() => { const W = GX.witsml.WML, C = GX.witsml.CFG, k = window.__prov; W.simulated = k.sim; W.log.name = k.name; W.log.nameWell = k.well; C.url = k.url; C.proxy = k.proxy; }''')
   p.wait_for_timeout(500)
   fitted=p.locator('#dwOperations').evaluate('(e)=>({width:e.clientWidth,scroll:e.scrollWidth})')
   assert fitted['scroll']<=fitted['width']+1,fitted

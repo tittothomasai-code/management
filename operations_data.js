@@ -48,12 +48,13 @@ const CHANNELS = {
 const MAX_AGE = 120_000;
 // Explicit fixture marks already used by the connection, the local sim store, and the synthetic fixture.
 // The approved proxy host is not one of them: a custom https store with ordinary names can still be LIVE.
-const FIXTURE_TEXT = /SIM-TEST|SIMULATED|\bSYNTHETIC\b/i;
+const FIXTURE_TEXT = /SIM-TEST|SIMULATED|\bSYNTHETIC\b|\bFIXTURE\b|NOT LIVE/i;
 
 function fixtureUrl(url) {
   try {
     const u = new URL(String(url || ''));
-    if (u.hostname === 'localhost' || u.hostname === '127.0.0.1') return true;
+    const host = u.hostname.toLowerCase();
+    if (host === 'localhost' || host === '127.0.0.1' || host === 'invalid' || host.endsWith('.invalid')) return true;
     return /(?:^|\/)sim(?:\/|$)|simulated/i.test(u.pathname);
   } catch { return false; }
 }

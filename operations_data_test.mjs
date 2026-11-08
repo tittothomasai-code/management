@@ -29,6 +29,18 @@ assert.equal(feedSource({...w, simulated:false, log:{...w.log, nameWell:'Highlan
 assert.equal(feedSource({...w, simulated:false, log:{...w.log, nameWell:'Highland 22', name:'Time'}}, now, {url:'https://customer.example/sim/witsml'}), 'WITSML SIM-TEST');
 assert.equal(feedSource({...synthetic, lastRowMs:now-180000}, now, approved), 'WITSML STALE');
 assert.notEqual(feedSource(synthetic, now, approved), 'WITSML LIVE');
+const sample = now - 2000;
+const boxWell = 'FIXTURE TEST WELL (NOT LIVE)';
+const boxCfg = {url:'https://fixture.invalid/WMLS', proxy:'http://127.0.0.1:8952/witsml-proxy'};
+const box = {...w, simulated:false, hist:[{t:sample}], lastRowMs:sample, log:{...w.log, name:'General Time-Based', nameWell:boxWell}};
+assert.equal(box.log.nameWell, 'FIXTURE TEST WELL (NOT LIVE)');
+assert.equal(feedSource(box, now, boxCfg), 'WITSML SIM-TEST', 'reported GUI fixture is not LIVE');
+assert.notEqual(feedSource(box, now, boxCfg), 'WITSML LIVE');
+assert.equal(sourceStamp(box, 'WITSML SIM-TEST', now), ' · last source row ' + new Date(sample).toISOString().replace(/\.\d{3}Z$/, 'Z') + ' (age 2 s)');
+assert.equal(feedSource(box, now, {url:'https://customer.example/witsml', proxy:'https://logs.example/custom-proxy'}), 'WITSML SIM-TEST', 'the reported well name is enough without the loopback proxy');
+assert.equal(feedSource({...w, simulated:false, log:{...w.log, nameWell:'Highland 22', name:'Time'}}, now, boxCfg), 'WITSML SIM-TEST', 'fixture.invalid is a reserved store, whatever the proxy is');
+assert.equal(feedSource({...w, simulated:false, log:{...w.log, nameWell:'Highland 22', name:'Time'}}, now, {url:'https://australia.adagasolutions.com/WMLS', proxy:'http://127.0.0.1:8952/witsml-proxy'}), 'WITSML LIVE', 'a loopback proxy in front of a real store is not a fixture');
+assert.equal(feedSource({...w, simulated:false, log:{...w.log, nameWell:'Highland 22', name:'Time'}}, now, {url:'https://fixture.example.com/WMLS', proxy:'https://logs.example/custom-proxy'}), 'WITSML LIVE', 'fixture in a normal hostname is not a reserved store');
 const headerEnd = now - 1000;
 assert.equal(sourceStamp({lastRowMs: headerEnd, hist: [], okAt: now}, 'WITSML WAITING', now), '', 'log header end is not a source row');
 assert.equal(sourceStamp({lastRowMs: now, hist: [], okAt: now}, 'WITSML LIVE', now), '', 'client clock in lastRowMs is not a source row');
