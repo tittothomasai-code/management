@@ -4,7 +4,9 @@
 import assert from "node:assert/strict";
 import https from "node:https";
 import { after, test } from "node:test";
+import { inspect } from "node:util";
 import { createVerifiedDispatch, enforceMachinePolicy } from "../netlify/lib/machine-policy.mjs";
+import { adaptMachineResult } from "../netlify/lib/machine-reader-adapter.mjs";
 
 const NS = "http://www.witsml.org/schemas/1series";
 const WELL = "SYNTH-WELL-1";
@@ -125,6 +127,7 @@ test("literal, decoded, supp, fault, result, and comment surfaces stay distinct"
   assert.equal(literal.body.credentialClass, "password");
   assert.equal(literal.body.matchSurface, "raw-body+decoded-xml");
   assert.equal(literal.impl.calls[0].body.includes(PASSWORD), false);
+  assert.equal(literal.body.passwordXmlLocation, "well-name");
   hidden(literal);
 
   const entityXml = "&lt;wells xmlns=&quot;http://www.witsml.org/schemas/1series&quot; version=&quot;1.4.1.1&quot;&gt;&lt;well uid=&quot;SYNTH-WELL-1&quot;&gt;&lt;name&gt;secr&#101;t-pass-99&lt;/name&gt;&lt;/well&gt;&lt;/wells&gt;";
@@ -132,6 +135,7 @@ test("literal, decoded, supp, fault, result, and comment surfaces stay distinct"
   assert.equal(decoded.status, 502);
   assert.equal(decoded.body.credentialClass, "password");
   assert.equal(decoded.body.matchSurface, "decoded-xml");
+  assert.equal(decoded.body.passwordXmlLocation, "well-name");
   hidden(decoded);
 
   const supp = await call({ text: store(well("Synth North"), "<SuppMsgOut>secr&#101;t-pass-99</SuppMsgOut>") });
@@ -198,6 +202,7 @@ test("a normal well document can match a password that is only ordinary markup",
   assert.equal(out.body.credentialClass, "password");
   assert.equal(out.body.matchSurface, "raw-body+decoded-xml");
   assert.equal(QUERY.includes(needle), true);
+  assert.equal(out.body.passwordXmlLocation, "namespace-uri");
   assert.equal(out.raw.includes(needle), false);
   assert.equal(out.raw.includes("Synth"), false);
   assert.equal(out.impl.calls[0].headers.Authorization, auth);
@@ -212,4 +217,94 @@ test("the request password is not inserted into the scanned response", async () 
   assert.equal(out.impl.calls[0].headers.Authorization, AUTH);
   assert.equal(out.impl.calls.length, 1);
   assert.equal(netCalls, 0);
+});
+
+
+test("reports a credential field and well UID without returning any values", async () => {
+  const xml = `<wells xmlns="${NS}"><well uid="${PASSWORD}"><credentials Authorization='${PASSWORD}'><password>${PASSWORD}</password></credentials></well></wells>`;
+  const out = await call({ text: store(xml) });
+  assert.equal(out.status, 502);
+  assert.equal(out.body.passwordXmlLocation, "well-uid+credential-element+credential-attribute");
+  hidden(out);
+});
+
+test("malformed matched XML still refuses without revealing its tags", async () => {
+  const out = await call({ text: store(`<wells><unexpected>${PASSWORD}</wells>`) });
+  assert.equal(out.status, 502);
+  assert.equal(out.body.passwordXmlLocation, "unclassified-xml");
+  assert.equal(out.raw.includes("unexpected"), false);
+  hidden(out);
+});
+
+test("location label cannot reflect an exact password itself", async () => {
+  const pass = "well-name";
+  const auth = "Basic " + Buffer.from(USER + ":" + pass).toString("base64");
+  const out = await call({ text: store(well(pass)) }, auth);
+  assert.equal(out.status, 502);
+  assert.equal(out.body.passwordXmlLocation, undefined);
+  assert.equal(out.body.reason, "credential-reflection");
+  assert.equal(out.raw.includes(pass), false);
+});
+
+test("refusal keys that contain a short password are removed from the serialized body", async () => {
+  for (const pass of ["XmlL", "dXml", "Location", "XmlLocation"]) {
+    const auth = "Basic " + Buffer.from(USER + ":" + pass).toString("base64");
+    const out = await call({ text: store(well(pass)) }, auth);
+    assert.equal(out.status, 502, pass);
+    assert.equal(out.body.reason, "credential-reflection", pass);
+    assert.equal(out.body.passwordXmlLocation, undefined, pass);
+    assert.equal(out.body.xml, undefined, pass);
+    assert.equal(out.raw.includes(pass), false, pass + " " + out.raw);
+    assert.equal(out.raw.includes(USER + ":" + pass), false, pass);
+    let closed;
+    assert.throws(() => adaptMachineResult(out.body, "WMLS_GetFromStore"), (err) => {
+      closed = err;
+      return err.closed === true;
+    });
+    const packed = JSON.stringify(closed);
+    const shown = inspect(closed, { showHidden: true, getters: true, depth: null });
+    assert.equal(packed.includes(pass), false, packed);
+    assert.equal(shown.includes(pass), false, shown);
+    assert.equal(String(closed).includes(pass), false);
+    assert.equal(closed.passwordXmlLocation, undefined);
+  }
+});
+
+test("a password spanning the location delimiter is removed with that field", async () => {
+  const pass = "Location\":\"well";
+  const auth = "Basic " + Buffer.from(USER + ":" + pass).toString("base64");
+  const out = await call({ text: store(well(pass)) }, auth);
+  assert.equal(out.status, 502, out.raw);
+  assert.equal(out.body.reason, "credential-reflection");
+  assert.equal(out.body.passwordXmlLocation, undefined);
+  assert.equal(out.raw.includes(pass), false, out.raw);
+  assert.equal(out.body.xml, undefined);
+});
+
+test("an existing refusal field that equals the password is removed", async () => {
+  const pass = "password";
+  const auth = "Basic " + Buffer.from(USER + ":" + pass).toString("base64");
+  const out = await call({ text: store(well(pass)) }, auth);
+  assert.equal(out.status, 502, out.raw);
+  assert.equal(out.body.reason, "credential-reflection");
+  assert.equal(out.body.credentialClass, undefined);
+  assert.equal(out.body.passwordXmlLocation, undefined);
+  assert.equal(out.raw.includes(pass), false, out.raw);
+  assert.equal(out.body.xml, undefined);
+});
+
+test("a password that collides with the static refusal skeleton becomes an empty object", async () => {
+  const pass = "result";
+  const auth = "Basic " + Buffer.from(USER + ":" + pass).toString("base64");
+  const out = await call({ text: store(well(pass)) }, auth);
+  assert.equal(out.status, 502);
+  assert.equal(out.raw, "{}");
+  assert.equal(out.raw.includes(pass), false);
+  let closed;
+  assert.throws(() => adaptMachineResult(out.body, "WMLS_GetFromStore"), (err) => {
+    closed = err;
+    return err.closed === true && err.code === "MACHINE_FAILED";
+  });
+  assert.equal(JSON.stringify(closed).includes(pass), false);
+  assert.equal(inspect(closed, { showHidden: true }).includes(pass), false);
 });

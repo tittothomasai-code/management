@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { inspect } from "node:util";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { registerHooks } from "node:module";
@@ -362,4 +363,57 @@ test("reader helpers still drop planted secrets and unknown refusal labels", asy
   assert.equal(partial.xml, wells);
   assert.deepEqual(machineRequestBody("WMLS_GetVersion", "well", "<x/>", "returnElements=all"), { op: "WMLS_GetVersion" });
   assert.deepEqual(machineRequestBody("WMLS_GetCap", "", "", "dataVersion=1.4.1.1"), { op: "WMLS_GetCap", options: "dataVersion=1.4.1.1" });
+});
+
+
+test("reader exposes only allow-listed refusal diagnostics", () => {
+  assert.throws(() => adaptMachineResult({
+    result: -1,
+    reason: "credential-reflection",
+    credentialClass: "password",
+    matchSurface: "raw-body+decoded-xml",
+    passwordXmlLocation: "well-name",
+    xml: "<name>fixture-refused</name>",
+  }, "WMLS_GetFromStore"), error => error.closed && error.credentialClass === "password" &&
+    error.matchSurface === "raw-body+decoded-xml" && error.passwordXmlLocation === "well-name" &&
+    !JSON.stringify(error).includes("fixture-refused"));
+
+  assert.throws(() => adaptMachineResult({
+    reason: "credential-reflection",
+    credentialClass: "password+unknown-secret",
+    matchSurface: "decoded-xml+unknown-secret",
+    passwordXmlLocation: "well-name+unknown-secret",
+  }, "WMLS_GetFromStore"), error => error.closed && !JSON.stringify(error).includes("unknown-secret") &&
+    !error.credentialClass && !error.matchSurface && !error.passwordXmlLocation);
+});
+
+test("serialized adapter errors omit diagnostic names, labels, and short key collisions", () => {
+  let err;
+  assert.throws(() => adaptMachineResult({
+    result: -1,
+    reason: "credential-reflection",
+    credentialClass: "password",
+    matchSurface: "raw-body+decoded-xml",
+    passwordXmlLocation: "well-name",
+    xml: "<name>fixture-refused</name>",
+  }, "WMLS_GetFromStore"), (error) => {
+    err = error;
+    return error.closed === true;
+  });
+  assert.equal(err.credentialClass, "password");
+  assert.equal(err.matchSurface, "raw-body+decoded-xml");
+  assert.equal(err.passwordXmlLocation, "well-name");
+  assert.equal(err.reason, "credential-reflection");
+  const packed = JSON.stringify(err);
+  const shown = inspect(err, { showHidden: true, getters: true, depth: null });
+  assert.equal(packed, "{}");
+  assert.equal(shown, "{}");
+  assert.equal(String(err), "");
+  for (const secret of ["XmlL", "dXml", "Location", "XmlLocation", "well-name", "fixture-refused", "password", "raw-body"]) {
+    assert.equal(packed.includes(secret), false, secret);
+    assert.equal(shown.includes(secret), false, secret);
+    assert.equal(String(err).includes(secret), false, secret);
+    assert.equal(String(err.message).includes(secret), false, secret);
+    assert.equal(String(err.stack).includes(secret), false, secret);
+  }
 });

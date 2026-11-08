@@ -18,27 +18,64 @@
 // not import that file. A server caller passes negotiate in. Pointing the page
 // at this route would be a frontend change, and that page must not embed the
 // machine key.
+//
+// Diagnostic fields are readable on the error object. They are omitted from
+// JSON, String, and util.inspect, including hidden inspection. A later log of
+// the error must not rebuild a property name or label that could equal a
+// credential. Read code, reason, credentialClass, matchSurface, and
+// passwordXmlLocation directly. An absent location means it was not safe to
+// copy, and the call is still closed.
+
+import { inspect } from "node:util";
 
 const VERSION_LIST = /^\d{1,2}(?:\.\d{1,4}){1,3}(?:,\d{1,2}(?:\.\d{1,4}){1,3}){0,7}$/;
+const MATCH_SURFACES = new Set([
+  "raw-body", "decoded-xml", "supp-message", "fault", "result", "response-json", "ambiguous",
+]);
+const MATCH_CLASSES = new Set(["basic", "password", "raw-pair", "caller-key", "ambiguous"]);
+const MATCH_LOCATIONS = new Set([
+  "namespace-uri", "well-uid", "well-name", "well-field", "well-country",
+  "wellbore-identity", "credential-element", "credential-attribute", "log-data",
+  "other-attribute", "other-text", "unclassified-xml",
+]);
+function allowLabels(value, allowed) {
+  if (typeof value !== "string" || value.length > 240) return "";
+  return value.split("+").every(label => allowed.has(label)) ? value : "";
+}
 const REFUSAL_REASONS = new Set([
   "credential-reflection",
   "format-character",
   "credential-reflection-and-format-character",
 ]);
 
+function hide(target, key, value) {
+  Object.defineProperty(target, key, { value, enumerable: false, writable: false, configurable: true });
+}
+
 export class MachineCallClosed extends Error {
   constructor(op, code, reason, options = {}) {
-    const detail = reason ? ": " + reason : "";
-    super("machine call closed" + detail);
-    this.name = "MachineCallClosed";
-    this.code = code;
-    this.op = op;
-    this.reason = reason || "";
-    this.closed = true;
+    super("");
+    hide(this, "name", "MachineCallClosed");
+    hide(this, "code", code);
+    hide(this, "op", op);
+    hide(this, "reason", reason || "");
+    hide(this, "closed", true);
+    hide(this, "stack", "");
+    const credentialClass = allowLabels(options.credentialClass, MATCH_CLASSES);
+    const matchSurface = allowLabels(options.matchSurface, MATCH_SURFACES);
+    const passwordXmlLocation = allowLabels(options.passwordXmlLocation, MATCH_LOCATIONS);
+    if (credentialClass) hide(this, "credentialClass", credentialClass);
+    if (matchSurface) hide(this, "matchSurface", matchSurface);
+    if (passwordXmlLocation) hide(this, "passwordXmlLocation", passwordXmlLocation);
+    hide(this, "toJSON", () => ({}));
+    hide(this, "toString", () => "");
+    hide(this, inspect.custom, () => "{}");
     if (options.escape) {
-      this.escape = true;
-      const revealed = new MachineCallClosed(op, code, reason);
+      hide(this, "escape", true);
+      const revealed = new MachineCallClosed(op, code, reason, { ...options, escape: false });
       Object.defineProperty(this, "message", {
+        enumerable: false,
+        configurable: true,
         get() { throw revealed; },
       });
     }
@@ -84,13 +121,15 @@ function throwIfAborted(signal, escape) {
   if (signal && signal.aborted) throw abortError(signal.reason, escape);
 }
 
-function close(op, code, reason, escape) {
-  throw new MachineCallClosed(op, code, reason, { escape: !!escape });
+function close(op, code, reason, escape, diagnostic = {}) {
+  throw new MachineCallClosed(op, code, reason, { ...diagnostic, escape: !!escape });
 }
 
 export function revealClosed(err) {
   if (err && err.escape && err.code === "ABORTED") return abortError(err.cause, false);
-  if (err && err.escape) return new MachineCallClosed(err.op, err.code, err.reason);
+  if (err && err.escape) return new MachineCallClosed(err.op, err.code, err.reason, {
+    credentialClass: err.credentialClass, matchSurface: err.matchSurface, passwordXmlLocation: err.passwordXmlLocation,
+  });
   return err;
 }
 
@@ -98,7 +137,9 @@ export function adaptMachineResult(machine, op) {
   const operation = op || "WMLS_GetFromStore";
   const reason = machine && typeof machine.reason === "string" ? machine.reason : "";
   const result = resultCode(machine && machine.result);
-  if (REFUSAL_REASONS.has(reason)) close(operation, "MACHINE_REFUSED", reason, operation === "WMLS_GetVersion");
+  if (REFUSAL_REASONS.has(reason)) close(operation, "MACHINE_REFUSED", reason, operation === "WMLS_GetVersion", {
+    credentialClass: machine.credentialClass, matchSurface: machine.matchSurface, passwordXmlLocation: machine.passwordXmlLocation,
+  });
   if (operation === "WMLS_GetVersion") {
     const version = text(machine && machine.version);
     if (result !== 1 || !VERSION_LIST.test(version)) close(operation, "MACHINE_FAILED", "", true);
