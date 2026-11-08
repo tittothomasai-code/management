@@ -32,3 +32,11 @@ Open **Monitor → Drilling operations** from the start screen. In the game, use
 - In training mode, the radar shows the simulator's simplified separation model. In WITSML mode, map upstream separation factor and centreline distance to show reported values. Map relative offset east and north to place the radar contact. Alarm rows reflect mapped flags. Missing channels display as unavailable.
 
 Run `node operations_data_test.mjs`, `node conn_test.mjs` and `node wdash_unit_test.mjs` to check the data handling.
+
+## Operations connection dock and scoped well import
+
+Open **WITSML** from Operations. The connection panel docks beside the dashboard on a wide screen and expands above it on a narrow screen. **Close WITSML panel** collapses the connection controls. The selected log keeps polling. The **SOURCE** label shows the time from the latest time-indexed row in UTC. Check that the source time advances across two UTC minutes to validate a live feed.
+
+In the standalone WITSML Dashboard, enter the store's exact well UID in **Known well UID** to read one well without listing the store. The reader requires exactly that well before it reads its wellbores and child objects. The reader stops on a guarded refusal or a conflicting object identity. Saved credentials apply only to the matching account and route. Browser credentials and machine caller authentication remain separate.
+
+A matching credential substring in a reply still blocks the complete reply, including when the match is in a normal data field. The guarded machine proxy reports only a fixed location category when it can locate a password match in decoded XML. Ask the store owner to correct a credential echo or provide an authorised response that passes the same guard. Keep the raw response and credentials out of release evidence.
