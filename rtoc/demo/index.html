@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Steve's RTOC — test-only course board</title>
+<link rel="stylesheet" href="../ui/board.css">
+</head>
+<body class="course">
+<header class="top">
+  <h1>Steve's <span>RTOC</span></h1>
+  <div class="banner" id="banner">SIM-TEST synthetic fixture. Not live rig data. Not a completeness claim. A reference image for this screen was not provided.</div>
+  <div class="row">
+    <label>Well <select id="well"></select></label>
+    <label>Wellbore <select id="wb"></select></label>
+    <label>Joint filter <select id="filter">
+      <option value="all">All kinds</option>
+      <option value="joint">Joint</option>
+      <option value="stand">Stand</option>
+      <option value="double">Double</option>
+      <option value="unknown">Unknown kind</option>
+    </select></label>
+    <button type="button" id="hide">Hide well pane</button>
+    <button type="button" id="prev">Previous joint</button>
+    <button type="button" id="next">Next joint</button>
+    <button type="button" id="current">Current joint</button>
+    <button type="button" id="live">Append test sample</button>
+  </div>
+  <p class="meta" id="meta"></p>
+</header>
+<div id="score"></div>
+<div id="course"></div>
+<div id="app">
+  <section id="wellPane"></section>
+  <div id="gutter" role="separator" aria-orientation="vertical" aria-label="Resize panes"></div>
+  <section id="joint"></section>
+</div>
+<section id="rigDemo" aria-label="Synthetic rig demo">
+  <h2>Synthetic rig demo</h2>
+  <p class="fine">Not the live simulator. F1 toggles a cinematic camera on this page only. Escape restores it. The v5.15.1 game is not wired.</p>
+  <div class="rig-stage" id="rigStage">
+    <div id="rigSafety" data-rtoc-keep>Safety lamp: demo steady. Not a live well.</div>
+    <div id="rigClutter" data-rtoc-clutter>Decor overlay</div>
+    <div class="rig-floor"></div>
+    <div class="derrick" id="derrick"></div>
+  </div>
+  <div class="rig-actions">
+    <button type="button" id="cinematicBtn" aria-pressed="false">Cinematic view (F1)</button>
+    <button type="button" id="rigPumps" data-rtoc-sim>Pumps (sim) <span id="pumpCount">0</span></button>
+    <span id="cineState" role="status"></span>
+  </div>
+</section>
+<script type="module" src="./demo.js"></script>
+</body>
+</html>
