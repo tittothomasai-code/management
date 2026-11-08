@@ -13,7 +13,7 @@ import {
   parseUpstreamSoap,
 } from "../netlify/lib/machine-policy.mjs";
 
-const PASS = "test-secret-not-real";
+const PASS = "QZJV";
 const AUTH = "Basic " + Buffer.from("box-user:" + PASS).toString("base64");
 const TOKEN = AUTH.slice(6);
 const CALLER_KEY = "synthetic-not-real-caller-key-0123456789abcd";
@@ -752,7 +752,7 @@ describe("machine read policy", { concurrency: 1 }, () => {
     assert.equal(hidden.body.error, "credentials required");
     assert.equal(impl.calls.some((c) => c.type === "request"), false);
     assertClean(hidden.raw);
-    const password = "echo-password";
+    const password = "QZJV";
     const shortToken = Buffer.from("a:b").toString("base64");
     assert.ok(shortToken.length >= 4 && shortToken.length <= 7);
     const echoAuth = "Basic " + Buffer.from("box-user:" + password).toString("base64");
@@ -949,18 +949,18 @@ describe("machine read policy", { concurrency: 1 }, () => {
     for (const cp of [0x00ad, 0x200b, 0x200c, 0x200d, 0x2060, 0xfeff]) {
       assert.match(String.fromCodePoint(cp), /\p{Cf}/u);
     }
-    const password = "echo-password";
+    const password = "QZJV";
     const header = "Basic " + Buffer.from("box-user:" + password).toString("base64");
     const forms = [
-      ["fault-decimal", `<soap:Envelope xmlns:soap="${SOAP_NS}"><soap:Body><soap:Fault><faultstring>echo&#8203;-password</faultstring></soap:Fault></soap:Body></soap:Envelope>`],
-      ["fault-hex", `<soap:Envelope xmlns:soap="${SOAP_NS}"><soap:Body><soap:Fault><faultstring>echo&#x200B;-password</faultstring></soap:Fault></soap:Body></soap:Envelope>`],
-      ["fault-literal", `<soap:Envelope xmlns:soap="${SOAP_NS}"><soap:Body><soap:Fault><faultstring>echo\u200b-password</faultstring></soap:Fault></soap:Body></soap:Envelope>`],
-      ["xml", soap("WMLS_GetFromStore", "<Result>1</Result><XMLout>echo&#8203;-password</XMLout><SuppMsgOut>ok</SuppMsgOut>")],
-      ["supp", soap("WMLS_GetFromStore", "<Result>1</Result><XMLout>logs</XMLout><SuppMsgOut>echo\u200c-password</SuppMsgOut>")],
+      ["fault-decimal", `<soap:Envelope xmlns:soap="${SOAP_NS}"><soap:Body><soap:Fault><faultstring>QZ&#8203;JV</faultstring></soap:Fault></soap:Body></soap:Envelope>`],
+      ["fault-hex", `<soap:Envelope xmlns:soap="${SOAP_NS}"><soap:Body><soap:Fault><faultstring>QZ&#x200B;JV</faultstring></soap:Fault></soap:Body></soap:Envelope>`],
+      ["fault-literal", `<soap:Envelope xmlns:soap="${SOAP_NS}"><soap:Body><soap:Fault><faultstring>QZ\u200bJV</faultstring></soap:Fault></soap:Body></soap:Envelope>`],
+      ["xml", soap("WMLS_GetFromStore", "<Result>1</Result><XMLout>QZ&#8203;JV</XMLout><SuppMsgOut>ok</SuppMsgOut>")],
+      ["supp", soap("WMLS_GetFromStore", "<Result>1</Result><XMLout>logs</XMLout><SuppMsgOut>QZ\u200cJV</SuppMsgOut>")],
       ["version", soap("WMLS_GetVersion", "<Result>1.4\u200d.1.1</Result>")],
       ["numeric", soap("WMLS_GetFromStore", "<Result>1&#8203;</Result><XMLout>logs</XMLout>")],
-      ["word-joiner", soap("WMLS_GetFromStore", "<Result>1</Result><XMLout>echo\u2060-password</XMLout>")],
-      ["bom", soap("WMLS_GetFromStore", "<Result>1</Result><XMLout>echo\ufeff-password</XMLout>")],
+      ["word-joiner", soap("WMLS_GetFromStore", "<Result>1</Result><XMLout>QZ\u2060JV</XMLout>")],
+      ["bom", soap("WMLS_GetFromStore", "<Result>1</Result><XMLout>QZ\ufeffJV</XMLout>")],
     ];
     for (const [name, text] of forms) {
       const impl = fakeHttps({ text });
@@ -980,7 +980,7 @@ describe("machine read policy", { concurrency: 1 }, () => {
 
   test("a username that matches well identity is returned unchanged, while secret echoes are refused", async () => {
     const user = "rig-user-id";
-    const password = "secret-pass-99";
+    const password = "QZJV";
     const header = "Basic " + Buffer.from(user + ":" + password).toString("base64");
     const token = header.slice(6);
     const wells = `<wells xmlns="http://www.witsml.org/schemas/1series" version="1.4.1.1"><well uid="${user}"><name>${user}</name><operator>${user}</operator></well></wells>`;
@@ -1019,7 +1019,7 @@ describe("machine read policy", { concurrency: 1 }, () => {
     assert.equal(encoded.body.credentialClass, "basic");
     assert.equal(encoded.raw.includes(token), false);
     assert.equal(encoded.raw.includes("Basic " + token), false);
-    const entity = "secr&#101;t-pass-99";
+    const entity = "Q&#90;JV";
     const parsedImpl = fakeHttps({ text: soap("WMLS_GetFromStore", "<Result>1</Result><XMLout>&lt;name&gt;" + entity + "&lt;/name&gt;</XMLout>") });
     const parsedEcho = await read(await enforceMachinePolicy(makeReq({
       body: postBody("WMLS_GetFromStore"),
@@ -1052,7 +1052,7 @@ describe("machine read policy", { concurrency: 1 }, () => {
 
   test("credential class names overlaps and encoded echoes without changing the refusal", async () => {
     const user = "rig-user-id";
-    const password = "secret-pass-99";
+    const password = "QZJV";
     const rawPair = user + ":" + password;
     const header = "Basic " + Buffer.from(rawPair).toString("base64");
     const token = header.slice(6);
@@ -1095,7 +1095,7 @@ describe("machine read policy", { concurrency: 1 }, () => {
     assert.equal(keyAndPassword.body.credentialClass, "caller-key+password");
     const all = await echo("<Result>1</Result><XMLout>&lt;name&gt;" + password + " " + rawPair + " " + token + " " + CALLER_KEY + "&lt;/name&gt;</XMLout>", "all");
     assert.equal(all.body.credentialClass, "basic+caller-key+password+raw-pair");
-    const entity = await echo("<Result>1</Result><XMLout>&lt;name&gt;secr&#101;t-pass-99&lt;/name&gt;</XMLout>", "entity");
+    const entity = await echo("<Result>1</Result><XMLout>&lt;name&gt;Q&#90;JV&lt;/name&gt;</XMLout>", "entity");
     assert.equal(entity.body.credentialClass, "password");
     const tokenChar = token.charCodeAt(4);
     const tokenEncoded = token.slice(0, 4) + "&#" + tokenChar + ";" + token.slice(5);

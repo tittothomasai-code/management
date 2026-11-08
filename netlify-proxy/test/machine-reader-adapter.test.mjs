@@ -29,7 +29,7 @@ const READER_SHA = "c8d57d4eced63728cd28c2c339fc9e82f874fc8c5c8a6476a28592b96d85
 
 const KEY = "synthetic-not-real-caller-key-0123456789abcd";
 const USER = "rig-user-id";
-const PASS = "secret-pass-99";
+const PASS = "QZJV";
 const AUTH = "Basic " + Buffer.from(USER + ":" + PASS).toString("base64");
 
 const originalRequest = https.request;

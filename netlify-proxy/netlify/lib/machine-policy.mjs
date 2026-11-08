@@ -186,6 +186,7 @@ const XML_MATCH_ORDER = Object.freeze([
   "wellbore-identity", "credential-element", "credential-attribute",
   "log-data", "other-attribute", "other-text", "unclassified-xml",
 ]);
+const WELL_TEXT_CATEGORY = new Map([["name", "well-name"], ["field", "well-field"], ["country", "well-country"]]);
 const XML_CREDENTIAL_NAME = /^(?:password|passwd|pwd|authorization|basicauth|credential|credentials|clientsecret|token)$/i;
 
 function passwordXmlLocation(xml, fields) {
@@ -210,8 +211,8 @@ function passwordXmlLocation(xml, fields) {
       const inspect = end => {
         if (!doc.xml.slice(start, end).includes(secret)) return;
         if (XML_CREDENTIAL_NAME.test(el.local)) matches.add("credential-element");
-        else if (parent?.local === "well" && ["name", "field", "country"].includes(el.local)) {
-          matches.add("well-" + el.local);
+        else if (parent?.local === "well" && WELL_TEXT_CATEGORY.has(el.local)) {
+          matches.add(WELL_TEXT_CATEGORY.get(el.local));
         } else if (el.local === "data" && parent?.local === "logData") matches.add("log-data");
         else matches.add("other-text");
       };
@@ -279,7 +280,8 @@ function refusalBody(texts, fields, entries) {
 // Drop refusal fields until the serialized body contains no credential.
 // Order keeps the refusal marker as long as it is safe: location, then the
 // older diagnostic fields, then reason, error, and result. {} is the closed
-// body when every remainder still collides. It is not well data.
+// body when every remainder still collides and both braces are safe. If
+// either brace collides, return an empty HTTP body. Both are refusals.
 // Clients stop on HTTP 502, on a missing reason, and on {}. They must not
 // read it as XML or retry a wider query. A password that does not collide
 // keeps the existing fields and passwordXmlLocation.
@@ -293,19 +295,25 @@ const REFUSAL_DROP_ORDER = Object.freeze([
 ]);
 
 function sealRefusal(status, body, fields) {
+  // A single character is itself a substring. Even fixed labels, property
+  // names or JSON punctuation may collide, so allow only disjoint output.
+  const password = fields?.named?.find(item => item.name === "password")?.value || "";
+  const characters = new Set(password);
+  const safe = text => ![...text].some(character => characters.has(character)) &&
+    !serializedContainsCredential(text, fields);
   const current = {};
   if (body && typeof body === "object") {
     for (const key of Object.keys(body)) current[key] = body[key];
   }
   for (let step = 0; step <= REFUSAL_DROP_ORDER.length; step++) {
     const text = JSON.stringify(current);
-    if (!serializedContainsCredential(text, fields)) {
+    if (safe(text)) {
       return new Response(text, { status, headers: { ...BASE_HEADERS } });
     }
     if (step === REFUSAL_DROP_ORDER.length) break;
     delete current[REFUSAL_DROP_ORDER[step]];
   }
-  return new Response("{}", { status, headers: { ...BASE_HEADERS } });
+  return new Response(safe("{}") ? "{}" : null, { status, headers: { ...BASE_HEADERS } });
 }
 
 function refusalResponse(texts, fields, entries) {
