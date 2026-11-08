@@ -1,0 +1,7 @@
+# well: SIM CSV Offset-A
+# wellhead N=-30 E=25
+md,inc,azi
+0,0,0
+600,0,0
+900,15,120
+1500,15,120

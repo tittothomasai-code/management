@@ -1,0 +1,192 @@
+{
+  "schemaVersion": 1,
+  "sampleData": true,
+  "thresholds": {
+    "greenMax": 40,
+    "orangeMax": 200
+  },
+  "items": [
+    {
+      "id": "SAMPLE-01",
+      "name": "Task light",
+      "zone": "derrick",
+      "location": "derrick",
+      "heightM": 24,
+      "massKg": 4,
+      "securedBy": "Primary: carried; Secondary: none",
+      "inspectionDate": "2026-11-08",
+      "inspectionStatus": "sample-unverified",
+      "notes": "SAMPLE DATA \u2014 not real rig data."
+    },
+    {
+      "id": "SAMPLE-02",
+      "name": "Sheave guard",
+      "zone": "crown",
+      "location": "crown",
+      "heightM": 42,
+      "massKg": 18,
+      "securedBy": "Primary: bolted; Secondary: verify tether",
+      "inspectionDate": "2026-11-08",
+      "inspectionStatus": "sample-unverified",
+      "notes": "SAMPLE DATA \u2014 not real rig data."
+    },
+    {
+      "id": "SAMPLE-03",
+      "name": "Radio",
+      "zone": "monkey board",
+      "location": "monkey board",
+      "heightM": 22,
+      "massKg": 0.3,
+      "securedBy": "Primary: bolted; Secondary: verify tether",
+      "inspectionDate": "2026-11-08",
+      "inspectionStatus": "sample-unverified",
+      "notes": "SAMPLE DATA \u2014 not real rig data."
+    },
+    {
+      "id": "SAMPLE-04",
+      "name": "Spanner",
+      "zone": "monkey board",
+      "location": "monkey board",
+      "heightM": 22,
+      "massKg": 1.2,
+      "securedBy": "Primary: carried; Secondary: none",
+      "inspectionDate": "2026-11-08",
+      "inspectionStatus": "sample-unverified",
+      "notes": "SAMPLE DATA \u2014 not real rig data."
+    },
+    {
+      "id": "SAMPLE-05",
+      "name": "Fingerboard pin",
+      "zone": "racking board",
+      "location": "racking board",
+      "heightM": 20,
+      "massKg": 2,
+      "securedBy": "Primary: bolted; Secondary: verify tether",
+      "inspectionDate": "2026-11-08",
+      "inspectionStatus": "sample-unverified",
+      "notes": "SAMPLE DATA \u2014 not real rig data."
+    },
+    {
+      "id": "SAMPLE-06",
+      "name": "Sensor",
+      "zone": "top drive",
+      "location": "top drive",
+      "heightM": 16,
+      "massKg": 3,
+      "securedBy": "Primary: bolted; Secondary: verify tether",
+      "inspectionDate": "2026-11-08",
+      "inspectionStatus": "sample-unverified",
+      "notes": "SAMPLE DATA \u2014 not real rig data."
+    },
+    {
+      "id": "SAMPLE-07",
+      "name": "Washpipe cover",
+      "zone": "top drive",
+      "location": "top drive",
+      "heightM": 14,
+      "massKg": 8,
+      "securedBy": "Primary: carried; Secondary: none",
+      "inspectionDate": "2026-11-08",
+      "inspectionStatus": "sample-unverified",
+      "notes": "SAMPLE DATA \u2014 not real rig data."
+    },
+    {
+      "id": "SAMPLE-08",
+      "name": "Torch",
+      "zone": "pipe deck",
+      "location": "pipe deck",
+      "heightM": 1,
+      "massKg": 0.15,
+      "securedBy": "Primary: bolted; Secondary: verify tether",
+      "inspectionDate": "2026-11-08",
+      "inspectionStatus": "sample-unverified",
+      "notes": "SAMPLE DATA \u2014 not real rig data."
+    },
+    {
+      "id": "SAMPLE-09",
+      "name": "Washer",
+      "zone": "pipe deck",
+      "location": "pipe deck",
+      "heightM": 1,
+      "massKg": 0.02,
+      "securedBy": "Primary: bolted; Secondary: verify tether",
+      "inspectionDate": "2026-11-08",
+      "inspectionStatus": "sample-unverified",
+      "notes": "SAMPLE DATA \u2014 not real rig data."
+    },
+    {
+      "id": "SAMPLE-10",
+      "name": "Hose clamp",
+      "zone": "derrick",
+      "location": "derrick",
+      "heightM": 8,
+      "massKg": 0.4,
+      "securedBy": "Primary: carried; Secondary: none",
+      "inspectionDate": "2026-11-08",
+      "inspectionStatus": "sample-unverified",
+      "notes": "SAMPLE DATA \u2014 not real rig data."
+    },
+    {
+      "id": "SAMPLE-11",
+      "name": "Cable tray lid",
+      "zone": "derrick",
+      "location": "derrick",
+      "heightM": 12,
+      "massKg": 5,
+      "securedBy": "Primary: bolted; Secondary: verify tether",
+      "inspectionDate": "2026-11-08",
+      "inspectionStatus": "sample-unverified",
+      "notes": "SAMPLE DATA \u2014 not real rig data."
+    },
+    {
+      "id": "SAMPLE-12",
+      "name": "Camera mount",
+      "zone": "crown",
+      "location": "crown",
+      "heightM": 40,
+      "massKg": 2,
+      "securedBy": "Primary: bolted; Secondary: verify tether",
+      "inspectionDate": "2026-11-08",
+      "inspectionStatus": "sample-unverified",
+      "notes": "SAMPLE DATA \u2014 not real rig data."
+    },
+    {
+      "id": "SAMPLE-13",
+      "name": "Handrail bolt",
+      "zone": "racking board",
+      "location": "racking board",
+      "heightM": 20,
+      "massKg": 0.15,
+      "securedBy": "Primary: carried; Secondary: none",
+      "inspectionDate": "2026-11-08",
+      "inspectionStatus": "sample-unverified",
+      "notes": "SAMPLE DATA \u2014 not real rig data."
+    },
+    {
+      "id": "SAMPLE-14",
+      "name": "Tag plate",
+      "zone": "pipe deck",
+      "location": "pipe deck",
+      "heightM": 2,
+      "massKg": 0.1,
+      "securedBy": "Primary: bolted; Secondary: verify tether",
+      "inspectionDate": "2026-11-08",
+      "inspectionStatus": "sample-unverified",
+      "notes": "SAMPLE DATA \u2014 not real rig data."
+    },
+    {
+      "id": "SAMPLE-15",
+      "name": "Tool pouch",
+      "zone": "monkey board",
+      "location": "monkey board",
+      "heightM": 22,
+      "massKg": 2.5,
+      "securedBy": "Primary: bolted; Secondary: verify tether",
+      "inspectionDate": "2026-11-08",
+      "inspectionStatus": "sample-unverified",
+      "notes": "SAMPLE DATA \u2014 not real rig data."
+    }
+  ],
+  "classifier": "drops",
+  "thresholdsUnits": "joules (J); custom energy classifier ONLY, not used by DROPS mass-height curves"
+}
