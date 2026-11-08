@@ -31,11 +31,13 @@ import { createMachineHandler } from "../lib/machine-handler.mjs";
 //   user:password pair, the Basic header and token, and the caller key still
 //   refuse the whole response. Format characters still refuse the reply.
 //   A refusal includes none of the content.
-// * passwordRedacted true means a uid, name, number, or markup name in that
-//   reply is not the original value. Fixed JSON keys are left in place when
-//   they happen to contain the password. Homoglyphs and ordinary inserted
-//   characters still pass the exact-substring scan. The caller key still
-//   refuses the whole response.
+// * passwordRedacted true means something in that reply was changed.
+//   redactionScope "slots" plus redactedSlots lists fixed role/ordinal tokens
+//   such as well-uid/1 or log-data/2. Those nodes are not original and must
+//   not be resolved, paginated, cross-mapped, or interpolated. Other nodes
+//   in the same document are unchanged. redactionScope "response", or a
+//   boolean with no complete slot list, means the whole reply is unavailable.
+//   Fixed JSON keys are left in place when they happen to contain the password.
 // * The reader adapter is a separate server-side library. It is not a new
 //   route and it is not imported by this function. A refused or failed
 //   GetVersion, GetCap, or GetFromStore throws. It does not return empty xml

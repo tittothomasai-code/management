@@ -27,6 +27,7 @@
 // copy, and the call is still closed.
 
 import { inspect } from "node:util";
+import { slotsMatchDocument } from "./redaction-slots.mjs";
 
 const VERSION_LIST = /^\d{1,2}(?:\.\d{1,4}){1,3}(?:,\d{1,2}(?:\.\d{1,4}){1,3}){0,7}$/;
 const MATCH_SURFACES = new Set([
@@ -141,8 +142,16 @@ export function adaptMachineResult(machine, op) {
     credentialClass: machine.credentialClass, matchSurface: machine.matchSurface, passwordXmlLocation: machine.passwordXmlLocation,
   });
   const marked = (body) => {
-    if (machine && machine.passwordRedacted === true) body.passwordRedacted = true;
-    return body;
+    if (!machine || machine.passwordRedacted !== true) return body;
+    const xml = typeof body.xml === "string" ? body.xml : "";
+    const slots = machine.redactedSlots;
+    if (machine.redactionScope === "slots" && slotsMatchDocument(xml, slots)) {
+      body.passwordRedacted = true;
+      body.redactionScope = "slots";
+      body.redactedSlots = slots.slice();
+      return body;
+    }
+    close(operation, "MACHINE_FAILED", "", operation === "WMLS_GetVersion");
   };
   if (operation === "WMLS_GetVersion") {
     const version = text(machine && machine.version);

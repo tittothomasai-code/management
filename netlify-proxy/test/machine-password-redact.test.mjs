@@ -121,17 +121,19 @@ test("a numeric overlap is marked and is not the original measurement", async ()
   assert.equal(out.body.xml.includes("1500"), false);
 });
 
-test("redacts element and attribute names without returning them as original", async () => {
+test("element and attribute name redaction withholds the whole document", async () => {
   const password = "QZJV";
   const xml = `<wells><${password} uid="SYNTH-1" ${password}="keep-me">1500</${password}></wells>`;
   const out = await call(store(xml), password);
   assert.equal(out.status, 200, out.raw);
   assert.equal(out.body.passwordRedacted, true);
-  assert.equal(out.body.xml.includes("<xx "), true);
-  assert.equal(out.body.xml.includes('uid="SYNTH-1"'), true);
-  assert.equal(out.body.xml.includes('xx="keep-me"'), true);
-  assert.equal(out.body.xml.includes(">1500<"), true);
+  assert.equal(out.body.redactionScope, "response");
+  assert.equal(out.body.xml, undefined);
+  assert.equal(out.body.redactedSlots, undefined);
   assert.equal(out.raw.includes(password), false);
+  assert.equal(out.raw.includes("SYNTH-1"), false);
+  assert.equal(out.raw.includes("keep-me"), false);
+  assert.equal(out.raw.includes("1500"), false);
 });
 
 test("redacts a decoded entity and leaves an absent field untouched", async () => {
@@ -201,10 +203,14 @@ test("login pair, basic token, and caller key still block the whole reply", asyn
   assert.equal(keyOut.raw.includes(KEY), false);
 });
 
-test("the adapter copies only a boolean redaction flag", () => {
-  const kept = adaptMachineResult({ result: 1, xml: "<num>1500</num>", supp: "", passwordRedacted: true }, "WMLS_GetFromStore");
-  assert.equal(kept.passwordRedacted, true);
-  assert.equal(kept.xml, "<num>1500</num>");
+test("the adapter keeps a boolean and withholds xml when the slot list is absent", () => {
+  assert.throws(() => adaptMachineResult({
+    result: 1,
+    xml: "<num>1500</num>",
+    supp: "",
+    passwordRedacted: true,
+  }, "WMLS_GetFromStore"), (err) => err.closed === true && err.code === "MACHINE_FAILED");
   const ignored = adaptMachineResult({ result: 1, xml: "<num>1500</num>", supp: "", passwordRedacted: "true" }, "WMLS_GetFromStore");
   assert.equal(ignored.passwordRedacted, undefined);
+  assert.equal(ignored.xml, "<num>1500</num>");
 });

@@ -81,6 +81,7 @@ describe("game origin regression", { concurrency: 1 }, () => {
       "netlify-proxy/netlify/lib/machine-handler.mjs",
       "netlify-proxy/netlify/lib/machine-policy.mjs",
       "netlify-proxy/netlify/lib/machine-reader-adapter.mjs",
+      "netlify-proxy/netlify/lib/redaction-slots.mjs",
       "netlify-proxy/test/fixtures/rtoc_hist.js",
       "netlify-proxy/test/fixtures/wdash_core.js",
       "netlify-proxy/test/game-origin-regression.test.mjs",
@@ -89,6 +90,7 @@ describe("game origin regression", { concurrency: 1 }, () => {
       "netlify-proxy/test/machine-password-redact.test.mjs",
       "netlify-proxy/test/machine-policy.test.mjs",
       "netlify-proxy/test/machine-reader-adapter.test.mjs",
+      "netlify-proxy/test/machine-redaction-slots.test.mjs",
     ]);
   });
 
@@ -126,6 +128,7 @@ describe("game origin regression", { concurrency: 1 }, () => {
       "../netlify/lib/machine-handler.mjs",
       "../netlify/lib/machine-policy.mjs",
       "../netlify/lib/machine-reader-adapter.mjs",
+      "../netlify/lib/redaction-slots.mjs",
       "../netlify/lib/limiter.mjs",
     ]) {
       const src = readFileSync(new URL(rel, import.meta.url), "utf8");
