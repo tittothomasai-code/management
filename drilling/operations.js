@@ -1,18 +1,15 @@
-import {FT, TRACKS, drilledIntervals, feedJoints, feedSource, finite, imageRows,
-  jointProgress, latestChannel, readSamples, surveyMatches} from './operations_data.js?v=fp-ops-r2-20261108';
-import {chart, imageLog} from './operations_plots.js?v=fp-ops-r2-20261108';
-import {minCurvStations, pointAt, samplePath} from './geo.js?v=fp-ops-r2-20261108';
-import {pair, radius} from './ac.js?v=fp-ops-r2-20261108';
-import {simSeries} from './wdash_core.js?v=fp-ops-r2-20261108';
-import {createCutaway} from './operations_scene.js?v=fp-ops-r2-20261108';
+import {FT, TRACKS, actualSurveyStations, drilledIntervals, feedConnectionIntervals, feedJoints, feedSource, finite, imageRows,
+  jointProgress, latestChannel, readSamples, surveyDepthIntervals, surveyDoglegs, surveyHoleContext, surveyMatches} from './operations_data.js?v=ops-observer-r4';
+import {chart, doglegChart, imageLog} from './operations_plots.js?v=ops-observer-r4';
+import {minCurvStations, samplePath} from './geo.js?v=fp-ops-r2-20261108';
+import {createCutaway} from './operations_scene.js?v=ops-observer-r1';
 
 const $ = id => document.getElementById(id);
 const fmt = (v, digits = 1) => finite(v) ? v.toLocaleString('en-AU', {
   minimumFractionDigits: digits, maximumFractionDigits: digits,
 }) : '—';
-const ftPoint = p => ({md:p[0]*FT, n:p[3]*FT, e:p[4]*FT, tvd:p[5]*FT});
 const surveyPoint = p => ({md:p.md*FT, n:p.ns*FT, e:p.ew*FT, tvd:p.tvd*FT});
-const MODES = [['mode','Slide / Rotary'], ['torque','Torque'], ['wob','WOB'], ['plan','Plan vs Actual']];
+const MODES = [['mode','Survey trajectory'], ['plan','Plan vs Actual'], ['dls','DLS']];
 const MODE_NAMES = {slide:'Slide', rotary:'Rotary', remaining:'Remaining', unknown:'Unclassified'};
 const TRACK_HTML = TRACKS.map(([name], i) =>
   '<section class="ops-panel"><h3>' + name + '</h3><p class="ops-muted" id="opsLatest' + i + '"></p><canvas id="opsTrack' + i + '" role="img" aria-label="' + name + ' trend"></canvas></section>'
@@ -37,7 +34,13 @@ const MARKUP = `
       <aside class="ops-panel">
         <div class="ops-heading ops-flex"><h2>Joint tally</h2><span class="ops-muted">End MD (m)</span></div>
         <ul class="ops-list" id="opsTally"></ul>
-        <h2 class="ops-heading">Next up</h2><ul class="ops-list" id="opsNext"></ul>
+        <h2 class="ops-heading">Calculated connections</h2>
+        <ul class="ops-list ops-status" id="opsConnectionIntervals"></ul>
+        <p class="ops-note ops-muted">Hole MD at each connection. An interval can span a stand.</p>
+        <h2 class="ops-heading">Survey MD intervals</h2>
+        <ul class="ops-list ops-status" id="opsSurveyIntervals"></ul>
+        <p class="ops-note ops-muted">Stand length requires surveys at both stand ends.</p>
+        <h2 class="ops-heading">Source checks</h2><ul class="ops-list ops-status" id="opsNext"></ul>
       </aside>
       <main class="ops-center">
         <section class="ops-panel ops-progress ops-pad" aria-label="Joint progress">
@@ -47,16 +50,18 @@ const MARKUP = `
         </section>
         <section class="ops-panel ops-stage" aria-label="Interactive 3D well cutaway">
           <canvas id="opsScene" aria-label="3D well cutaway. Drag to orbit and scroll to zoom."></canvas>
+          <div class="ops-dls" id="opsDlsPanel" hidden>
+            <p id="opsDlsSummary" class="ops-note"></p>
+            <canvas id="opsDlsChart" role="img" aria-label="Dogleg severity by absolute survey measured depth"></canvas>
+          </div>
           <div class="ops-tabs" role="group" aria-label="Well view overlay">${MODES.map(([key,label]) =>
             '<button type="button" data-view="' + key + '" aria-pressed="' + (key === 'mode') + '">' + label + '</button>').join('')}</div>
           <div class="ops-empty-view" id="opsEmpty" hidden></div><span class="ops-bit" id="opsBit" hidden>BIT</span>
           <div class="ops-legend" id="opsLegend"></div>
         </section>
         <section class="ops-panel ops-pad ops-commands">
-          <h2>Execution</h2>
-          <button type="button" data-cmd="hold">Ⅱ Hold</button><button type="button" data-cmd="slide">» Slide</button>
-          <button type="button" data-cmd="rotate">⟳ Rotary</button><button type="button" data-cmd="survey">⊕ Take survey</button>
-          <button type="button" data-cmd="connection">Make connection</button>
+          <h2>Operations</h2>
+          <span class="ops-readonly">READ-ONLY</span>
           <span class="ops-muted" id="opsExecution" role="status"></span>
         </section>
       </main>
@@ -72,106 +77,67 @@ const MARKUP = `
       <div class="ops-heading ops-flex"><h2>LWD image log</h2><div class="ops-flex"><span class="ops-muted" id="opsDepth"></span><button id="opsLoadImage" type="button" hidden>Load WITSML image</button></div></div>
       <canvas id="opsImage" role="img" aria-label="Azimuthal image log by measured depth"></canvas>
     </section>
+    <p class="ops-note ops-muted" id="opsTrackWindow"></p>
     <div class="ops-tracks">${TRACK_HTML}</div>
     <footer class="ops-footer"><span id="opsSurvey"></span><span id="opsFooter"></span></footer>
     </div>
     </div>
   </div>`;
 
-let root, scene, timer, view = 'mode', origin, message = '', messageAt = 0;
-let sim = {rows:[], joints:[]}, feed = {}, lastSceneKey = '';
+let root, scene, timer, view = 'mode', origin;
+let feed = {}, lastSceneKey = '';
+const observation = {};
 let loadedImage, loadingImage = false, imageError = '';
-
-function gameModel(g) {
-  const s = g.S, hd = s.md * FT, bd = g.PH.bitDepth(s) * FT;
-  const previous = sim.rows.at(-1);
-  if (sim.state !== s || (previous && (s.t < previous.t || hd < previous.hd - .5))) {
-    sim = {rows:[], joints:[], state:s};
-  }
-  const end = s.L * FT - g.PH.P.dw.min_quill;
-  const current = sim.joints.at(-1);
-  if (!current) sim.joints.push({start:Math.max(0,end-g.PH.STAND_LENGTH_M), end, number:1});
-  else if (!s.seq && end > current.end + 1) {
-    current.end = hd;
-    sim.joints.push({start:hd, end, number:current.number+1});
-  }
-  if (!sim.rows.length || s.t > sim.rows.at(-1).t) {
-    sim.rows.push({t:s.t, hd, bd, mode:s.mode === 'slide' ? 'slide' : 'rotary',
-      rop:s.rop*FT, wob:s.wob*4.448222, torque:s.td.torque*.0013558179, rpm:s.td.rpm,
-      spp:s.spp*6.894757, flow:s.Q*3.785412, tf:s.tf, stall:Number(Boolean(s.stalled))});
-    if (sim.rows.length > 3600) sim.rows.shift();
-  }
-  const stations = s.surveys || [];
-  const last = stations.at(-1);
-  const exact = last && [s.md, s.inc, s.azi,
-    ...g.PH.minCurv(last.slice(3), last[0], last[1], last[2], s.md, s.inc, s.azi)];
-  const path = stations.filter(q => q[0] < s.md).map(ftPoint);
-  if (exact) path.push(ftPoint(exact));
-  const plan = sim.plan ||= g.PH.planPath().map(ftPoint);
-  const offset = sim.offset ||= plan.map(p => ({...p,n:p.n + 27,e:p.e + 19}));
-  const joint = sim.joints.at(-1);
-  return {source:'SIM', hd, bd, path, plan, offset, estimate:[], bit:atMD(path,bd),
-    intervals:drilledIntervals(sim.rows), joint, joints:sim.joints.slice(-6), rows:sim.rows,
-    image:hd > joint.start ? simSeries(joint.start, Math.min(hd,joint.end), .16).map(r => ({md:r[0],v:r.slice(9,25)})) : [],
-    lastSurvey:last?.[0]*FT, label:'SIMULATOR WELL', s, key:'sim'};
-}
-
-function atMD(points, md) {
-  if (!finite(md) || !points.length || md < points[0].md || md > points.at(-1).md + .00001) return null;
-  const i = points.findIndex(p => p.md >= md);
-  if (i <= 0) return i === 0 ? points[0] : points.at(-1);
-  const a = points[i-1], b = points[i], f = (md-a.md)/(b.md-a.md);
-  return {md,n:a.n+(b.n-a.n)*f,e:a.e+(b.e-a.e)*f,tvd:a.tvd+(b.tvd-a.tvd)*f};
-}
 
 function feedModel(api, source) {
   const w = api?.WML;
-  const data = w?.log ? api?.data?.() : null, cursor = w?.mode === 'replay' ? w.rp.t : Infinity;
+  const selected = source === 'WITSML LIVE' ? api?.data?.() : null;
+  const data = selected?.src === 'live' && selected.rows === w?.hist ? selected : null;
+  if (source === 'WITSML LIVE' && !data) source = 'WITSML WAITING';
   const key = JSON.stringify([api?.CFG?.url,w?.log?.w,w?.log?.b,w?.log?.uid,source]);
   const history = data?.rows;
   const tail = history?.at(-1);
-  const stamp = [history?.length, tail?.t, Array.isArray(tail?.x) ? tail.x.join('\u001f') : '', cursor, JSON.stringify(api?.CFG?.map)].join('|');
+  const stamp = [history?.length, tail?.t, Array.isArray(tail?.x) ? tail.x.join('\u001f') : '', JSON.stringify(api?.CFG?.map)].join('|');
   if (feed.key !== key || feed.stamp !== stamp || feed.history !== history) {
-    const rows = readSamples(data, w?.log, api?.CFG?.map, cursor, window.U);
-    feed = {key,stamp,history,rows,joints:feedJoints(rows),intervals:drilledIntervals(rows)};
+    const rows = readSamples(data, w?.log, api?.CFG?.map, Infinity, window.U);
+    feed = {key,stamp,history,rows,tally:feedJoints(rows),
+      connections:feedConnectionIntervals(rows),intervals:drilledIntervals(rows)};
   }
-  const {rows, joints, intervals} = feed;
+  const {rows, tally, intervals, connections} = feed;
   const latest = rows.at(-1);
   const hd = latest?.hd, bd = latest?.bd;
-  const active = joints.at(-1);
-  const joint = active?.end < hd ? {...active,end:null,estimated:false} : active;
-  const j0 = joint?.start ?? hd - 30;
-  const path = [], estimate = [];
-  let plan = [];
-  let bit = null, lastSurvey = null;
+  const {joints, active:joint} = tally;
+  const path = [];
+  let plan = [], surveyIntervals = [], doglegs = [], surveyDatum;
+  let lastSurvey = null;
   const geo = window.GEO;
-  if (surveyMatches(w,geo,api?.CFG?.svWell) && finite(hd)) {
-    const stations = w.mode === 'replay' ? geo.calc.filter(s => {
-      const time = Date.parse(s.t);
-      return s.md * FT <= hd && finite(time) && time <= cursor;
-    }) : geo.calc;
-    const tail = stations.at(-1);
-    const end = Math.min(hd/FT,tail?.md);
+  if (data && surveyMatches(w,geo,api?.CFG?.svWell)) {
+    const raw = actualSurveyStations(geo.surv.stations,w.log.b,w.sv.cur.uid);
+    surveyIntervals = surveyDepthIntervals(raw);
+    const datum = raw[0]?.datum;
+    const valid = raw.every(station => station.datum === datum &&
+      finite(station.inc) && station.inc >= 0 && station.inc <= 180 && finite(station.azi));
+    const stations = valid ? minCurvStations(raw) : [];
+    doglegs = surveyDoglegs(stations);
+    surveyDatum = datum;
+    const end = stations.at(-1)?.md;
+    if (raw.length) lastSurvey = raw.at(-1).md * FT;
     if (stations.length >= 2 && end > stations[0].md) {
       path.push(...samplePath(stations,end,Math.max(12,end/160)).map(surveyPoint));
-      const candidate = w.mode !== 'replay' && w.svCands?.find(c => c.wb === w.log.b &&
+      const candidate = w.svCands?.find(c => c.wb === w.log.b &&
         c.uid !== w.sv.cur.uid && c.st?.length >= 2 &&
-        c.st.every(x => /^(plan|planned|proposed)$/.test(x.typ)));
+        datum && c.st.every(x => x.datum === datum && /^(plan|planned|proposed)$/.test(x.typ)));
       if (candidate) plan = minCurvStations(candidate.st).map(surveyPoint);
-      lastSurvey = stations.filter(s => s.md <= end).at(-1)?.md * FT;
-      if (finite(bd) && bd <= end*FT && bd >= path[0].md) bit = surveyPoint(pointAt(stations,bd/FT));
-      else if (finite(bd) && bd > end*FT && bd-end*FT <= 30 && bd <= hd+.6) {
-        bit = surveyPoint(pointAt(stations,bd/FT));
-        estimate.push(path.at(-1),bit);
-      }
     }
   }
+  const canShowIdentity = !['WITSML TEST FEED','WITSML REPLAY','WITSML DISCONNECTED'].includes(source);
   const g8 = loadedImage?.log === w?.log && loadedImage?.url === api?.CFG?.url ? loadedImage?.data : null;
-  const image = w?.mode === 'replay' ? [] : imageRows(w,g8,j0,Math.min(hd,joint?.end ?? hd));
-  return {source, hd, bd, path, estimate, bit, plan, offset:[], intervals, joint,
-    joints:joints.slice(-7).map(j => j === active ? joint : j), rows, image, lastSurvey,
-    label:[w?.log?.nameWell || w?.log?.w,w?.log?.nameWb || w?.log?.b].filter(Boolean).join(' / ') || 'SELECT A WELL AND TIME LOG',
-    imageName:image.length ? g8.img.name : null, key, feed:w};
+  const image = data ? imageRows(w,g8,-Infinity,Infinity) : [];
+  const gamma = data && g8 && g8.well === w.log.w && g8.wb === w.log.b && !g8.sim
+    ? g8.fe?.gr?.findLast(row => finite(row.md) && finite(row.v)) : null;
+  return {source, hd, bd, path, plan, intervals, joint, joints, rows, image, lastSurvey, surveyIntervals, connections, doglegs, surveyDatum, gammaMd:gamma?.md,
+    label:(canShowIdentity && [w?.log?.nameWell || w?.log?.w,w?.log?.nameWb || w?.log?.b].filter(Boolean).join(' / ')) || 'SELECT A WELL AND TIME LOG',
+    imageName:image.length ? g8.img.name : null, key};
 }
 
 function set(id, text) { $(id).textContent = text; }
@@ -184,26 +150,25 @@ function statuses(id, rows) {
 }
 
 function renderTally(model) {
-  const {joint,joints,source} = model;
-  const simMode = source === 'SIM';
+  const {joint,joints} = model;
   const list = $('opsTally');
   if (!joints.length) {
     const li = document.createElement('li');
-    li.textContent = simMode ? 'Waiting for the simulator' : 'Waiting for detectable connections';
+    li.textContent = 'No source joint tally';
     list.replaceChildren(li);
   } else list.replaceChildren(...joints.map(j => {
     const li = document.createElement('li'), b = document.createElement('b'), n = document.createElement('span');
     li.setAttribute('aria-current',j === joint ? 'true' : 'false');
-    b.textContent = (simMode ? 'S-' : 'I-') + String(j.number).padStart(2,'0');
-    n.textContent = finite(j.end) ? (j.estimated ? '≈ ' : '') + fmt(j.end) : 'Open';
+    b.textContent = finite(j.number) ? 'J-' + String(j.number).padStart(2,'0') : 'Joint';
+    n.textContent = fmt(j.end);
     li.append(b,n); return li;
   }));
   const p = jointProgress(joint,model.hd,model.intervals);
-  set('opsJoint', joint ? (simMode ? 'Stand ' : 'Interval ') + String(joint.number).padStart(2,'0') : 'Joint progress');
+  set('opsJoint', finite(joint?.number) ? 'Joint ' + String(joint.number).padStart(2,'0') : 'Joint progress');
   set('opsMetres',p ? fmt(p.drilled) + ' / ' + fmt(p.length) + ' m' : '—');
   set('opsPct',finite(p?.pct) ? fmt(p.pct,0) + '%' : '—');
   set('opsStart','START MD  ' + fmt(joint?.start) + ' m');
-  set('opsEnd','END MD  ' + (joint?.estimated ? '≈ ' : '') + fmt(joint?.end) + ' m');
+  set('opsEnd','END MD  ' + fmt(joint?.end) + ' m');
   const bar = $('opsBar');
   const span = p?.length || p?.drilled;
   bar.setAttribute('aria-label', p ? Object.entries(p.totals).map(([k,v]) => MODE_NAMES[k] + ' ' + fmt(v) + ' m').join(', ') : 'Joint interval unavailable');
@@ -214,41 +179,46 @@ function renderTally(model) {
     if (s.metres/span >= .12) el.textContent = el.title;
     return el;
   }));
-  const seq = model.s?.seq;
-  const next = seq ? seq.steps.slice(seq.i,seq.i+3).map((s,i) => [s[0],i ? '' : 'Current']) :
-    simMode ? [[model.s._sd ? 'Stand drilled' : 'Finish stand',''],['Take survey',''],['Make connection','']] :
-    [['Observer mode','Read-only'],['Connections','Inferred']];
-  statuses('opsNext',next);
+  const mdRange = (start,end) => fmt(start,2) + ' → ' + fmt(end,2) + ' m MD';
+  const connectionRows = model.connections.slice(-3).reverse().map(({start,end,length}) =>
+    [mdRange(start,end),fmt(length,2) + ' m']);
+  statuses('opsConnectionIntervals',connectionRows.length ? connectionRows : [['No verified connection pair','']]);
+
+  const surveyRows = model.surveyIntervals.slice(-4).reverse().flatMap(interval => {
+    const start = surveyHoleContext(model.rows,interval.startTime);
+    const end = surveyHoleContext(model.rows,interval.endTime);
+    const rows = [[mdRange(interval.start,interval.end),fmt(interval.length,2) + ' m']];
+    if (start && end && Date.parse(interval.endTime) > Date.parse(interval.startTime) && end.holeMd >= start.holeMd) {
+      rows.push(['Hole ' + mdRange(start.holeMd,end.holeMd),fmt(end.holeMd-start.holeMd,2) + ' m']);
+    } else if (end) {
+      rows.push(['Hole MD at survey',fmt(end.holeMd,2) + ' m']);
+    }
+    if (finite(end?.pickup)) rows.push(['Bit pickup at survey',fmt(end.pickup,2) + ' m']);
+    return rows;
+  });
+  statuses('opsSurveyIntervals',surveyRows.length ? surveyRows : [['No matched source survey intervals','']]);
+  statuses('opsNext',[
+    ['Time log', model.source === 'WITSML LIVE' ? 'Advancing' : 'Unavailable'],
+    ['Joint boundaries', joints.length ? 'Source reported' : 'Unavailable'],
+    ['Trajectory', model.path.length ? 'Matched survey' : 'Unavailable'],
+    ['Hole MD', finite(model.hd) ? fmt(model.hd,2) + ' m' : 'Unavailable'],
+    ['Bit MD', finite(model.bd) ? fmt(model.bd,2) + ' m' : 'Unavailable'],
+    ['Gamma log MD', finite(model.gammaMd) ? fmt(model.gammaMd,2) + ' m' : 'Unavailable'],
+  ]);
 }
 
 function radar(model) {
-  const simMode = model.source === 'SIM';
-  const pts = points => points.map(p => ({md:p.md,E:p.e,N:p.n,Z:p.tvd}));
-  const planned = model.plan.filter(p => p.md >= model.hd && p.md <= model.hd + 120);
-  const off = model.offset.filter(p => p.md >= model.hd - 90 && p.md <= model.hd + 210);
-  const result = simMode && planned.length && off.length ? pair({pts:pts(planned)},{pts:pts(off)}) : null;
-  const hit = result && atMD(model.offset,result.mdOff), ref = result && atMD(model.plan,result.mdRef);
-  const reported = model.source === 'WITSML STALE' ? null : model.rows.at(-1);
-  set('opsRadarLabel',simMode ? 'SIM LOOK-AHEAD · 120 m' : 'FEED-REPORTED');
-  set('opsSF',finite(result?.sf) ? 'SF ' + fmt(result.sf,2) : finite(reported?.sf) ? 'SF ' + fmt(reported.sf,2) : '—');
-  set('opsRadarDetail',simMode ? finite(result?.ctc) ?
-    fmt(result.ctc) + ' m centreline · simplified training model' : 'No planned stations ahead' :
-    model.source === 'WITSML STALE' ? 'Feed stale' :
-    finite(reported?.ctc) ? fmt(reported.ctc) + ' m centreline · upstream calculation' :
+  const reported = model.rows.at(-1);
+  set('opsRadarLabel','SOURCE REPORTED');
+  set('opsSF',finite(reported?.sf) ? 'SF ' + fmt(reported.sf,2) : '—');
+  set('opsRadarDetail',finite(reported?.ctc) ? fmt(reported.ctc) + ' m centreline' :
     finite(reported?.sf) ? 'Upstream calculation' : 'No mapped anti-collision data');
-  if (!simMode && finite(reported?.east) && finite(reported?.north)) {
+  const targets = $('opsRadarTargets');
+  if (finite(reported?.east) && finite(reported?.north)) {
     const scale = 53 / Math.max(100,Math.hypot(reported.east,reported.north));
-    $('opsRadarTargets').innerHTML = '<circle cx="62" cy="62" r="3" fill="#26caff"/><circle cx="' +
+    targets.innerHTML = '<circle cx="62" cy="62" r="3" fill="#26caff"/><circle cx="' +
       (62+reported.east*scale) + '" cy="' + (62-reported.north*scale) + '" r="4" fill="#bc8df8"/>';
-    return;
-  }
-  $('opsRadarTargets').innerHTML = hit && ref ? (() => {
-    const scale = 53 / Math.max(100,result.ctc + radius(result.mdOff));
-    const x = 62 + (hit.e-ref.e)*scale, y = 62 - (hit.n-ref.n)*scale;
-    return '<circle cx="62" cy="62" r="' + radius(result.mdRef)*scale + '" fill="none" stroke="#26caff" stroke-dasharray="3 2"/>' +
-      '<circle cx="62" cy="62" r="3" fill="#26caff"/><circle cx="' + x + '" cy="' + y + '" r="' + radius(result.mdOff)*scale +
-      '" fill="none" stroke="#bc8df8" stroke-dasharray="3 2"/><circle cx="' + x + '" cy="' + y + '" r="4" fill="#bc8df8"/>';
-  })() : '';
+  } else targets.replaceChildren();
 }
 
 function renderSignals(model) {
@@ -266,136 +236,108 @@ function renderSignals(model) {
 }
 
 function renderScene(model) {
-  const values = new Map();
-  if (view === 'torque' || view === 'wob') for (const r of model.rows) {
-    if (finite(r.hd) && finite(r[view]) && finite(r.bd) && Math.abs(r.hd-r.bd) <= .6) {
-      values.set(Math.floor(r.hd),r[view]);
-    }
+  const showDls = view === 'dls';
+  $('opsScene').hidden = showDls;
+  $('opsDlsPanel').hidden = !showDls;
+  $('opsLegend').hidden = showDls;
+  if (showDls) {
+    $('opsEmpty').hidden = true;
+    const latest = model.doglegs.at(-1);
+    set('opsDlsSummary', latest ? 'Latest DLS ' + fmt(latest.dls,2) + ' °/30 m · Survey MD ' +
+      fmt(latest.start,2) + '–' + fmt(latest.end,2) + ' m · Datum ' + (model.surveyDatum || 'unreported') :
+      'DLS unavailable · Need two actual survey stations on the same depth datum.');
+    doglegChart($('opsDlsChart'),model.doglegs);
+    return;
   }
-  const all = [...values.values()], min = all.length ? Math.min(...all) : 0, max = all.length ? Math.max(...all) : 0;
-  model.heat = new Map([...values].map(([k,v]) => [k,max > min ? (v-min)/(max-min) : .5]));
   const legend = $('opsLegend');
-  const keys = view === 'mode' ? [['#18c9ff','Rotary'],['#ffb639','Slide'],['#87adc2','Unclassified']] :
-    view === 'plan' ? [['#18c9ff',model.plan.length ? 'Actual' : 'Actual · no matched plan']] :
-    [['#7fb9e0',all.length ? fmt(min) + '–' + fmt(max) + (view === 'wob' ? ' kN' : ' kN·m') : 'No mapped ' + view.toUpperCase()]];
-  if (model.plan.length) keys.push(['#c6dae3','Plan']);
-  if (model.offset.length) keys.push(['#ad82ef','SIM offset']);
-  if (model.estimate.length) keys.push(['#ffb639','Estimated to bit']);
-  keys.push(['#a0b4c4','Illustrative geology']);
+  const keys = [['#87adc2','Survey trajectory'],['#a0b4c4','Schematic terrain']];
+  if (view === 'plan') keys.push(['#c6dae3',model.plan.length ? 'Plan' : 'No plan on matching survey datum']);
+  keys.push(['#a0b4c4','Survey-only view · log MD alignment unverified']);
   legend.replaceChildren(...keys.map(([color,text]) => {
     const s = document.createElement('span'); s.style.color = color; s.textContent = text; return s;
   }));
   const empty = $('opsEmpty');
   empty.hidden = Boolean(scene && model.path.length > 1);
   empty.textContent = !scene ? '3D view requires WebGL' : 'No matched trajectory survey';
-  set('opsBit',model.estimate.length ? 'EST. BIT' : 'BIT');
-  const key = [model.key,view,model.path.length,model.plan.length,model.estimate.length,
-    model.hd?.toFixed(1),model.bd?.toFixed(1),model.lastSurvey,
-    model.path.at(-1)?.tvd,model.path.at(-1)?.n,model.plan.at(-1)?.tvd,model.intervals.at(-1)?.mode,model.rows.at(-1)?.[view]].join('|');
+  const key = [model.key,view,model.path.length,model.plan.length,
+    model.lastSurvey,model.path.at(-1)?.tvd,model.path.at(-1)?.n,model.plan.at(-1)?.tvd].join('|');
   if (key !== lastSceneKey) {
     lastSceneKey = key;
-    scene?.update(model,view);
+    scene?.update({...model,plan:view === 'plan' ? model.plan : [],intervals:[]},'mode');
   }
 }
 
 function renderPlots(model) {
-  const start = model.joint?.start ?? (finite(model.hd) ? Math.max(0,model.hd-30) : null);
-  const end = model.joint?.end ?? model.hd;
-  const recent = model.rows.slice(-1000);
-  const depth = finite(start) && end > start;
-  const rows = depth ? recent.filter(r => r.hd >= start && r.hd <= Math.min(end,model.hd)).map(r => ({...r,x:r.hd})) :
-    recent.slice(-150).map(r => ({...r,x:r.t}));
+  const start = model.joint?.start, end = model.joint?.end;
+  const depth = finite(start) && finite(end) && end > start;
+  const rows = depth ? model.rows.filter(r => finite(r.hd) && r.hd >= start && r.hd <= end).map(r => ({...r,x:r.hd})) :
+    model.rows.slice(-150).map(r => ({...r,x:r.t}));
+  set('opsTrackWindow',depth ? 'JOINT WINDOW · HOLE MD ' + fmt(start,2) + '–' + fmt(end,2) + ' m' :
+    'RECENT TIME · SOURCE JOINT BOUNDARIES UNAVAILABLE');
   const stale = model.source === 'WITSML STALE';
   const noteFor = key => {
     const state = latestChannel(model.rows, key, stale);
-    if (state === 'value') return fmt(model.rows.at(-1)[key]);
+    if (state === 'value') return fmt(model.rows.at(-1)[key],key === 'ecd' ? 2 : 1);
     if (state === 'blank') return '— no sample';
     if (state === 'stale') return 'feed stale';
     return 'no channel';
   };
   for (const [i,track] of TRACKS.entries()) {
     chart($('opsTrack'+i),track,rows,depth ? start : rows[0]?.t,depth ? end : rows.at(-1)?.t,
-      depth ? 'depth' : model.source === 'SIM' ? 'simtime' : 'time');
+      depth ? 'depth' : 'time');
     set('opsLatest'+i, track.slice(1).map(([key,name]) => name + ' ' + noteFor(key)).join(' · '));
   }
-  imageLog($('opsImage'),model.image,start,end,model.bd,model.hd);
-  set('opsDepth',(finite(model.bd) ? 'BIT  ' + fmt(model.bd) + ' m MD' : 'BIT MD unavailable') +
-    (model.source === 'SIM' ? ' · synthetic image' :
-      model.imageName ? ' · ' + model.imageName : imageError ? ' · ' + imageError : ' · image unavailable'));
+  const imageEnd = model.image.at(-1)?.md;
+  const image = model.image.filter(row => row.md >= imageEnd - 30);
+  const imageStart = image[0]?.md;
+  imageLog($('opsImage'),image,imageStart,imageEnd);
+  const imageDepth = finite(imageEnd) ? 'LWD INDEX MD ' + fmt(imageStart,2) + '–' + fmt(imageEnd,2) + ' m · ' : '';
+  set('opsDepth',imageDepth + (model.imageName || imageError || 'Image unavailable'));
   const button = $('opsLoadImage');
-  button.hidden = !['WITSML LIVE','WITSML SIM-TEST'].includes(model.source) || !window.GX?.geo8?.load;
+  button.hidden = model.source !== 'WITSML LIVE' || !window.GX?.geo8?.load;
   button.disabled = loadingImage;
   button.textContent = loadingImage ? 'Loading image…' : 'Load WITSML image';
 }
 
 function render() {
   if (!root) return;
-  const g = window.G, api = window.GX?.witsml;
-  if (!g) return;
-  const source = feedSource(api?.WML,Date.now(),api?.CFG);
-  const m = source === 'SIM' ? gameModel(g) : feedModel(api,source);
+  const api = window.GX?.witsml;
+  const m = feedModel(api,feedSource(api?.WML,Date.now(),api?.CFG,observation));
+  const {source} = m;
   set('opsWell','DRILLING OPERATIONS  •  ' + m.label);
-  set('opsSource',source === 'SIM' ? 'TRAINING SIMULATION' : source);
+  set('opsSource',source);
   $('opsSource').dataset.live = source === 'WITSML LIVE';
   $('opsConnect').disabled = !api?.open;
   renderTally(m); radar(m); renderSignals(m); renderScene(m); renderPlots(m);
-  const s = m.s;
-  const can = source === 'SIM' && !s?.seq;
-  for (const button of root.querySelectorAll('[data-cmd]')) {
-    const cmd = button.dataset.cmd;
-    button.disabled = !can || (cmd === 'connection' && s.dw.quill > 6);
-    button.setAttribute('aria-pressed',String(Boolean(s && !s.seq &&
-      (cmd === 'hold' ? s.dw.mode === 'hold' : ['slide','rotate'].includes(cmd) && s.dw.mode === 'auto' && s.mode === cmd))));
-  }
-  const state = !s ? 'Observer only' : s.seq ? s.seq.steps[s.seq.i][0] :
-    s.dw.mode === 'hold' ? 'Hold active' : s.mode === 'slide' ? 'Slide active' : 'Rotary active';
-  set('opsExecution',Date.now() < messageAt+3500 ? message : state);
+  set('opsExecution',source === 'WITSML LIVE' ? 'Following the selected time log' :
+    'Open WITSML, select the well and time log, then press Start live.');
   const latest = m.rows.at(-1);
   const sourceTime = $('opsSourceTime');
-  const iso = source === 'SIM' || !finite(latest?.t) ? '' : new Date(latest.t * 1000).toISOString();
-  sourceTime.hidden = source === 'SIM';
+  const iso = !finite(latest?.t) ? '' : new Date(latest.t * 1000).toISOString();
   sourceTime.textContent = iso ? 'SOURCE ' + iso.slice(0,16).replace('T',' ') + ' UTC' : 'SOURCE TIME UNAVAILABLE';
   if (iso) sourceTime.dateTime = iso;
   else sourceTime.removeAttribute('datetime');
-  set('opsSurvey','LAST SURVEY  ' + fmt(m.lastSurvey) + ' m MD  •  TOOLFACE  ' +
+  set('opsSurvey','LAST SURVEY MD  ' + fmt(m.lastSurvey) + ' m MD  •  TOOLFACE  ' +
     (finite(latest?.tf) ? fmt(latest.tf,0) + '°' : '—'));
-  set('opsFooter',source === 'SIM' ? 'SIMULATED SIGNALS · SESSION STAND TALLY' :
-    latest ? 'READ-ONLY · SAMPLE ' + new Date(latest.t*1000).toISOString().replace('T',' ').slice(0,19) + ' UTC' :
+  set('opsFooter',latest ? 'READ-ONLY · SAMPLE ' + new Date(latest.t*1000).toISOString().replace('T',' ').slice(0,19) + ' UTC' :
       'READ-ONLY · WAITING FOR A WITSML TIME LOG');
-}
-
-function command(cmd) {
-  const {S:s,PH:ph,act,startConn} = window.G;
-  const api = window.GX?.witsml;
-  if (feedSource(api?.WML,Date.now(),api?.CFG) !== 'SIM' || s.seq) return;
-  if (cmd === 'survey') {
-    if (s.md > s.lastS + .001) ph.survey(s);
-    message = 'Survey recorded at ' + fmt(s.md*FT) + ' m MD';
-  } else if (cmd === 'connection') {
-    if (s.dw.quill > 6) return;
-    startConn();
-    message = 'Connection sequence started';
-  } else if (cmd === 'hold') {
-    act('hold'); message = 'Hold active';
-  } else {
-    if (!ph.doAct(s,'drill')) message = 'Interlock · ' + ph.guard(s,'drill');
-    else { act(cmd); message = cmd === 'slide' ? 'Slide active' : 'Rotary active'; }
-  }
-  messageAt = Date.now();
-  render();
 }
 
 async function loadFeedImage() {
   const api = window.GX?.witsml, geo = window.GX?.geo8;
-  if (loadingImage || !api?.WML?.log || !geo?.load) return;
+  if (loadingImage || !geo?.load || feedSource(api?.WML,Date.now(),api?.CFG,observation) !== 'WITSML LIVE') return;
   const log = api.WML.log, url = api.CFG.url;
+  const previousImage = geo.G8.img, previousGamma = geo.G8.fe;
   loadingImage = true; imageError = ''; render();
   try {
     await geo.load();
     if (api.WML.log !== log || api.CFG.url !== url) return;
-    const {img, well, wb, sim} = geo.G8;
-    loadedImage = {log,url,data:{img,well,wb,sim}};
-    if (!img?.rows?.length) imageError = 'No compatible image log found';
+    const {img, fe, well, wb, sim} = geo.G8;
+    const sameScope = loadedImage?.log === log && loadedImage?.url === url;
+    const image = img !== previousImage ? img : sameScope ? loadedImage.data.img : null;
+    const gamma = fe !== previousGamma ? fe : sameScope ? loadedImage.data.fe : null;
+    loadedImage = {log,url,data:{img:image,fe:gamma,well,wb,sim}};
+    if (!image?.rows?.length) imageError = 'No compatible image log found';
   } catch {
     if (api.WML.log === log) imageError = 'Image load failed';
   } finally {
@@ -440,7 +382,7 @@ function keydown(e) {
 function loadCSS() {
   if ($('opsCSS')) return;
   const link = document.createElement('link');
-  link.id = 'opsCSS'; link.rel = 'stylesheet'; link.href = new URL('./operations.css?v=fp-ops-r2-20261108',import.meta.url);
+  link.id = 'opsCSS'; link.rel = 'stylesheet'; link.href = new URL('./operations.css?v=ops-observer-r4',import.meta.url);
   document.head.append(link);
 }
 
@@ -468,7 +410,6 @@ export function open() {
       for (const b of root.querySelectorAll('[data-view]')) b.setAttribute('aria-pressed',String(b === button));
       render();
     }
-    if (button?.dataset.cmd) command(button.dataset.cmd);
   });
   root.querySelector('[data-view="' + view + '"]').setAttribute('aria-pressed','true');
   if (view !== 'mode') root.querySelector('[data-view=mode]').setAttribute('aria-pressed','false');
@@ -484,6 +425,8 @@ export function close() {
   if ($('opsWitsmlDock').contains($('witsml'))) window.GX?.witsml?.close?.();
   scene?.dispose();
   scene = null; lastSceneKey = '';
+  feed = {}; loadedImage = null; imageError = '';
+  feedSource(null,Date.now(),null,observation);
   root.remove(); root = null;
   origin?.focus?.({preventScroll:true});
 }

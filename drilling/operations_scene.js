@@ -3,7 +3,6 @@ import {OrbitControls} from './vendor/OrbitControls.js';
 
 const V = (x, y, z) => new T.Vector3(x, y, z);
 const CYAN = 0x18c9ff, AMBER = 0xffb639;
-const rockColors = [0x52655b, 0x46566a, 0x695643, 0x354454, 0x867045, 0x333f4e, 0x40535d];
 
 export function createCutaway(canvas, label) {
   const renderer = new T.WebGLRenderer({canvas, antialias: true, alpha: true});
@@ -67,20 +66,35 @@ export function createCutaway(canvas, label) {
     block(3.4, 1.8, 3, 0xa99880, x - 6, 2.3, z - 2);
   }
 
-  function buildRock(x, z) {
+  // A single relief block provides scene context. No strata or target beds
+  // are drawn without surveyed boundaries.
+  function buildRock(first, wellhead) {
     clear(rock);
-    for (let i = 0; i < rockColors.length; i++) {
-      const y = -4.5 - i * 9, d = 40 + i * 1.5;
-      block(157, 8.8, d, rockColors[i], 0, y, -10);
-      // Fine seams and exposed ledges add depth without implying surveyed strata.
-      block(157.15, 0.4, d + 0.25, rockColors[(i + 2) % rockColors.length], 0, y - 1.4, -10);
+    if (!first) return;
+    const geometry = new T.BoxGeometry(157, 61, 53, 38, 18, 14);
+    const vertices = geometry.attributes.position;
+    const colors = [];
+    const base = new T.Color(0x45515c);
+    for (let i = 0; i < vertices.count; i++) {
+      const x = vertices.getX(i), y = vertices.getY(i), z = vertices.getZ(i);
+      const relief = Math.sin(x * .17 + z * .31) * Math.cos(z * .22 - y * .25);
+      const grain = Math.sin(x * .61 + y * .53 - z * .79) * .045;
+      vertices.setXYZ(i,x + relief * .35,y + relief * .6,z + relief * .55);
+      const color = base.clone().multiplyScalar(1 + relief * .19 + grain);
+      colors.push(color.r,color.g,color.b);
     }
-    rig(x, z);
+    geometry.setAttribute('color',new T.Float32BufferAttribute(colors,3));
+    geometry.computeVertexNormals();
+    const terrain = new T.Mesh(geometry,
+      new T.MeshStandardMaterial({vertexColors:true,roughness:.96,flatShading:true}));
+    terrain.position.set(0,-30.5,-8);
+    rock.add(terrain);
+    if (wellhead) rig(first.x,first.z);
   }
 
-  const scale = points => {
-    if (points.length < 2) return null;
-    const first = points[0], last = points.at(-1);
+  const scale = (points, path) => {
+    if (path.length < 2) return null;
+    const first = path[0], last = path.at(-1);
     const theta = Math.atan2(last.n - first.n, last.e - first.e);
     const c = Math.cos(theta), s = Math.sin(theta);
     const horizontal = p => [(p.e-first.e)*c + (p.n-first.n)*s, (p.n-first.n)*c - (p.e-first.e)*s];
@@ -127,8 +141,7 @@ export function createCutaway(canvas, label) {
   function update(model, view) {
     clear(routes);
     tip = null;
-    const extent = [...model.path, ...model.plan, ...model.estimate];
-    const project = scale(model.plan.length > 1 ? [...model.plan, ...model.path] : extent);
+    const project = scale([...model.path, ...model.plan],model.path);
     const actual = [];
     if (project) for (const [i, p] of model.path.entries()) {
       const a = model.path[i-1];
@@ -141,15 +154,14 @@ export function createCutaway(canvas, label) {
       actual.push({md:p.md,v:project(p)});
     }
     const first = actual[0]?.v;
-    const key = first ? first.x.toFixed(0) + ':' + first.z.toFixed(0) : 'none';
+    const wellhead = first && model.path[0].md <= 1 && Math.abs(model.path[0].tvd) <= 1;
+    const key = first ? [first.x.toFixed(0),first.z.toFixed(0),wellhead].join(':') : 'none';
     if (rockKey !== key) {
-      buildRock(first?.x ?? -58, Math.min(5,first?.z ?? 5));
+      buildRock(first,wellhead);
       rockKey = key;
     }
     if (!project) { draw(); return; }
     dashed(model.plan.map(project), 0xc6dae3);
-    dashed(model.offset.map(project), 0xad82ef);
-    dashed(model.estimate.map(project), AMBER);
     let points = [], lastColor;
     for (let i = 1; i < actual.length; i++) {
       const a = actual[i - 1], b = actual[i];
@@ -180,7 +192,7 @@ export function createCutaway(canvas, label) {
     if (size !== w + ':' + h) {
       size = w + ':' + h;
       renderer.setSize(w, h, false);
-      const v = Math.max(46, 82 * h / w);
+      const v = Math.max(44, 89 * h / w);
       camera.left = -v * w / h; camera.right = v * w / h;
       camera.top = v; camera.bottom = -v;
       camera.updateProjectionMatrix();

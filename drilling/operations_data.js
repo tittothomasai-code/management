@@ -1,5 +1,6 @@
 // Read-only adapter for the simulator's selected WITSML time log.
-import {detect, median} from './conn.js?v=fp-ops-r2-20261108';
+import {detect} from './conn.js?v=fp-ops-r2-20261108';
+import {dlsPer30m} from './geo.js?v=fp-ops-r2-20261108';
 export function wmlValue(raw, curveNull, logNull) {
   if (raw == null || String(raw).trim() === '') return null;
   const v = Number(raw);
@@ -21,7 +22,7 @@ export const TRACKS = [
   ['FLOW IN / OUT', ['flow', 'In', 'L/min'], ['out', 'Out', 'L/min']],
 ];
 const CHANNELS = {
-  hd: ['m', ['holedepth', 'md'], /^(DMEA|DBTM|HOLEDEP(TH)?|HDEP|HDTH|HOLE_DEPTH|MD)$/i],
+  hd: ['m', ['holedepth'], /^(HOLEDEP(TH)?|HDEP|HDTH|HOLE_DEPTH)$/i],
   bd: ['m', ['bitdepth'], /^(BDE|BDEP|BITDEP(TH)?|BIT_DEPTH|DBTB|DBTM_BIT)$/i],
   rop: ['m/h', ['rop'], /^(ROP|ROPA|ROPI)$/i],
   wob: ['kN', ['wob'], /^(WOB|WOBA|SWOB)$/i],
@@ -34,6 +35,9 @@ const CHANNELS = {
   pit: ['m3', ['ops.pit'], /^(PIT_?VOL|PITVOLUME|PVT|PVTOT|TVOL)$/i],
   gas: ['%', ['ops.gas'], /^(GAS_?PCT|GASPCT|TGAS|TOTALGAS)$/i],
   tf: ['deg', ['ops.tf'], /^(TF|TOOLFACE|GTF|MTF)$/i],
+  jointStart: ['m', ['ops.jointStart'], /^JOINT_START_MD$/i],
+  jointEnd: ['m', ['ops.jointEnd'], /^JOINT_END_MD$/i],
+  jointNumber: ['id', ['ops.jointNumber'], /^JOINT_NUMBER$/i],
   bh: ['m', ['quill'], /^(BHE|BPOS|BLKPOS|HKHT|BLOCK)$/i],
   hkl: ['kN', ['hook'], /^(HKL|HKLA|HKLD|HOOKLOAD)$/i],
   sf: ['ratio', ['ops.sf'], /^(SEPARATION_FACTOR|AC_MIN_SF|AC_SF)$/i],
@@ -68,19 +72,35 @@ export function fixtureFeed(w, cfg) {
   return fixtureUrl(cfg?.url || w.storeUrl || '');
 }
 
-export function feedSource(w, now = Date.now(), cfg) {
-  if (!w) return 'SIM';
-  if (w.mode === 'loading') return 'WITSML WAITING';
-  const fixture = fixtureFeed(w, cfg);
-  if (w.mode === 'replay' && w.rp) return fixture ? 'SIM-TEST REPLAY' : 'REPLAY';
-  if (!w.log && !w.liveMode && !w.connected) return 'SIM';
-  if (!w.log) return 'WITSML WAITING';
-  // A successful header read or a depth log is not a fresh drilling sample.
-  if (!/time/i.test(w.log.indexType || '')) return 'WITSML TIME LOG REQUIRED';
-  const sample = w.hist?.at(-1);
-  if (!finite(sample?.t) || !finite(w.lastRowMs) || !w.lastRowMs) return 'WITSML WAITING';
-  if (!w.healthy?.() || now - w.lastRowMs > MAX_AGE || now - sample.t > MAX_AGE) return 'WITSML STALE';
-  return fixture ? 'WITSML SIM-TEST' : 'WITSML LIVE';
+// Operations observes the existing poller. Two different source rows must be
+// seen across observations of the same session. History from one fetch is
+// insufficient, and a rollback of the source clock requires fresh evidence.
+export function feedSource(w, now = Date.now(), cfg, observation = {}) {
+  function reset(source) {
+    observation.log = observation.rows = observation.store = observation.last = null;
+    observation.advanced = false;
+    return source;
+  }
+  if (fixtureFeed(w, cfg)) return reset('WITSML TEST FEED');
+  if (w?.mode === 'replay') return reset('WITSML REPLAY');
+  if (!w || w.authDead || w.transportDead) return reset('WITSML DISCONNECTED');
+  if (w.mode === 'loading') return reset('WITSML WAITING');
+  // The deployed poller uses mode for replay. A normal live session can
+  // still report mode='off' while supplying a selected log and source rows.
+  if (!w.log) return reset(w.connected ? 'WITSML WAITING' : 'WITSML DISCONNECTED');
+  if (!w.log.w || !w.log.b || !w.log.uid) return reset('WITSML WAITING');
+  if (!/time/i.test(w.log.indexType || '')) return reset('WITSML TIME LOG REQUIRED');
+
+  const stamp = w.hist?.at(-1)?.t;
+  if (!finite(stamp) || stamp <= 0 || w.lastRowMs !== stamp || stamp > now) return reset('WITSML WAITING');
+  if (!w.healthy?.() || now - stamp >= MAX_AGE) return reset('WITSML STALE');
+
+  const store = cfg?.url || w.storeUrl;
+  if (observation.log !== w.log || observation.rows !== w.hist ||
+      observation.store !== store || stamp < observation.last) reset('WITSML WAITING');
+  if (finite(observation.last) && stamp > observation.last) observation.advanced = true;
+  Object.assign(observation, {log:w.log, rows:w.hist, store, last:stamp});
+  return observation.advanced ? 'WITSML LIVE' : 'WITSML WAITING FOR ADVANCE';
 }
 
 export function readSamples(data, log = {}, map = {}, until = Infinity, units) {
@@ -88,7 +108,9 @@ export function readSamples(data, log = {}, map = {}, until = Infinity, units) {
   const {ml, ul = [], rows = [], ix} = data;
   const curves = new Map((log.curves || []).filter(c => c.mn).map(c => [c.mn.toUpperCase(), c]));
   const columns = Object.entries(CHANNELS).map(([key, [target, names, alias]]) => {
-    const mapped = ml.findIndex((m, i) => i !== ix && names.includes(map[m]));
+    const otherDepth = key === 'hd' ? /(?:GAMMA|SURVEY|BIT|^(?:GR|LWD|MWD)[ _.-])/i :
+      key === 'bd' ? /(?:GAMMA|SURVEY|HOLE|^(?:GR|LWD|MWD)[ _.-])/i : null;
+    const mapped = ml.findIndex((m, i) => i !== ix && names.includes(map[m]) && !otherDepth?.test(m));
     const i = mapped >= 0 ? mapped : ml.findIndex((m, j) => j !== ix && alias.test(m) && (!map[m] || names.includes(map[m])));
     if (i < 0) return null;
     const curve = curves.get(ml[i].toUpperCase());
@@ -128,6 +150,7 @@ function convert(v, from, to, units) {
   if (!finite(v)) return null;
   const u = String(from || '').toLowerCase().trim().replace(/³/g, '3');
   if (to === 'ratio') return v >= 0 && (!u || /^(1|ratio|unitless|dimensionless)$/.test(u)) ? v : null;
+  if (to === 'id') return Number.isSafeInteger(v) && v >= 0 && (!u || u === '1' || u === 'unitless') ? v : null;
   if (to === 'flag') return v === 0 || v === 1 ? v : null;
   if (to === 'rpm') return /^(rpm|rev\/min|1\/min)$/.test(u) ? v : null;
   if (to === 'deg') return /^(deg|dega|°)$/.test(u) ? v : u === 'rad' ? v * 180 / Math.PI : null;
@@ -138,19 +161,143 @@ function convert(v, from, to, units) {
   return a && b && a[0] === b[0] ? units.x(v, from, to) : null;
 }
 
+// Only explicit per-joint boundaries are a tally. Connection events may be
+// stands or may span missed events, so they cannot supply joint boundaries.
 export function feedJoints(samples) {
-  if (!samples.some(r => finite(r.hd)) || !samples.some(r => finite(r.bd))) return [];
-  const edges = detect(samples).connections.map(c => c.depth_m).filter(finite).sort((a, b) => a - b)
-    .filter((md, i, a) => i === 0 || md - a[i - 1] > 0.5);
-  const joints = edges.slice(1).map((end, i) => ({start: edges[i], end, number: i + 1}));
-  if (!edges.length) return joints;
-  const lengths = joints.slice(-4).map(j => j.end - j.start);
-  const typical = median(lengths);
-  const estimated = lengths.length >= 2 && typical >= 8 && typical <= 31 &&
-    lengths.every(n => Math.abs(n - typical) < typical * 0.12);
-  joints.push({start: edges.at(-1), end: estimated ? edges.at(-1) + typical : null,
-    number: joints.length + 1, estimated, open: true});
-  return joints;
+  const tally = new Map();
+  let active;
+  for (const row of samples) {
+    const {jointStart:start, jointEnd:end, jointNumber:number} = row;
+    active = undefined;
+    if (!finite(start) || !finite(end) || start < 0 || end <= start) continue;
+    const key = start;
+    const joint = {start, end, number};
+    if (tally.has(key)) tally.delete(key);
+    tally.set(key,joint);
+    if (finite(row.hd) && row.hd >= start && row.hd <= end) active = joint;
+  }
+  return {joints:[...tally.values()].slice(-7), active};
+}
+
+const MAX_SAMPLE_GAP_S = 120;
+const HOLE_DEPTH_TOL_M = .10;
+const ON_BOTTOM_TOL_M = .50;
+
+// Reuse the existing connection detector with measured inputs only. Each
+// uninterrupted run must contain valid hole/bit depth, slips, flow and RPM.
+export function feedConnectionIntervals(samples) {
+  const intervals = [];
+  let run = [];
+  function finishRun() {
+    if (run.length < 5) return;
+    let slipSequence = 0;
+    const samplesByTime = new Map();
+    for (const [i,row] of run.entries()) {
+      if (row.slips === 1 && run[i-1]?.slips === 0) slipSequence++;
+      samplesByTime.set(row.t,{row,index:i,slipSequence});
+    }
+
+    let previous;
+    for (const event of detect(run).connections) {
+      const inSlip = samplesByTime.get(event.tSlipsIn);
+      const off = samplesByTime.get(event.tOff);
+      const on = samplesByTime.get(event.tOn);
+      const resume = samplesByTime.get(event.tResume)?.row;
+      if (!inSlip || !off || !on || !resume ||
+          run[inSlip.index-1]?.slips !== 0 || inSlip.row.slips !== 1 ||
+          Math.abs(resume.hd-resume.bd) > ON_BOTTOM_TOL_M ||
+          run.slice(off.index,on.index).some(row => Math.abs(row.hd-inSlip.row.hd) > HOLE_DEPTH_TOL_M)) {
+        previous = undefined;
+        continue;
+      }
+      if (previous && inSlip.slipSequence === previous.slipSequence + 1 &&
+          inSlip.row.hd > previous.row.hd + HOLE_DEPTH_TOL_M) {
+        intervals.push({start:previous.row.hd,end:inSlip.row.hd,length:inSlip.row.hd-previous.row.hd});
+      }
+      previous = inSlip;
+    }
+  }
+
+  for (const row of samples) {
+    const usable = [row.t,row.hd,row.bd,row.flow,row.rpm].every(finite) &&
+      row.hd >= 0 && row.bd >= 0 && row.bd <= row.hd + ON_BOTTOM_TOL_M &&
+      (row.slips === 0 || row.slips === 1);
+    const last = run.at(-1);
+    if (!usable || (last && (row.t <= last.t || row.t-last.t > MAX_SAMPLE_GAP_S ||
+        row.hd < last.hd - HOLE_DEPTH_TOL_M))) {
+      finishRun();
+      run = [];
+    }
+    if (usable) run.push(row);
+  }
+  finishRun();
+  return intervals;
+}
+
+// Associate survey time with measured hole and bit depth. If the timestamp
+// falls between samples, accept only a short bracket with stable hole depth.
+export function surveyHoleContext(samples, time) {
+  const t = Date.parse(time) / 1000;
+  if (!finite(t)) return null;
+  let before, after;
+  for (const row of samples) {
+    if (row.t <= t && (!before || row.t > before.t)) before = row;
+    if (row.t >= t && (!after || row.t < after.t)) after = row;
+  }
+  if (!before || !after || t-before.t > 30 || after.t-t > 30 ||
+      !finite(before.hd) || !finite(after.hd) ||
+      Math.abs(after.hd-before.hd) > HOLE_DEPTH_TOL_M) return null;
+  const nearest = t-before.t <= after.t-t ? before : after;
+  if (nearest.hd < 0) return null;
+  const bitStable = finite(before.bd) && finite(after.bd) && Math.abs(after.bd-before.bd) <= HOLE_DEPTH_TOL_M;
+  // Measure movement within the bit channel from a preceding on-bottom
+  // sample at the same hole depth. A cross-channel depth gap is not pickup.
+  let pickup = null;
+  if (bitStable) for (const row of samples) {
+    if (row.t >= t || t-row.t > MAX_SAMPLE_GAP_S || !finite(row.hd) || !finite(row.bd) ||
+        Math.abs(row.hd-nearest.hd) > HOLE_DEPTH_TOL_M || Math.abs(row.bd-row.hd) > ON_BOTTOM_TOL_M) continue;
+    const movement = row.bd - nearest.bd;
+    if (movement > HOLE_DEPTH_TOL_M) pickup = Math.max(pickup ?? 0,movement);
+  }
+  return {holeMd:nearest.hd,pickup};
+}
+
+// Use the parser's source stations (MD is normalised to feet). Never use the
+// interpolated path, a virtual wellhead, or stations from another trajectory.
+export function actualSurveyStations(stations, bore, trajectory) {
+  if (!bore || !trajectory) return [];
+  return (stations || []).filter(s =>
+    s.wb === bore && s.traj === trajectory && !s.virtual &&
+    !/^(plan|planned|proposed|projection|projected|interpolated|tie[ -]?in)$/i.test(s.typ?.trim() || '') &&
+    finite(s.md) && s.md >= 0
+  ).sort((a,b) => a.md - b.md);
+}
+
+export function surveyDepthIntervals(stations) {
+  const intervals = [];
+  let previous;
+  for (const station of stations) {
+    if (previous) {
+      const length = (station.md - previous.md) * FT;
+      if (length <= .001 && station.datum === previous.datum) continue;
+      if (length > .001 && station.datum === previous.datum) {
+        intervals.push({start:previous.md * FT,end:station.md * FT,length,startTime:previous.t,endTime:station.t});
+      }
+    }
+    previous = station;
+  }
+  return intervals;
+}
+
+// Minimum-curvature DLS belongs to the interval ending at the actual station.
+export function surveyDoglegs(stations) {
+  return stations.slice(1).flatMap((end,i) => {
+    const start = stations[i];
+    if (start.virtual || end.virtual || start.datum !== end.datum ||
+        !finite(start.md) || !finite(end.md) || end.md - start.md <= .001 / FT ||
+        !finite(end.dls) || end.dls < 0) return [];
+    return [{start:start.md * FT,end:end.md * FT,dls:dlsPer30m(end.dls)}];
+  });
 }
 
 export function drilledIntervals(rows) {
@@ -199,7 +346,7 @@ export function jointProgress(joint, hd, intervals) {
 export function imageRows(w, image, start, end) {
   if (!image?.img || !sameWellbore(w?.log, image.well, image.wb) ||
       Boolean(w.simulated) !== Boolean(image.sim)) return [];
-  return image.img.rows.filter(r => r.md >= start && r.md <= end && r.v.some(finite));
+  return image.img.rows.filter(r => finite(r.md) && r.md >= 0 && r.md >= start && r.md <= end && r.v.some(finite));
 }
 
 const STAMPED = new Set(['WITSML LIVE', 'WITSML SIM-TEST', 'WITSML STALE', 'REPLAY', 'SIM-TEST REPLAY']);
