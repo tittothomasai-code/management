@@ -263,8 +263,8 @@ test("refused and failed version, cap, and store calls do not become an assumed 
   const leakedCall = createReaderCall(leakedMachine.invoke);
   const leakedClosed = await rejection(reader.negotiate(leakedCall));
   assert.equal(leakedClosed.settled, "rejected");
-  assert.equal(leakedClosed.error.code, "MACHINE_REFUSED");
-  assert.equal(leakedClosed.error.reason, "credential-reflection");
+  assert.equal(leakedClosed.error.code, "MACHINE_FAILED");
+  assert.equal(leakedClosed.error.reason, "");
   assert.equal(String(leakedClosed.error.message).includes(PASS), false);
   assert.equal(leaked.calls.length, 1);
 

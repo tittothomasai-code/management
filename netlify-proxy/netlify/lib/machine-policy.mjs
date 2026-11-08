@@ -110,8 +110,9 @@ function credentialFields(parsed, callerSecret) {
   if (parsed) {
     // The username is an identifier. It may occur in a well uid, name, or
     // operator and must not be treated as a secret, redacted, or used to
-    // rewrite those fields. Password, raw user:password, the Basic token,
-    // and the caller key remain reflection secrets.
+    // rewrite those fields. A password-only match is redacted in the
+    // returned text and marked passwordRedacted. The raw user:password, the
+    // Basic header and token, and the caller key still refuse the reply.
     add(parsed.header, "basic");
     add(parsed.token, "basic");
     add(parsed.password, "password");
@@ -132,6 +133,10 @@ function matchCredential(text, fields) {
 
 function containsCredential(text, fields) {
   return matchCredential(text, fields).length > 0;
+}
+
+function hasBlockingCredential(text, fields) {
+  return matchCredential(text, fields).some((name) => name !== "password");
 }
 
 // The serialized refusal is checked again, including property names, punctuation,
@@ -257,7 +262,7 @@ function carriesCallerSecret(parsed, callerSecret) {
 
 function refusalBody(texts, fields, entries) {
   const present = texts.filter((value) => typeof value === "string" && value.length > 0);
-  const credential = present.some((value) => containsCredential(value, fields));
+  const credential = present.some((value) => hasBlockingCredential(value, fields));
   const format = present.some((value) => hasFormatChar(value));
   if (!credential && !format) return null;
   let reason = "credential-reflection";
@@ -277,14 +282,9 @@ function refusalBody(texts, fields, entries) {
   return body;
 }
 
-// Drop refusal fields until the serialized body contains no credential.
-// Order keeps the refusal marker as long as it is safe: location, then the
-// older diagnostic fields, then reason, error, and result. {} is the closed
-// body when every remainder still collides and both braces are safe. If
-// either brace collides, return an empty HTTP body. Both are refusals.
-// Clients stop on HTTP 502, on a missing reason, and on {}. They must not
-// read it as XML or retry a wider query. A password that does not collide
-// keeps the existing fields and passwordXmlLocation.
+// Blocking refusals still drop metadata when the serialized body contains a
+// credential substring. Fixed keys are not rewritten for a coincidental
+// character overlap. {} remains the closed body when every remainder collides.
 const REFUSAL_DROP_ORDER = Object.freeze([
   "passwordXmlLocation",
   "matchSurface",
@@ -295,25 +295,19 @@ const REFUSAL_DROP_ORDER = Object.freeze([
 ]);
 
 function sealRefusal(status, body, fields) {
-  // A single character is itself a substring. Even fixed labels, property
-  // names or JSON punctuation may collide, so allow only disjoint output.
-  const password = fields?.named?.find(item => item.name === "password")?.value || "";
-  const characters = new Set(password);
-  const safe = text => ![...text].some(character => characters.has(character)) &&
-    !serializedContainsCredential(text, fields);
   const current = {};
   if (body && typeof body === "object") {
     for (const key of Object.keys(body)) current[key] = body[key];
   }
   for (let step = 0; step <= REFUSAL_DROP_ORDER.length; step++) {
     const text = JSON.stringify(current);
-    if (safe(text)) {
+    if (!serializedContainsBlocking(text, fields)) {
       return new Response(text, { status, headers: { ...BASE_HEADERS } });
     }
     if (step === REFUSAL_DROP_ORDER.length) break;
     delete current[REFUSAL_DROP_ORDER[step]];
   }
-  return new Response(safe("{}") ? "{}" : null, { status, headers: { ...BASE_HEADERS } });
+  return new Response("{}", { status, headers: { ...BASE_HEADERS } });
 }
 
 function refusalResponse(texts, fields, entries) {
@@ -322,10 +316,21 @@ function refusalResponse(texts, fields, entries) {
   return sealRefusal(502, body, fields);
 }
 
+function serializedContainsBlocking(text, fields) {
+  const named = (fields && fields.named || []).filter((item) => item.name !== "password");
+  for (const item of named) {
+    if (typeof item.value !== "string" || item.value.length < 4) continue;
+    if (text.includes(item.value)) return true;
+    const escaped = JSON.stringify(item.value).slice(1, -1);
+    if (escaped !== item.value && text.includes(escaped)) return true;
+  }
+  return false;
+}
+
 function safeJson(status, obj, fields) {
   const text = JSON.stringify(obj);
   let refused = refusalBody([text], fields, [{ name: "response-json", text }]);
-  if (!refused && serializedContainsCredential(text, fields)) {
+  if (!refused && serializedContainsBlocking(text, fields)) {
     refused = { result: -1, error: "upstream response refused", reason: "credential-reflection" };
   }
   if (refused) return sealRefusal(502, refused, fields);
@@ -337,6 +342,132 @@ function redactFault(value, fields) {
   if (fields) for (const part of fields.long) out = out.split(part).join("[redacted]");
   out = out.replace(/Basic\s+[A-Za-z0-9+/=]{4,}/g, "Basic [redacted]");
   return out;
+}
+
+// Value placeholder is three characters, so it cannot contain a credential
+// of the minimum length. Name placeholder is a short XML name token.
+const VALUE_MARK = "***";
+const NAME_MARK = "xx";
+
+function passwordValue(fields) {
+  const value = fields && fields.named && fields.named.find((item) => item.name === "password")?.value;
+  return typeof value === "string" && value.length >= 4 ? value : "";
+}
+
+function redactPlain(text, password) {
+  if (typeof text !== "string" || !password || !text.includes(password)) return { text, redacted: false };
+  const next = text.split(password).join(VALUE_MARK);
+  if (next.includes(password)) return { failed: true };
+  return { text: next, redacted: next !== text };
+}
+
+function readStartTag(xml, lt, gt, names, values) {
+  let i = lt + 1;
+  while (i < gt && /\s/.test(xml[i])) i += 1;
+  if (i >= gt) return false;
+  const nameStart = i;
+  while (i < gt && !/[\s/>]/.test(xml[i])) i += 1;
+  names.push([nameStart, i]);
+  while (i < gt) {
+    while (i < gt && /\s/.test(xml[i])) i += 1;
+    if (i >= gt || xml[i] === "/") break;
+    const attrStart = i;
+    while (i < gt && xml[i] !== "=" && !/\s/.test(xml[i])) i += 1;
+    if (attrStart === i) return false;
+    names.push([attrStart, i]);
+    while (i < gt && /\s/.test(xml[i])) i += 1;
+    if (xml[i] !== "=") return false;
+    i += 1;
+    while (i < gt && /\s/.test(xml[i])) i += 1;
+    const quote = xml[i];
+    if (quote !== '"' && quote !== "'") return false;
+    i += 1;
+    const valueStart = i;
+    while (i < gt && xml[i] !== quote) i += 1;
+    if (i >= gt) return false;
+    values.push([valueStart, i]);
+    i += 1;
+  }
+  return true;
+}
+
+function scanXmlSpans(xml) {
+  const values = [];
+  const names = [];
+  let i = 0;
+  while (i < xml.length) {
+    if (xml.startsWith("<!--", i)) {
+      const end = xml.indexOf("-->", i + 4);
+      if (end < 0) return null;
+      values.push([i + 4, end]);
+      i = end + 3;
+      continue;
+    }
+    if (xml.startsWith("<?", i) || xml.startsWith("<!", i)) {
+      const end = xml.startsWith("<?", i) ? xml.indexOf("?>", i + 2) : xml.indexOf(">", i + 2);
+      if (end < 0) return null;
+      i = end + (xml.startsWith("<?", i) ? 2 : 1);
+      continue;
+    }
+    const lt = xml.indexOf("<", i);
+    if (lt < 0) {
+      if (i < xml.length) values.push([i, xml.length]);
+      break;
+    }
+    if (lt > i) values.push([i, lt]);
+    if (xml.startsWith("</", lt)) {
+      const gt = xml.indexOf(">", lt + 2);
+      if (gt < 0) return null;
+      let nameStart = lt + 2;
+      while (nameStart < gt && /\s/.test(xml[nameStart])) nameStart += 1;
+      let nameEnd = nameStart;
+      while (nameEnd < gt && !/\s/.test(xml[nameEnd])) nameEnd += 1;
+      names.push([nameStart, nameEnd]);
+      i = gt + 1;
+      continue;
+    }
+    const gt = xml.indexOf(">", lt + 1);
+    if (gt < 0 || !readStartTag(xml, lt, gt, names, values)) return null;
+    i = gt + 1;
+  }
+  return { values, names };
+}
+
+// Redact only whole hits inside text, comments, or quoted attribute values.
+// A hit inside an element or attribute name is replaced with a name token.
+// A hit that crosses a delimiter is not rewritten into a lookalike document.
+function redactXmlPassword(xml, password) {
+  if (typeof xml !== "string" || !password || !xml.includes(password)) return { xml, redacted: false };
+  try { walk(xml); }
+  catch { return { malformed: true }; }
+  const spans = scanXmlSpans(xml);
+  if (!spans) return { malformed: true };
+  const hits = [];
+  let from = 0;
+  while (from <= xml.length - password.length) {
+    const at = xml.indexOf(password, from);
+    if (at < 0) break;
+    const end = at + password.length;
+    const inValue = spans.values.some(([start, stop]) => at >= start && end <= stop);
+    const inName = spans.names.some(([start, stop]) => at >= start && end <= stop);
+    if (inValue) hits.push([at, end, VALUE_MARK]);
+    else if (inName) hits.push([at, end, NAME_MARK]);
+    else return { unclassifiable: true };
+    from = end;
+  }
+  if (!hits.length) return { xml, redacted: false };
+  let out = xml;
+  for (let index = hits.length - 1; index >= 0; index -= 1) {
+    const [at, end, mark] = hits[index];
+    out = out.slice(0, at) + mark + out.slice(end);
+  }
+  if (out.includes(password)) return { unclassifiable: true };
+  return { xml: out, redacted: true };
+}
+
+function markRedacted(obj, redacted) {
+  if (redacted) obj.passwordRedacted = true;
+  return obj;
 }
 
 // Unicode Format (Cf) characters, as classified by this Node runtime.
@@ -990,32 +1121,59 @@ function finishUpstream(op, up, ms, fields) {
     decoded,
   );
   if (decodedRefusal) return decodedRefusal;
+  const password = passwordValue(fields);
+  let passwordRedacted = false;
+  let xmlOut = typeof parsed.xml === "string" ? parsed.xml : "";
+  let suppOut = typeof parsed.supp === "string" ? parsed.supp : "";
+  let resultOut = typeof parsed.resultText === "string" ? parsed.resultText : "";
+  let faultOut = typeof parsed.fault === "string" ? parsed.fault : "";
+  if (password && xmlOut.includes(password)) {
+    const redactedXml = redactXmlPassword(xmlOut, password);
+    if (redactedXml.malformed || redactedXml.unclassifiable) {
+      return seal(502, { result: -1, error: "upstream response rejected", reason: "parser-format" });
+    }
+    xmlOut = redactedXml.xml;
+    passwordRedacted = passwordRedacted || redactedXml.redacted === true;
+  }
+  const redactedSupp = redactPlain(suppOut, password);
+  const redactedResult = redactPlain(resultOut, password);
+  const redactedFault = redactPlain(faultOut, password);
+  if (redactedSupp.failed || redactedResult.failed || redactedFault.failed) {
+    return seal(502, { result: -1, error: "upstream response rejected", reason: "parser-format" });
+  }
+  suppOut = redactedSupp.text;
+  resultOut = redactedResult.text;
+  faultOut = redactedFault.text;
+  passwordRedacted = passwordRedacted || redactedSupp.redacted || redactedResult.redacted || redactedFault.redacted;
+  if ([xmlOut, suppOut, resultOut, faultOut].some((value) => password && value.includes(password))) {
+    return seal(502, { result: -1, error: "upstream response rejected", reason: "parser-format" });
+  }
   if (parsed.kind === "fault") {
-    const fault = redactFault(parsed.fault, fields).slice(0, LIMITS.maxFault);
+    const fault = redactFault(faultOut, fields).slice(0, LIMITS.maxFault);
     const again = refusalResponse([fault], fields, [{ name: "fault", text: fault }]);
     if (again) return again;
-    return seal(200, { result: -1, error: "SOAP fault: " + fault });
+    return seal(200, markRedacted({ result: -1, error: "SOAP fault: " + fault }, passwordRedacted));
   }
-  const supp = redactFault(parsed.supp, fields).slice(0, LIMITS.maxFault);
+  const supp = redactFault(suppOut, fields).slice(0, LIMITS.maxFault);
   const again = refusalResponse(
-    [parsed.xml, supp, parsed.resultText],
+    [xmlOut, supp, resultOut],
     fields,
     [
-      { name: "decoded-xml", text: parsed.xml },
+      { name: "decoded-xml", text: xmlOut },
       { name: "supp-message", text: supp },
-      { name: "result", text: parsed.resultText },
+      { name: "result", text: resultOut },
     ],
   );
   if (again) return again;
   if (op === "WMLS_GetVersion") {
-    const versions = parseVersionList(parsed.resultText);
+    const versions = parseVersionList(resultOut);
     if (!versions) return seal(502, { result: -1, error: "upstream response rejected", reason: "version-format" });
-    return seal(200, { result: 1, version: parsed.resultText, versions, xml: "", supp, ms });
+    return seal(200, markRedacted({ result: 1, version: resultOut, versions, xml: "", supp, ms }, passwordRedacted));
   }
-  if (!/^-?\d{1,9}$/.test(parsed.resultText)) {
+  if (!/^-?\d{1,9}$/.test(resultOut)) {
     return seal(502, { result: -1, error: "upstream response rejected", reason: "result-format" });
   }
-  return seal(200, { result: Number(parsed.resultText), xml: parsed.xml, supp, ms });
+  return seal(200, markRedacted({ result: Number(resultOut), xml: xmlOut, supp, ms }, passwordRedacted));
 }
 
 async function readBoundedBody(req, max) {
