@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {runInNewContext} from 'node:vm';
-import {drilledIntervals, feedJoints, feedSource, fixtureFeed, imageRows, jointProgress, readSamples, sourceStamp, surveyMatches} from './operations_data.js';
+import {drilledIntervals, feedJoints, feedSource, fixtureFeed, imageRows, jointProgress, latestChannel, readSamples, sourceStamp, surveyMatches} from './operations_data.js';
 
 const env = {window:{}, localStorage:{getItem:()=>null}, document:{readyState:'loading',addEventListener(){}}};
 runInNewContext(readFileSync(new URL('./units.js',import.meta.url),'utf8'),env);
@@ -52,6 +52,29 @@ assert.equal(stamped.includes('WITSML LIVE'), false);
 const split = sourceStamp({lastRowMs: now, hist: [{t: now - 5000}], okAt: now}, 'WITSML STALE', now);
 assert.match(split, /age 5 s/, 'age follows the parsed sample, not okAt or lastRowMs');
 assert.match(split, new RegExp('index ' + new Date(now).toISOString().replace(/\.\d{3}Z$/, 'Z')));
+
+const gap = readSamples({
+  ml:['TIME','RPMA','SWOB'],
+  ul:['s','rpm','kN'],
+  ix:0,
+  rows:[
+    {t:now-20000, x:['', '60', '14']},
+    {t:now-10000, x:['', '', '15']},
+    {t:now, x:['', '', '16']},
+  ],
+}, {curves:[{mn:'RPMA',unit:'rpm'},{mn:'SWOB',unit:'kN'}]}, {}, Infinity, env.window.U);
+assert.equal(gap.length, 3);
+assert.equal(gap[0].rpm, 60);
+assert.equal(gap[1].rpm, null);
+assert.equal(gap[2].rpm, null);
+assert.notEqual(gap[2].rpm, 0, 'a blank sample is not zero');
+assert.equal(gap[2].wob, 16, 'a sibling channel keeps its own sample');
+assert.equal(gap[0].wob, 14);
+assert.equal(latestChannel(gap, 'rpm', false), 'blank');
+assert.equal(latestChannel(gap, 'spp', false), 'absent');
+assert.equal(latestChannel(gap, 'rpm', true), 'stale');
+assert.equal(latestChannel(gap, 'wob', false), 'value');
+assert.equal(latestChannel([{rpm:0}], 'rpm', false), 'value', 'a real zero is a sample');
 
 const input = {
   ml:['TIME','CUSTOM_HD','BITDEP','RPM','MFIA','SPPA','WOB','CUSTOM_RET','AC_MIN_SF','MOTOR_STALL_ALARM','ECD','TGAS'],

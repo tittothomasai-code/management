@@ -84,7 +84,24 @@
   #dwOperations .ops-meta {order:3;width:100%;text-align:left;padding-bottom:5px}
   #dwOperations .ops-legend {gap:4px}
 }
-/* Connection panel opened while Operations is open stays above that overlay. */
-body:has(#dwOperations) #witsml{z-index:100021 !important}
 /* The source-row status wraps on a phone instead of pushing WITSML / Exit off screen. */
 @media (max-width:620px){#dwOperations .ops-header .ops-flex{flex-wrap:wrap;gap:6px;max-width:100%}#dwOperations .ops-badge{white-space:normal;flex:1 1 100%}}
+#dwOperations .ops-layout {display:grid;grid-template-columns:minmax(0,1fr);gap:8px}
+#dwOperations .ops-content {min-width:0}
+#dwOperations #opsWitsmlDock:not([hidden]) {min-width:0}
+#dwOperations #opsWitsmlDock[hidden] {display:none!important}
+#dwOperations #opsWitsmlDock #witsml {
+  display:block!important; position:relative!important; inset:auto!important;
+  width:100%!important; min-width:0!important; max-width:100%!important;
+  max-height:68dvh!important; transform:none!important; overflow:auto!important;
+  background:#0d2031; border:1px solid var(--line); border-radius:6px;
+  color:#eaf4ff; padding:10px!important; overscroll-behavior:contain;
+}
+#dwOperations #opsWitsmlDock #witsml::before {display:none}
+#dwOperations #opsWitsmlDock #witsml :is(input,select) {min-width:0;max-width:100%;box-sizing:border-box}
+#dwOperations #opsWitsmlDock #wX {min-width:40px;min-height:40px}
+@media (min-width:1100px) {
+  #dwOperations .ops-layout:has(#opsWitsmlDock:not([hidden])) {grid-template-columns:minmax(0,1fr) minmax(305px,385px)}
+  #dwOperations #opsWitsmlDock {grid-column:2;grid-row:1;position:sticky;top:8px;align-self:start}
+  #dwOperations .ops-content {grid-column:1;grid-row:1}
+}

@@ -116,6 +116,14 @@ export function readSamples(data, log = {}, map = {}, until = Infinity, units) {
   return out;
 }
 
+// Latest sample only. A blank cell stays blank: history is not copied forward and is not filled with zero.
+export function latestChannel(rows, key, stale = false) {
+  const seen = rows.some(r => Object.prototype.hasOwnProperty.call(r, key));
+  if (!seen) return 'absent';
+  if (stale) return 'stale';
+  return Number.isFinite(rows.at(-1)?.[key]) ? 'value' : 'blank';
+}
+
 function convert(v, from, to, units) {
   if (!finite(v)) return null;
   const u = String(from || '').toLowerCase().trim().replace(/³/g, '3');

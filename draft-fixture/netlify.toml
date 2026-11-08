@@ -1,0 +1,6 @@
+# Draft site only. Do not copy this file or this directory onto robotyx-drilling.
+[build]
+  publish = "public"
+  functions = "netlify/functions"
+[functions]
+  node_bundler = "esbuild"
