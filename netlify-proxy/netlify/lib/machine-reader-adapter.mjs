@@ -140,19 +140,23 @@ export function adaptMachineResult(machine, op) {
   if (REFUSAL_REASONS.has(reason)) close(operation, "MACHINE_REFUSED", reason, operation === "WMLS_GetVersion", {
     credentialClass: machine.credentialClass, matchSurface: machine.matchSurface, passwordXmlLocation: machine.passwordXmlLocation,
   });
+  const marked = (body) => {
+    if (machine && machine.passwordRedacted === true) body.passwordRedacted = true;
+    return body;
+  };
   if (operation === "WMLS_GetVersion") {
     const version = text(machine && machine.version);
     if (result !== 1 || !VERSION_LIST.test(version)) close(operation, "MACHINE_FAILED", "", true);
-    return { result: 1, xml: "<Result>" + esc(version) + "</Result>", supp: version };
+    return marked({ result: 1, xml: "<Result>" + esc(version) + "</Result>", supp: version });
   }
   const xml = text(machine && machine.xml);
   const supp = text(machine && machine.supp);
   if (operation === "WMLS_GetCap") {
     if (result !== 1 || (!xml.trim() && !supp.trim())) close(operation, "MACHINE_FAILED", "", false);
-    return { result, xml, supp };
+    return marked({ result, xml, supp });
   }
   if (result !== 1 && result !== 2) close(operation, "MACHINE_FAILED", "", false);
-  return { result, xml, supp };
+  return marked({ result, xml, supp });
 }
 
 export function machineRequestBody(op, wmlType, query, options) {
