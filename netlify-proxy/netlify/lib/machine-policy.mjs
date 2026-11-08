@@ -9,6 +9,7 @@
 
 import { authenticateCaller, headerValues, readCallerConfig } from "./machine-auth.mjs";
 import { authFailedResponse, deniedResponse, disabledResponse } from "./machine-disabled.mjs";
+import { locateAndRedact, MAX_REDACTION_SLOTS, REDACTION_SLOT_RE } from "./redaction-slots.mjs";
 
 export const FIXED_UPSTREAM = "https://australia.adagasolutions.com/WMLS";
 export const WITSML_NS = "http://www.witsml.org/message/120";
@@ -347,7 +348,6 @@ function redactFault(value, fields) {
 // Value placeholder is three characters, so it cannot contain a credential
 // of the minimum length. Name placeholder is a short XML name token.
 const VALUE_MARK = "***";
-const NAME_MARK = "xx";
 
 function passwordValue(fields) {
   const value = fields && fields.named && fields.named.find((item) => item.name === "password")?.value;
@@ -361,112 +361,43 @@ function redactPlain(text, password) {
   return { text: next, redacted: next !== text };
 }
 
-function readStartTag(xml, lt, gt, names, values) {
-  let i = lt + 1;
-  while (i < gt && /\s/.test(xml[i])) i += 1;
-  if (i >= gt) return false;
-  const nameStart = i;
-  while (i < gt && !/[\s/>]/.test(xml[i])) i += 1;
-  names.push([nameStart, i]);
-  while (i < gt) {
-    while (i < gt && /\s/.test(xml[i])) i += 1;
-    if (i >= gt || xml[i] === "/") break;
-    const attrStart = i;
-    while (i < gt && xml[i] !== "=" && !/\s/.test(xml[i])) i += 1;
-    if (attrStart === i) return false;
-    names.push([attrStart, i]);
-    while (i < gt && /\s/.test(xml[i])) i += 1;
-    if (xml[i] !== "=") return false;
-    i += 1;
-    while (i < gt && /\s/.test(xml[i])) i += 1;
-    const quote = xml[i];
-    if (quote !== '"' && quote !== "'") return false;
-    i += 1;
-    const valueStart = i;
-    while (i < gt && xml[i] !== quote) i += 1;
-    if (i >= gt) return false;
-    values.push([valueStart, i]);
-    i += 1;
-  }
-  return true;
-}
-
-function scanXmlSpans(xml) {
-  const values = [];
-  const names = [];
-  let i = 0;
-  while (i < xml.length) {
-    if (xml.startsWith("<!--", i)) {
-      const end = xml.indexOf("-->", i + 4);
-      if (end < 0) return null;
-      values.push([i + 4, end]);
-      i = end + 3;
-      continue;
-    }
-    if (xml.startsWith("<?", i) || xml.startsWith("<!", i)) {
-      const end = xml.startsWith("<?", i) ? xml.indexOf("?>", i + 2) : xml.indexOf(">", i + 2);
-      if (end < 0) return null;
-      i = end + (xml.startsWith("<?", i) ? 2 : 1);
-      continue;
-    }
-    const lt = xml.indexOf("<", i);
-    if (lt < 0) {
-      if (i < xml.length) values.push([i, xml.length]);
-      break;
-    }
-    if (lt > i) values.push([i, lt]);
-    if (xml.startsWith("</", lt)) {
-      const gt = xml.indexOf(">", lt + 2);
-      if (gt < 0) return null;
-      let nameStart = lt + 2;
-      while (nameStart < gt && /\s/.test(xml[nameStart])) nameStart += 1;
-      let nameEnd = nameStart;
-      while (nameEnd < gt && !/\s/.test(xml[nameEnd])) nameEnd += 1;
-      names.push([nameStart, nameEnd]);
-      i = gt + 1;
-      continue;
-    }
-    const gt = xml.indexOf(">", lt + 1);
-    if (gt < 0 || !readStartTag(xml, lt, gt, names, values)) return null;
-    i = gt + 1;
-  }
-  return { values, names };
-}
-
-// Redact only whole hits inside text, comments, or quoted attribute values.
-// A hit inside an element or attribute name is replaced with a name token.
-// A hit that crosses a delimiter is not rewritten into a lookalike document.
 function redactXmlPassword(xml, password) {
-  if (typeof xml !== "string" || !password || !xml.includes(password)) return { xml, redacted: false };
+  if (typeof xml !== "string" || !password || !xml.includes(password)) return { xml, redacted: false, slots: [] };
   try { walk(xml); }
   catch { return { malformed: true }; }
-  const spans = scanXmlSpans(xml);
-  if (!spans) return { malformed: true };
-  const hits = [];
-  let from = 0;
-  while (from <= xml.length - password.length) {
-    const at = xml.indexOf(password, from);
-    if (at < 0) break;
-    const end = at + password.length;
-    const inValue = spans.values.some(([start, stop]) => at >= start && end <= stop);
-    const inName = spans.names.some(([start, stop]) => at >= start && end <= stop);
-    if (inValue) hits.push([at, end, VALUE_MARK]);
-    else if (inName) hits.push([at, end, NAME_MARK]);
-    else return { unclassifiable: true };
-    from = end;
-  }
-  if (!hits.length) return { xml, redacted: false };
-  let out = xml;
-  for (let index = hits.length - 1; index >= 0; index -= 1) {
-    const [at, end, mark] = hits[index];
-    out = out.slice(0, at) + mark + out.slice(end);
-  }
-  if (out.includes(password)) return { unclassifiable: true };
-  return { xml: out, redacted: true };
+  return locateAndRedact(xml, password);
 }
 
-function markRedacted(obj, redacted) {
-  if (redacted) obj.passwordRedacted = true;
+function tokenSafe(token, password) {
+  return !password || !String(token).includes(password);
+}
+
+// passwordRedacted stays on every redacted reply. Slots are added only when
+// every changed node has one complete role/ordinal and none of those tokens
+// contain the password. Otherwise the document is omitted and, when the word
+// itself is safe, redactionScope is "response".
+function attachRedaction(obj, meta, password) {
+  if (!meta || meta.redacted !== true) return obj;
+  obj.passwordRedacted = true;
+  const slots = Array.isArray(meta.slots) ? meta.slots : [];
+  const slotsOk = meta.scope === "slots"
+    && slots.length > 0
+    && slots.length <= MAX_REDACTION_SLOTS
+    && tokenSafe("slots", password)
+    && tokenSafe("redactedSlots", password)
+    && tokenSafe("redactionScope", password)
+    && slots.every((slot) => REDACTION_SLOT_RE.test(slot) && tokenSafe(slot, password));
+  if (slotsOk) {
+    obj.redactionScope = "slots";
+    obj.redactedSlots = slots.slice();
+    return obj;
+  }
+  delete obj.xml;
+  delete obj.supp;
+  delete obj.version;
+  delete obj.versions;
+  obj.result = -1;
+  if (tokenSafe("response", password) && tokenSafe("redactionScope", password)) obj.redactionScope = "response";
   return obj;
 }
 
@@ -1122,18 +1053,23 @@ function finishUpstream(op, up, ms, fields) {
   );
   if (decodedRefusal) return decodedRefusal;
   const password = passwordValue(fields);
-  let passwordRedacted = false;
   let xmlOut = typeof parsed.xml === "string" ? parsed.xml : "";
   let suppOut = typeof parsed.supp === "string" ? parsed.supp : "";
   let resultOut = typeof parsed.resultText === "string" ? parsed.resultText : "";
   let faultOut = typeof parsed.fault === "string" ? parsed.fault : "";
+  let xmlSlots = [];
+  let structural = false;
   if (password && xmlOut.includes(password)) {
     const redactedXml = redactXmlPassword(xmlOut, password);
     if (redactedXml.malformed || redactedXml.unclassifiable) {
       return seal(502, { result: -1, error: "upstream response rejected", reason: "parser-format" });
     }
+    if (redactedXml.structural) {
+      return seal(200, attachRedaction({ result: 1 }, { redacted: true, scope: "response", slots: [] }, password));
+    }
     xmlOut = redactedXml.xml;
-    passwordRedacted = passwordRedacted || redactedXml.redacted === true;
+    xmlSlots = redactedXml.slots || [];
+    structural = false;
   }
   const redactedSupp = redactPlain(suppOut, password);
   const redactedResult = redactPlain(resultOut, password);
@@ -1144,15 +1080,19 @@ function finishUpstream(op, up, ms, fields) {
   suppOut = redactedSupp.text;
   resultOut = redactedResult.text;
   faultOut = redactedFault.text;
-  passwordRedacted = passwordRedacted || redactedSupp.redacted || redactedResult.redacted || redactedFault.redacted;
+  const slots = xmlSlots.slice();
+  if (redactedSupp.redacted) slots.push("supp/1");
+  if (redactedFault.redacted) slots.push("fault/1");
+  const redacted = slots.length > 0;
   if ([xmlOut, suppOut, resultOut, faultOut].some((value) => password && value.includes(password))) {
     return seal(502, { result: -1, error: "upstream response rejected", reason: "parser-format" });
   }
+  const meta = { redacted, scope: structural ? "response" : "slots", slots };
   if (parsed.kind === "fault") {
     const fault = redactFault(faultOut, fields).slice(0, LIMITS.maxFault);
     const again = refusalResponse([fault], fields, [{ name: "fault", text: fault }]);
     if (again) return again;
-    return seal(200, markRedacted({ result: -1, error: "SOAP fault: " + fault }, passwordRedacted));
+    return seal(200, attachRedaction({ result: -1, error: "SOAP fault: " + fault }, meta, password));
   }
   const supp = redactFault(suppOut, fields).slice(0, LIMITS.maxFault);
   const again = refusalResponse(
@@ -1168,12 +1108,12 @@ function finishUpstream(op, up, ms, fields) {
   if (op === "WMLS_GetVersion") {
     const versions = parseVersionList(resultOut);
     if (!versions) return seal(502, { result: -1, error: "upstream response rejected", reason: "version-format" });
-    return seal(200, markRedacted({ result: 1, version: resultOut, versions, xml: "", supp, ms }, passwordRedacted));
+    return seal(200, attachRedaction({ result: 1, version: resultOut, versions, xml: "", supp, ms }, meta, password));
   }
   if (!/^-?\d{1,9}$/.test(resultOut)) {
     return seal(502, { result: -1, error: "upstream response rejected", reason: "result-format" });
   }
-  return seal(200, markRedacted({ result: Number(resultOut), xml: xmlOut, supp, ms }, passwordRedacted));
+  return seal(200, attachRedaction({ result: Number(resultOut), xml: xmlOut, supp, ms }, meta, password));
 }
 
 async function readBoundedBody(req, max) {
