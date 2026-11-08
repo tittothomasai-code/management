@@ -53,7 +53,7 @@ export function hydraulics(m,w,Q,o={}){const rho=sg2rho(m.sg),out={Q,sections:[]
  // annulus: from bottom; cased above shoe, open hole below
  let top=w.md-segs.reduce((a,s)=>a+s.len,0);let mdS=top;const annSegs=[];
  for(const s of segs){const a0=mdS,a1=mdS+s.len;const parts=[];if(a1<=w.shoeMD)parts.push([a0,a1,w.csgID]);else if(a0>=w.shoeMD)parts.push([a0,a1,w.holeD]);else{parts.push([a0,w.shoeMD,w.csgID]);parts.push([w.shoeMD,a1,w.holeD])}
-  for(const [x0,x1,Dh] of parts.filter(q=>q[1]-q[0]>0.5)){const g=gradient(m,Q,Dh,s.od,false);const dp=g.dpdl*(x1-x0);ann+=dp;annSegs.push({n:s.n+(Dh==w.holeD?' × open hole':' × casing'),from:x0,to:x1,Dh,od:s.od,V:g.V,dp,reg:g.reg,Re:g.Re})}mdS=a1}
+  for(const [x0,x1,Dh] of parts.filter(q=>q[1]>q[0])){const g=gradient(m,Q,Dh,s.od,false);const dp=g.dpdl*(x1-x0);ann+=dp;annSegs.push({n:s.n+(Dh==w.holeD?' × open hole':' × casing'),from:x0,to:x1,Dh,od:s.od,V:g.V,dp,reg:g.reg,Re:g.Re})}mdS=a1}
  const An=nozzleArea(w.nozzles),Vn=Q/An,bit=rho*Q*Q/(2*0.95**2*An**2),hhp=bit*Q,bitA=Math.PI/4*w.bitD**2;
  const motor=o.motorDp||0,mwd=o.mwdDp??(Q>0?1.2e6*(Q/0.0379)**2:0);
  out.string=str;out.ann=ann;out.annSegs=annSegs;out.bit=bit;out.Vn=Vn;out.hhp=hhp;out.hsi=hhp/bitA;out.hsiImp=hhp/745.7/((w.bitD/IN)**2*Math.PI/4);out.impact=rho*Q*Vn*0.95;

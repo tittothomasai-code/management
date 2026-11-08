@@ -16,8 +16,15 @@ export function open(){document.getElementById('flu')?.remove();if(!document.get
  <div class=tabs>${[['mud','Mud check'],['hyd','Hydraulics'],['pit','Pits and trip'],['wc','Well control']].map(([k,n])=>`<button data-t=${k}>${n}</button>`).join('')}</div></div><div class=pg id=flupg></div>`;
  const api={st,F,W,close(){st.alive=false;api.d3?.remove?.();R.remove()},show,get wc(){return st.wc}};window.dwFlu=api;if(window.G?._scene)import('./fluid3d.js?v=fl2').then(m=>{api.d3=m.mount(window.G,st)}).catch(()=>{});$(R,'#flux').onclick=api.close;
  R.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>show(b.dataset.t));
- const Q=()=>{const s=rig();if(s&&s.Q>0)return s.Q*F.GPM;return F.pumpOutput(st.w.pump,st.spm)*st.w.pump.n};
- const syncWell=()=>{const s=rig();if(s&&s.md>500){const r=s.md/st.w.md;st.w.md=s.md;st.w.tvd=Math.round(s.pos?.[2]>0?s.pos[2]:st.w.tvd*r);st.w.string[0].len=Math.max(100,s.md-210)}};
+ const Q=()=>{const s=rig();if(s&&Number.isFinite(s.Q))return Math.max(0,s.Q)*F.GPM;return F.pumpOutput(st.w.pump,st.spm)*st.w.pump.n};
+ const syncWell=()=>{const s=rig();if(s&&s.md>500){
+  const ft=0.3048,w=st.w,priorMd=w.md,priorTvd=w.tvd,shoeFraction=w.shoeMD/priorMd;
+  w.md=s.md*ft;w.tvd=Math.min(w.md,s.pos?.[2]>0?s.pos[2]*ft:priorTvd*w.md/priorMd);
+  w.shoeMD=w.md*shoeFraction;w.shoeTVD=w.tvd*shoeFraction;
+  const lower=w.string.slice(1),scale=Math.min(1,w.md*.5/lower.reduce((n,x)=>n+x.len,0));
+  for(const section of lower)section.len*=scale;
+  w.string[0].len=w.md-lower.reduce((n,x)=>n+x.len,0);
+ }};
  function show(t){st.tab=t;R.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t==t));const P=$(R,'#flupg');syncWell();
   if(t=='mud')mudPg(P);else if(t=='hyd')hydPg(P);else if(t=='pit')pitPg(P);else wcPg(P)}
  function mudPg(P){const m=st.mud,b=F.bingham(m),pl=F.powerLaw(m),h=F.herschel(m),win=F.window_(st.w.tvd),H=F.hydraulics(m,st.w,Q());const chk=F.mudCheck(m,{poreSG:win.pore,fracSG:F.window_(st.w.shoeTVD).frac,ecdSG:H.ecd,holeIn:st.w.holeD/F.IN});
