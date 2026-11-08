@@ -127,6 +127,6 @@ if(shouldShow()){if(document.body)show();else addEventListener('DOMContentLoaded
 
 if(new URLSearchParams(location.search).has('workover'))import('./workover.js?v=b15');
 
-const openOperations = () => import('./operations.js?v=2').then(m => m.open()).catch(e => console.error('Drilling operations',e));
+const openOperations = () => import('./operations.js?v=3').then(m => m.open()).catch(e => console.error('Drilling operations',e));
 $('opsDashboard').addEventListener('click',openOperations);
 if(q.has('operations')) openOperations();

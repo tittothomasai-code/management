@@ -78,7 +78,7 @@ const MARKUP = `
     </div>
   </div>`;
 
-let root, scene, timer, dockObserver, view = 'mode', origin, message = '', messageAt = 0;
+let root, scene, timer, view = 'mode', origin, message = '', messageAt = 0;
 let sim = {rows:[], joints:[]}, feed = {}, lastSceneKey = '';
 let loadedImage, loadingImage = false, imageError = '';
 
@@ -321,7 +321,7 @@ function render() {
   if (!root) return;
   const g = window.G, api = window.GX?.witsml;
   if (!g) return;
-  const source = feedSource(api?.WML);
+  const source = feedSource(api?.WML,Date.now(),api?.CFG);
   const m = source === 'SIM' ? gameModel(g) : feedModel(api,source);
   set('opsWell','DRILLING OPERATIONS  •  ' + m.label);
   set('opsSource',source === 'SIM' ? 'TRAINING SIMULATION' : source);
@@ -355,7 +355,8 @@ function render() {
 
 function command(cmd) {
   const {S:s,PH:ph,act,startConn} = window.G;
-  if (feedSource(window.GX?.witsml?.WML) !== 'SIM' || s.seq) return;
+  const api = window.GX?.witsml;
+  if (feedSource(api?.WML,Date.now(),api?.CFG) !== 'SIM' || s.seq) return;
   if (cmd === 'survey') {
     if (s.md > s.lastS + .001) ph.survey(s);
     message = 'Survey recorded at ' + fmt(s.md*FT) + ' m MD';
@@ -399,9 +400,10 @@ function syncDock() {
   const open = panel?.parentElement === dock && panel.style.display !== 'none';
   dock.hidden = !open;
   $('opsConnect').setAttribute('aria-expanded', String(open));
-  if (!open && root.contains(document.activeElement) === false && document.activeElement === document.body) {
+  if (!open && dock.dataset.wasOpen === 'true' && document.activeElement === document.body) {
     $('opsConnect').focus({preventScroll:true});
   }
+  dock.dataset.wasOpen = String(open);
 }
 function dockWitsml(open) {
   const dock = $('opsWitsmlDock'), api = window.GX?.witsml;
@@ -411,7 +413,8 @@ function dockWitsml(open) {
     api.open();
     const panel = $('witsml');
     if (panel) {
-      dock.append(panel);
+      if (panel.parentElement !== dock) dock.append(panel);
+      syncDock();
       panel.querySelector('#wX')?.focus({preventScroll:true});
     }
   }
@@ -444,8 +447,7 @@ export function open() {
   $('opsClose').onclick = () => close();
   $('opsLoadImage').onclick = loadFeedImage;
   const dock = $('opsWitsmlDock');
-  dockObserver = new MutationObserver(syncDock);
-  dockObserver.observe(dock,{childList:true});
+  window.addEventListener('witsml:panel',syncDock);
   $('opsConnect').onclick = () => dockWitsml(dock.hidden);
   if (window.GX?.witsml?.isOpen?.()) dockWitsml(true);
   root.addEventListener('click',e => {
@@ -467,7 +469,7 @@ export function open() {
 export function close() {
   if (!root) return;
   clearInterval(timer);
-  dockObserver?.disconnect();
+  window.removeEventListener('witsml:panel',syncDock);
   if ($('opsWitsmlDock').contains($('witsml'))) window.GX?.witsml?.close?.();
   scene?.dispose();
   scene = null; lastSceneKey = '';

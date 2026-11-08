@@ -46,11 +46,33 @@ const CHANNELS = {
   stall: ['flag', ['ops.stall'], /^(MOTOR_STALL_ALARM|PDM_STALL_ALARM)$/i],
 };
 const MAX_AGE = 120_000;
+// Explicit fixture marks already used by the connection, the local sim store, and the synthetic fixture.
+// The approved proxy host is not one of them: a custom https store with ordinary names can still be LIVE.
+const FIXTURE_TEXT = /SIM-TEST|SIMULATED|\bSYNTHETIC\b|\bFIXTURE\b|NOT LIVE/i;
 
-export function feedSource(w, now = Date.now()) {
+function fixtureUrl(url) {
+  try {
+    const u = new URL(String(url || ''));
+    const host = u.hostname.toLowerCase();
+    if (host === 'localhost' || host === '127.0.0.1' || host === 'invalid' || host.endsWith('.invalid')) return true;
+    return /(?:^|\/)sim(?:\/|$)|simulated/i.test(u.pathname);
+  } catch { return false; }
+}
+
+export function fixtureFeed(w, cfg) {
+  if (!w) return false;
+  if (w.simulated) return true;
+  const log = w.log || {};
+  const text = [log.name, log.nameWell, log.nameWellbore, log.nameWb, log.field, log.uid, w.supp].filter(Boolean).join(' ');
+  if (FIXTURE_TEXT.test(text)) return true;
+  return fixtureUrl(cfg?.url || w.storeUrl || '');
+}
+
+export function feedSource(w, now = Date.now(), cfg) {
   if (!w) return 'SIM';
   if (w.mode === 'loading') return 'WITSML WAITING';
-  if (w.mode === 'replay' && w.rp) return w.simulated ? 'SIM-TEST REPLAY' : 'REPLAY';
+  const fixture = fixtureFeed(w, cfg);
+  if (w.mode === 'replay' && w.rp) return fixture ? 'SIM-TEST REPLAY' : 'REPLAY';
   if (!w.log && !w.liveMode && !w.connected) return 'SIM';
   if (!w.log) return 'WITSML WAITING';
   // A successful header read or a depth log is not a fresh drilling sample.
@@ -58,7 +80,7 @@ export function feedSource(w, now = Date.now()) {
   const sample = w.hist?.at(-1);
   if (!finite(sample?.t) || !finite(w.lastRowMs) || !w.lastRowMs) return 'WITSML WAITING';
   if (!w.healthy?.() || now - w.lastRowMs > MAX_AGE || now - sample.t > MAX_AGE) return 'WITSML STALE';
-  return w.simulated ? 'WITSML SIM-TEST' : 'WITSML LIVE';
+  return fixture ? 'WITSML SIM-TEST' : 'WITSML LIVE';
 }
 
 export function readSamples(data, log = {}, map = {}, until = Infinity, units) {
@@ -170,6 +192,18 @@ export function imageRows(w, image, start, end) {
   if (!image?.img || !sameWellbore(w?.log, image.well, image.wb) ||
       Boolean(w.simulated) !== Boolean(image.sim)) return [];
   return image.img.rows.filter(r => r.md >= start && r.md <= end && r.v.some(finite));
+}
+
+const STAMPED = new Set(['WITSML LIVE', 'WITSML SIM-TEST', 'WITSML STALE', 'REPLAY', 'SIM-TEST REPLAY']);
+// Newest parsed time-log row. A header end time, a depth-log client clock, or lastRowMs with no history sample is not a source row.
+export function sourceStamp(w, source, now = Date.now()) {
+  if (!w || !STAMPED.has(source)) return '';
+  const sample = w.hist?.at(-1)?.t;
+  if (!finite(sample)) return '';
+  const iso = ms => new Date(ms).toISOString().replace(/\.\d{3}Z$/, 'Z');
+  let text = ' · last source row ' + iso(sample) + ' (age ' + Math.max(0, Math.round((now - sample) / 1000)) + ' s)';
+  if (finite(w.lastRowMs) && w.lastRowMs && w.lastRowMs !== sample) text += ', index ' + iso(w.lastRowMs);
+  return text;
 }
 
 export function surveyMatches(w, geo, configuredWell) {

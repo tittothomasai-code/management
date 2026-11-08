@@ -30,20 +30,20 @@ try{
   if(!fs.existsSync(target)){fs.writeFileSync(target,current);continue}
   let production=fs.readFileSync(target,'utf8');
   // These small overlapping hooks also carry newer, unrelated production imports.
-  if(f==='ext.js')production=replace(production,'./ext2.js?v=c5151','./ext2.js?v=ops2');
-  else if(f==='ext2.js')production=replace(production,'./ext3.js?v=c5151','./ext3.js?v=ops2');
+  if(f==='ext.js')production=replace(production,'./ext2.js?v=c5151','./ext2.js?v=ops3');
+  else if(f==='ext2.js')production=replace(production,'./ext3.js?v=c5151','./ext3.js?v=ops3');
   else if(f==='ext3.js'){
-   production=replace(production,'./ext4.js?v=h2','./ext4.js?v=ops2');
+   production=replace(production,'./ext4.js?v=h2','./ext4.js?v=ops3');
    production=replace(production,'./ui.js?v=b10','./ui.js?v=ops1');
-   production=replace(production,'./player.js?v=592','./player.js?v=ops2');
+   production=replace(production,'./player.js?v=592','./player.js?v=ops3');
   }else if(f==='main.js'){
    production=replace(production,'./physics.js?v=b4','./physics.js?v=ops1');
-   production=replace(production,'./ext.js?v=c5151','./ext.js?v=ops2');
+   production=replace(production,'./ext.js?v=c5151','./ext.js?v=ops3');
    production=replace(production,'setUnder,startConn,explode:','setUnder,startConn,act,explode:');
   }else if(f==='index.html'){
    production=replace(production,'./intro.js?v=i1','./intro.js?v=ops1');
-   production=replace(production,'./main.js?v=c5151','./main.js?v=ops2');
-   production=replace(production,'./start.js?v=s39','./start.js?v=ops2');
+   production=replace(production,'./main.js?v=c5151','./main.js?v=ops3');
+   production=replace(production,'./start.js?v=s39','./start.js?v=ops3');
    production=replace(production,'<button id="conn">','<button id="opsDashboard" type="button">Drilling operations dashboard</button>\n<button id="conn">');
   }else{
    const original=execFileSync('git',['show',base+':'+f],{cwd:repo});

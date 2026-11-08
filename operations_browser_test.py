@@ -52,7 +52,7 @@ with sync_playwright() as pw:
   assert p.evaluate('GX.witsml.WML.liveMode') is True
   p.locator('#wX').click();p.wait_for_selector('#opsWitsmlDock',state='hidden')
   assert p.locator('#dwOperations').count()==1
-  assert p.evaluate('GX.witsml.WML.liveMode') is True
+  assert p.evaluate('GX.witsml.WML.liveMode && GX.witsml.WML.timer !== null')
   p.wait_for_timeout(700)
   assert p.locator('#opsSource').inner_text()=='WITSML SIM-TEST',p.locator('#opsSource').inner_text()
   assert p.locator('[data-cmd]:enabled').count()==0
