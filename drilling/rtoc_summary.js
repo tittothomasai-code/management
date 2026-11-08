@@ -53,7 +53,7 @@ export function build(D) {
     fact('Peak recorded torque',maxOf(tq)!=null?one(maxOf(tq)*C.FTLBF_KNM)+' kN·m':null,tq.length?'Maximum surface torque sample in the selected time log.':unavailable('Torque')),
     fact('Peak standpipe pressure',maxOf(spp)!=null?one(maxOf(spp)*C.PSI_KPA)+' kPa':null,spp.length?'Maximum standpipe-pressure sample in the selected time log.':unavailable('Standpipe pressure')),
     fact('Connection intervals',D?.evidence?String(completed.length)+' complete intervals'+(lengths.length?' · mean '+one(mean(lengths))+' m':'' ):null,D?.evidence?'Derived from bit depth, hole depth and flow evidence. Check the source-quality notes before operational use.':(D?.why||unavailable('Connection evidence'))),
-    fact('Survey and trajectory',ss.length?String(ss.length)+' stations · max inclination '+one(maxOf(incl),1)+'°':null,ss.length?'Station count and maximum inclination from the definitive WITSML trajectory.':unavailable('Survey trajectory')),
+    fact('Peak survey DLS',dls?one(dls.dls,2)+'°/30 m':null,dls?'Calculated between adjacent definitive survey stations from minimum-curvature dogleg angle; derived from WITSML survey values.':unavailable('Survey DLS')),
   ];
   const factsText=facts.map((x,i)=>(i+1)+'. '+x.label+': '+x.value+' — '+x.detail).join('\n');
   const stats=[
@@ -62,6 +62,8 @@ export function build(D) {
     {label:'Time covered',value:Number.isFinite(firstT)&&Number.isFinite(lastT)?one((lastT-firstT)/3600,1)+' h':'Not available'},
     {label:'Complete connection intervals',value:D?.evidence?String(completed.length):'Not available'},
     {label:'Survey stations',value:String(ss.length)},
+    {label:'Maximum inclination',value:incl.length?one(maxOf(incl),1)+'°':'Not available'},
+    {label:'Peak survey DLS',value:dls?one(dls.dls,2)+'°/30 m':'Not available'},
     {label:'Channels present',value:String(channelCount)+' / '+String(keys.length)},
   ];
   const quality=[...(D?.gaps||[])];
