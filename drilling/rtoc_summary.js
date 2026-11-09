@@ -1,6 +1,6 @@
 // Deterministic, read-only well summary from the selected WITSML time log.
 // Every value is derived from source samples. Missing channels remain unavailable.
-import * as C from './rtoc_core.js?v=j13-20261109';
+import * as C from './rtoc_core.js?v=j13b-20261109';
 
 const finite = xs => xs.filter(Number.isFinite);
 const mean = xs => xs.length ? xs.reduce((a,b)=>a+b,0)/xs.length : null;
@@ -101,6 +101,34 @@ function cleanFact(item) {
     },
     verified: false,
     redacted: item.flags?.redacted === true,
+    flag: item.flags?.state || (item.flags?.redacted ? 'redacted/unverified' : 'unverified'),
+  };
+}
+
+// Facts the connection has actually listed. Nothing else is filled in.
+export function contractFromListed({well, wellbores, redacted=false} = {}) {
+  if (!well?.uid) return null;
+  const identity = {state: redacted ? 'redacted/unverified' : 'unverified', verified:false, redacted:!!redacted, import:'prohibited'};
+  const listed = {state:'unverified', verified:false, redacted:false, import:'prohibited'};
+  const bores = (Array.isArray(wellbores) ? wellbores : []).filter(b => b && b.uid);
+  const selected = bores[0];
+  const facts = [
+    {fact:'Selected well name', value:well.name || well.uid, provenance:{objectType:'well', field:'name'}, flags:identity},
+    {fact:'Selected well UID', value:well.uid, provenance:{objectType:'well', field:'uid'}, flags:identity},
+  ];
+  if (bores.length) {
+    facts.push(
+      {fact:'Wellbores listed', value:bores.length, provenance:{objectType:'wellbore', field:'uid'}, flags:listed},
+      {fact:'Selected wellbore name', value:selected.name || selected.uid, provenance:{objectType:'wellbore', field:'name'}, flags:listed},
+      {fact:'Selected wellbore UID', value:selected.uid, provenance:{objectType:'wellbore', field:'uid'}, flags:listed},
+      {fact:'Wellbore names', value:[...new Set(bores.map(b => b.name || b.uid))], provenance:{objectType:'wellbore', field:'name'}, flags:listed},
+    );
+  }
+  return {
+    _meta:{gates:{verified:false, import:'prohibited'}},
+    sourceBackedFacts:{wellIdentityAndWellbores:facts, serverMetadata:[]},
+    surveyDerivedIntervals:{surveyIntervals:[]},
+    coverageGaps: bores.length ? ['No surveys, logs or history were read for this selection'] : ['No wellbore list was read'],
   };
 }
 

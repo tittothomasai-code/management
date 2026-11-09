@@ -45,16 +45,22 @@ export function surveyIntervals(stations, well, bore, configuredWell) {
   if (!well || !bore || well !== configuredWell || !Array.isArray(stations)) return [];
   const intervals = [];
   let previous = null;
+  let previousDatum = null;
   for (const station of stations) {
     if (!station || station.wb !== bore || blocked(station)) return [];
     const md = metres(station);
     if (md == null || md < 0) return [];
+    const datum = station.datum || '';
+    if (previous != null && datum && previousDatum && datum !== previousDatum) return [];
     if (previous != null) {
       const delta = md - previous;
       if (delta < -UNIT_DUPLICATE_M) return [];
       if (delta > UNIT_DUPLICATE_M) intervals.push(span(previous, md));
     }
-    if (previous == null || md - previous > UNIT_DUPLICATE_M) previous = md;
+    if (previous == null || md - previous > UNIT_DUPLICATE_M) {
+      previous = md;
+      previousDatum = datum;
+    }
   }
   return intervals;
 }

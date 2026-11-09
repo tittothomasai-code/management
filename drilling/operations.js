@@ -1,6 +1,6 @@
 import {FT, TRACKS, actualSurveyStations, drilledIntervals, fallbackInterval, feedConnectionIntervals, feedJoints, feedSource, finite, imageRows,
-  jointProgress, latestChannel, readSamples, surveyDepthIntervals, surveyDoglegs, surveyHoleContext, surveyMatches} from './operations_data.js?v=j13-20261109';
-import {sourceBackedSummary} from './rtoc_summary.js?v=j13-20261109';
+  jointProgress, latestChannel, readSamples, surveyDepthIntervals, surveyDoglegs, surveyHoleContext, surveyIntervals as estimateSpans, surveyMatches} from './operations_data.js?v=j13b-20261109';
+import {sourceBackedSummary} from './rtoc_summary.js?v=j13b-20261109';
 import {chart, doglegChart, imageLog} from './operations_plots.js?v=ops-observer-r4';
 import {minCurvStations, samplePath} from './geo.js?v=fp-ops-r2-20261108';
 import {createCutaway} from './operations_scene.js?v=ops-observer-r1';
@@ -116,7 +116,17 @@ function feedModel(api, source) {
   const geo = window.GEO;
   if (data && surveyMatches(w,geo,api?.CFG?.svWell)) {
     const raw = actualSurveyStations(geo.surv.stations,w.log.b,w.sv.cur.uid);
-    surveyIntervals = surveyDepthIntervals(raw);
+    const native = raw.map(s => ({
+      nativeMd: Number.isFinite(s.nativeMd) ? s.nativeMd : s.md,
+      uom: s.uom || (Number.isFinite(s.nativeMd) ? 'm' : 'ft'),
+      wb: s.wb, typ: s.typ || '', datum: s.datum || '',
+    }));
+    const depthSpans = surveyDepthIntervals(raw);
+    const estimated = estimateSpans(native, w.log.w, w.log.b, api?.CFG?.svWell);
+    surveyIntervals = estimated.length ? estimated.map(span => {
+      const match = depthSpans.find(d => Math.abs(d.start - span.start) < 1e-3 && Math.abs(d.end - span.end) < 1e-3);
+      return {...span, startTime: match?.startTime, endTime: match?.endTime};
+    }) : depthSpans;
     const datum = raw[0]?.datum;
     const valid = raw.every(station => station.datum === datum &&
       finite(station.inc) && station.inc >= 0 && station.inc <= 180 && finite(station.azi));
@@ -354,7 +364,8 @@ function renderInventory(contract) {
     const name = document.createElement('span');
     const value = document.createElement('b');
     name.textContent = fact.fact;
-    value.textContent = Array.isArray(fact.value) ? fact.value.join(', ') : String(fact.value);
+    const shown = Array.isArray(fact.value) ? fact.value.join(', ') : String(fact.value);
+    value.textContent = fact.flag ? shown + ' · ' + fact.flag : shown;
     li.append(name, value);
     list.append(li);
   }

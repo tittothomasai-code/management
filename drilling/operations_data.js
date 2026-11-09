@@ -1,7 +1,7 @@
 // Read-only adapter for the simulator's selected WITSML time log.
 import {detect} from './conn.js?v=fp-ops-r2-20261108';
 import {dlsPer30m} from './geo.js?v=fp-ops-r2-20261108';
-export {JOINT_REFERENCE_M, PHYSICAL_JOINT_TOL_M, UNIT_DUPLICATE_M, fallbackInterval, surveyIntervals} from './operations_joint_estimates.js?v=j13-20261109';
+export {JOINT_REFERENCE_M, PHYSICAL_JOINT_TOL_M, UNIT_DUPLICATE_M, fallbackInterval, surveyIntervals} from './operations_joint_estimates.js?v=j13b-20261109';
 export function wmlValue(raw, curveNull, logNull) {
   if (raw == null || String(raw).trim() === '') return null;
   const v = Number(raw);

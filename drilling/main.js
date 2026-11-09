@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {OrbitControls} from './vendor/OrbitControls.js';
-import * as PH from './physics.js?v=j13-20261109';
+import * as PH from './physics.js?v=j13b-20261109';
 import * as AN from './anim.js?v=5923';
 const {FT,R}=PH;
 const EXT={afterStep(){},frame(){},actX(){return false},layout(){return null},restore(){}};window.EXT=EXT;
@@ -66,8 +66,8 @@ const rnG=new THREE.Group();rnG.position.set(3.5,FLOOR+0.2,3.5);box(0.8,0.6,0.8,
 entity('Iron roughneck',rnG,{anchor:new THREE.Vector3(0,3,0),panel:()=>({title:'Iron roughneck',rows:[['Position',()=>S.rough?'at well centre':'parked'],['Operation',()=>S.rnOp?S.rnOp.kind+' '+(S.t-S.rnOp.t0).toFixed(0)+'/6 s':(S.seq&&S.seq.tdOverride?'sequence':'idle')],['Joint',()=>S.connected?'made up':'broken out']],html:`<button data-a="roughin">In</button><button data-a="roughout">Out</button><button data-a="break">Break out</button><button data-a="make">Make up</button><br><small>Interlocked: slips set, pumps off, no rotation</small>`})});
 // ---------- catwalk + pipe rack ----------
 const cwG=new THREE.Group();box(22,0.8,1.6,mat.blue,18,0.8,0,cwG);const ramp=box(14,0.3,1.4,mat.steel,0,0,0,cwG);ramp.position.set(9,4.6,0);ramp.rotation.z=-Math.atan2(7.4,13);
-for(let i=0;i<8;i++)cyl(0.12,0.12,9.1,mat.pipe,18,0.6+(i>>2)*0.25,3+(i%4)*0.3,cwG).rotation.z=Math.PI/2;
-const joint=cyl(0.12,0.12,9.1,mat.pipe,0,0,0,cwG);// catwalk single on the rack. The stabbed joint uses STAND_LENGTH_M.
+for(let i=0;i<8;i++)cyl(0.12,0.12,PH.STAND_LENGTH_M,mat.pipe,18,0.6+(i>>2)*0.25,3+(i%4)*0.3,cwG).rotation.z=Math.PI/2;
+const joint=cyl(0.12,0.12,PH.STAND_LENGTH_M,mat.pipe,0,0,0,cwG);// catwalk and rack pipes are the same 13 m joint as the stabbed pipe.
 entity('Catwalk',cwG,{anchor:new THREE.Vector3(18,3,0),panel:()=>({title:'Catwalk + pipe rack',rows:[['State',()=>S.catwalk?'delivering':'idle']]})});
 // drill string above floor + new stand
 const strTop=cyl(0.12,0.12,1,mat.pipe,0,0,0,scene);const newStand=cyl(0.12,0.12,PH.STAND_LENGTH_M,mat.pipe,0,0,0,scene);
@@ -301,7 +301,7 @@ function actX(e,x,b){if(EXT.actX(e,x,b))return;const st=e.st,all=()=>!!document.
  m.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{const e=addEquip(b.dataset.add);m.style.display='none';select(e)});
  m.querySelector('#eqreset').onclick=()=>{if(confirm('Reset equipment layout and 3D models to default?')){localStorage.removeItem(LKEY);localStorage.removeItem(MKEY);try{indexedDB.deleteDatabase('dw3')}catch{}location.reload()}}}
 
-import('./ext.js?v=j13-20261109').then(x=>x.init({THREE,S,PH,scene,cam,ctl,ents,pumps,select,entity,box,cyl,beam,mat,M,lp,curves,FLOOR,MH,td,tdAll,blk,dwG,slG,rnG,rnArm,cwG,UG,W,allCurves:()=>allCurves(),getWell:()=>wellCurve,act,EXT,removeEnt,saveLayout,addEquip,EQ,eqList,pumpsArr:pumps,setUnder,ren,groundMat,pad,sun,bha,rigG,dwG,ctl,makePump,rebuildLines,sel:()=>sel})).then(()=>import('./visual.js?v=596').then(v=>v.init({THREE,scene,ren,sun,cam,mat,M,box,cyl,beam,FLOOR,MH,td,pumps})).then(()=>import('./rig.js?v=b13').then(r=>r.init({THREE,scene,cam,rigG,FLOOR,MH})))/* rig-realism hook */).catch(e=>console.error('ext',e));
+import('./ext.js?v=j13b-20261109').then(x=>x.init({THREE,S,PH,scene,cam,ctl,ents,pumps,select,entity,box,cyl,beam,mat,M,lp,curves,FLOOR,MH,td,tdAll,blk,dwG,slG,rnG,rnArm,cwG,UG,W,allCurves:()=>allCurves(),getWell:()=>wellCurve,act,EXT,removeEnt,saveLayout,addEquip,EQ,eqList,pumpsArr:pumps,setUnder,ren,groundMat,pad,sun,bha,rigG,dwG,ctl,makePump,rebuildLines,sel:()=>sel})).then(()=>import('./visual.js?v=596').then(v=>v.init({THREE,scene,ren,sun,cam,mat,M,box,cyl,beam,FLOOR,MH,td,pumps})).then(()=>import('./rig.js?v=b13').then(r=>r.init({THREE,scene,cam,rigG,FLOOR,MH})))/* rig-realism hook */).catch(e=>console.error('ext',e));
 import('./subsurface.js?v=b11').catch(e=>console.warn('subsurface',e));
 import('./subtarget.js?v=b11').catch(e=>console.warn('subtarget',e)); // hook (helper D): SIM target band in subsurface view
 // ---------- loop (fixed step) ----------

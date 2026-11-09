@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
+import {spawnSync} from 'node:child_process';
 import {readFileSync} from 'node:fs';
-import {STAND_LENGTH_M} from '../drilling/physics.js';
+import {STAND_LENGTH_M, newState, startSeq, seqTick, step, P, postConnectFootage} from '../drilling/physics.js';
 import {FUTURE_SKEW_MS, feedSource} from '../drilling/operations_data.js';
 import {JOINT_REFERENCE_M, PHYSICAL_JOINT_TOL_M, UNIT_DUPLICATE_M, fallbackInterval, surveyIntervals} from '../drilling/operations_joint_estimates.js';
 import {segment} from '../drilling/rtoc_core.js';
@@ -18,24 +19,25 @@ for (const name of ['physics.js', 'main.js', 'ext2.js']) {
   assert.doesNotMatch(text(name), /27\.[0-9]/, name + ' still has a 27.x m joint length');
 }
 assert.match(text('main.js'), /STAND_LENGTH_M\/2/);
-assert.match(text('ext2.js'), /stickup\+13\.2/);
-assert.match(text('ext2.js'), /stickup\+13'/);
+assert.match(text('ext2.js'), /JOINT_M\+0\.2/);
+assert.match(text('ext2.js'), /stickup\+'\+JOINT_M/);
+assert.match(text('main.js'), /PH\.STAND_LENGTH_M,mat\.pipe/);
 assert.match(text('ext4.js'), /off%STAND_LENGTH_M/);
 assert.match(text('rtoc_fixtures.js'), /elevation uom="m" datum="MSL">27\.4</);
 assert.match(text('fixtures/runsheet_np045l_rows.js'), /27\.40/);
 
 const versions = {
-  'main.js': ['physics.js?v=j13-20261109', 'ext.js?v=j13-20261109'],
-  'index.html': ['main.js?v=j13-20261109', 'start.js?v=j13-20261109'],
-  'ext.js': ['ext2.js?v=j13-20261109'],
-  'ext2.js': ['ext3.js?v=j13-20261109'],
-  'ext3.js': ['ext4.js?v=j13-20261109'],
-  'ext4.js': ['physics.js?v=j13-20261109'],
-  'rtoc.js': ['physics.js?v=j13-20261109', 'rtoc_core.js?v=j13-20261109', 'rtoc_summary.js?v=j13-20261109'],
-  'rtoc_summary.js': ['rtoc_core.js?v=j13-20261109'],
-  'start.js': ['rtoc.js?v=j13-20261109', 'operations.js?v=j13-20261109'],
-  'operations.js': ['operations_data.js?v=j13-20261109', 'rtoc_summary.js?v=j13-20261109'],
-  'operations_data.js': ['operations_joint_estimates.js?v=j13-20261109'],
+  'main.js': ['physics.js?v=j13b-20261109', 'ext.js?v=j13b-20261109'],
+  'index.html': ['main.js?v=j13b-20261109', 'start.js?v=j13b-20261109'],
+  'ext.js': ['ext2.js?v=j13b-20261109'],
+  'ext2.js': ['physics.js?v=j13b-20261109', 'ext3.js?v=j13b-20261109'],
+  'ext3.js': ['ext4.js?v=j13b-20261109'],
+  'ext4.js': ['physics.js?v=j13b-20261109', 'rtoc_summary.js?v=j13b-20261109'],
+  'rtoc.js': ['physics.js?v=j13b-20261109', 'rtoc_core.js?v=j13b-20261109', 'rtoc_summary.js?v=j13b-20261109'],
+  'rtoc_summary.js': ['rtoc_core.js?v=j13b-20261109'],
+  'start.js': ['rtoc.js?v=j13b-20261109', 'operations.js?v=j13b-20261109'],
+  'operations.js': ['operations_data.js?v=j13b-20261109', 'rtoc_summary.js?v=j13b-20261109'],
+  'operations_data.js': ['operations_joint_estimates.js?v=j13b-20261109'],
 };
 const esc = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 for (const [file, needles] of Object.entries(versions)) {
@@ -78,7 +80,12 @@ assert.equal(summary.substantiveFactCount, 6);
 assert.equal(summary.enoughForTen, false);
 assert.match(summary.message, /not enough source-backed data for 10 facts/i);
 assert.equal(summary.serverMetadata.length, 4);
-assert.equal(summary.facts.some(fact => String(fact.value).includes('Adaga')), false);
+assert.equal(summary.facts.some(fact => /Example Store|Adaga|DR101L/.test(String(fact.value))), false);
+assert.equal(summary.facts.find(fact => fact.provenance.field === 'name').flag, 'redacted/unverified');
+assert.equal(summary.facts.find(fact => fact.provenance.field === 'uid').flag, 'redacted/unverified');
+assert.equal(summary.serverMetadata.some(fact => fact.value === 'Example Store'), true);
+const fixtureText = readFileSync(new URL('./fixtures/well-summary-safe.json', import.meta.url), 'utf8');
+assert.doesNotMatch(fixtureText, /11f2db19|7168c8e0|01M6WZ|DR101L|WB03B01|Adaga/);
 assert.equal(summary.facts.some(fact => /formation|sandstone|joint length/i.test(fact.fact + JSON.stringify(fact.value))), false);
 assert.equal(summary.survey.status, 'unavailable');
 assert.deepEqual(summary.survey.intervals, []);
@@ -98,4 +105,32 @@ assert.equal(seg.length, 2);
 assert.equal(seg[0].endMd, 105);
 assert.equal(seg[1].startMd, 200);
 assert.equal(fallbackInterval(Number.NaN), null);
-console.log('PASS joint, survey estimate, source state, well summary, cache versions');
+
+const footage = postConnectFootage();
+assert.ok(footage.slide + footage.rotate < STAND_LENGTH_M / 0.3048);
+assert.ok(Math.abs((footage.slide + footage.rotate) * 0.3048 - STAND_LENGTH_M / 2) < 0.05);
+const rig = newState();
+const lengthBefore = rig.L;
+startSeq(rig, 'full');
+let minQuill = rig.dw.quill;
+for (let i = 0; i < 400000 && rig.seq; i++) {
+  step(rig, 0.05);
+  seqTick(rig);
+  if (rig.dw.quill < minQuill) minQuill = rig.dw.quill;
+}
+assert.equal(rig.seq, null, 'full sequence finishes');
+assert.ok(minQuill >= P.dw.min_quill - 1e-6, 'min quill ' + minQuill);
+assert.ok(Math.abs((rig.L - lengthBefore) * 0.3048 - STAND_LENGTH_M) < 0.02);
+
+const changed = [
+  'drilling/ext.js', 'drilling/ext2.js', 'drilling/ext3.js', 'drilling/ext4.js', 'drilling/main.js',
+  'drilling/operations.js', 'drilling/operations_data.js', 'drilling/operations_joint_estimates.js',
+  'drilling/physics.js', 'drilling/rtoc.js', 'drilling/rtoc_core.js', 'drilling/rtoc_summary.js', 'drilling/start.js',
+  'drilling-tests/adversarial.mjs', 'drilling-tests/joint_summary_test.mjs',
+  'drilling-tests/site/operations_data.js', 'drilling-tests/site/operations_joint_estimates.js', 'drilling-tests/site/rtoc_core.js',
+];
+for (const file of changed) {
+  const parsed = spawnSync(process.execPath, ['--check', file], {encoding:'utf8'});
+  assert.equal(parsed.status, 0, file + '\n' + parsed.stderr);
+}
+console.log('PASS joint, survey estimate, source state, well summary, cache versions, sequence, parse');

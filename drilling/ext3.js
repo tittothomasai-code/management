@@ -69,7 +69,7 @@ function makeFormula(name,unit,expr){name=String(name||'').trim();expr=String(ex
  const f={id:'f:'+name.replace(/\W+/g,'_'),name,unit:U.base(String(unit||'').trim()),expr,refs,base};
  const val=id=>{const c=byId(id);if(!c)return NaN;const x=c.get();return x==null?NaN:+x};
  f.get=()=>{const r=fn(val,id=>id in base?base[id]:(base[id]=val(id)),Math);return isFinite(r)?r:null};
- f.src=()=>{const ss=refs.map(id=>byId(id)?.src()||'sim');return ss.find(x=>x=='live')||ss.find(x=>x=='live-sim')||ss.find(x=>x=='csv')||'sim'};
+ f.src=()=>{const ss=refs.map(id=>byId(id)?.src()||'sim');return ss.find(x=>x=='live')||ss.find(x=>x=='live-sim')||ss.find(x=>x=='csv')||ss.find(x=>x=='disconnected')||ss.find(x=>x=='unavailable')||'sim'};
  TR.formulas=TR.formulas.filter(x=>x.id!=f.id);TR.formulas.push(f);save();refreshCat();return f.id}
 function addFormula(name,unit,expr){const id=makeFormula(name,unit,expr);addTrack(id);return id}
 // ---- sampling (sim time) ----
@@ -104,7 +104,7 @@ function ui(){const b=el('button','background:#0a6;color:#fff;font-weight:700','
  cv.onmousemove=e=>{const r=cv.getBoundingClientRect();TR.cursor=(e.clientX-r.left)/r.width};cv.onmouseleave=()=>TR.cursor=null;cv.onclick=e=>{const r=cv.getBoundingClientRect(),X=e.clientX-r.left,Y=e.clientY-r.top;if(X>160&&X<190){const tr=TR.tracks.find(t=>t._y&&Y>=t._y[0]&&Y<t._y[0]+20);if(tr)rmTrack(tr.id)}};
  cv.onwheel=e=>{e.preventDefault();if(!TR.paused)q('#trpause').click();TR.offset=Math.max(0,Math.min(1,TR.offset+e.deltaY*0.0005));q('#trscroll').value=1000-TR.offset*1000}}
 const esc=x=>String(x).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const SC={live:'#1db954','live-sim':'#e08a00',csv:'#2f7fd0',sim:'#6b7580',replay:'#7c4dff'},SL={live:'LIVE','live-sim':'SIM-TEST',csv:'CSV',sim:'SIM',replay:'REPLAY'};
+const SC={live:'#1db954','live-sim':'#e08a00',csv:'#2f7fd0',sim:'#6b7580',replay:'#7c4dff',disconnected:'#b71c1c',unavailable:'#8a4b12'},SL={live:'LIVE','live-sim':'SIM-TEST',csv:'CSV',sim:'SIM',replay:'REPLAY',disconnected:'DISCONNECTED',unavailable:'UNAVAILABLE'};
 const pill=k=>`<span style="background:${SC[k]||'#6b7580'};color:#fff;font-weight:700;font-size:10px;padding:0 4px;border-radius:3px">${SL[k]||k}</span>`;
 function badge(X,Y,k){ctx.font='bold 10px sans-serif';const t=SL[k]||k,w=ctx.measureText(t).width+8;ctx.fillStyle=SC[k]||'#6b7580';ctx.fillRect(X,Y,w,13);ctx.fillStyle='#fff';ctx.fillText(t,X+4,Y+10);ctx.font='11px sans-serif'}
 let SRCF='all';const srcOk=k=>SRCF=='all'||(SRCF=='live'?k=='live':k!='live');
@@ -168,7 +168,7 @@ export async function init(ctx){C=ctx;S=C.S;PH=C.PH;el=C.el;PANEL=C.PANEL;ui();
  setInterval(panelHook,300);setInterval(sigBadges,500);setInterval(()=>{if(TR.on){const n=catalogue().length;if(n!=CAT.length&&document.activeElement!==picker)renderTree();refreshCat()}},2000);
  U.on((o,n)=>{for(const tr of TR.tracks){const k=U.f(tr.u0,n)/U.f(tr.u0,o);if(k!=1&&TR.data[tr.id])TR.data[tr.id]=TR.data[tr.id].map(v=>v==null?v:v*k)}try{build()}catch{}});
  Object.assign(window.GX,{traces:{TR,addTrack,rmTrack,open,toCSV,catalogue:()=>(refreshCat(),CAT.map(c=>({id:c.id,label:c.label,unit:c.unit}))),entSignals:n=>entSignals(C.ents.find(e=>e.name==n)).map(c=>c.id),addFormula,renderTree}});
- try{(await import('./ext4.js?v=j13-20261109')).init(C)}catch(err){console.error('ext4',err)}
+ try{(await import('./ext4.js?v=j13b-20261109')).init(C)}catch(err){console.error('ext4',err)}
  try{(await import('./ext5.js?v=5922')).init(C)}catch(err){console.error('ext5',err)}
  try{(await import('./wmlinvui.js?v=5923')).init(C)}catch(err){console.error('wmlinv',err)} try{(await import('./input.js?v=c6')).init(C)}catch(err){console.error('input',err)} try{(await import('./vpad.js?v=b9')).init()}catch(err){console.error('vpad',err)}
  try{(await import('./ext6.js?v=592')).init(C)}catch(err){console.error('ext6',err)}

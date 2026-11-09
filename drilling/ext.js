@@ -11,7 +11,7 @@ export async function init(ctx){C=ctx;THREE=C.THREE;S=C.S;PH=C.PH;S.src=SRC;
  detailGeometry();seqPanel();signals();sensorsInit();await libInit();
  C.EXT.afterStep=afterStep;C.EXT.frame=frame;C.EXT.actX=actX;
  window.GX={csvData:()=>CSV,circuitAt,startSeq:(k,sm)=>{PH.startSeq(S,k,sm);renderSeq()},stepNext,loadCSVText,useCSV,addSensor,setSensor,placeLib,addBha,exportLayout,importLayout,lib:()=>LIB,ext:X,partSelect,showTree,setSource,feed:FEED};
- try{const m2=await import('./ext2.js?v=j13-20261109');await m2.init({...C,FEED,SIGS,SRC,sigRender,el,BTN,PANEL,renderSeq})}catch(err){console.error('ext2',err)}
+ try{const m2=await import('./ext2.js?v=j13b-20261109');await m2.init({...C,FEED,SIGS,SRC,sigRender,el,BTN,PANEL,renderSeq})}catch(err){console.error('ext2',err)}
  window.GX_READY=true}
 
 function smotorSteps(){const M=()=>X.lib.find(i=>LIB[i.type]?.physics?.kind=='motor'&&inFlow(i));const keep=S.pumps.map(p=>p.cmd);
@@ -114,7 +114,7 @@ function afterStep(){
 let sigEl;function signals(){sigEl=el('div',PANEL+';right:8px;top:44px;width:250px');document.body.appendChild(sigEl);
  const fi=el('input');fi.type='file';fi.accept='.csv';fi.style.display='none';fi.id='csvFile';document.body.appendChild(fi);
  fi.onchange=async()=>{const f=fi.files[0];fi.value='';if(f)loadCSVText(await f.text(),f.name)};sigRender()}
-function sigRender(){if(!sigEl)return;sigEl.innerHTML=`<b style="color:#8fd">Signal sources</b> <small style="color:#9ab">(${U.sys=='metric'?'Metric':'Imperial'})</small><br>`+Object.keys(SIGS).map(k=>`<div style="display:flex;justify-content:space-between"><span title="${SIGS[k][0]} (internal)">${k}${(u=>u?' · '+U.u(u):'')(({spp:'psi',Q:'gpm',hook:'klbf',wob:'klbf',md:'ft',quill:'m',rpm:'rpm'})[k]||'')}</span><select data-sig="${k}">${['sim','csv','live'].map(v=>`<option ${SRC[k]==v?'selected':''}>${v}</option>`).join('')}</select></div>`).join('')+
+function sigRender(){if(!sigEl)return;sigEl.innerHTML=`<b style="color:#8fd">Signal sources</b> <small style="color:#9ab">(${U.sys=='metric'?'Metric':'Imperial'})</small><br>`+Object.keys(SIGS).map(k=>`<div style="display:flex;justify-content:space-between"><span title="${SIGS[k][0]} (internal)">${k}${(u=>u?' · '+U.u(u):'')(({spp:'psi',Q:'gpm',hook:'klbf',wob:'klbf',md:'ft',quill:'m',rpm:'rpm'})[k]||'')}</span><select data-sig="${k}">${['sim','csv','live','disconnected','unavailable'].map(v=>`<option ${SRC[k]==v?'selected':''}>${v}</option>`).join('')}</select></div>`).join('')+
  `<button id="csvload" style="${BTN}">Load CSV file…</button><button id="csvsample" style="${BTN}">Sample CSV</button><br><small>CSV: ${CSV?CSV.name+' '+CSV.rows.length+' rows':'none'}${REPLAY?' · replaying':''}</small><br><small>Live feed: ${FEED.status}</small> <button id="feedc" style="${BTN}">Connect…</button>`;
  sigEl.querySelectorAll('[data-sig]').forEach(s=>s.onchange=()=>setSource(s.dataset.sig,s.value));
  sigEl.querySelector('#csvload').onclick=()=>document.getElementById('csvFile').click();

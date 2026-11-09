@@ -13,8 +13,9 @@ HARNESS = """<!doctype html><html lang="en"><head><meta charset="UTF-8">
 <div id="testWatermark" style="position:fixed;bottom:4px;right:8px;z-index:100030;
 background:#452300;color:#fff2ce;padding:5px 8px;font:bold 11px system-ui;
 pointer-events:none">OFFLINE SMOKE TEST · SYNTHETIC FIXTURE</div>
+<script id="wellContract" type="application/json">__CONTRACT__</script>
 <script type="module">
-import {open} from '/operations.js?v=j13-20261109';
+import {open} from '/operations.js?v=j13b-20261109';
 import {minCurvStations} from '/geo.js';
 import {synth} from '/conn.js?v=fp-ops-r2-20261108';
 const ft = .3048;
@@ -48,8 +49,9 @@ feed.svCands = [{uid:'plan',wb:'b',st:[...stations,{md:350/ft,inc:90,azi:93}]
   .map(row=>({...row,typ:'planned'}))}];
 const G8 = {well:'w',wb:'b',sim:false,fe:{gr:[{md:291.25,v:70}]},img:{name:'Offline QA image',
   rows:Array.from({length:16},(_,i)=>({md:285+i/3,v:Array.from({length:12},(_,j)=>i+j%3)}))}};
+const wellContract = JSON.parse(document.getElementById('wellContract').textContent);
 window.GX = {
-  witsml:{WML:feed,CFG,data:()=>({src:feed.simulated?'live-sim':'live',ml,ul,ix:0,rows:feed.hist}),
+  witsml:{WML:feed,CFG,wellContract,data:()=>({src:feed.simulated?'live-sim':'live',ml,ul,ix:0,rows:feed.hist}),
     open(){
       let panel=document.getElementById('witsml');
       if (!panel) {
@@ -99,8 +101,9 @@ def verify(browser, base, screenshots, name, viewport, touch=False):
     context.route("**/*", lambda route: route.continue_() if route.request.url.startswith(base + "/")
                   else (blocked.append(route.request.url), route.abort()))
     page = context.new_page()
+    contract = (Path(__file__).parent / "fixtures" / "well-summary-safe.json").read_text()
     page.route(base + "/__observer_test", lambda route: route.fulfill(
-        status=200, content_type="text/html", body=HARNESS))
+        status=200, content_type="text/html", body=HARNESS.replace("__CONTRACT__", contract)))
     errors = []
     page.on("pageerror", lambda error: errors.append(str(error)))
     page.goto(base + "/__observer_test")
@@ -109,6 +112,10 @@ def verify(browser, base, screenshots, name, viewport, touch=False):
     expect(page.locator("#opsTally")).to_have_text("No source joint tally")
     expect(page.locator("#opsMetres")).to_have_text("—")
     expect(page.locator("#opsEmpty")).to_have_text("No matched trajectory survey")
+    expect(page.locator("#opsWellSummary")).to_contain_text("not enough source-backed data for 10 facts")
+    expect(page.locator("#opsWellSummary")).to_contain_text("(6 source-backed)")
+    expect(page.locator("#opsWellSummary")).to_contain_text("SYNTH-01 · redacted/unverified")
+    expect(page.locator("#opsWellSummary")).to_contain_text("synth-well-0001 · redacted/unverified")
     assert page.locator("[data-cmd]").count() == 0
 
     page.locator("#opsConnect").click()
@@ -243,7 +250,7 @@ small{color:#b4c6d7}
 <main id="out"></main>
 <script id="contract" type="application/json">__CONTRACT__</script>
 <script type="module">
-import {sourceBackedSummary} from '/rtoc_summary.js?v=j13-20261109';
+import {sourceBackedSummary} from '/rtoc_summary.js?v=j13b-20261109';
 const contract = JSON.parse(document.getElementById('contract').textContent);
 const summary = sourceBackedSummary(contract);
 const out = document.getElementById('out');
@@ -257,7 +264,8 @@ meta.textContent = summary.substantiveFactCount + ' source-backed well facts · 
 const list = document.createElement('ol');
 for (const fact of summary.facts) {
   const li = document.createElement('li');
-  li.textContent = fact.fact + ': ' + (Array.isArray(fact.value) ? fact.value.join(', ') : fact.value);
+  const shown = Array.isArray(fact.value) ? fact.value.join(', ') : fact.value;
+  li.textContent = fact.fact + ': ' + shown + (fact.flag ? ' · ' + fact.flag : '');
   list.append(li);
 }
 const server = document.createElement('p');
@@ -269,6 +277,27 @@ gaps.textContent = summary.gaps.join(' | ');
 out.append(h, meta, list, server, gaps);
 document.documentElement.dataset.ready = '1';
 </script></body></html>"""
+
+
+def verify_game(browser, base):
+    context = browser.new_context(viewport={"width": 1280, "height": 800}, service_workers="block")
+    blocked = []
+    context.route("**/*", lambda route: route.continue_() if route.request.url.startswith(base + "/")
+                  else (blocked.append(route.request.url), route.abort()))
+    page = context.new_page()
+    errors = []
+    page.on("pageerror", lambda error: errors.append(str(error)))
+    page.goto(base + "/index.html?v=j13b-20261109", wait_until="domcontentloaded")
+    page.wait_for_function("() => window.WML && window.GX && window.GX.witsml", timeout=20000)
+    assert page.evaluate("typeof window.WML === 'object' && window.WML !== null")
+    assert page.evaluate("typeof window.GX.witsml === 'object' && window.GX.witsml !== null")
+    assert page.evaluate("typeof window.GX.witsml.WML === 'object'")
+    page.wait_for_timeout(800)
+    assert not errors, errors
+    leaked = [url for url in blocked if re.search(r'witsml|adaga|wmls', url, re.I)]
+    assert not leaked, leaked
+    context.close()
+    print("PASS game page: no page errors, window.WML and GX.witsml exist")
 
 
 def verify_summary(browser, base, screenshots, name, viewport, touch=False):
@@ -290,9 +319,10 @@ def verify_summary(browser, base, screenshots, name, viewport, touch=False):
     expect(page.locator("#summaryMeta")).to_contain_text("verified false")
     expect(page.locator("#summaryMeta")).to_contain_text("survey unavailable")
     expect(page.locator("ol li")).to_have_count(6)
-    expect(page.locator("body")).to_contain_text("DR101L")
-    expect(page.locator("ol")).not_to_contain_text("Adaga")
-    expect(page.locator("#serverNote")).to_contain_text("Adaga")
+    expect(page.locator("body")).to_contain_text("SYNTH-01")
+    expect(page.locator("ol")).to_contain_text("redacted/unverified")
+    expect(page.locator("ol")).not_to_contain_text("Example Store")
+    expect(page.locator("#serverNote")).to_contain_text("Example Store")
     expect(page.locator("#gaps")).to_contain_text("502")
     expect(page.locator("#gaps")).to_contain_text("504")
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1")
@@ -313,6 +343,7 @@ if __name__ == "__main__":
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(executable_path=args.chromium, args=[
             "--no-sandbox", "--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"])
+        verify_game(browser, args.base_url)
         verify(browser,args.base_url,args.screenshots,"desktop",{"width":1680,"height":970})
         verify(browser,args.base_url,args.screenshots,"mobile",{"width":390,"height":844},touch=True)
         verify_summary(browser,args.base_url,args.screenshots,"desktop",{"width":1680,"height":970})
