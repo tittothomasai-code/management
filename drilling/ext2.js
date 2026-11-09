@@ -1,4 +1,5 @@
 // ext2.js (v3.2): game visuals + camera modes, live feed adapter (WebSocket / HTTP poll, field + WITSML-style tag mapping),
+import {STAND_LENGTH_M as JOINT_M} from './physics.js?v=j13c-20261109';
 // rig designer (derived capacities feed the physics), multi mud pumps, sequence editor with nested sub-sequences.
 // Everything is SIMULATED unless a CSV or live feed is the selected signal source. All geometry is procedural.
 let C,THREE,S,PH,el,BTN,PANEL;
@@ -8,7 +9,7 @@ export async function init(ctx){C=ctx;THREE=C.THREE;S=C.S;PH=C.PH;el=C.el;BTN=C.
  const f0=C.EXT.frame;C.EXT.frame=dt=>{f0(dt);frame2(dt)};
  const a0=C.EXT.actX;C.EXT.actX=(e,x,b)=>{if(x=='pvalve'&&e.st){e.st.valve=e.st.valve===false;PH.ev(S,'Pump '+e.st.id+' manifold valve '+(e.st.valve===false?'closed':'open'));if(e.st.valve!==false)e.st.tripped=false;return true}return a0(e,x,b)};
  const s0=C.EXT.afterStep;C.EXT.afterStep=()=>{s0();feedStale()};
- Object.assign(window.GX,{feedStatus:s=>setStatus(s),feedPush:(vals,src)=>{FS.src=src||FS.src;Object.assign(FS.vals,vals);FS.last=performance.now();FS.msgs++;if(FS.status!='live')setStatus('live')},feedState:FS,feedCfg:FCFG,feedConnect,feedDisconnect,design:()=>DES,applyDesign,derive,setDesign,addPumpType,PUMP_TYPES,seqLib:()=>SEQLIB,compileSeq,runUserSeq,saveSeqLib,camMode:setCam,seqTree:renderTree});try{(await import('./ext3.js?v=fp-ops-r2-20261108')).init(C)}catch(err){console.error('ext3',err)}
+ Object.assign(window.GX,{feedStatus:s=>setStatus(s),feedPush:(vals,src)=>{FS.src=src||FS.src;Object.assign(FS.vals,vals);FS.last=performance.now();FS.msgs++;if(FS.status!='live')setStatus('live')},feedState:FS,feedCfg:FCFG,feedConnect,feedDisconnect,design:()=>DES,applyDesign,derive,setDesign,addPumpType,PUMP_TYPES,seqLib:()=>SEQLIB,compileSeq,runUserSeq,saveSeqLib,camMode:setCam,seqTree:renderTree});try{(await import('./ext3.js?v=j13c-20261109')).init(C)}catch(err){console.error('ext3',err)}
 }
 // ======================= 1. VISUALS =======================
 let reeve,fastLine,tdA,bopG,camBtns;
@@ -57,7 +58,7 @@ function visuals(){const {box,cyl,beam,mat,M,FLOOR,MH,scene}=C,lp=(...a)=>new TH
  for(const [w,d,x,z] of [[5,0.4,0,-2.4],[5,0.4,0,2.4],[0.4,5,-2.4,0],[0.4,5,2.4,0]])box(w,0.5,d,conc,x,0.25,z,G);box(4.4,0.05,4.4,black,0,0.27,0,G);
  // pipe rack (trestles + stacked joints) beside catwalk
  for(const x of[12,18,24]){box(0.25,1,4,M(0x2c5d9e,0.4,0.5),x,0.5,7,G);box(0.4,0.15,4.4,steelP,x,1.05,7,G)}
- for(let r=0;r<3;r++)for(let i=0;i<8-r;i++){const p=cyl(0.12,0.12,14,M(0x6d6f73,0.9,0.3),18,1.25+r*0.22,5.4+i*0.26+r*0.13,G,10);p.rotation.z=Math.PI/2}
+ for(let r=0;r<3;r++)for(let i=0;i<8-r;i++){const p=cyl(0.12,0.12,JOINT_M,M(0x6d6f73,0.9,0.3),18,1.25+r*0.22,5.4+i*0.26+r*0.13,G,10);p.rotation.z=Math.PI/2}
  // high-pressure manifold block with valves near standpipe
  {const mx=-12,mz=6;box(1.6,1.2,2.4,M(0x777d84,0.8,0.35),mx,0.9,mz,G);for(let i=0;i<4;i++){cyl(0.18,0.18,0.5,red,mx,1.75,mz-0.9+i*0.6,G);box(0.6,0.06,0.06,M(0x222222),mx,2.05,mz-0.9+i*0.6,G)}}
  // light towers
@@ -233,8 +234,9 @@ const BUILTIN={
   {t:'set',path:'dw.mode',value:'hoist',label:'Pick up off bottom'},{t:'wait',cond:'S.dw.quill>=Math.min((S.L-S.md)*0.3048+1,30)',label:'Wait: bit 1 m off bottom',timeout:120},{t:'set',path:'dw.mode',value:'hold'}]},
  'Set slips':{steps:[{t:'action',do:'slipset',label:'Set slips (interlock: off bottom, no rotation)'},{t:'delay',s:3}]},
  'Break out':{steps:[{t:'action',do:'roughin',label:'Iron roughneck in'},{t:'delay',s:2},{t:'action',do:'break',label:'Break out connection'},{t:'wait',cond:'!S.rnOp&&!S.connected',label:'Wait: broken out',timeout:30},{t:'action',do:'roughout',label:'Roughneck out'}]},
- 'Pick up stand':{steps:[{t:'set',path:'dw.mode',value:'hoist',label:'Hoist top drive'},{t:'wait',cond:'S.dw.quill>=S.stickup+27.6',label:'Wait: top drive at racking height',timeout:180},{t:'set',path:'dw.mode',value:'hold'},
-  {t:'set',path:'catwalk',value:1,label:'Catwalk delivers stand'},{t:'delay',s:8},{t:'set',path:'newJoint',value:1,label:'Latch elevators, stab'},{t:'set',path:'catwalk',value:0},{t:'set',path:'dw.mode',value:'lower',label:'Lower into box'},{t:'wait',cond:'S.dw.quill<=S.stickup+27.4',timeout:60},{t:'set',path:'dw.mode',value:'hold'}]},
+ // Hoist clearance is one joint plus 0.2 m. Stab stops at the joint length. Both come from physics STAND_LENGTH_M.
+ 'Pick up stand':{steps:[{t:'set',path:'dw.mode',value:'hoist',label:'Hoist top drive'},{t:'wait',cond:'S.dw.quill>=S.stickup+'+(JOINT_M+0.2),label:'Wait: top drive at racking height',timeout:180},{t:'set',path:'dw.mode',value:'hold'},
+  {t:'set',path:'catwalk',value:1,label:'Catwalk delivers joint'},{t:'delay',s:8},{t:'set',path:'newJoint',value:1,label:'Latch elevators, stab'},{t:'set',path:'catwalk',value:0},{t:'set',path:'dw.mode',value:'lower',label:'Lower into box'},{t:'wait',cond:'S.dw.quill<=S.stickup+'+JOINT_M,timeout:60},{t:'set',path:'dw.mode',value:'hold'}]},
  'Make up':{steps:[{t:'action',do:'roughin',label:'Iron roughneck in'},{t:'delay',s:2},{t:'action',do:'make',label:'Spin + torque connection'},{t:'wait',cond:'!S.rnOp&&S.connected',label:'Wait: made up',timeout:30},{t:'action',do:'roughout',label:'Roughneck out'}]},
  'Pull slips':{steps:[{t:'action',do:'sliprel',label:'Release slips (interlock: connected, roughneck out)'},{t:'delay',s:2}]},
  'Resume drilling':{params:{spm:100,rpm:60},steps:[{t:'action',do:'pumpson',label:'Pumps on'},{t:'pumps',spm:'$spm',on:true},{t:'wait',signal:'Q',op:'>',value:300,timeout:60},{t:'set',path:'td.cmd',value:'$rpm',label:'Rotate'},{t:'set',path:'dw.mode',value:'auto',label:'Auto-drill to bottom'},{t:'set',path:'autoSteer',value:true},{t:'delay',s:5}]},

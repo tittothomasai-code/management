@@ -1,6 +1,8 @@
 // Read-only adapter for the simulator's selected WITSML time log.
 import {detect} from './conn.js?v=fp-ops-r2-20261108';
 import {dlsPer30m} from './geo.js?v=fp-ops-r2-20261108';
+import {JOINT_REFERENCE_M, PHYSICAL_JOINT_TOL_M, UNIT_DUPLICATE_M, fallbackInterval, surveyIntervals} from './operations_joint_estimates.js?v=j13c-20261109';
+export {JOINT_REFERENCE_M, PHYSICAL_JOINT_TOL_M, UNIT_DUPLICATE_M, fallbackInterval, surveyIntervals};
 export function wmlValue(raw, curveNull, logNull) {
   if (raw == null || String(raw).trim() === '') return null;
   const v = Number(raw);
@@ -50,6 +52,10 @@ const CHANNELS = {
   stall: ['flag', ['ops.stall'], /^(MOTOR_STALL_ALARM|PDM_STALL_ALARM)$/i],
 };
 const MAX_AGE = 120_000;
+// Source clocks a few hundred milliseconds ahead of this browser are skew.
+// Anything later, including a row one second ahead, is not a live index.
+// One-hour and two-hour future rows stay off LIVE.
+export const FUTURE_SKEW_MS = 500;
 // Explicit fixture marks already used by the connection, the local sim store, and the synthetic fixture.
 // The approved proxy host is not one of them: a custom https store with ordinary names can still be LIVE.
 const FIXTURE_TEXT = /SIM-TEST|SIMULATED|\bSYNTHETIC\b|\bFIXTURE\b|NOT LIVE/i;
@@ -83,7 +89,8 @@ export function feedSource(w, now = Date.now(), cfg, observation = {}) {
   }
   if (fixtureFeed(w, cfg)) return reset('WITSML TEST FEED');
   if (w?.mode === 'replay') return reset('WITSML REPLAY');
-  if (!w || w.authDead || w.transportDead) return reset('WITSML DISCONNECTED');
+  // A dropped real session stays disconnected. It is not relabelled as the simulator.
+  if (!w || w.authDead || w.transportDead || w.connected === false) return reset('WITSML DISCONNECTED');
   if (w.mode === 'loading') return reset('WITSML WAITING');
   // The deployed poller uses mode for replay. A normal live session can
   // still report mode='off' while supplying a selected log and source rows.
@@ -92,13 +99,19 @@ export function feedSource(w, now = Date.now(), cfg, observation = {}) {
   if (!/time/i.test(w.log.indexType || '')) return reset('WITSML TIME LOG REQUIRED');
 
   const stamp = w.hist?.at(-1)?.t;
-  if (!finite(stamp) || stamp <= 0 || w.lastRowMs !== stamp || stamp > now) return reset('WITSML WAITING');
+  // lastRowMs is only accepted when it is the same source-row time. A poll or
+  // receipt clock that disagrees with the row is not an index.
+  if (!finite(stamp) || stamp <= 0 || w.lastRowMs !== stamp) return reset('WITSML WAITING');
+  if (stamp > now + FUTURE_SKEW_MS) return reset('WITSML FUTURE');
   if (!w.healthy?.() || now - stamp >= MAX_AGE) return reset('WITSML STALE');
 
   const store = cfg?.url || w.storeUrl;
-  if (observation.log !== w.log || observation.rows !== w.hist ||
-      observation.store !== store || stamp < observation.last) reset('WITSML WAITING');
-  if (finite(observation.last) && stamp > observation.last) observation.advanced = true;
+  const prior = observation.last;
+  const sameSeries = observation.log === w.log && observation.store === store && finite(prior);
+  const advancedStamp = sameSeries && stamp > prior;
+  if (!sameSeries || stamp < prior || (observation.rows !== w.hist && !advancedStamp)) {
+    observation.advanced = false;
+  } else if (advancedStamp) observation.advanced = true;
   Object.assign(observation, {log:w.log, rows:w.hist, store, last:stamp});
   return observation.advanced ? 'WITSML LIVE' : 'WITSML WAITING FOR ADVANCE';
 }
@@ -271,6 +284,21 @@ export function actualSurveyStations(stations, bore, trajectory) {
     !/^(plan|planned|proposed|projection|projected|interpolated|tie[ -]?in)$/i.test(s.typ?.trim() || '') &&
     finite(s.md) && s.md >= 0
   ).sort((a,b) => a.md - b.md);
+}
+
+// Survey estimates are the only spans shown. An empty estimate (a reversal, a planned
+// station, a unit break) stays empty. The depth-normalised path is not a fallback.
+export function displayedSurveySpans(stations, well, bore, configuredWell) {
+  const native = (stations || []).map(s => ({
+    nativeMd: Number.isFinite(s.nativeMd) ? s.nativeMd : s.md,
+    uom: s.uom || (Number.isFinite(s.nativeMd) ? 'm' : 'ft'),
+    wb: s.wb, typ: s.typ || '', datum: s.datum || '',
+  }));
+  const depthSpans = surveyDepthIntervals(stations);
+  return surveyIntervals(native, well, bore, configuredWell).map(span => {
+    const match = depthSpans.find(d => Math.abs(d.start - span.start) < 1e-3 && Math.abs(d.end - span.end) < 1e-3);
+    return {...span, startTime: match?.startTime, endTime: match?.endTime};
+  });
 }
 
 export function surveyDepthIntervals(stations) {

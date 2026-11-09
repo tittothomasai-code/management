@@ -1,7 +1,7 @@
 // Drilling physics ported from v2 sandbox (first-pass, uncalibrated values). SIMULATED.
 import {ropMudFactor} from './ropmud.js';
 export const R=Math.PI/180, FT=0.3048;
-export const STAND_LENGTH_M=27.4;
+export const STAND_LENGTH_M=13; // Nominal drill-pipe joint, metres. Physics, the stabbed joint and the pick-up sequence use this one length.
 export function minCurv(p,m1,i1,a1,m2,i2,a2){i1*=R;a1*=R;i2*=R;a2*=R;const cb=Math.cos(i2-i1)-Math.sin(i1)*Math.sin(i2)*(1-Math.cos(a2-a1));const b=Math.acos(Math.max(-1,Math.min(1,cb)));const rf=b<1e-6?1:2/b*Math.tan(b/2),dm=m2-m1;
  return [p[0]+dm/2*(Math.sin(i1)*Math.cos(a1)+Math.sin(i2)*Math.cos(a2))*rf,p[1]+dm/2*(Math.sin(i1)*Math.sin(a1)+Math.sin(i2)*Math.sin(a2))*rf,p[2]+dm/2*(Math.cos(i1)+Math.cos(i2))*rf]}
 export const PLAN={kop_md:1500,bur:3,hold_inc:35,azi:45,td_md:3500};
@@ -36,10 +36,12 @@ export function step(S,dt){const t=S.t,F=S.faults,mw=P.mud.mw_ppg;
  if(dw.mode=='hoist'&&S.slips&&S.connected){dq=0;if(!S._ilk1){ev(S,'Interlock: cannot hoist, slips set while string connected');S._ilk1=1}}else S._ilk1=0;
  let q=dw.quill+dq;q=Math.min(P.dw.max_quill,q);
  const attached=S.connected&&!S.slips;let onb=false;
- if(attached){const qb=(S.L-S.md)*FT; // quill height when bit on bottom
+ if(attached){const qbRaw=(S.L-S.md)*FT; // quill height when bit on bottom
+  // A joint is finished at minimum block height. Do not drive the top drive below that.
+  const held=qbRaw<P.dw.min_quill;S._quillFloor=held;const qb=held?P.dw.min_quill:qbRaw;
   if(dw.mode=='auto'&&!F.brake_fade){q=qb;onb=true}
   if(q<=qb+1e-6){ if(q<qb-1e-6&&F.brake_fade)dw.fadeLoad+=(qb-q)/FT*1.5; q=qb;onb=true}}
- else{q=Math.max(q,S.slips?(S.connected?S.stickup:0.3):0.3)}
+ else{S._quillFloor=false;q=Math.max(q,S.slips?(S.connected?S.stickup:0.3):0.3)}
  dw.drum+=(q-dw.quill)*-6;dw.quill=q;
  let wob=0;if(onb){wob=(dw.mode=='auto'?dw.wobSet:dw.mode=='lower'?dw.wobSet*0.5:0)+dw.fadeLoad;if(F.motor_stall)wob+=30}
  S.wob+=(wob-S.wob)*Math.min(1,dt/1.5);
@@ -49,7 +51,7 @@ export function step(S,dt){const t=S.t,F=S.faults,mw=P.mud.mw_ppg;
  if(S.rnOp)rc=S.rnOp.kind=='break'?-20:20;
  if(S.seq&&S.seq.tdOverride!=null)rc=S.seq.tdOverride;
  // manual roughneck operation (break-out / make-up)
- if(S.rnOp&&S.t-S.rnOp.t0>=6){if(S.rnOp.kind=='break'){S.connected=false;ev(S,'Roughneck: connection broken out')}else{S.connected=true;if(S.newJoint){S.L+=27.4/FT;S.newJoint=0}ev(S,'Roughneck: connection made up')}S.rnOp=null}
+ if(S.rnOp&&S.t-S.rnOp.t0>=6){if(S.rnOp.kind=='break'){S.connected=false;ev(S,'Roughneck: connection broken out')}else{S.connected=true;if(S.newJoint){S.L+=STAND_LENGTH_M/FT;S.newJoint=0}ev(S,'Roughneck: connection made up')}S.rnOp=null}
  rc=Math.max(-P.td.max_rpm,Math.min(P.td.max_rpm,rc));if(S.td.torque>P.td.max_torque&&rc>0){rc=0;if(!S._tq){ev(S,'Top drive torque limit: rotation stalled');S._tq=1}}else S._tq=0;
  S.td.rpm+=(rc-S.td.rpm)*dt/P.td.tau_s;S.td.theta+=S.td.rpm/60*dt*2*Math.PI;
  // pumps
@@ -69,7 +71,7 @@ export function step(S,dt){const t=S.t,F=S.faults,mw=P.mud.mw_ppg;
  S.motorRpm=mr;S.dpm=dpm;S.dpb=dpb;S.bitRpm=mr+S.td.rpm;S.bitTorque=bt;
  S.td.torque=S.td.rpm>2?1500+0.8*S.md+(S.mode=='rotate'?bt:0):0;
  // ROP + steering
- let rop=0;if(on&&!stall&&attached){rop=B.rop_k*S.wob**B.rop_a*Math.max(S.bitRpm,0)**B.rop_b;if(S.mode=='slide')rop*=B.slide_factor;S.ropMudF=ropMudFactor(S.mudPpg??mw,S.pos[2],S.mudType||P.mud.type||'WBM',undefined,mw);rop*=S.ropMudF}
+ let rop=0;if(on&&!stall&&attached&&!S._quillFloor){rop=B.rop_k*S.wob**B.rop_a*Math.max(S.bitRpm,0)**B.rop_b;if(S.mode=='slide')rop*=B.slide_factor;S.ropMudF=ropMudFactor(S.mudPpg??mw,S.pos[2],S.mudType||P.mud.type||'WBM',undefined,mw);rop*=S.ropMudF}
  S.rop=rop;const dmd=rop/3600*dt;
  if(dmd>0){if(S.autoSteer)steer(S);
   if(S.mode=='slide'){const tf=S.tf*R;S.inc=Math.max(0,S.inc+M.bur*Math.cos(tf)*dmd/100);if(S.inc>0.5)S.azi=(S.azi+M.bur*Math.sin(tf)/Math.sin(S.inc*R)*dmd/100+360)%360}
@@ -122,16 +124,20 @@ export function doAct(S,a){const g=guard(S,a);if(g){ev(S,'Interlock: '+g);return
  return true}
 // Sequence library. Step = [label, start, done, minDuration s, end, guardAction]
 export function drillStandSteps(){return[['Drill stand down (auto-drill)',s=>{s.dw.mode='auto';s.autoSteer=true},s=>!!s._sd,5,null,'drill']]}
-export function slideSteps(tf=90,ft=30){return[
+// 30 ft slide + 15 ft rotate was half of the previous stand. Keep that half-joint share.
+export function postConnectFootage(){const halfFt=STAND_LENGTH_M/FT/2;return {slide:halfFt*30/45,rotate:halfFt*15/45}}
+// Block height when the bit is off bottom, folded into one joint and capped by the rig.
+export function blockHeightM(stickup, offBottomM){const base=Number.isFinite(stickup)?stickup:1.5;const off=Math.max(0,Number(offBottomM)||0);return Math.min(P.dw.max_quill,base+(off%STAND_LENGTH_M))}
+export function slideSteps(tf=90,ft){const d=postConnectFootage(),slideFt=ft??d.slide,rotFt=ft==null?d.rotate:ft/2,room=s=>s.dw.quill<=P.dw.min_quill+0.05;return[
  ['Auto-steer off, orient toolface '+tf+'°',s=>{s.autoSteer=false;s.mode='rotate';s.td.cmd=0},s=>s.td.rpm<2,3],
- ['Slide '+ft+' ft (motor only)',s=>{s.mode='slide';s.tf=tf;s._m0=s.md},s=>s.md-s._m0>=ft,0],
- ['Rotate 15 ft',s=>{s.mode='rotate';s.td.cmd=60;s._m0=s.md},s=>s.md-s._m0>=15,0],
+ ['Slide '+slideFt.toFixed(1)+' ft (motor only)',s=>{s.mode='slide';s.tf=tf;s._m0=s.md},s=>s.md-s._m0>=slideFt||room(s),0],
+ ['Rotate '+rotFt.toFixed(1)+' ft',s=>{s.mode='rotate';s.td.cmd=60;s._m0=s.md},s=>s.md-s._m0>=rotFt||room(s),0],
  ['Auto-steer back on',s=>{s.autoSteer=true},s=>true,2]]}
 export const SEQUENCES={
  full:{label:'Full: drill stand > connection > drill + slide',build:S=>[...drillStandSteps(),...connectionSteps(S),...slideSteps()]},
  conn:{label:'Connection only (needs stand drilled down)',build:S=>connectionSteps(S)},
  stand:{label:'Drill one stand',build:()=>drillStandSteps()},
- slide:{label:'Directional slide 30 ft TF 90°',build:()=>slideSteps()}};
+ slide:{label:'Directional slide, half a joint, TF 90°',build:()=>slideSteps()}};
 export function startSeq(S,key,stepMode=false){if(S.seq)return false;const d=SEQUENCES[key];S.seq={key,label:d.label,steps:d.build(S),i:0,stepMode,wait:false};ev(S,'Sequence start: '+d.label);return true}
 export function seqTick(S){const q=S.seq;if(!q||q.wait)return;const st=q.steps[q.i];
  if(!q.started){if(st[5]){const g=guard(S,st[5]);if(g){if(q.blocked!==g){q.blocked=g;ev(S,'Interlock holds step: '+g)}return}}q.blocked=null;q.started=1;q.t0=S.t;ev(S,'Step '+(q.i+1)+': '+st[0]);st[1](S)}

@@ -3,7 +3,7 @@ let C,S,PH,el,PANEL;const COLORS=['#4fc3f7','#ffb74d','#81c784','#e57373','#ba68
 const TR={formulas:[],on:false,tracks:[],t:[],data:{},marks:[],win:120,paused:false,offset:0,cursor:null,last:-1e9,dt:0.25,max:14400};
 const KEY='dw33-traces-v1';
 const simFeed=()=>/SIMULATED/i.test((GX.feedState||{}).src||'');
-const sigSrc=k=>{const m={spp:'spp',Q:'Q',hook:'hook',wob:'wob',rpm:'rpm',md:'md',quill:'quill'};if(window.WML&&m[k]&&WML.mode=='replay')return 'replay';if(window.WML&&m[k]&&WML.liveMode&&WML.healthy())return 'live';const v=m[k]&&C.SRC?C.SRC[m[k]]:'sim';if(v=='live'&&window.WML&&WML.mode=='replay')return 'replay';if(v=='live'&&(GX.feedState||{}).status!='live')return 'sim';return v=='live'&&simFeed()?'live-sim':v};
+const sigSrc=k=>{const m={spp:'spp',Q:'Q',hook:'hook',wob:'wob',rpm:'rpm',md:'md',quill:'quill'};if(window.WML&&m[k]&&WML.mode=='replay')return 'replay';if(window.WML&&m[k]&&WML.liveMode&&WML.healthy())return 'live';const v=m[k]&&C.SRC?C.SRC[m[k]]:'sim';if(v=='disconnected')return 'disconnected';if(v=='live'&&window.WML&&WML.mode=='replay')return 'replay';if(v=='live'&&window.WML&&!WML.simulated&&!WML.healthy())return 'disconnected';if(v=='live'&&(GX.feedState||{}).status!='live')return 'sim';return v=='live'&&simFeed()?'live-sim':v};
 const liveTag=(id,d)=>(window.WML&&WML.drives&&WML.drives(id))||d||'sim';// LIVE when a WITSML channel drives this signal
 // ---- signal catalogue ----
 function catalogue(){const L=[];const add=(id,label,unit,get,src)=>{const isF=String(id).startsWith('f:'),w=!isF&&!!U.dim(unit);L.push({id,label,u0:unit,get unit(){return (w||isF)?U.u(unit):unit},get:w?()=>{const v=get();return v==null?v:U.v(unit,v)}:get,src:src||(()=>'sim'),group:label.split(' · ')[0]})};
@@ -69,7 +69,7 @@ function makeFormula(name,unit,expr){name=String(name||'').trim();expr=String(ex
  const f={id:'f:'+name.replace(/\W+/g,'_'),name,unit:U.base(String(unit||'').trim()),expr,refs,base};
  const val=id=>{const c=byId(id);if(!c)return NaN;const x=c.get();return x==null?NaN:+x};
  f.get=()=>{const r=fn(val,id=>id in base?base[id]:(base[id]=val(id)),Math);return isFinite(r)?r:null};
- f.src=()=>{const ss=refs.map(id=>byId(id)?.src()||'sim');return ss.find(x=>x=='live')||ss.find(x=>x=='live-sim')||ss.find(x=>x=='csv')||'sim'};
+ f.src=()=>{const ss=refs.map(id=>byId(id)?.src()||'sim');return ss.find(x=>x=='live')||ss.find(x=>x=='live-sim')||ss.find(x=>x=='csv')||ss.find(x=>x=='disconnected')||ss.find(x=>x=='unavailable')||'sim'};
  TR.formulas=TR.formulas.filter(x=>x.id!=f.id);TR.formulas.push(f);save();refreshCat();return f.id}
 function addFormula(name,unit,expr){const id=makeFormula(name,unit,expr);addTrack(id);return id}
 // ---- sampling (sim time) ----
@@ -104,7 +104,7 @@ function ui(){const b=el('button','background:#0a6;color:#fff;font-weight:700','
  cv.onmousemove=e=>{const r=cv.getBoundingClientRect();TR.cursor=(e.clientX-r.left)/r.width};cv.onmouseleave=()=>TR.cursor=null;cv.onclick=e=>{const r=cv.getBoundingClientRect(),X=e.clientX-r.left,Y=e.clientY-r.top;if(X>160&&X<190){const tr=TR.tracks.find(t=>t._y&&Y>=t._y[0]&&Y<t._y[0]+20);if(tr)rmTrack(tr.id)}};
  cv.onwheel=e=>{e.preventDefault();if(!TR.paused)q('#trpause').click();TR.offset=Math.max(0,Math.min(1,TR.offset+e.deltaY*0.0005));q('#trscroll').value=1000-TR.offset*1000}}
 const esc=x=>String(x).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const SC={live:'#1db954','live-sim':'#e08a00',csv:'#2f7fd0',sim:'#6b7580',replay:'#7c4dff'},SL={live:'LIVE','live-sim':'SIM-TEST',csv:'CSV',sim:'SIM',replay:'REPLAY'};
+const SC={live:'#1db954','live-sim':'#e08a00',csv:'#2f7fd0',sim:'#6b7580',replay:'#7c4dff',disconnected:'#b71c1c',unavailable:'#8a4b12'},SL={live:'LIVE','live-sim':'SIM-TEST',csv:'CSV',sim:'SIM',replay:'REPLAY',disconnected:'DISCONNECTED',unavailable:'UNAVAILABLE'};
 const pill=k=>`<span style="background:${SC[k]||'#6b7580'};color:#fff;font-weight:700;font-size:10px;padding:0 4px;border-radius:3px">${SL[k]||k}</span>`;
 function badge(X,Y,k){ctx.font='bold 10px sans-serif';const t=SL[k]||k,w=ctx.measureText(t).width+8;ctx.fillStyle=SC[k]||'#6b7580';ctx.fillRect(X,Y,w,13);ctx.fillStyle='#fff';ctx.fillText(t,X+4,Y+10);ctx.font='11px sans-serif'}
 let SRCF='all';const srcOk=k=>SRCF=='all'||(SRCF=='live'?k=='live':k!='live');
@@ -168,7 +168,7 @@ export async function init(ctx){C=ctx;S=C.S;PH=C.PH;el=C.el;PANEL=C.PANEL;ui();
  setInterval(panelHook,300);setInterval(sigBadges,500);setInterval(()=>{if(TR.on){const n=catalogue().length;if(n!=CAT.length&&document.activeElement!==picker)renderTree();refreshCat()}},2000);
  U.on((o,n)=>{for(const tr of TR.tracks){const k=U.f(tr.u0,n)/U.f(tr.u0,o);if(k!=1&&TR.data[tr.id])TR.data[tr.id]=TR.data[tr.id].map(v=>v==null?v:v*k)}try{build()}catch{}});
  Object.assign(window.GX,{traces:{TR,addTrack,rmTrack,open,toCSV,catalogue:()=>(refreshCat(),CAT.map(c=>({id:c.id,label:c.label,unit:c.unit}))),entSignals:n=>entSignals(C.ents.find(e=>e.name==n)).map(c=>c.id),addFormula,renderTree}});
- try{(await import('./ext4.js?v=fp-ops-r2-20261108')).init(C)}catch(err){console.error('ext4',err)}
+ try{(await import('./ext4.js?v=j13c-20261109')).init(C)}catch(err){console.error('ext4',err)}
  try{(await import('./ext5.js?v=5922')).init(C)}catch(err){console.error('ext5',err)}
  try{(await import('./wmlinvui.js?v=5923')).init(C)}catch(err){console.error('wmlinv',err)} try{(await import('./input.js?v=c6')).init(C)}catch(err){console.error('input',err)} try{(await import('./vpad.js?v=b9')).init()}catch(err){console.error('vpad',err)}
  try{(await import('./ext6.js?v=592')).init(C)}catch(err){console.error('ext6',err)}

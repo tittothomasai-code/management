@@ -1,0 +1,43 @@
+{
+  "_meta": {
+    "kind": "synthetic adapter payload for the summary fixture",
+    "noRawXml": true,
+    "noCredentials": true,
+    "gates": {"verified": false, "import": "prohibited"}
+  },
+  "wellboreAssociation": {
+    "well": {"uid": "synth-well-0001", "name": "SYNTH-01", "nameFlag": "redacted/unverified", "uidFlag": "redacted/unverified"},
+    "selectedWellbore": {"uid": "synth-bore-0004", "name": "SYN-B04", "flag": "unverified"},
+    "wellbores": [
+      {"uid": "synth-bore-0001", "name": "SYN-B01"},
+      {"uid": "synth-bore-0002", "name": "SYN-B02"},
+      {"uid": "synth-bore-0003", "name": "SYN-B03"},
+      {"uid": "synth-bore-0004", "name": "SYN-B04"},
+      {"uid": "synth-bore-0005", "name": "SYN-B05"},
+      {"uid": "synth-bore-0006", "name": "SYN-B06"},
+      {"uid": "synth-bore-0007", "name": "SYN-B07"}
+    ]
+  },
+  "sourceBackedFacts": {
+    "wellIdentityAndWellbores": [
+      {"fact": "Selected well name is SYNTH-01", "value": "SYNTH-01", "provenance": {"objectType": "well", "field": "name", "requestID": "REQ-SYNTH-001"}, "flags": {"state": "redacted/unverified", "verified": false, "redacted": true, "import": "prohibited"}},
+      {"fact": "Selected well UID", "value": "synth-well-0001", "provenance": {"objectType": "well", "field": "uid", "requestID": "REQ-SYNTH-001"}, "flags": {"state": "redacted/unverified", "verified": false, "redacted": true, "import": "prohibited"}},
+      {"fact": "Well has 7 wellbores listed in the store", "value": 7, "provenance": {"objectType": "wellbore", "field": "uid", "requestID": "REQ-SYNTH-002"}, "flags": {"state": "unverified", "verified": false, "redacted": false, "import": "prohibited"}},
+      {"fact": "Selected wellbore name is SYN-B04", "value": "SYN-B04", "provenance": {"objectType": "wellbore", "field": "name", "requestID": "REQ-SYNTH-002"}, "flags": {"state": "unverified", "verified": false, "redacted": false, "import": "prohibited"}},
+      {"fact": "Selected wellbore UID", "value": "synth-bore-0004", "provenance": {"objectType": "wellbore", "field": "uid", "requestID": "REQ-SYNTH-002"}, "flags": {"state": "unverified", "verified": false, "redacted": false, "import": "prohibited"}},
+      {"fact": "Wellbore names in the store", "value": ["SYN-B01", "SYN-B02", "SYN-B03", "SYN-B04", "SYN-B05", "SYN-B06", "SYN-B07"], "provenance": {"objectType": "wellbore", "field": "name", "requestID": "REQ-SYNTH-002"}, "flags": {"state": "unverified", "verified": false, "redacted": false, "import": "prohibited"}}
+    ],
+    "serverMetadata": [
+      {"fact": "WITSML server vendor is Example Store", "value": "Example Store", "provenance": {"objectType": "capServer", "field": "vendor", "requestID": "REQ-SYNTH-CAP"}, "flags": {"state": "server-capability-cached", "verified": false}},
+      {"fact": "WITSML server software version", "value": "0.0.0-synth", "provenance": {"objectType": "capServer", "field": "version", "requestID": "REQ-SYNTH-CAP"}, "flags": {"state": "server-capability-cached", "verified": false}},
+      {"fact": "Server WITSML schema version", "value": "1.4.1.1", "provenance": {"objectType": "capServer", "field": "schemaVersion", "requestID": "REQ-SYNTH-CAP"}, "flags": {"state": "server-capability-cached", "verified": false}},
+      {"fact": "Readable object types advertised by the server", "value": ["well", "wellbore", "log", "trajectory", "changeLog"], "provenance": {"objectType": "capServer", "field": "dataObject", "requestID": "REQ-SYNTH-CAP"}, "flags": {"state": "server-capability-cached", "verified": false}}
+    ]
+  },
+  "surveyDerivedIntervals": {"surveyIntervals": [], "status": "unavailable"},
+  "coverageGaps": [
+    "SYN-B04 trajectory inventory: HTTP 502 (cause unknown)",
+    "changeLog broad list: HTTP 504 (cause unknown); no narrow query made",
+    "surveys, logs and history: not read"
+  ]
+}

@@ -30,7 +30,7 @@ assert.equal(status(w,now,{url:'https://example.org/witsml'}),'WITSML WAITING FO
 assert.equal(status({...w,log:{...w.log,uid:'new'}}),'WITSML WAITING FOR ADVANCE');
 assert.equal(status({...w,hist:[{t:now-1000}]}),'WITSML WAITING FOR ADVANCE');
 assert.equal(status({...w,lastRowMs:now}),'WITSML WAITING','receipt time cannot be the source index');
-assert.equal(status({...w,hist:[{t:now+1000}],lastRowMs:now+1000}),'WITSML WAITING');
+assert.equal(status({...w,hist:[{t:now+1000}],lastRowMs:now+1000}),'WITSML FUTURE');
 assert.equal(status({...w,hist:[{t:now-180000}],lastRowMs:now-180000}),'WITSML STALE');
 assert.equal(status({...w,hist:[{t:NaN}]}),'WITSML WAITING');
 assert.equal(status({...w,hist:[]}),'WITSML WAITING','a log header is not a source row');
