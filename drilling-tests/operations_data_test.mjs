@@ -38,6 +38,10 @@ assert.equal(status({...w,log:{...w.log,indexType:'measured depth'}}),'WITSML TI
 assert.equal(status({...w,mode:'replay'}),'WITSML REPLAY');
 assert.equal(status({...w,authDead:true}),'WITSML DISCONNECTED');
 assert.equal(status({...w,transportDead:true}),'WITSML DISCONNECTED');
+assert.equal(status({...w,proxyRefusal:true,connected:false}),'refused by proxy');
+assert.equal(status({...w,redactionHold:true,connected:false}),'REDACTED - not imported');
+assert.equal(status({...w,identityStop:true,connected:false}),'Import stopped. Redacted well identity.');
+assert.equal(status({...w,transportDead:'http-502',proxyRefusal:true}),'WITSML DISCONNECTED');
 assert.equal(status({...w,simulated:true}),'WITSML TEST FEED');
 assert.equal(status({...w,supp:'SIM-TEST'}),'WITSML TEST FEED');
 assert.equal(status({...w,log:{...w.log,nameWell:'SYNTHETIC WELL'}}),'WITSML TEST FEED');

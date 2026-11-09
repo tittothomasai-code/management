@@ -106,22 +106,29 @@ function cleanFact(item) {
 }
 
 // Facts the connection has actually listed. Nothing else is filled in.
-export function contractFromListed({well, wellbores, redacted=false} = {}) {
+// A field named by redactedFields is the word redacted, never the store text.
+export function contractFromListed({well, wellbores, redacted=false, redactedFields=[]} = {}) {
   if (!well?.uid) return null;
-  const identity = {state: redacted ? 'redacted/unverified' : 'unverified', verified:false, redacted:!!redacted, import:'prohibited'};
-  const listed = {state:'unverified', verified:false, redacted:false, import:'prohibited'};
+  const marked = new Set(Array.isArray(redactedFields) ? redactedFields : []);
+  const flagsFor = (field, baseRedacted=false) => {
+    const isRed = marked.has(field) || baseRedacted;
+    return {state: isRed ? 'redacted/unverified' : 'unverified', verified:false, redacted:isRed, import:'prohibited'};
+  };
+  const show = (field, value) => marked.has(field) ? 'redacted' : value;
+  const uidFlags = flagsFor('uid', redacted);
+  const listed = flagsFor('wellbore', false);
   const bores = (Array.isArray(wellbores) ? wellbores : []).filter(b => b && b.uid);
   const selected = bores[0];
   const facts = [
-    {fact:'Selected well name', value:well.name || well.uid, provenance:{objectType:'well', field:'name'}, flags:identity},
-    {fact:'Selected well UID', value:well.uid, provenance:{objectType:'well', field:'uid'}, flags:identity},
+    {fact:'Selected well name', value:show('name', well.name || well.uid), provenance:{objectType:'well', field:'name'}, flags:flagsFor('name', redacted)},
+    {fact:'Selected well UID', value:show('uid', well.uid), provenance:{objectType:'well', field:'uid'}, flags:uidFlags},
   ];
   if (bores.length) {
     facts.push(
-      {fact:'Wellbores listed', value:bores.length, provenance:{objectType:'wellbore', field:'uid'}, flags:listed},
-      {fact:'Selected wellbore name', value:selected.name || selected.uid, provenance:{objectType:'wellbore', field:'name'}, flags:listed},
-      {fact:'Selected wellbore UID', value:selected.uid, provenance:{objectType:'wellbore', field:'uid'}, flags:listed},
-      {fact:'Wellbore names', value:[...new Set(bores.map(b => b.name || b.uid))], provenance:{objectType:'wellbore', field:'name'}, flags:listed},
+      {fact:'Wellbores listed', value:show('wellbore', bores.length), provenance:{objectType:'wellbore', field:'uid'}, flags:listed},
+      {fact:'Selected wellbore name', value:show('wellbore-name', selected.name || selected.uid), provenance:{objectType:'wellbore', field:'name'}, flags:flagsFor('wellbore-name')},
+      {fact:'Selected wellbore UID', value:show('wellbore-uid', selected.uid), provenance:{objectType:'wellbore', field:'uid'}, flags:flagsFor('wellbore-uid')},
+      {fact:'Wellbore names', value:show('wellbore-name', [...new Set(bores.map(b => b.name || b.uid))]), provenance:{objectType:'wellbore', field:'name'}, flags:flagsFor('wellbore-name')},
     );
   }
   return {

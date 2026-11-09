@@ -15,7 +15,7 @@ background:#452300;color:#fff2ce;padding:5px 8px;font:bold 11px system-ui;
 pointer-events:none">OFFLINE SMOKE TEST · SYNTHETIC FIXTURE</div>
 <script id="wellContract" type="application/json">__CONTRACT__</script>
 <script type="module">
-import {open} from '/operations.js?v=j13c-20261109';
+import {open} from '/operations.js?v=j13d-20261109';
 import {minCurvStations} from '/geo.js';
 import {synth} from '/conn.js?v=fp-ops-r2-20261108';
 const ft = .3048;
@@ -88,7 +88,10 @@ window.test = {
   testStore(){feed.simulated=true;},
   untest(){feed.simulated=false;},
   replay(){feed.mode='replay';},
-  noData(){feed.mode='off';feed.log=null;}
+  noData(){feed.mode='off';feed.log=null;},
+  redacted(){feed.redactionHold=true;feed.proxyRefusal=false;feed.identityStop=false;feed.transportDead=null;feed.authDead=false;feed.connected=false;feed.log=null;feed.hist=[];},
+  refused(){feed.redactionHold=false;feed.proxyRefusal=true;feed.identityStop=false;feed.transportDead=null;feed.authDead=false;feed.connected=false;feed.log=null;feed.hist=[];},
+  disconnected(){feed.redactionHold=false;feed.proxyRefusal=false;feed.identityStop=false;feed.transportDead='http-502';feed.authDead=false;feed.connected=false;feed.log=null;feed.hist=[];}
 };
 open();
 </script></body></html>"""
@@ -250,7 +253,7 @@ small{color:#b4c6d7}
 <main id="out"></main>
 <script id="contract" type="application/json">__CONTRACT__</script>
 <script type="module">
-import {sourceBackedSummary} from '/rtoc_summary.js?v=j13c-20261109';
+import {sourceBackedSummary} from '/rtoc_summary.js?v=j13d-20261109';
 const contract = JSON.parse(document.getElementById('contract').textContent);
 const summary = sourceBackedSummary(contract);
 const out = document.getElementById('out');
@@ -287,7 +290,7 @@ def verify_game(browser, base):
     page = context.new_page()
     errors = []
     page.on("pageerror", lambda error: errors.append(str(error)))
-    page.goto(base + "/index.html?v=j13c-20261109", wait_until="domcontentloaded")
+    page.goto(base + "/index.html?v=j13d-20261109", wait_until="domcontentloaded")
     page.wait_for_function("() => window.WML && window.GX && window.GX.witsml", timeout=20000)
     assert page.evaluate("typeof window.WML === 'object' && window.WML !== null")
     assert page.evaluate("typeof window.GX.witsml === 'object' && window.GX.witsml !== null")
@@ -298,6 +301,35 @@ def verify_game(browser, base):
     assert not leaked, leaked
     context.close()
     print("PASS game page: no page errors, window.WML and GX.witsml exist")
+
+
+def verify_policy(browser, base, screenshots, name, viewport, touch=False):
+    context = browser.new_context(viewport=viewport, is_mobile=touch, has_touch=touch, service_workers="block")
+    blocked = []
+    context.route("**/*", lambda route: route.continue_() if route.request.url.startswith(base + "/")
+                  else (blocked.append(route.request.url), route.abort()))
+    page = context.new_page()
+    contract = (Path(__file__).parent / "fixtures" / "well-summary-safe.json").read_text()
+    page.route(base + "/__observer_test", lambda route: route.fulfill(
+        status=200, content_type="text/html", body=HARNESS.replace("__CONTRACT__", contract)))
+    errors = []
+    page.on("pageerror", lambda error: errors.append(str(error)))
+    page.goto(base + "/__observer_test")
+    badge = page.locator("#opsSource")
+    page.evaluate("test.redacted()")
+    expect(badge).to_have_text("REDACTED - not imported")
+    expect(page.locator("#opsWell")).not_to_contain_text("Offline QA Well")
+    page.screenshot(path=screenshots / f"redacted-{name}.png")
+    page.evaluate("test.refused()")
+    expect(badge).to_have_text("refused by proxy")
+    expect(page.locator("#opsWell")).not_to_contain_text("Offline QA Well")
+    page.screenshot(path=screenshots / f"refused-{name}.png")
+    page.evaluate("test.disconnected()")
+    expect(badge).to_have_text("WITSML DISCONNECTED")
+    assert not errors, errors
+    assert not blocked, blocked
+    context.close()
+    print(f"PASS {name}: redacted, refused, and disconnected stay distinct")
 
 
 def verify_summary(browser, base, screenshots, name, viewport, touch=False):
@@ -346,6 +378,8 @@ if __name__ == "__main__":
         verify_game(browser, args.base_url)
         verify(browser,args.base_url,args.screenshots,"desktop",{"width":1680,"height":970})
         verify(browser,args.base_url,args.screenshots,"mobile",{"width":390,"height":844},touch=True)
+        verify_policy(browser,args.base_url,args.screenshots,"desktop",{"width":1680,"height":970})
+        verify_policy(browser,args.base_url,args.screenshots,"mobile",{"width":390,"height":844},touch=True)
         verify_summary(browser,args.base_url,args.screenshots,"desktop",{"width":1680,"height":970})
         verify_summary(browser,args.base_url,args.screenshots,"mobile",{"width":390,"height":844},touch=True)
         browser.close()

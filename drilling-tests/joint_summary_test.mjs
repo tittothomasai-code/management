@@ -36,16 +36,16 @@ assert.match(text('rtoc_fixtures.js'), /elevation uom="m" datum="MSL">27\.4</);
 assert.match(text('fixtures/runsheet_np045l_rows.js'), /27\.40/);
 
 const versions = {
-  'main.js': ['physics.js?v=j13c-20261109', 'ext.js?v=j13c-20261109'],
-  'index.html': ['main.js?v=j13c-20261109', 'start.js?v=j13c-20261109'],
-  'ext.js': ['ext2.js?v=j13c-20261109'],
-  'ext2.js': ['physics.js?v=j13c-20261109', 'ext3.js?v=j13c-20261109'],
-  'ext3.js': ['ext4.js?v=j13c-20261109'],
-  'ext4.js': ['physics.js?v=j13c-20261109', 'rtoc_summary.js?v=j13c-20261109'],
-  'rtoc.js': ['physics.js?v=j13c-20261109', 'rtoc_core.js?v=j13c-20261109', 'rtoc_summary.js?v=j13c-20261109'],
+  'main.js': ['physics.js?v=j13c-20261109', 'ext.js?v=j13d-20261109'],
+  'index.html': ['main.js?v=j13d-20261109', 'start.js?v=j13d-20261109'],
+  'ext.js': ['ext2.js?v=j13d-20261109'],
+  'ext2.js': ['physics.js?v=j13c-20261109', 'ext3.js?v=j13d-20261109'],
+  'ext3.js': ['ext4.js?v=j13d-20261109'],
+  'ext4.js': ['physics.js?v=j13c-20261109', 'rtoc_summary.js?v=j13d-20261109', 'wwell.js?v=wred1-20261109'],
+  'rtoc.js': ['physics.js?v=j13c-20261109', 'rtoc_core.js?v=j13c-20261109', 'rtoc_summary.js?v=j13d-20261109'],
   'rtoc_summary.js': ['rtoc_core.js?v=j13c-20261109'],
-  'start.js': ['rtoc.js?v=j13c-20261109', 'operations.js?v=j13c-20261109'],
-  'operations.js': ['operations_data.js?v=j13c-20261109', 'rtoc_summary.js?v=j13c-20261109'],
+  'start.js': ['rtoc.js?v=j13d-20261109', 'operations.js?v=j13d-20261109'],
+  'operations.js': ['operations_data.js?v=j13d-20261109', 'rtoc_summary.js?v=j13d-20261109'],
   'operations_data.js': ['operations_joint_estimates.js?v=j13c-20261109'],
 };
 const esc = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -82,6 +82,11 @@ live.hist = [{t:now - 5000}, {t:now - 1000}];
 assert.equal(status(live), 'WITSML LIVE');
 assert.notEqual(status({...live, connected:false}), 'SIM');
 assert.equal(status({...live, connected:false}), 'WITSML DISCONNECTED');
+const policy = (extra) => feedSource({...row(now - 1000), ...extra}, now, {url:'https://example.com/witsml'}, {});
+assert.equal(policy({proxyRefusal:true, connected:false}), 'refused by proxy');
+assert.equal(policy({redactionHold:true, connected:false}), 'REDACTED - not imported');
+assert.equal(policy({identityStop:true, connected:false}), 'Import stopped. Redacted well identity.');
+assert.equal(policy({transportDead:'http-502', proxyRefusal:true}), 'WITSML DISCONNECTED');
 assert.equal(status(row(now + 3600e3), now), 'WITSML FUTURE');
 assert.notEqual(status(row(now + 7200e3), now + 500), 'WITSML LIVE');
 assert.equal(FUTURE_SKEW_MS > 0 && FUTURE_SKEW_MS < 1000, true);
@@ -143,7 +148,8 @@ const changed = [
   'drilling/ext.js', 'drilling/ext2.js', 'drilling/ext3.js', 'drilling/ext4.js', 'drilling/main.js',
   'drilling/operations.js', 'drilling/operations_data.js', 'drilling/operations_joint_estimates.js',
   'drilling/physics.js', 'drilling/rtoc.js', 'drilling/rtoc_core.js', 'drilling/rtoc_summary.js', 'drilling/start.js',
-  'drilling-tests/adversarial.mjs', 'drilling-tests/joint_summary_test.mjs',
+  'drilling/wdash.js', 'drilling/wwell.js', 'drilling/witsml-proxy.mjs', 'drilling/witsml-redaction-slots.mjs',
+  'drilling-tests/adversarial.mjs', 'drilling-tests/joint_summary_test.mjs', 'drilling-tests/witsml_redaction_test.mjs',
   'drilling-tests/site/operations_data.js', 'drilling-tests/site/operations_joint_estimates.js', 'drilling-tests/site/rtoc_core.js',
 ];
 for (const file of changed) {
