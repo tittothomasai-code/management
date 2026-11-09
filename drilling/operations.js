@@ -1,6 +1,6 @@
 import {FT, TRACKS, actualSurveyStations, displayedSurveySpans, drilledIntervals, fallbackInterval, feedConnectionIntervals, feedJoints, feedSource, finite, imageRows,
-  jointProgress, latestChannel, readSamples, surveyDoglegs, surveyHoleContext, surveyMatches} from './operations_data.js?v=j13c-20261109';
-import {sourceBackedSummary} from './rtoc_summary.js?v=j13c-20261109';
+  jointProgress, latestChannel, readSamples, surveyDoglegs, surveyHoleContext, surveyMatches} from './operations_data.js?v=j13d-20261109';
+import {sourceBackedSummary} from './rtoc_summary.js?v=j13d-20261109';
 import {chart, doglegChart, imageLog} from './operations_plots.js?v=ops-observer-r4';
 import {minCurvStations, samplePath} from './geo.js?v=fp-ops-r2-20261108';
 import {createCutaway} from './operations_scene.js?v=ops-observer-r1';
@@ -133,7 +133,7 @@ function feedModel(api, source) {
       if (candidate) plan = minCurvStations(candidate.st).map(surveyPoint);
     }
   }
-  const canShowIdentity = !['WITSML TEST FEED','WITSML REPLAY','WITSML DISCONNECTED'].includes(source);
+  const canShowIdentity = !['WITSML TEST FEED','WITSML REPLAY','WITSML DISCONNECTED','refused by proxy','REDACTED - not imported','Import stopped. Redacted well identity.'].includes(source);
   const g8 = loadedImage?.log === w?.log && loadedImage?.url === api?.CFG?.url ? loadedImage?.data : null;
   const image = data ? imageRows(w,g8,-Infinity,Infinity) : [];
   const gamma = data && g8 && g8.well === w.log.w && g8.wb === w.log.b && !g8.sim

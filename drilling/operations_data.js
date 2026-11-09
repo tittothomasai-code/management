@@ -87,10 +87,16 @@ export function feedSource(w, now = Date.now(), cfg, observation = {}) {
     observation.advanced = false;
     return source;
   }
+  // A dead socket stays disconnected. A proxy refusal and a redacted import
+  // are separate: they must not be labelled as a transport failure.
+  if (w?.transportDead) return reset('WITSML DISCONNECTED');
+  if (w?.proxyRefusal) return reset('refused by proxy');
+  if (w?.redactionHold) return reset('REDACTED - not imported');
+  if (w?.identityStop) return reset('Import stopped. Redacted well identity.');
   if (fixtureFeed(w, cfg)) return reset('WITSML TEST FEED');
   if (w?.mode === 'replay') return reset('WITSML REPLAY');
   // A dropped real session stays disconnected. It is not relabelled as the simulator.
-  if (!w || w.authDead || w.transportDead || w.connected === false) return reset('WITSML DISCONNECTED');
+  if (!w || w.authDead || w.connected === false) return reset('WITSML DISCONNECTED');
   if (w.mode === 'loading') return reset('WITSML WAITING');
   // The deployed poller uses mode for replay. A normal live session can
   // still report mode='off' while supplying a selected log and source rows.

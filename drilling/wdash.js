@@ -2,7 +2,7 @@
 // borehole image tracks (unwrapped 0-360°, colour map, sinusoids). Data: WITSML 1.4.1.1 store (via proxy or direct) or SIM.
 // Credentials: held ONLY in this module's memory while the panel is connected. Never written to browser storage (local or session),
 // cookies, URLs, the console or error text. Cleared on Disconnect and on close. SIM data is labelled SIM, never LIVE.
-import * as K from './wdash_core.js?v=fp-ops-r2-20261108';import * as WW from './wwell.js?v=fp-ops-r2-20261108';
+import * as K from './wdash_core.js?v=fp-ops-r2-20261108';import * as WW from './wwell.js?v=wred1-20261109';
 const $=id=>document.getElementById(id);
 const HOSTED='https://tryfecta-witsml-proxy.netlify.app/witsml-proxy',LOCAL='http://localhost:8796/soap';
 const NS='xmlns="http://www.witsml.org/schemas/1series" version="1.4.1.1"';
@@ -63,11 +63,16 @@ async function call1(op,wmlType,query,options){const C=D.conn,u=CRED||{user:'',p
   h={'Content-Type':'application/json'};C.proxy=normProxy(C.proxy);if(/(?:^|\/)witsml-machine\/?(?:[?#]|$)/.test(C.proxy))throw NOPRX('the machine route requires a server-side reader');
   const hosted=!isLocalProxy(C.proxy);if(hosted&&!u.user)throw AUTH('no login in this session');if(hosted&&u.user)h['X-Witsml-Authorization']='Basic '+btoa(unescape(encodeURIComponent(u.user+':'+u.pass)));
   body=JSON.stringify(hosted?{url:C.url,op,wmlType,query,options}:{url:C.url,user:u.user,pass:u.pass,op,wmlType,query,options});
-  const r=await fetch(C.proxy,{method:'POST',headers:h,body,signal:ac.signal});if(r.status==401||r.status==403&&!/origin|upstream not allowed|op not allowed/.test(await r.clone().text().catch(()=>'')))throw AUTH('the store refused the user name/password (HTTP '+r.status+')');
+  const r=await fetch(C.proxy,{method:'POST',headers:h,body,signal:ac.signal});if(r.status===502)throw Object.assign(new Error('disconnected'),{transportRefusal:true});if(r.status===422)throw Object.assign(new Error('refused by proxy'),{guardRefusal:true,proxyRefusal:true});if(r.status==401||r.status==403&&!/origin|upstream not allowed|op not allowed/.test(await r.clone().text().catch(()=>'')))throw AUTH('the store refused the user name/password (HTTP '+r.status+')');
   const j=await r.json().catch(()=>null);if(!j)throw NOPRX('proxy answered HTTP '+r.status+(r.status==404?' — check the proxy URL':'')+' (not JSON)');
-  const refusal=WW.guardRefusal(j);if(refusal)throw refusal;
-  if(j.error){const m=String(j.error);if(/credentials required|Authentication failed/i.test(m))throw AUTH(m);if(/origin not allowed|upstream not allowed|rate limit|upstream (connection|timeout)|TLS/i.test(m))throw NOPRX(m);if(/SOAP fault/i.test(m))throw new Error('Store error ('+m+')');throw new Error('Proxy: '+m)}
-  if(op!='WMLS_GetVersion'&&typeof j.result=='number'&&j.result<0)throw new Error('Store error (result '+j.result+(j.supp?': '+j.supp:'')+')');return {xml:j.xml||'',version:j.version||j.result,result:j.result,supp:j.supp}}
+  const decision=WW.prepareReply(j,r.status);
+  if(decision.transport)throw Object.assign(new Error('disconnected'),{transportRefusal:true});
+  if(decision.refusal)throw Object.assign(new Error('refused by proxy'),{guardRefusal:true,proxyRefusal:true});
+  if(decision.redactionHold)throw Object.assign(new Error('REDACTED - not imported'),{redactionHold:true});
+  if(decision.identityStop)throw Object.assign(new Error('Import stopped. Redacted well identity.'),{identityStop:true,closed:true});
+  const safe=decision.reply;
+  if(safe.error){const m=String(safe.error);if(/credentials required|Authentication failed/i.test(m))throw AUTH(m);if(/origin not allowed|upstream not allowed|rate limit|upstream (connection|timeout)|TLS/i.test(m))throw NOPRX(m);if(/SOAP fault/i.test(m))throw new Error('Store error ('+m+')');throw new Error('Proxy: '+m)}
+  if(op!='WMLS_GetVersion'&&typeof safe.result=='number'&&safe.result<0)throw new Error('Store error (result '+safe.result+(safe.supp?': '+safe.supp:'')+')');return {xml:safe.xml||'',version:safe.version||safe.result,result:safe.result,supp:safe.supp||'',redactedFields:safe.redactedFields||[],redactionApplied:true}}
  catch(e){if(e.name=='AbortError')throw Object.assign(new Error('no answer within 45 s'),{timeout:1});if(e instanceof TypeError)throw NOPRX(C.via=='direct'?'browser blocked the request (CORS) or the store is unreachable — use a proxy (see guide)':'cannot reach the proxy (check the proxy URL / network)');if(e.guardRefusal)throw e;throw Object.assign(new Error(K.redact(e.message,[u.user,u.pass])),{auth:e.auth})}
  finally{clearTimeout(to)}}
 export const ids=(x,t)=>[...String(x).matchAll(new RegExp('<(?:\\w+:)?'+t+'\\b([^>]*?)(?:/>|>([\\s\\S]*?)</(?:\\w+:)?'+t+'>)','g'))].map(m=>({uid:(m[1].match(/\buid="([^"]*)"/)||[])[1],name:(((m[2]||'').match(/<(?:\w+:)?name>([^<]*)</)||[])[1]||'').trim()})).filter(w=>w.uid);
@@ -81,7 +86,7 @@ function rebuild(){if(!D.P)return;const V=WW.buildViews(D.sets,D.P);D.M=V.M;D.de
 function select(P,first){D.P=P;Object.assign(D.conn,{wb:P.wb,log:P.uid,logTime:!!P.time});saveCfg();rebuild();D.src='WITSML';if(first||true)D.mode=P.time?'time':'depth';D.top=null;D.auto=true;D.tracks=cur().ml?.length?defaultTracks(cur().ml):[];D.conn.okAt=Date.now();head();render()}
 async function pollLive(){const C=D.conn,P=D.P;if(!C.connected||!P||P.obj!='log'||C.busy)return;C.busy=true;
  try{const n=await readLog(P);if(n){const had=cur().ml?.length;rebuild();if(!had||!D.tracks.length)D.tracks=defaultTracks(cur().ml||[])}
-  C.okAt=Date.now();C.err='';C.polls=(C.polls||0)+1}catch(e){C.err=e.message;if(e.auth){disconnect('Login refused — polling stopped. Check user name and password.')}else if(e.guardRefusal){C.connected=false;C.okAt=0;head()}}finally{C.busy=false;render()}}
+  C.okAt=Date.now();C.err='';C.polls=(C.polls||0)+1}catch(e){C.err=e.message;if(e.auth){disconnect('Login refused — polling stopped. Check user name and password.')}else if(e.transportRefusal){C.connected=false;C.okAt=0;C.err='disconnected';head()}else if(e.guardRefusal||e.proxyRefusal||e.redactionHold||e.identityStop){C.connected=false;C.okAt=0;head()}}finally{C.busy=false;render()}}
 function disconnect(msg){CRED=null;Object.assign(D.conn,{connected:false,log:'',okAt:0,err:msg||''});D.sets=[];D.P=null;D.M=null;D.disc=null;$('wdSet')&&($('wdSet').style.display='none');['wdUser','wdPass'].forEach(i=>{if($(i))$(i).value=''});D.src='SIM';simInit();D.tracks=defaultTracks(cur().ml);D.top=null;D.auto=true;head();render()}
 // ---------- UI ----------
 const CSS=`body.mob #wdash.msheet,body.mob #wdash.mcol,#wdash.msheet{display:flex!important;top:0!important;bottom:0!important;left:0!important;right:0!important;width:auto!important;max-height:none!important;height:auto!important;overflow:hidden!important;border-radius:0!important;z-index:100002!important}body.mob #wdash.msheet::before{display:none!important}

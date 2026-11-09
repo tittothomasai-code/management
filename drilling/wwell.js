@@ -3,6 +3,7 @@
 // trajectories, mudLogs), reads data, selects the live / real-time branch by default, and builds Depth and Time views (channels mapped through
 // bit-depth / hole-depth). Transport is injected (call(op,wmlType,query,options) -> {xml}); credentials never pass through this module.
 import * as K from './wdash_core.js?v=fp-ops-r2-20261108';
+import { redactedRanges } from './witsml-redaction-slots.mjs?v=wred1-20261109';
 export const NS='xmlns="http://www.witsml.org/schemas/1series" version="1.4.1.1"';
 const xa=s=>String(s??'').replace(/[&"<>]/g,c=>({'&':'&amp;','"':'&quot;','<':'&lt;','>':'&gt;'}[c]));
 export const ids=(x,t)=>[...String(x).matchAll(new RegExp('<(?:\\w+:)?'+t+'\\b([^>]*?)(?:/>|>([\\s\\S]*?)</(?:\\w+:)?'+t+'>)','g'))].map(m=>({uid:(m[1].match(/\buid="([^"]*)"/)||[])[1],name:(((m[2]||'').match(/<(?:\w+:)?name>([^<]*)</)||[])[1]||'').trim()})).filter(w=>w.uid);
@@ -11,15 +12,171 @@ export function rangeQ(s){const last=s.rows.at(-1)?.[0];if(s.time){const st=last
  const u=s.uom||'m';const e=parseFloat(s.end);return last!=null?`<startIndex uom="${u}">${last}</startIndex>`:Number.isFinite(e)?`<startIndex uom="${u}">${Math.max(0,e-WIN.depth)}</startIndex>`:''}
 const X=j=>typeof j=='string'?j:(j?.xml||'');
 const GUARDED_REASONS = new Set(['credential-reflection','format-character','credential-reflection-and-format-character','parser-format']);
+const IDENTITY_ROLES = new Set(['well-uid','wellbore-identity']);
 export function guardRefusal(reply) {
+  if (reply?.code === 'proxy-refusal' || reply?.error === 'proxy refusal') return Object.assign(new Error('refused by proxy'),{guardRefusal:true,proxyRefusal:true});
   if (!GUARDED_REASONS.has(reply?.reason) && reply?.error !== 'upstream response refused') return null;
-  return Object.assign(new Error('The WITSML proxy refused this response. Import stopped.'),{guardRefusal:true});
+  return Object.assign(new Error('refused by proxy'),{guardRefusal:true,proxyRefusal:true});
 }
-const mustStop = e => e.auth || e.guardRefusal || e.closed || e.name === 'AbortError';
+const mustStop = e => e.auth || e.guardRefusal || e.proxyRefusal || e.redactionHold || e.identityStop || e.closed || e.name === 'AbortError';
+
+function localOf(name) {
+  const text = String(name || '');
+  const colon = text.lastIndexOf(':');
+  return colon < 0 ? text : text.slice(colon + 1);
+}
+function openElements(xml, index) {
+  const stack = [];
+  let i = 0;
+  while (i < index) {
+    if (xml.startsWith('<!--', i)) {
+      const end = xml.indexOf('-->', i + 4);
+      if (end < 0 || end >= index) break;
+      i = end + 3;
+      continue;
+    }
+    const lt = xml.indexOf('<', i);
+    if (lt < 0 || lt >= index) break;
+    if (xml.startsWith('<?', lt) || xml.startsWith('<!', lt)) {
+      const end = xml.startsWith('<?', lt) ? xml.indexOf('?>', lt + 2) : xml.indexOf('>', lt + 2);
+      if (end < 0) break;
+      i = end + (xml.startsWith('<?', lt) ? 2 : 1);
+      continue;
+    }
+    if (xml.startsWith('</', lt)) {
+      const gt = xml.indexOf('>', lt);
+      if (gt < 0) break;
+      stack.pop();
+      i = gt + 1;
+      continue;
+    }
+    const gt = xml.indexOf('>', lt);
+    if (gt < 0) break;
+    const head = xml.slice(lt + 1, gt);
+    const name = (head.match(/^([A-Za-z0-9_.:-]+)/) || [])[1] || '';
+    if (!/\/\s*$/.test(head) && gt < index) stack.push({ local: localOf(name), start: lt });
+    i = gt + 1;
+  }
+  return stack;
+}
+function elementEnd(xml, start) {
+  const gt = xml.indexOf('>', start);
+  if (gt < 0) return null;
+  const head = xml.slice(start + 1, gt);
+  const name = (head.match(/^([A-Za-z0-9_.:-]+)/) || [])[1];
+  if (!name) return null;
+  if (/\/\s*$/.test(head)) return gt + 1;
+  let depth = 1;
+  let i = gt + 1;
+  while (i < xml.length && depth > 0) {
+    const lt = xml.indexOf('<', i);
+    if (lt < 0) return null;
+    if (xml.startsWith('<!--', lt)) {
+      const end = xml.indexOf('-->', lt + 4);
+      if (end < 0) return null;
+      i = end + 3;
+      continue;
+    }
+    if (xml.startsWith('<?', lt) || xml.startsWith('<!', lt)) {
+      const end = xml.startsWith('<?', lt) ? xml.indexOf('?>', lt + 2) : xml.indexOf('>', lt + 2);
+      if (end < 0) return null;
+      i = end + (xml.startsWith('<?', lt) ? 2 : 1);
+      continue;
+    }
+    const close = xml.startsWith('</', lt);
+    const gt2 = xml.indexOf('>', lt);
+    if (gt2 < 0) return null;
+    const raw = xml.slice(lt + (close ? 2 : 1), gt2).trim().split(/\s/)[0];
+    if (raw === name) {
+      if (close) {
+        depth -= 1;
+        if (depth === 0) return gt2 + 1;
+      } else if (!/\/\s*$/.test(xml.slice(lt + 1, gt2))) depth += 1;
+    }
+    i = gt2 + 1;
+  }
+  return null;
+}
+function cutFor(xml, range) {
+  const stack = openElements(xml, range.start);
+  if (range.role === 'log-data') {
+    const data = [...stack].reverse().find((item) => item.local === 'data');
+    const end = data ? elementEnd(xml, data.start) : 0;
+    if (data && end > range.end) return { start: data.start, end, field: 'log-data' };
+    return { start: range.start, end: range.end, field: 'log-data' };
+  }
+  const station = [...stack].reverse().find((item) => item.local === 'trajectoryStation');
+  if (station || stack.some((item) => item.local === 'trajectory')) {
+    if (station) {
+      const end = elementEnd(xml, station.start);
+      if (end > range.end) return { start: station.start, end, field: 'trajectory' };
+    }
+    return { start: range.start, end: range.end, field: 'trajectory' };
+  }
+  const field = { 'well-name': 'name', 'well-field': 'field', 'well-country': 'country', comment: 'comment', 'attribute-value': 'attribute', 'namespace-uri': 'namespace', text: 'text' }[range.role] || range.role;
+  if (range.role === 'comment') {
+    const open = xml.lastIndexOf('<!--', range.start);
+    const close = xml.indexOf('-->', range.end);
+    if (open >= 0 && close >= range.end) return { start: open, end: close + 3, field };
+  }
+  return { start: range.start, end: range.end, field };
+}
+// Drop every listed slot. A redacted well uid or wellbore identity imports nothing.
+// Other listed nodes are removed, and the field is marked redacted rather than kept as a value.
+export function applyRedactedSlots(xml, slots) {
+  const ranges = redactedRanges(typeof xml === 'string' ? xml : '', slots);
+  if (!ranges) return { hold: true };
+  if (ranges.some((range) => IDENTITY_ROLES.has(range.role))) return { stop: true };
+  const fields = [];
+  const cuts = [];
+  for (const range of ranges) {
+    const cut = cutFor(xml, range);
+    fields.push({ role: range.role, ordinal: range.ordinal, field: cut.field });
+    cuts.push(cut);
+  }
+  cuts.sort((a, b) => a.start - b.start || a.end - b.end);
+  const merged = [];
+  for (const cut of cuts) {
+    const last = merged[merged.length - 1];
+    if (last && cut.start <= last.end) last.end = Math.max(last.end, cut.end);
+    else merged.push({ start: cut.start, end: cut.end });
+  }
+  let out = xml;
+  for (let i = merged.length - 1; i >= 0; i--) out = out.slice(0, merged[i].start) + out.slice(merged[i].end);
+  return { xml: out, fields };
+}
+export function prepareReply(reply, status) {
+  if (reply?.redactionApplied === true) return { reply };
+  if (status === 502) return { transport: true };
+  if (status === 422 || reply?.code === 'proxy-refusal' || reply?.error === 'proxy refusal') return { refusal: true };
+  if (guardRefusal(reply)) return { refusal: true };
+  if (reply?.passwordRedacted !== true) return { reply };
+  const slots = Array.isArray(reply.redactedSlots) ? reply.redactedSlots : [];
+  const xml = typeof reply.xml === 'string' ? reply.xml : '';
+  if (reply.redactionScope !== 'slots' || !slots.length) return { redactionHold: true };
+  const xmlSlots = slots.filter((slot) => slot !== 'supp/1' && slot !== 'fault/1');
+  const fields = [];
+  if (slots.includes('supp/1')) fields.push({ role: 'supp', ordinal: 1, field: 'supp' });
+  if (slots.includes('fault/1')) fields.push({ role: 'fault', ordinal: 1, field: 'fault' });
+  let nextXml = xml;
+  if (xmlSlots.length) {
+    const applied = applyRedactedSlots(xml, xmlSlots);
+    if (applied.hold) return { redactionHold: true };
+    if (applied.stop) return { identityStop: true };
+    nextXml = applied.xml;
+    fields.push(...applied.fields);
+  } else if (!redactedRanges(xml, slots)) return { redactionHold: true };
+  const cleaned = { ...reply, xml: nextXml, supp: slots.includes('supp/1') ? '' : (reply.supp || ''), redactedFields: fields, redactionApplied: true };
+  if (slots.includes('fault/1')) delete cleaned.error;
+  return { reply: cleaned };
+}
 function xmlOf(reply) {
-  const refusal = guardRefusal(reply);
-  if (refusal) throw refusal;
-  return X(reply);
+  const decision = prepareReply(reply, reply?.httpStatus);
+  if (decision.transport) throw Object.assign(new Error('disconnected'),{transportRefusal:true});
+  if (decision.refusal) throw Object.assign(new Error('refused by proxy'),{guardRefusal:true,proxyRefusal:true});
+  if (decision.redactionHold) throw Object.assign(new Error('REDACTED - not imported'),{redactionHold:true});
+  if (decision.identityStop) throw Object.assign(new Error('Import stopped. Redacted well identity.'),{identityStop:true,closed:true});
+  return X(decision.reply);
 }
 function scopedXml(reply, type, {well, bore, uid}) {
   const xml=xmlOf(reply);

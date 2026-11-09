@@ -1,6 +1,7 @@
 // ext4.js: WITSML 1.4.1.1 live-data connection (via witsml_proxy.mjs). Credentials are session-only: held in memory, never stored or logged.
 import {blockHeightM} from './physics.js?v=j13c-20261109';
-import {contractFromListed} from './rtoc_summary.js?v=j13c-20261109';
+import {contractFromListed} from './rtoc_summary.js?v=j13d-20261109';
+import {prepareReply} from './wwell.js?v=wred1-20261109';
 let C,S,el,PANEL,BTN;const $=id=>document.getElementById(id);
 const NS='xmlns="http://www.witsml.org/schemas/1series" version="1.4.1.1"';
 const PKEY='dw34-witsml-ui';// stores ONLY proxy URL, server URL, poll interval, mapping. Never username/password.
@@ -53,18 +54,30 @@ function transportFail(category,http){
  sourceBadge($('sim'),'transport refused, polling stopped');
  return mkErr(message,{http,transportRefusal:true,guardRefusal:true,category});
 }
+function showBadge(text,bg){const b=$('sim');if(!b)return;b.style.background=bg;b.style.color='#fff';b.textContent=text}
+function stopPolling(){clearInterval(WML.timer);clearInterval(WML.chk);clearInterval(WML.sv?.timer);WML.timer=WML.chk=null;if(WML.sv)WML.sv.timer=null;WML.liveMode=false;WML.log=null;WML.channels={};WML.hist=[];WML.okAt=0;WML.wellContract=null;try{releaseLive()}catch{}}
+function proxyRefuse(){WML.proxyRefusal=true;WML.redactionHold=false;WML.identityStop=false;WML.connected=false;stopPolling();setSt('refused by proxy',true);showBadge('refused by proxy','#6a3a12')}
+function holdRedaction(){WML.redactionHold=true;WML.proxyRefusal=false;WML.identityStop=false;WML.passwordRedacted=true;stopPolling();setSt('REDACTED - not imported',true);showBadge('REDACTED - not imported','#6a3a12')}
+function stopIdentity(){WML.identityStop=true;WML.redactionHold=false;WML.proxyRefusal=false;WML.connected=false;stopPolling();setSt('Import stopped. Redacted well identity.',true);showBadge('Import stopped. Redacted well identity.','#6a3a12')}
 async function call(op,wmlType,query,options){if(WML.transportDead)throw mkErr('Transport refused — polling stopped',{transportRefusal:true,guardRefusal:true,category:WML.transportDead});if(WML.authDead)throw mkErr('Auth failed — polling stopped',{auth:1});const hosted=isHosted(CFG.proxy),h={'Content-Type':'application/json'};if(hosted&&(CRED.user||CRED.pass))h['X-Witsml-Authorization']='Basic '+btoa(unescape(encodeURIComponent(CRED.user+':'+CRED.pass)));
  const tms=+CFG.callTimeoutMs||28000,ac=new AbortController(),to=setTimeout(()=>ac.abort(),tms);let r;
  try{r=await fetch(CFG.proxy,{method:'POST',headers:h,signal:ac.signal,body:JSON.stringify(hosted?{url:CFG.url,op,wmlType,query,options}:{url:CFG.url,user:CRED.user,pass:CRED.pass,op,wmlType,query,options})})}catch(e){clearTimeout(to);throw mkErr(ac.signal.aborted?'no answer from proxy within '+Math.round(tms/1000)+' s (response too big or upstream slow)':'cannot reach the WITSML proxy (no internet or proxy down)',{http:0})}
  if(r.status===502){clearTimeout(to);throw transportFail('http-502',502)}
+ if(r.status===422){clearTimeout(to);proxyRefuse();throw mkErr('refused by proxy',{http:422,proxyRefusal:true,guardRefusal:true})}
  let tx='';try{tx=await r.text()}catch{throw transportFail('body-read-failed',r.status)}finally{clearTimeout(to)}let j=null;try{j=JSON.parse(tx)}catch{}
- if(!tx.trim())throw transportFail('empty-body',r.status);
+ if(!tx.trim()&&r.status!==422)throw transportFail('empty-body',r.status);
  const objectReply=j&&typeof j==='object'&&!Array.isArray(j);
  if(!objectReply)throw transportFail('invalid-envelope',r.status);
  const authMsg=/Authentication failed/i.test(j.error||'');
  if(r.status==401||authMsg){authFail();throw mkErr('Auth failed (HTTP '+r.status+') — polling stopped, no retry',{http:r.status,auth:1})}
-
- if(j.error){const blocked=(await import('./wwell.js?v=fp-ops-r2-20261108')).guardRefusal(j);if(blocked){transportFail('guard-refusal',r.status);throw blocked}throw mkErr('proxy: '+j.error,{http:r.status,result:j.result,supp:j.supp})}
+ const decision=prepareReply(j,r.status);
+ if(decision.transport)throw transportFail('http-502',r.status);
+ if(decision.refusal){proxyRefuse();throw mkErr('refused by proxy',{http:r.status,proxyRefusal:true,guardRefusal:true})}
+ if(decision.redactionHold){holdRedaction();throw mkErr('REDACTED - not imported',{http:r.status,redactionHold:true})}
+ if(decision.identityStop){stopIdentity();throw mkErr('Import stopped. Redacted well identity.',{http:r.status,identityStop:true,closed:true})}
+ j=decision.reply;
+ if(j.redactedFields?.length)WML.redactedFields=(WML.redactedFields||[]).concat(j.redactedFields);
+ if(j.error)throw mkErr('proxy: '+j.error,{http:r.status,result:j.result,supp:j.supp})
  const numericResult=(typeof j.result==='number'||typeof j.result==='string'&&j.result.trim()!=='')&&Number.isFinite(Number(j.result));
  const valid=op==='WMLS_GetFromStore'?numericResult&&(Number(j.result)<1||typeof j.xml==='string'&&j.xml.trim()!==''):op==='WMLS_GetVersion'?typeof j.version==='string'&&j.version.trim()!=='':op==='WMLS_GetCap'?typeof j.xml==='string'&&j.xml.trim()!=='':false;
  if(!valid)throw transportFail('invalid-envelope',r.status);
@@ -92,7 +105,7 @@ function check(){// stale = 3 missed polls in a row OR >2 min without a successf
  if(h)setSt((WML.simulated?'SIMULATED TEST DATA':'LIVE')+' · last row '+lr+' AEST · '+L.name+' · rows '+WML.rows+' · polls '+WML.polls);
  else setSt((WML.simulated?'STALE — showing SIMULATED · ':'STALE — real source stopped, not simulated · ')+'last row '+lr+' AEST · missed polls '+WML.miss,true);
  if(WML.mode=='replay')return;const b=$('sim');if(b){const live=h&&!WML.simulated;if(live){b.textContent=(WML.liveMode?'LIVE MODE · rig driven by WITSML · ':'LIVE WITSML · ')+L.name+' · last row '+lr+' AEST';b.style.background='#1db954';b.style.color='#000'}else if(WML.simulated){b.textContent='SIMULATED - not real rig data';b.style.background='#b8860b';b.style.color='#000'}else{b.textContent='WITSML DISCONNECTED — source not live';b.style.background='#b71c1c';b.style.color='#fff'}}}
-async function poll(){if(WML.authDead||WML.transportDead)return;const L=WML.log;if(!L)return;if(WML.inflight){WML.miss++;check();return}const time=/time/i.test(L.indexType);let q;
+async function poll(){if(WML.authDead||WML.transportDead||WML.proxyRefusal||WML.redactionHold||WML.identityStop)return;const L=WML.log;if(!L)return;if(WML.inflight){WML.miss++;check();return}const time=/time/i.test(L.indexType);let q;
  if(WML.last==null){const st=time?new Date(Date.parse(L.end)-60000).toISOString():String((+L.end||0)-10);q=time?`<startDateTimeIndex>${st}</startDateTimeIndex>`:`<startIndex uom="${L.uom||'m'}">${st}</startIndex>`}
  else q=time?`<startDateTimeIndex>${WML.last}</startDateTimeIndex>`:`<startIndex uom="${L.uom||'m'}">${WML.last}</startIndex>`;
  WML.inflight=true;
@@ -177,7 +190,7 @@ const redact=t=>{let r=String(t||'');for(const v of [CRED?.user,CRED?.pass])if(v
 WML.svDiag=[];WML.svCands=[];setInterval(()=>{try{svHud();const d=$('svdbg');if(d&&d.open)svDbgRender()}catch{}},2000);
 function svD(o){WML.svDiag.push(Object.assign({at:new Date().toLocaleTimeString()},o));if(WML.svDiag.length>40)WML.svDiag.shift();svDbgRender()}
 // v5.9.2.3 retry with backoff: only transport failures (no answer, timeout, HTTP 0/429/5xx). Never on 401/auth, never on a WITSML result code (unsupported etc).
-const retryable=e=>!e.auth&&!e.transportRefusal&&!e.guardRefusal&&!WML.authDead&&!WML.transportDead&&(e.http===0||e.http===429||(e.http>=500&&e.http<600));
+const retryable=e=>!e.auth&&!e.transportRefusal&&!e.guardRefusal&&!e.proxyRefusal&&!e.redactionHold&&!e.identityStop&&!WML.authDead&&!WML.transportDead&&!WML.proxyRefusal&&!WML.redactionHold&&!WML.identityStop&&(e.http===0||e.http===429||(e.http>=500&&e.http<600));
 async function callRetry(op,t,q,o,{tries=3,base=+CFG.retryBaseMs||800}={}){let last;for(let i=0;i<tries;i++){try{const j=await call(op,t,q,o);if(i)WML.retries=(WML.retries||0)+i;return j}catch(e){last=e;if(!retryable(e)||i==tries-1)throw e;WML.retryNote='retry '+(i+1)+'/'+(tries-1)+' after: '+e.message;await new Promise(r=>setTimeout(r,base*2**i))}}throw last}
 async function svQ(step,typ,q,opt){const t0=performance.now();try{const j=await callRetry('WMLS_GetFromStore',typ,q,opt);const x=normXml(j.xml);return {ok:true,x,d:xml(x),diag:{step,type:typ,opt,result:j.result,http:200,supp:j.supp?redact(String(j.supp).slice(0,160)):undefined,len:(j.xml||'').length,ms:Math.round(performance.now()-t0),raw:redact((j.xml||'').slice(0,300)),norm:x!==String(j.xml||'').trim()?'normalised (CDATA/escaped/BOM)':''}}}
  catch(e){if(WML.authDead)throw e;return {ok:false,diag:{step,type:typ,opt,err:redact(e.message),http:e.http,result:e.result,supp:e.supp!=null?redact(String(e.supp).slice(0,160)):undefined,ms:Math.round(performance.now()-t0)}}}}
@@ -264,14 +277,14 @@ function svRender(){const e=$('svst');if(!e)return;const V=WML.sv;e.textContent=
 // ---- v3.9 per-well replica: switching well/wellbore fully resets state, then rebuilds from that well's own data ----
 WML.cov={};WML.wellInfo=null;WML.sv={timer:null,lastMd:null,uom:null,polls:0,added:0,dups:0,fm:'unknown',fmHash:'',state:'idle',err:''};
 const num=(n,t)=>{const v=parseFloat(txt(n,t));return isFinite(v)?v:null};
-async function tryGet(typ,q,opt){try{const j=await call('WMLS_GetFromStore',typ,q,opt||'returnElements=all');return xml(j.xml)}catch(e){if(WML.authDead||e.guardRefusal)throw e;return null}}
+async function tryGet(typ,q,opt){try{const j=await call('WMLS_GetFromStore',typ,q,opt||'returnElements=all');return xml(j.xml)}catch(e){if(WML.authDead||e.guardRefusal||e.proxyRefusal||e.redactionHold||e.identityStop||e.closed)throw e;return null}}
 function resetAll(tag){svStop('switching well');stop(true);WML.log=null;WML.last=null;WML.rows=0;WML.polls=0;WML.channels={};WML.maxBd=0;WML.lastRowMs=0;WML.cov={};WML.wellInfo=null;for(const k in CFG.map)delete CFG.map[k];
  const TR=GX.traces&&GX.traces.TR;if(TR){TR.t=[];TR.marks=[];TR.last=-1e9;for(const t of TR.tracks){TR.data[t.id]=[];t.srcs=[]}}
  S=window.G?.S||S;S.md=0;S.bitDepth=0;S.bitDepthLive_ft=null;S.rop=0;S.Q=0;S.spp=0;S.wob=0;S.hook=0;if(S.td){S.td.rpm=0;S.td.torque=0;S.td.tq=0}(S.pumps||[]).forEach(p=>{p.on=false;p.cmd=p.spm=0});S._lastBD=null;
  try{releaseLive()}catch{}
  window.GEO&&GEO.resetWell(tag);S.events.push([S.t,'Well switched to '+tag+': all state reset (traces, survey, layers, depths, pumps, caches)'])}
 // ---- v5.12.20 shared whole-well model UI in the simulator WITSML panel (wwell.js; same as ?wdash) ----
-let WWP=null;const wwMod=()=>WWP||(WWP=import('./wwell.js?v=fp-ops-r2-20261108').then(m=>{m.on(()=>wwRender());setInterval(()=>{if(WML.whole&&!WML.authDead&&WML.timer)m.refresh().catch(()=>{})},30000);return m}));
+let WWP=null;const wwMod=()=>WWP||(WWP=import('./wwell.js?v=wred1-20261109').then(m=>{m.on(()=>wwRender());setInterval(()=>{if(WML.whole&&!WML.authDead&&!WML.proxyRefusal&&!WML.redactionHold&&!WML.identityStop&&WML.timer)m.refresh().catch(()=>{})},30000);return m}));
 const wesc=t=>String(t??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function wwRender(){const e=$('wwm');if(!e)return;const W=WML.whole;if(!W||!W.disc){e.innerHTML='<b style="color:#8e8">Whole well</b>: '+(WML.wholeErr?'discovery failed: '+wesc(WML.wholeErr):'connect and load a well — every wellbore, log, trajectory and mud log is discovered and the live branch is used by default (SIM until then)');return}
  const G=window.GX.wellmodel,V=G.view(),la=G.latest(),P=W.P,dm=W.mode=='depth',tg=W.tag=='LIVE'&&P?.kind=='realtime'?'LIVE':W.tag=='LIVE'?'WITSML':'SIM-TEST';
@@ -283,12 +296,12 @@ function wwRender(){const e=$('wwm');if(!e)return;const W=WML.whole;if(!W||!W.di
  $('wwD').onclick=()=>G.setMode('depth');$('wwT').onclick=()=>G.setMode('time');
  $('wwSet').onchange=async ev=>{const [wb,uid]=ev.target.value.split('|');const s=G.select(uid,wb);if(!s)return;try{const ls=await listLogs(W.well,wb);const L=ls.find(l=>l.uid==uid);if(L){await start({...L,w:W.well,b:wb})}}catch(e){setSt('branch switch: '+e.message,true)}}}
 // v5.9.2.3: after a well opens, fire wml:wellopen so the whole-well inventory runs AFTER the load (sequential, polite)
-function loadWell(w,b){const p=_loadWell(w,b).catch(e=>{if(e.guardRefusal)setSt(e.message,true);throw e});WML.loadP=p;p.then(()=>{if(!WML.authDead)window.dispatchEvent(new CustomEvent('wml:wellopen',{detail:{w,b}}))},()=>{});return p}
+function loadWell(w,b){const p=_loadWell(w,b).catch(e=>{if(e.guardRefusal||e.proxyRefusal||e.redactionHold||e.identityStop)setSt(e.message,true);throw e});WML.loadP=p;p.then(()=>{if(!WML.authDead)window.dispatchEvent(new CustomEvent('wml:wellopen',{detail:{w,b}}))},()=>{});return p}
 async function _loadWell(w,b){if(WML.authDead){setSt('Auth failed earlier — not loading',true);return}let tag=w+'/'+b;setSt('loading well replica '+tag+'…');
  const dw=await tryGet('well',`<wells ${NS}><well uid="${xa(w)}"><name/><field/><country/><wellLocation><latitude/><longitude/></wellLocation></well></wells>`,'returnElements=requested;maxReturnNodes=1');const we=dw&&kids(dw,'well').find(e=>e.getAttribute('uid')===w);
  // v5.12.20: SAME whole-well discovery + dataset model as the dashboard (shared wwell.js): every wellbore, log, trajectory, mudLog; live branch by default
  let WWM=null;try{const WW=await wwMod();await WW.load(WW.makeIO((...a)=>callRetry(...a)),w,{note:m=>setSt('whole well: '+m),tag:(svSimTest()||/\/\/(127\.0\.0\.1|localhost)[:/]/.test(CFG.url)||/SIM-TEST|SIMULATED/i.test(w))?'SIM-TEST':'LIVE'});WWM=WW.WM;WML.whole=WWM;WML.wholeErr='';
-  if(WWM.P?.wb&&WWM.P.wb!=b){b=WWM.P.wb;tag=w+'/'+b;try{if($('wwb'))$('wwb').value=b}catch{}}}catch(e){if(e.guardRefusal)throw e;if(e.auth||WML.authDead)return;WML.wholeErr=e.message;setSt('Well import failed: '+e.message,true);return}resetAll(tag);wwRender();
+  if(WWM.P?.wb&&WWM.P.wb!=b){b=WWM.P.wb;tag=w+'/'+b;try{if($('wwb'))$('wwb').value=b}catch{}}}catch(e){if(e.guardRefusal||e.proxyRefusal||e.redactionHold||e.identityStop||e.closed){setSt(e.message,true);throw e}if(e.auth||WML.authDead)return;WML.wholeErr=e.message;setSt('Well import failed: '+e.message,true);return}resetAll(tag);wwRender();
  const sim=svSimTest()||/\/\/(127\.0\.0\.1|localhost)[:/]/.test(CFG.url),T=sim?'SIM-TEST':'LIVE',cv=WML.cov,set=(k,st,n)=>cv[k]={st,n:n||''};WML.covWell=tag;WML.covSim=sim;
  const I=WML.wellInfo={uid:w,wb:b};
  if(we){I.name=txt(we,'name');I.field=txt(we,'field');I.lat=num(we,'latitude');I.lon=num(we,'longitude')}set('Well name',we?T:'missing',I.name||'');set('Location',I.lat!=null?T:'missing',I.lat!=null?I.lat.toFixed(4)+', '+I.lon.toFixed(4)+(I.field?' · '+I.field:''):(I.field||'')+' (none from server → not shown)');
@@ -350,10 +363,10 @@ function toggle(v,o={}){if(P&&!document.body.contains(P))P=null;if(P&&v===true&&
  const read=()=>{CFG.proxy=$('wproxy').value.trim();CFG.url=$('wurl').value.trim();CFG.interval=Math.max(10000,+$('wint').value||15000);$('wint').value=CFG.interval;CRED.user=$('wuser').value;CRED.pass=$('wpass').value;saveCred();CFG.proxyPinned=CFG.proxy!==HOSTED_PROXY;saveCfg()};
  const fill=(id,arr,def)=>{$(id).innerHTML=arr.map(o=>`<option value="${o.uid}">${o.name.replace(/</g,'&lt;')}</option>`).join('');const d=def&&arr.find(o=>o.name.trim()==def);if(d)$(id).value=d.uid};
  let selectionRev=0;
- const wbs=async()=>{const w=$('wwell').value,rev=++selectionRev;$('wgo').disabled=true;try{const bores=await listWellbores(w);if(rev!==selectionRev||!$('wwell')||$('wwell').value!==w)return;WML.wellbores=bores;const listed=(WML.wells||[]).find(x=>x.uid===w)||{uid:w,name:w};WML.wellContract=contractFromListed({well:listed,wellbores:bores,redacted:!!WML.passwordRedacted});fill('wwb',bores,CFG.defWb);await lgs()}catch(e){setSt('error: '+e.message,true)}};
+ const wbs=async()=>{const w=$('wwell').value,rev=++selectionRev;$('wgo').disabled=true;try{const bores=await listWellbores(w);if(rev!==selectionRev||!$('wwell')||$('wwell').value!==w)return;WML.wellbores=bores;const listed=(WML.wells||[]).find(x=>x.uid===w)||{uid:w,name:w};WML.wellContract=contractFromListed({well:listed,wellbores:bores,redactedFields:[...new Set((WML.redactedFields||[]).map(f=>f.field))]});fill('wwb',bores,CFG.defWb);await lgs()}catch(e){setSt('error: '+e.message,true)}};
  const lgs=async()=>{const w=$('wwell').value,b=$('wwb').value,rev=++selectionRev;$('wgo').disabled=true;logs=[];$('wlog').replaceChildren();WML.preview=null;try{const found=await listLogs(w,b);if(rev!==selectionRev||!$('wwell')||$('wwell').value!==w||$('wwb').value!==b)return;logs=found;fill('wlog',logs.map(l=>({uid:l.uid,name:l.name+' ['+(/time/i.test(l.indexType)?'time':'depth')+']'})));const dl=logs.find(l=>l.name.trim()==CFG.defLog);if(dl)$('wlog').value=dl.uid;info()}catch(e){setSt('error: '+e.message,true)}finally{if(rev===selectionRev&&$('wgo'))$('wgo').disabled=!logs.length}};
  const info=()=>{const l=logs.find(l=>l.uid==$('wlog').value);$('wlinfo').textContent=l?`${l.indexType} · index ${l.indexCurve} · ${l.start} → ${l.end} · ${l.curves.length} curves: ${l.curves.map(c=>c.mn).join(', ')}`:'';if(l){autoMap(l.curves);WML.preview=l;renderMap()}};
- $('wcon').onclick=async()=>{read();WML.connected=false;WML.authDead=false;WML.transportDead=null;if(isHosted(CFG.proxy)&&!/\/sim\//.test(CFG.url)&&(!CRED.user||!CRED.pass)){setSt('Enter your Adaga username and password, then press Connect',true);($('wuser').value?$('wpass'):$('wuser')).focus();return}setSt('connecting…');try{const v=await call('WMLS_GetVersion');WML.connected=true;WML.authDead=false;remSave();setSt('connected · server versions '+(v.version||'?'));const ws=(await listWells()).sort((a,b)=>a.name.localeCompare(b.name));WML.wells=ws;fill('wwell',ws,CFG.defWell);if(!ws.length){setSt('Connected, but the server returned no wells for this login',true);return}toast('Connected · '+ws.length+' wells');await wbs()}catch(e){WML.connected=false;setSt('Connect failed: '+e.message,true)}};
+ $('wcon').onclick=async()=>{read();WML.connected=false;WML.authDead=false;WML.transportDead=null;WML.proxyRefusal=false;WML.redactionHold=false;WML.identityStop=false;WML.passwordRedacted=false;WML.redactedFields=[];if(isHosted(CFG.proxy)&&!/\/sim\//.test(CFG.url)&&(!CRED.user||!CRED.pass)){setSt('Enter your Adaga username and password, then press Connect',true);($('wuser').value?$('wpass'):$('wuser')).focus();return}setSt('connecting…');try{const v=await call('WMLS_GetVersion');WML.connected=true;WML.authDead=false;remSave();setSt('connected · server versions '+(v.version||'?'));const ws=(await listWells()).sort((a,b)=>a.name.localeCompare(b.name));WML.wells=ws;fill('wwell',ws,CFG.defWell);if(!ws.length){setSt('Connected, but the server returned no wells for this login',true);return}toast('Connected · '+ws.length+' wells');await wbs()}catch(e){WML.connected=false;setSt('Connect failed: '+e.message,true)}};
  const remSave=()=>{if(!$('wrem')?.checked)return;const l=(typeof logs!='undefined'?logs:[]).find(x=>x.uid==$('wlog')?.value);remPut({on:true,auto:true,url:CFG.url,proxy:CFG.proxy,user:$('wuser').value.trim(),well:$('wwell')?.value||'',wb:$('wwb')?.value||'',log:l?.name?.trim()||'',interval:CFG.interval,svInterval:CFG.svInterval,saved:new Date().toISOString()});remShow()};
  const remShow=()=>{const r=remGet(),e=$('wremst');if(e)e.textContent=r?'Saved on this device: '+(r.user||'?')+' @ '+(()=>{try{return new URL(r.url).host}catch{return r.url}})()+(r.well?' · '+r.well+'/'+r.wb+(r.log?'/'+r.log:''):'')+' · auto-connect '+(r.auto?'ON':'OFF ('+(r.autoOffWhy||'manual')+') — press Connect'):'Nothing saved on this device'};remShow();
  $('wform').onsubmit=e=>{e.preventDefault();$('wcon').onclick();return false};
