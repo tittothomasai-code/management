@@ -1,6 +1,6 @@
 // ext4.js: WITSML 1.4.1.1 live-data connection (via witsml_proxy.mjs). Credentials are session-only: held in memory, never stored or logged.
-import {STAND_LENGTH_M} from './physics.js?v=j13b-20261109';
-import {contractFromListed} from './rtoc_summary.js?v=j13b-20261109';
+import {blockHeightM} from './physics.js?v=j13c-20261109';
+import {contractFromListed} from './rtoc_summary.js?v=j13c-20261109';
 let C,S,el,PANEL,BTN;const $=id=>document.getElementById(id);
 const NS='xmlns="http://www.witsml.org/schemas/1series" version="1.4.1.1"';
 const PKEY='dw34-witsml-ui';// stores ONLY proxy URL, server URL, poll interval, mapping. Never username/password.
@@ -119,7 +119,7 @@ function rigFromData(){S=window.G?.S||S;// data overrides the physics sim (not t
  let hd=g(['DMEA','DBTM','HOLEDEP'],'md'),bd=g(['BDE','BITDEP'],'md'),hk=g(['HKL','HOOKLOAD','HKLA'],'hook'),rpm=g(['RPM','RPMA'],'x'),spp=g(['SPP','SPPA'],'spp'),q=g(['FLOW','Flow','MFIA','TFLO'],'Q'),wob=g(['WOB','SWOB'],'wob'),tq=g(['TORQUE','TQA'],'tq'),rop=g(['ROP','ROPA'],'rop'),bp=g(['BPOS','BLKPOS','BHE','HKHT'],'x');if(hd==null&&bd!=null){WML.maxBd=Math.max(WML.maxBd||0,bd);hd=WML.maxBd}// no hole-depth curve in the time log: hole depth = deepest bit depth seen
  if(hd!=null)S.md=hd;if(bd!=null){S.bitDepthLive_ft=bd;S.bitDepth=bd}if(hk!=null)S.hook=hk;if(rpm!=null){S.td.rpm=rpm;S.bitRpm=rpm}if(spp!=null)S.spp=spp;if(q!=null)S.Q=q;if(wob!=null)S.wob=wob;if(tq!=null){S.td.torque=tq;S.td.tq=tq}if(rop!=null)S.rop=rop;
  // block position: use BPOS if present, else derive from how far the bit is off bottom within a stand (block rises as bit comes off bottom)
- if(bp!=null)S.dw.quill=bp;else if(hd!=null&&bd!=null){const off=Math.max(0,(hd-bd)*0.3048);S.dw.quill=Math.min(28.5,(S.stickup||1.5)+(off%STAND_LENGTH_M))}
+ if(bp!=null)S.dw.quill=bp;else if(hd!=null&&bd!=null){const off=Math.max(0,(hd-bd)*0.3048);S.dw.quill=blockHeightM(S.stickup,off)}
  if(q!=null&&S.pumps?.length){const n=q>20?Math.max(1,Math.min(S.pumps.length,Math.ceil(q/450))):0;S.pumps.forEach((p,i)=>{const on=i<n;p.on=on;p.cmd=p.spm=on?+(q/n/4.36).toFixed(1):0})}
  S.slips=hk!=null&&hk<45&&(rpm||0)<1&&(q||0)<20}
 function drive(){S=window.G?.S||S;if(WML.mode=='replay'){rigFromData();return}if(WML.liveMode&&WML.healthy()){rigFromData();return}// every sim step: hold pump SPM and top-drive torque at their mapped live values while the data is fresh

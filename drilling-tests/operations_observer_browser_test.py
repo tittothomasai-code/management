@@ -15,7 +15,7 @@ background:#452300;color:#fff2ce;padding:5px 8px;font:bold 11px system-ui;
 pointer-events:none">OFFLINE SMOKE TEST · SYNTHETIC FIXTURE</div>
 <script id="wellContract" type="application/json">__CONTRACT__</script>
 <script type="module">
-import {open} from '/operations.js?v=j13b-20261109';
+import {open} from '/operations.js?v=j13c-20261109';
 import {minCurvStations} from '/geo.js';
 import {synth} from '/conn.js?v=fp-ops-r2-20261108';
 const ft = .3048;
@@ -250,7 +250,7 @@ small{color:#b4c6d7}
 <main id="out"></main>
 <script id="contract" type="application/json">__CONTRACT__</script>
 <script type="module">
-import {sourceBackedSummary} from '/rtoc_summary.js?v=j13b-20261109';
+import {sourceBackedSummary} from '/rtoc_summary.js?v=j13c-20261109';
 const contract = JSON.parse(document.getElementById('contract').textContent);
 const summary = sourceBackedSummary(contract);
 const out = document.getElementById('out');
@@ -287,7 +287,7 @@ def verify_game(browser, base):
     page = context.new_page()
     errors = []
     page.on("pageerror", lambda error: errors.append(str(error)))
-    page.goto(base + "/index.html?v=j13b-20261109", wait_until="domcontentloaded")
+    page.goto(base + "/index.html?v=j13c-20261109", wait_until="domcontentloaded")
     page.wait_for_function("() => window.WML && window.GX && window.GX.witsml", timeout=20000)
     assert page.evaluate("typeof window.WML === 'object' && window.WML !== null")
     assert page.evaluate("typeof window.GX.witsml === 'object' && window.GX.witsml !== null")

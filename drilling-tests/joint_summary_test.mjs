@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 import {readFileSync} from 'node:fs';
-import {STAND_LENGTH_M, newState, startSeq, seqTick, step, P, postConnectFootage} from '../drilling/physics.js';
-import {FUTURE_SKEW_MS, feedSource} from '../drilling/operations_data.js';
+import {STAND_LENGTH_M, newState, startSeq, seqTick, step, P, postConnectFootage, blockHeightM} from '../drilling/physics.js';
+import {FUTURE_SKEW_MS, displayedSurveySpans, feedSource, surveyDepthIntervals} from '../drilling/operations_data.js';
 import {JOINT_REFERENCE_M, PHYSICAL_JOINT_TOL_M, UNIT_DUPLICATE_M, fallbackInterval, surveyIntervals} from '../drilling/operations_joint_estimates.js';
 import {segment} from '../drilling/rtoc_core.js';
 import {build, sourceBackedSummary} from '../drilling/rtoc_summary.js';
@@ -22,22 +22,31 @@ assert.match(text('main.js'), /STAND_LENGTH_M\/2/);
 assert.match(text('ext2.js'), /JOINT_M\+0\.2/);
 assert.match(text('ext2.js'), /stickup\+'\+JOINT_M/);
 assert.match(text('main.js'), /PH\.STAND_LENGTH_M,mat\.pipe/);
-assert.match(text('ext4.js'), /off%STAND_LENGTH_M/);
+const rack = text('main.js').slice(text('main.js').indexOf('piperack:'));
+assert.match(rack.slice(0, 500), /PH\.STAND_LENGTH_M/);
+assert.doesNotMatch(rack.slice(0, 500), /9\.1/);
+assert.doesNotMatch(text('ext4.js'), /28\.5/);
+assert.match(text('ext4.js'), /blockHeightM\(/);
+assert.equal(blockHeightM(1.5, 0), 1.5);
+assert.equal(blockHeightM(1.5, 20), 1.5 + (20 % STAND_LENGTH_M));
+assert.ok(blockHeightM(1.5, 1000) <= P.dw.max_quill);
+assert.equal(blockHeightM(2, 5), 7);
+assert.match(text('physics.js'), /off%STAND_LENGTH_M/);
 assert.match(text('rtoc_fixtures.js'), /elevation uom="m" datum="MSL">27\.4</);
 assert.match(text('fixtures/runsheet_np045l_rows.js'), /27\.40/);
 
 const versions = {
-  'main.js': ['physics.js?v=j13b-20261109', 'ext.js?v=j13b-20261109'],
-  'index.html': ['main.js?v=j13b-20261109', 'start.js?v=j13b-20261109'],
-  'ext.js': ['ext2.js?v=j13b-20261109'],
-  'ext2.js': ['physics.js?v=j13b-20261109', 'ext3.js?v=j13b-20261109'],
-  'ext3.js': ['ext4.js?v=j13b-20261109'],
-  'ext4.js': ['physics.js?v=j13b-20261109', 'rtoc_summary.js?v=j13b-20261109'],
-  'rtoc.js': ['physics.js?v=j13b-20261109', 'rtoc_core.js?v=j13b-20261109', 'rtoc_summary.js?v=j13b-20261109'],
-  'rtoc_summary.js': ['rtoc_core.js?v=j13b-20261109'],
-  'start.js': ['rtoc.js?v=j13b-20261109', 'operations.js?v=j13b-20261109'],
-  'operations.js': ['operations_data.js?v=j13b-20261109', 'rtoc_summary.js?v=j13b-20261109'],
-  'operations_data.js': ['operations_joint_estimates.js?v=j13b-20261109'],
+  'main.js': ['physics.js?v=j13c-20261109', 'ext.js?v=j13c-20261109'],
+  'index.html': ['main.js?v=j13c-20261109', 'start.js?v=j13c-20261109'],
+  'ext.js': ['ext2.js?v=j13c-20261109'],
+  'ext2.js': ['physics.js?v=j13c-20261109', 'ext3.js?v=j13c-20261109'],
+  'ext3.js': ['ext4.js?v=j13c-20261109'],
+  'ext4.js': ['physics.js?v=j13c-20261109', 'rtoc_summary.js?v=j13c-20261109'],
+  'rtoc.js': ['physics.js?v=j13c-20261109', 'rtoc_core.js?v=j13c-20261109', 'rtoc_summary.js?v=j13c-20261109'],
+  'rtoc_summary.js': ['rtoc_core.js?v=j13c-20261109'],
+  'start.js': ['rtoc.js?v=j13c-20261109', 'operations.js?v=j13c-20261109'],
+  'operations.js': ['operations_data.js?v=j13c-20261109', 'rtoc_summary.js?v=j13c-20261109'],
+  'operations_data.js': ['operations_joint_estimates.js?v=j13c-20261109'],
 };
 const esc = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 for (const [file, needles] of Object.entries(versions)) {
@@ -46,6 +55,14 @@ for (const [file, needles] of Object.entries(versions)) {
 }
 
 const st = (md, uom = 'm', wb = 'B', typ = '') => ({nativeMd:md, uom, wb, typ});
+const roundedFt = [
+  {nativeMd:100, uom:'m', wb:'B', typ:'', datum:'KB', md:100 / 0.3048},
+  {nativeMd:328.08, uom:'ft', wb:'B', typ:'', datum:'KB', md:328.08},
+  {nativeMd:130, uom:'m', wb:'B', typ:'', datum:'KB', md:130 / 0.3048},
+];
+assert.equal(surveyIntervals(roundedFt, 'W', 'B', 'W').length, 0);
+assert.ok(surveyDepthIntervals(roundedFt).length > 0);
+assert.deepEqual(displayedSurveySpans(roundedFt, 'W', 'B', 'W'), []);
 const wide = surveyIntervals([st(100), st(200)], 'W', 'B', 'W');
 assert.equal(wide.length, 1);
 assert.equal(wide[0].jointCount, 'unknown');

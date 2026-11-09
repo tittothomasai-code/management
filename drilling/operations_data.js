@@ -1,7 +1,8 @@
 // Read-only adapter for the simulator's selected WITSML time log.
 import {detect} from './conn.js?v=fp-ops-r2-20261108';
 import {dlsPer30m} from './geo.js?v=fp-ops-r2-20261108';
-export {JOINT_REFERENCE_M, PHYSICAL_JOINT_TOL_M, UNIT_DUPLICATE_M, fallbackInterval, surveyIntervals} from './operations_joint_estimates.js?v=j13b-20261109';
+import {JOINT_REFERENCE_M, PHYSICAL_JOINT_TOL_M, UNIT_DUPLICATE_M, fallbackInterval, surveyIntervals} from './operations_joint_estimates.js?v=j13c-20261109';
+export {JOINT_REFERENCE_M, PHYSICAL_JOINT_TOL_M, UNIT_DUPLICATE_M, fallbackInterval, surveyIntervals};
 export function wmlValue(raw, curveNull, logNull) {
   if (raw == null || String(raw).trim() === '') return null;
   const v = Number(raw);
@@ -283,6 +284,21 @@ export function actualSurveyStations(stations, bore, trajectory) {
     !/^(plan|planned|proposed|projection|projected|interpolated|tie[ -]?in)$/i.test(s.typ?.trim() || '') &&
     finite(s.md) && s.md >= 0
   ).sort((a,b) => a.md - b.md);
+}
+
+// Survey estimates are the only spans shown. An empty estimate (a reversal, a planned
+// station, a unit break) stays empty. The depth-normalised path is not a fallback.
+export function displayedSurveySpans(stations, well, bore, configuredWell) {
+  const native = (stations || []).map(s => ({
+    nativeMd: Number.isFinite(s.nativeMd) ? s.nativeMd : s.md,
+    uom: s.uom || (Number.isFinite(s.nativeMd) ? 'm' : 'ft'),
+    wb: s.wb, typ: s.typ || '', datum: s.datum || '',
+  }));
+  const depthSpans = surveyDepthIntervals(stations);
+  return surveyIntervals(native, well, bore, configuredWell).map(span => {
+    const match = depthSpans.find(d => Math.abs(d.start - span.start) < 1e-3 && Math.abs(d.end - span.end) < 1e-3);
+    return {...span, startTime: match?.startTime, endTime: match?.endTime};
+  });
 }
 
 export function surveyDepthIntervals(stations) {

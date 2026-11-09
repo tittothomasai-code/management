@@ -1,6 +1,6 @@
 // Deterministic, read-only well summary from the selected WITSML time log.
 // Every value is derived from source samples. Missing channels remain unavailable.
-import * as C from './rtoc_core.js?v=j13b-20261109';
+import * as C from './rtoc_core.js?v=j13c-20261109';
 
 const finite = xs => xs.filter(Number.isFinite);
 const mean = xs => xs.length ? xs.reduce((a,b)=>a+b,0)/xs.length : null;

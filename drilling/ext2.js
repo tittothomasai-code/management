@@ -1,5 +1,5 @@
 // ext2.js (v3.2): game visuals + camera modes, live feed adapter (WebSocket / HTTP poll, field + WITSML-style tag mapping),
-import {STAND_LENGTH_M as JOINT_M} from './physics.js?v=j13b-20261109';
+import {STAND_LENGTH_M as JOINT_M} from './physics.js?v=j13c-20261109';
 // rig designer (derived capacities feed the physics), multi mud pumps, sequence editor with nested sub-sequences.
 // Everything is SIMULATED unless a CSV or live feed is the selected signal source. All geometry is procedural.
 let C,THREE,S,PH,el,BTN,PANEL;
@@ -9,7 +9,7 @@ export async function init(ctx){C=ctx;THREE=C.THREE;S=C.S;PH=C.PH;el=C.el;BTN=C.
  const f0=C.EXT.frame;C.EXT.frame=dt=>{f0(dt);frame2(dt)};
  const a0=C.EXT.actX;C.EXT.actX=(e,x,b)=>{if(x=='pvalve'&&e.st){e.st.valve=e.st.valve===false;PH.ev(S,'Pump '+e.st.id+' manifold valve '+(e.st.valve===false?'closed':'open'));if(e.st.valve!==false)e.st.tripped=false;return true}return a0(e,x,b)};
  const s0=C.EXT.afterStep;C.EXT.afterStep=()=>{s0();feedStale()};
- Object.assign(window.GX,{feedStatus:s=>setStatus(s),feedPush:(vals,src)=>{FS.src=src||FS.src;Object.assign(FS.vals,vals);FS.last=performance.now();FS.msgs++;if(FS.status!='live')setStatus('live')},feedState:FS,feedCfg:FCFG,feedConnect,feedDisconnect,design:()=>DES,applyDesign,derive,setDesign,addPumpType,PUMP_TYPES,seqLib:()=>SEQLIB,compileSeq,runUserSeq,saveSeqLib,camMode:setCam,seqTree:renderTree});try{(await import('./ext3.js?v=j13b-20261109')).init(C)}catch(err){console.error('ext3',err)}
+ Object.assign(window.GX,{feedStatus:s=>setStatus(s),feedPush:(vals,src)=>{FS.src=src||FS.src;Object.assign(FS.vals,vals);FS.last=performance.now();FS.msgs++;if(FS.status!='live')setStatus('live')},feedState:FS,feedCfg:FCFG,feedConnect,feedDisconnect,design:()=>DES,applyDesign,derive,setDesign,addPumpType,PUMP_TYPES,seqLib:()=>SEQLIB,compileSeq,runUserSeq,saveSeqLib,camMode:setCam,seqTree:renderTree});try{(await import('./ext3.js?v=j13c-20261109')).init(C)}catch(err){console.error('ext3',err)}
 }
 // ======================= 1. VISUALS =======================
 let reeve,fastLine,tdA,bopG,camBtns;

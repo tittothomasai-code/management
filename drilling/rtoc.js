@@ -10,9 +10,9 @@ import * as THREE from 'three';
 import {OrbitControls} from './vendor/OrbitControls.js';
 import * as WML from './rtoc_wml.js?v=a2';
 import * as HI from './rtoc_hist.js?v=h1';
-import * as SUM from './rtoc_summary.js?v=j13b-20261109';
-import * as C from './rtoc_core.js?v=j13b-20261109';
-import {planPath,PLAN} from './physics.js?v=j13b-20261109';
+import * as SUM from './rtoc_summary.js?v=j13c-20261109';
+import * as C from './rtoc_core.js?v=j13c-20261109';
+import {planPath,PLAN} from './physics.js?v=j13c-20261109';
 import {compose} from './rtoc_scene_model.js?v=u1';import {createScene3D,loadRig} from './rtoc_scene3d.js?v=u1';import {mapKey,SHORTCUTS} from './rtoc_input.js?v=u1';import {fromGame} from './rtoc_adapter.js?v=u1';import {antiCollision} from './rtoc_status.js?v=u1';import {GLTFLoader} from './vendor/loaders/GLTFLoader.js';
 const RIG={m:null,st:'idle'};// Codex land_rig.glb (assets/codex), loaded once on first open; procedural derrick until/if it fails
 const $=id=>document.getElementById(id),FT=C.FT,M=C.m;

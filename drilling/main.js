@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {OrbitControls} from './vendor/OrbitControls.js';
-import * as PH from './physics.js?v=j13b-20261109';
+import * as PH from './physics.js?v=j13c-20261109';
 import * as AN from './anim.js?v=5923';
 const {FT,R}=PH;
 const EXT={afterStep(){},frame(){},actX(){return false},layout(){return null},restore(){}};window.EXT=EXT;
@@ -224,7 +224,7 @@ const EQ={
   rows:st=>[['Choke opening %',()=>st.pct]],html:()=>'Opening <input type=range min=0 max=100 data-e="pct"><br><small>Visual only: no back-pressure model.</small>'},
  accumulator:{label:'Accumulator (Koomey)',build(g){box(4,0.3,1.6,mat.dark,0,0.15,0,g);for(let k=0;k<6;k++)cyl(0.22,0.22,1.8,eqMat.green,-1.6+k*0.64,1.2,0,g);box(4,0.6,1.6,mat.blue,0,2.4,0,g)},
   rows:st=>[['Charge pump',()=>st.on?'ON':'off']],html:()=>onBtns+'<br><small>No pressure model.</small>'},
- piperack:{label:'Pipe rack',init:{n:12},build(g,st){for(const x of[-3.5,0,3.5])box(0.4,1,3.2,mat.dark,x,0.5,0,g);st._p=[];for(let k=0;k<24;k++){const p=cyl(0.12,0.12,9.1,mat.pipe,0,1.12+Math.floor(k/12)*0.25,-1.4+(k%12)*0.25,g);p.rotation.z=Math.PI/2;st._p.push(p)}},
+ piperack:{label:'Pipe rack',init:{n:12},build(g,st){for(const x of[-3.5,0,3.5])box(0.4,1,3.2,mat.dark,x,0.5,0,g);st._p=[];for(let k=0;k<24;k++){const p=cyl(0.12,0.12,PH.STAND_LENGTH_M,mat.pipe,0,1.12+Math.floor(k/12)*0.25,-1.4+(k%12)*0.25,g);p.rotation.z=Math.PI/2;st._p.push(p)}},
   rows:st=>[['Joints on rack',()=>st.n]],html:()=>'Joints <input type=range min=0 max=24 data-e="n">',update(st){st._p&&st._p.forEach((p,k)=>p.visible=k<st.n)}},
  lighttower:{label:'Light tower',build(g,st){box(1.6,1,1.2,mat.yellow,0,0.5,0,g);cyl(0.1,0.1,7,mat.steel,0,4.5,0,g);st._l=box(1.6,0.6,0.3,M(0xffffff,0,0.5),0,8,0,g)},rows:onRows,html:()=>onBtns,
   update(st){st._l&&st._l.material.emissive.setHex(st.on?0xffffcc:0)}},
@@ -301,7 +301,7 @@ function actX(e,x,b){if(EXT.actX(e,x,b))return;const st=e.st,all=()=>!!document.
  m.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{const e=addEquip(b.dataset.add);m.style.display='none';select(e)});
  m.querySelector('#eqreset').onclick=()=>{if(confirm('Reset equipment layout and 3D models to default?')){localStorage.removeItem(LKEY);localStorage.removeItem(MKEY);try{indexedDB.deleteDatabase('dw3')}catch{}location.reload()}}}
 
-import('./ext.js?v=j13b-20261109').then(x=>x.init({THREE,S,PH,scene,cam,ctl,ents,pumps,select,entity,box,cyl,beam,mat,M,lp,curves,FLOOR,MH,td,tdAll,blk,dwG,slG,rnG,rnArm,cwG,UG,W,allCurves:()=>allCurves(),getWell:()=>wellCurve,act,EXT,removeEnt,saveLayout,addEquip,EQ,eqList,pumpsArr:pumps,setUnder,ren,groundMat,pad,sun,bha,rigG,dwG,ctl,makePump,rebuildLines,sel:()=>sel})).then(()=>import('./visual.js?v=596').then(v=>v.init({THREE,scene,ren,sun,cam,mat,M,box,cyl,beam,FLOOR,MH,td,pumps})).then(()=>import('./rig.js?v=b13').then(r=>r.init({THREE,scene,cam,rigG,FLOOR,MH})))/* rig-realism hook */).catch(e=>console.error('ext',e));
+import('./ext.js?v=j13c-20261109').then(x=>x.init({THREE,S,PH,scene,cam,ctl,ents,pumps,select,entity,box,cyl,beam,mat,M,lp,curves,FLOOR,MH,td,tdAll,blk,dwG,slG,rnG,rnArm,cwG,UG,W,allCurves:()=>allCurves(),getWell:()=>wellCurve,act,EXT,removeEnt,saveLayout,addEquip,EQ,eqList,pumpsArr:pumps,setUnder,ren,groundMat,pad,sun,bha,rigG,dwG,ctl,makePump,rebuildLines,sel:()=>sel})).then(()=>import('./visual.js?v=596').then(v=>v.init({THREE,scene,ren,sun,cam,mat,M,box,cyl,beam,FLOOR,MH,td,pumps})).then(()=>import('./rig.js?v=b13').then(r=>r.init({THREE,scene,cam,rigG,FLOOR,MH})))/* rig-realism hook */).catch(e=>console.error('ext',e));
 import('./subsurface.js?v=b11').catch(e=>console.warn('subsurface',e));
 import('./subtarget.js?v=b11').catch(e=>console.warn('subtarget',e)); // hook (helper D): SIM target band in subsurface view
 // ---------- loop (fixed step) ----------

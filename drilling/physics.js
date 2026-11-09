@@ -126,6 +126,8 @@ export function doAct(S,a){const g=guard(S,a);if(g){ev(S,'Interlock: '+g);return
 export function drillStandSteps(){return[['Drill stand down (auto-drill)',s=>{s.dw.mode='auto';s.autoSteer=true},s=>!!s._sd,5,null,'drill']]}
 // 30 ft slide + 15 ft rotate was half of the previous stand. Keep that half-joint share.
 export function postConnectFootage(){const halfFt=STAND_LENGTH_M/FT/2;return {slide:halfFt*30/45,rotate:halfFt*15/45}}
+// Block height when the bit is off bottom, folded into one joint and capped by the rig.
+export function blockHeightM(stickup, offBottomM){const base=Number.isFinite(stickup)?stickup:1.5;const off=Math.max(0,Number(offBottomM)||0);return Math.min(P.dw.max_quill,base+(off%STAND_LENGTH_M))}
 export function slideSteps(tf=90,ft){const d=postConnectFootage(),slideFt=ft??d.slide,rotFt=ft==null?d.rotate:ft/2,room=s=>s.dw.quill<=P.dw.min_quill+0.05;return[
  ['Auto-steer off, orient toolface '+tf+'°',s=>{s.autoSteer=false;s.mode='rotate';s.td.cmd=0},s=>s.td.rpm<2,3],
  ['Slide '+slideFt.toFixed(1)+' ft (motor only)',s=>{s.mode='slide';s.tf=tf;s._m0=s.md},s=>s.md-s._m0>=slideFt||room(s),0],
