@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {OrbitControls} from './vendor/OrbitControls.js';
-import * as PH from './physics.js?v=ops1';
+import * as PH from './physics.js?v=j13-20261109';
 import * as AN from './anim.js?v=5923';
 const {FT,R}=PH;
 const EXT={afterStep(){},frame(){},actX(){return false},layout(){return null},restore(){}};window.EXT=EXT;
@@ -67,10 +67,10 @@ entity('Iron roughneck',rnG,{anchor:new THREE.Vector3(0,3,0),panel:()=>({title:'
 // ---------- catwalk + pipe rack ----------
 const cwG=new THREE.Group();box(22,0.8,1.6,mat.blue,18,0.8,0,cwG);const ramp=box(14,0.3,1.4,mat.steel,0,0,0,cwG);ramp.position.set(9,4.6,0);ramp.rotation.z=-Math.atan2(7.4,13);
 for(let i=0;i<8;i++)cyl(0.12,0.12,9.1,mat.pipe,18,0.6+(i>>2)*0.25,3+(i%4)*0.3,cwG).rotation.z=Math.PI/2;
-const joint=cyl(0.12,0.12,9.1,mat.pipe,0,0,0,cwG);// moving joint (shown 1 single scaled; stand = 3 joints)
+const joint=cyl(0.12,0.12,9.1,mat.pipe,0,0,0,cwG);// catwalk single on the rack. The stabbed joint uses STAND_LENGTH_M.
 entity('Catwalk',cwG,{anchor:new THREE.Vector3(18,3,0),panel:()=>({title:'Catwalk + pipe rack',rows:[['State',()=>S.catwalk?'delivering':'idle']]})});
 // drill string above floor + new stand
-const strTop=cyl(0.12,0.12,1,mat.pipe,0,0,0,scene);const newStand=cyl(0.12,0.12,27.4,mat.pipe,0,0,0,scene);
+const strTop=cyl(0.12,0.12,1,mat.pipe,0,0,0,scene);const newStand=cyl(0.12,0.12,PH.STAND_LENGTH_M,mat.pipe,0,0,0,scene);
 // ---------- pumps ----------
 const pumps=[];
 function makePump(st,x,z){const g=new THREE.Group();g.position.set(x,0.3,z);
@@ -183,7 +183,7 @@ function sync(dtR){const dS=paused?0:dtR*spd,LV=realMode()=='LIVE',PA=AN.pumpAni
  if(S.connected&&!S.slips&&q<0.05)strTop.visible=false;else strTop.visible=true;
  // catwalk joint
  joint.visible=!!S.catwalk;if(S.catwalk){const ph=Math.min(1,(S.t-S.seq.t0)/10);joint.position.set(14-ph*9,1.6+ph*7,0);joint.rotation.z=Math.PI/2-ph*1.1}
- newStand.visible=!!S.newJoint;if(S.newJoint){newStand.position.set(0,FLOOR+S.stickup+13.7,0)}
+ newStand.visible=!!S.newJoint;if(S.newJoint){newStand.position.set(0,FLOOR+S.stickup+PH.STAND_LENGTH_M/2,0)}
  // hose rebuild
  hoseC=hoseCurve();hoseMesh&&(scene.remove(hoseMesh),hoseMesh.geometry.dispose());hoseMesh=new THREE.Mesh(new THREE.TubeGeometry(hoseC,30,0.16,6),mat.hose);hoseMesh.castShadow=true;hoseMesh.userData.ent=lineEnt;scene.add(hoseMesh);
  // particles
@@ -301,7 +301,7 @@ function actX(e,x,b){if(EXT.actX(e,x,b))return;const st=e.st,all=()=>!!document.
  m.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{const e=addEquip(b.dataset.add);m.style.display='none';select(e)});
  m.querySelector('#eqreset').onclick=()=>{if(confirm('Reset equipment layout and 3D models to default?')){localStorage.removeItem(LKEY);localStorage.removeItem(MKEY);try{indexedDB.deleteDatabase('dw3')}catch{}location.reload()}}}
 
-import('./ext.js?v=fp-ops-r2-20261108').then(x=>x.init({THREE,S,PH,scene,cam,ctl,ents,pumps,select,entity,box,cyl,beam,mat,M,lp,curves,FLOOR,MH,td,tdAll,blk,dwG,slG,rnG,rnArm,cwG,UG,W,allCurves:()=>allCurves(),getWell:()=>wellCurve,act,EXT,removeEnt,saveLayout,addEquip,EQ,eqList,pumpsArr:pumps,setUnder,ren,groundMat,pad,sun,bha,rigG,dwG,ctl,makePump,rebuildLines,sel:()=>sel})).then(()=>import('./visual.js?v=596').then(v=>v.init({THREE,scene,ren,sun,cam,mat,M,box,cyl,beam,FLOOR,MH,td,pumps})).then(()=>import('./rig.js?v=b13').then(r=>r.init({THREE,scene,cam,rigG,FLOOR,MH})))/* rig-realism hook */).catch(e=>console.error('ext',e));
+import('./ext.js?v=j13-20261109').then(x=>x.init({THREE,S,PH,scene,cam,ctl,ents,pumps,select,entity,box,cyl,beam,mat,M,lp,curves,FLOOR,MH,td,tdAll,blk,dwG,slG,rnG,rnArm,cwG,UG,W,allCurves:()=>allCurves(),getWell:()=>wellCurve,act,EXT,removeEnt,saveLayout,addEquip,EQ,eqList,pumpsArr:pumps,setUnder,ren,groundMat,pad,sun,bha,rigG,dwG,ctl,makePump,rebuildLines,sel:()=>sel})).then(()=>import('./visual.js?v=596').then(v=>v.init({THREE,scene,ren,sun,cam,mat,M,box,cyl,beam,FLOOR,MH,td,pumps})).then(()=>import('./rig.js?v=b13').then(r=>r.init({THREE,scene,cam,rigG,FLOOR,MH})))/* rig-realism hook */).catch(e=>console.error('ext',e));
 import('./subsurface.js?v=b11').catch(e=>console.warn('subsurface',e));
 import('./subtarget.js?v=b11').catch(e=>console.warn('subtarget',e)); // hook (helper D): SIM target band in subsurface view
 // ---------- loop (fixed step) ----------

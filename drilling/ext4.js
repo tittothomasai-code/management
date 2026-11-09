@@ -1,4 +1,5 @@
 // ext4.js: WITSML 1.4.1.1 live-data connection (via witsml_proxy.mjs). Credentials are session-only: held in memory, never stored or logged.
+import {STAND_LENGTH_M} from './physics.js?v=j13-20261109';
 let C,S,el,PANEL,BTN;const $=id=>document.getElementById(id);
 const NS='xmlns="http://www.witsml.org/schemas/1series" version="1.4.1.1"';
 const PKEY='dw34-witsml-ui';// stores ONLY proxy URL, server URL, poll interval, mapping. Never username/password.
@@ -33,7 +34,9 @@ const WML={status:'not connected',channels:{},log:null,last:null,timer:null,rows
  drives(id){if(this.mode=='replay')return 'replay';const ok=this.healthy();if(!ok)return null;for(const [mn,s] of Object.entries(CFG.map))if(s==id&&this.channels[mn]?.v!=null)return this.simulated?'live-sim':'live';return null}};
 window.WML=WML;const saveCfg=()=>localStorage.setItem(PKEY,JSON.stringify({proxyPinned:CFG.proxyPinned,proxy:CFG.proxy,url:CFG.url,interval:CFG.interval,map:CFG.map}));
 const REPLAY_ENABLED=false;// Replay from data hidden (disabled flag) until auth issue resolved
-function authFail(e){WML.authDead=true;if(remGet())remPut({auto:false,autoOffWhy:'401 at '+new Date().toISOString()});WML.connected=false;clearInterval(WML.sv.timer);WML.sv.timer=null;WML.sv.state='STOPPED · auth failure (no retry)';clearInterval(WML.timer);clearInterval(WML.chk);WML.timer=WML.chk=null;WML.liveMode=false;WML.log=null;WML.channels={};try{for(const k in C.SRC)if(C.SRC[k]=='live')C.SRC[k]='sim'}catch{};const m='Auth failed — polling stopped (no auto-retry'+(remGet()?'; auto-connect turned OFF':'')+'; check password, press Connect to retry manually)';setSt(m,true);GX.feedStatus&&GX.feedStatus('Auth failed — polling stopped');const b=$('sim');if(b){b.textContent='SIMULATED - Auth failed, polling stopped';b.style.background='#b71c1c';b.style.color='#fff'}}
+function releaseLive(){const next=WML.simulated?'sim':'disconnected';try{for(const k in C.SRC)if(C.SRC[k]=='live')C.SRC[k]=next;C.sigRender?.()}catch{}return next}
+function sourceBadge(b,text){if(!b)return;b.style.background=WML.simulated?'#b8860b':'#b71c1c';b.style.color=WML.simulated?'#000':'#fff';b.textContent=WML.simulated?'SIMULATED - '+text:'WITSML DISCONNECTED — '+text}
+function authFail(e){WML.authDead=true;if(remGet())remPut({auto:false,autoOffWhy:'401 at '+new Date().toISOString()});WML.connected=false;clearInterval(WML.sv.timer);WML.sv.timer=null;WML.sv.state='STOPPED · auth failure (no retry)';clearInterval(WML.timer);clearInterval(WML.chk);WML.timer=WML.chk=null;WML.liveMode=false;WML.log=null;WML.channels={};releaseLive();const m='Auth failed — polling stopped (no auto-retry'+(remGet()?'; auto-connect turned OFF':'')+'; check password, press Connect to retry manually)';setSt(m,true);GX.feedStatus&&GX.feedStatus('Auth failed — polling stopped');sourceBadge($('sim'),'auth failed, polling stopped')}
 const mkErr=(m,o)=>Object.assign(new Error(m),o||{});const xa=v=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
 // v4.10: every failure carries {http,result,supp}; auth latch ONLY on HTTP 401 or an explicit "Authentication failed" (never on a "-401" WITSML code / SOAP fault text, never on proxy 403 origin/op refusals)
 // Terminal transport refusal uses the existing dead latch so every discovery/retry path stops.
@@ -43,10 +46,10 @@ function transportFail(category,http){
  clearInterval(WML.timer);clearInterval(WML.chk);clearInterval(WML.sv?.timer);
  WML.timer=WML.chk=null;if(WML.sv){WML.sv.timer=null;WML.sv.state='STOPPED · transport refusal (no retry)'}
  WML.liveMode=false;WML.log=null;WML.channels={};WML.okAt=0;WML.stale=true;
- try{if(remGet())remPut({auto:false,autoOffWhy:'transport refusal'});for(const k in C.SRC)if(C.SRC[k]=='live')C.SRC[k]='sim';C.sigRender?.()}catch{}
+ try{if(remGet())remPut({auto:false,autoOffWhy:'transport refusal'});releaseLive()}catch{}
  const message='Transport refused · '+category+' · polling stopped (no retry; press Connect manually)';
  setSt(message,true);GX.feedStatus?.('Transport refused — polling stopped');
- const b=$('sim');if(b){b.textContent='SIMULATED - transport refused, polling stopped';b.style.background='#b71c1c';b.style.color='#fff'}
+ sourceBadge($('sim'),'transport refused, polling stopped')}
  return mkErr(message,{http,transportRefusal:true,guardRefusal:true,category});
 }
 async function call(op,wmlType,query,options){if(WML.transportDead)throw mkErr('Transport refused — polling stopped',{transportRefusal:true,guardRefusal:true,category:WML.transportDead});if(WML.authDead)throw mkErr('Auth failed — polling stopped',{auth:1});const hosted=isHosted(CFG.proxy),h={'Content-Type':'application/json'};if(hosted&&(CRED.user||CRED.pass))h['X-Witsml-Authorization']='Basic '+btoa(unescape(encodeURIComponent(CRED.user+':'+CRED.pass)));
@@ -83,11 +86,11 @@ function autoMap(curves){for(const c of curves){if(CFG.map[c.mn]!==undefined)con
 const bne=ms=>new Date(ms).toLocaleTimeString('en-AU',{timeZone:'Australia/Brisbane',hour:'2-digit',minute:'2-digit',hour12:false});
 function check(){// stale = 3 missed polls in a row OR >2 min without a successful poll response
  const h=WML.healthy();if(h&&WML.stale){WML.stale=false;GX.feedStatus&&GX.feedStatus('live');S.events.push([S.t,WML.simulated?'WITSML feed SIM-TEST (not LIVE)':'WITSML feed LIVE'])}
- else if(!h&&!WML.stale&&WML.log){WML.stale=true;for(const k of FEEDSIG)if(C.SRC[k]=='live')C.SRC[k]='sim';C.sigRender();GX.feedStatus&&GX.feedStatus('stale, fell back to sim');S.events.push([S.t,'WITSML feed STALE ('+(WML.miss>=3?WML.miss+' missed polls':'no response >2 min')+'): signals fall back to SIMULATED'])}
+ else if(!h&&!WML.stale&&WML.log){WML.stale=true;releaseLive();if(WML.simulated){GX.feedStatus&&GX.feedStatus('stale, fell back to sim');S.events.push([S.t,'WITSML feed STALE ('+(WML.miss>=3?WML.miss+' missed polls':'no response >2 min')+'): signals fall back to SIMULATED'])}else{GX.feedStatus&&GX.feedStatus('stale');S.events.push([S.t,'WITSML feed STALE ('+(WML.miss>=3?WML.miss+' missed polls':'no response >2 min')+'): real source stopped. Simulator values are not this well.'])}}
  const L=WML.log;if(!L)return;const lr=WML.lastRowMs?bne(WML.lastRowMs):'—';
  if(h)setSt((WML.simulated?'SIMULATED TEST DATA':'LIVE')+' · last row '+lr+' AEST · '+L.name+' · rows '+WML.rows+' · polls '+WML.polls);
- else setSt('STALE — showing SIMULATED · last row '+lr+' AEST · missed polls '+WML.miss,true);
- if(WML.mode=='replay')return;const b=$('sim');if(b){const live=h&&!WML.simulated;b.textContent=live?(WML.liveMode?'LIVE MODE · rig driven by WITSML · ':'LIVE WITSML · ')+L.name+' · last row '+lr+' AEST':'SIMULATED - not real rig data';b.style.background=live?'#1db954':'#b8860b'}}
+ else setSt((WML.simulated?'STALE — showing SIMULATED · ':'STALE — real source stopped, not simulated · ')+'last row '+lr+' AEST · missed polls '+WML.miss,true);
+ if(WML.mode=='replay')return;const b=$('sim');if(b){const live=h&&!WML.simulated;if(live){b.textContent=(WML.liveMode?'LIVE MODE · rig driven by WITSML · ':'LIVE WITSML · ')+L.name+' · last row '+lr+' AEST';b.style.background='#1db954';b.style.color='#000'}else if(WML.simulated){b.textContent='SIMULATED - not real rig data';b.style.background='#b8860b';b.style.color='#000'}else{b.textContent='WITSML DISCONNECTED — source not live';b.style.background='#b71c1c';b.style.color='#fff'}}}
 async function poll(){if(WML.authDead||WML.transportDead)return;const L=WML.log;if(!L)return;if(WML.inflight){WML.miss++;check();return}const time=/time/i.test(L.indexType);let q;
  if(WML.last==null){const st=time?new Date(Date.parse(L.end)-60000).toISOString():String((+L.end||0)-10);q=time?`<startDateTimeIndex>${st}</startDateTimeIndex>`:`<startIndex uom="${L.uom||'m'}">${st}</startIndex>`}
  else q=time?`<startDateTimeIndex>${WML.last}</startDateTimeIndex>`:`<startIndex uom="${L.uom||'m'}">${WML.last}</startIndex>`;
@@ -115,7 +118,7 @@ function rigFromData(){S=window.G?.S||S;// data overrides the physics sim (not t
  let hd=g(['DMEA','DBTM','HOLEDEP'],'md'),bd=g(['BDE','BITDEP'],'md'),hk=g(['HKL','HOOKLOAD','HKLA'],'hook'),rpm=g(['RPM','RPMA'],'x'),spp=g(['SPP','SPPA'],'spp'),q=g(['FLOW','Flow','MFIA','TFLO'],'Q'),wob=g(['WOB','SWOB'],'wob'),tq=g(['TORQUE','TQA'],'tq'),rop=g(['ROP','ROPA'],'rop'),bp=g(['BPOS','BLKPOS','BHE','HKHT'],'x');if(hd==null&&bd!=null){WML.maxBd=Math.max(WML.maxBd||0,bd);hd=WML.maxBd}// no hole-depth curve in the time log: hole depth = deepest bit depth seen
  if(hd!=null)S.md=hd;if(bd!=null){S.bitDepthLive_ft=bd;S.bitDepth=bd}if(hk!=null)S.hook=hk;if(rpm!=null){S.td.rpm=rpm;S.bitRpm=rpm}if(spp!=null)S.spp=spp;if(q!=null)S.Q=q;if(wob!=null)S.wob=wob;if(tq!=null){S.td.torque=tq;S.td.tq=tq}if(rop!=null)S.rop=rop;
  // block position: use BPOS if present, else derive from how far the bit is off bottom within a stand (block rises as bit comes off bottom)
- if(bp!=null)S.dw.quill=bp;else if(hd!=null&&bd!=null){const off=Math.max(0,(hd-bd)*0.3048);S.dw.quill=Math.min(28.5,(S.stickup||1.5)+(off%27))}
+ if(bp!=null)S.dw.quill=bp;else if(hd!=null&&bd!=null){const off=Math.max(0,(hd-bd)*0.3048);S.dw.quill=Math.min(28.5,(S.stickup||1.5)+(off%STAND_LENGTH_M))}
  if(q!=null&&S.pumps?.length){const n=q>20?Math.max(1,Math.min(S.pumps.length,Math.ceil(q/450))):0;S.pumps.forEach((p,i)=>{const on=i<n;p.on=on;p.cmd=p.spm=on?+(q/n/4.36).toFixed(1):0})}
  S.slips=hk!=null&&hk<45&&(rpm||0)<1&&(q||0)<20}
 function drive(){S=window.G?.S||S;if(WML.mode=='replay'){rigFromData();return}if(WML.liveMode&&WML.healthy()){rigFromData();return}// every sim step: hold pump SPM and top-drive torque at their mapped live values while the data is fresh
@@ -124,7 +127,7 @@ function drive(){S=window.G?.S||S;if(WML.mode=='replay'){rigFromData();return}if
   const m=s.match(/^p(\d)\.spm$/);if(m){const p=S.pumps.find(p=>p.id==+m[1]);if(p){p.on=v>0;p.cmd=v;p.spm=v}}}}
 async function start(L){if(WML.authDead||WML.transportDead)return;stop(true);WML.log=L;WML.last=null;WML.rows=0;WML.polls=0;WML.channels={};WML.hist=[];WML.maxBd=0;WML.okAt=0;WML.miss=0;WML.lastRowMs=0;WML.stale=true;WML.inflight=false;L.uom=L.uom||(/time/i.test(L.indexType)?'':'m');WML.simulated=/SIMULATED|SIM-TEST/i.test(L.nameWell+' '+L.name)||/\/sim\/witsml/.test(CFG.url)||/\/\/(127\.0\.0\.1|localhost)[:/]/.test(CFG.url);autoMap(L.curves);saveCfg();
  S.events.push([S.t,'WITSML connected: '+L.name+(WML.simulated?' (SIMULATED test store)':'')]);await poll();if(WML.authDead||WML.transportDead||!WML.log)return;WML.timer=setInterval(poll,Math.max(10000,CFG.interval));WML.chk=setInterval(check,5000)}
-function stop(quiet){if(WML.timer)clearInterval(WML.timer);if(WML.chk)clearInterval(WML.chk);WML.timer=WML.chk=null;WML.fresh=0;WML.okAt=0;if(!quiet){WML.log=null;setSt('not connected');GX.feedStatus&&GX.feedStatus('not connected');const b=$('sim');if(b){b.textContent='SIMULATED - not real rig data';b.style.background='#b8860b'}for(const k of FEEDSIG)if(C.SRC[k]=='live')C.SRC[k]='sim';C.sigRender()}}
+function stop(quiet){if(WML.timer)clearInterval(WML.timer);if(WML.chk)clearInterval(WML.chk);WML.timer=WML.chk=null;WML.fresh=0;WML.okAt=0;if(!quiet){const wasReal=!WML.simulated&&!!(WML.log||WML.connected);WML.log=null;WML.connected=false;setSt('not connected');GX.feedStatus&&GX.feedStatus('not connected');const b=$('sim');if(wasReal){releaseLive();sourceBadge(b,'real source stopped')}else if(b){b.textContent='SIMULATED - not real rig data';b.style.background='#b8860b';b.style.color='#000';try{for(const k of FEEDSIG)if(C.SRC[k]=='live')C.SRC[k]='sim';C.sigRender()}catch{}}}}
 // ---- REPLAY · real data (read-only GetFromStore with a time range; never labelled LIVE) ----
 async function loadReplay(L,hours,onProg){const t1=Date.parse(L.end)||Date.now(),t0=t1-hours*3600e3;let from=new Date(t0).toISOString(),rows=[],ml=null,ul=null,guard=0;
  while(guard++<200){const j=await call('WMLS_GetFromStore','log',`<logs ${NS}><log uidWell="${L.w}" uidWellbore="${L.b}" uid="${L.uid}"><startDateTimeIndex>${from}</startDateTimeIndex><endDateTimeIndex>${new Date(t1).toISOString()}</endDateTimeIndex><logData><mnemonicList/><data/></logData></log></logs>`,'returnElements=data-only;maxReturnNodes=5000');
@@ -264,7 +267,7 @@ async function tryGet(typ,q,opt){try{const j=await call('WMLS_GetFromStore',typ,
 function resetAll(tag){svStop('switching well');stop(true);WML.log=null;WML.last=null;WML.rows=0;WML.polls=0;WML.channels={};WML.maxBd=0;WML.lastRowMs=0;WML.cov={};WML.wellInfo=null;for(const k in CFG.map)delete CFG.map[k];
  const TR=GX.traces&&GX.traces.TR;if(TR){TR.t=[];TR.marks=[];TR.last=-1e9;for(const t of TR.tracks){TR.data[t.id]=[];t.srcs=[]}}
  S=window.G?.S||S;S.md=0;S.bitDepth=0;S.bitDepthLive_ft=null;S.rop=0;S.Q=0;S.spp=0;S.wob=0;S.hook=0;if(S.td){S.td.rpm=0;S.td.torque=0;S.td.tq=0}(S.pumps||[]).forEach(p=>{p.on=false;p.cmd=p.spm=0});S._lastBD=null;
- try{for(const k in C.SRC)if(C.SRC[k]=='live')C.SRC[k]='sim';C.sigRender()}catch{}
+ try{releaseLive()}catch{}
  window.GEO&&GEO.resetWell(tag);S.events.push([S.t,'Well switched to '+tag+': all state reset (traces, survey, layers, depths, pumps, caches)'])}
 // ---- v5.12.20 shared whole-well model UI in the simulator WITSML panel (wwell.js; same as ?wdash) ----
 let WWP=null;const wwMod=()=>WWP||(WWP=import('./wwell.js?v=fp-ops-r2-20261108').then(m=>{m.on(()=>wwRender());setInterval(()=>{if(WML.whole&&!WML.authDead&&WML.timer)m.refresh().catch(()=>{})},30000);return m}));

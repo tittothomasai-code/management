@@ -1,6 +1,6 @@
 // Deterministic, read-only well summary from the selected WITSML time log.
 // Every value is derived from source samples. Missing channels remain unavailable.
-import * as C from './rtoc_core.js?v=r1';
+import * as C from './rtoc_core.js?v=j13-20261109';
 
 const finite = xs => xs.filter(Number.isFinite);
 const mean = xs => xs.length ? xs.reduce((a,b)=>a+b,0)/xs.length : null;
@@ -42,7 +42,7 @@ export function build(D) {
   const keys=['rop','wob','tq','rpm','spp','q','bd'];
   const channelCount=keys.filter(k=>rows.some(r=>Number.isFinite(r[k]))).length;
   const unavailable=label=>'No matching channel or source values in the selected time log.';
-  const fact=(label,value,detail)=>({label,value:value||'Not available',detail:detail||(value? 'Derived from the selected WITSML source.':unavailable(label))});
+  const fact=(label,value,detail)=>({label,value:value||'Not available',sourced:Boolean(value),detail:detail||(value? 'Derived from the selected WITSML source.':unavailable(label))});
   const facts=[
     fact('Measured-depth span',Number.isFinite(firstMd)&&Number.isFinite(lastMd)?one(metres(lastMd-firstMd))+' m':null,'From the time-log hole-depth samples; this is the recorded interval, not a survey-derived stand length.'),
     fact('Logged depth range',Number.isFinite(firstMd)&&Number.isFinite(lastMd)?one(metres(firstMd))+'–'+one(metres(lastMd))+' m MD':null,'Minimum and maximum measured depth in the selected time log.'),
@@ -55,7 +55,12 @@ export function build(D) {
     fact('Connection intervals',D?.evidence?String(completed.length)+' complete intervals'+(lengths.length?' · mean '+one(mean(lengths))+' m':'' ):null,D?.evidence?'Derived from bit depth, hole depth and flow evidence. Check the source-quality notes before operational use.':(D?.why||unavailable('Connection evidence'))),
     fact('Peak survey DLS',dls?one(dls.dls,2)+'°/30 m':null,dls?'Calculated between adjacent definitive survey stations from minimum-curvature dogleg angle; derived from WITSML survey values.':unavailable('Survey DLS')),
   ];
-  const factsText=facts.map((x,i)=>(i+1)+'. '+x.label+': '+x.value+' — '+x.detail).join('\n');
+  const sourcedFacts=facts.filter(x=>x.sourced);
+  const enoughForTen=sourcedFacts.length>=10;
+  const message=enoughForTen
+    ? sourcedFacts.length+' source-backed facts.'
+    : 'There is not enough source-backed data for 10 facts ('+sourcedFacts.length+' source-backed).';
+  const factsText=sourcedFacts.map((x,i)=>(i+1)+'. '+x.label+': '+x.value+' — '+x.detail).join('\n');
   const stats=[
     {label:'Recorded interval',value:Number.isFinite(firstMd)&&Number.isFinite(lastMd)?one(metres(firstMd))+'–'+one(metres(lastMd))+' m MD':'Not available'},
     {label:'Time-log rows',value:String(rows.length)},
@@ -76,7 +81,68 @@ export function build(D) {
     wellboreName:D?.wbName||D?.wb||'Selected wellbore',
     current:!!D?.current,
     source:D?.source||'WITSML',
-    facts,stats,quality,
-    copyText:(D?.wellName||D?.well||'Selected well')+' · '+(D?.wbName||D?.wb||'wellbore')+' · '+(D?.current?'CURRENT SNAPSHOT':'HISTORICAL WITSML SUMMARY')+'\n\nWELL STATS\n'+stats.map(x=>x.label+': '+x.value).join('\n')+'\n\n10 SOURCE-DERIVED FACTS\n'+factsText+'\n\nSOURCE QUALITY\n'+quality.map(x=>'• '+x).join('\n')
+    facts:sourcedFacts,stats,quality,enoughForTen,message,
+    copyText:(D?.wellName||D?.well||'Selected well')+' · '+(D?.wbName||D?.wb||'wellbore')+' · '+(D?.current?'CURRENT SNAPSHOT':'HISTORICAL WITSML SUMMARY')+'\n\nWELL STATS\n'+stats.map(x=>x.label+': '+x.value).join('\n')+'\n\n'+message+'\n'+factsText+'\n\nSOURCE QUALITY\n'+quality.map(x=>'• '+x).join('\n')
+  };
+}
+
+function factKey(item) {
+  return [item?.provenance?.objectType||'', item?.provenance?.field||'', JSON.stringify(item?.value)].join('|');
+}
+
+function cleanFact(item) {
+  const value = Array.isArray(item.value) ? [...new Set(item.value.map(v=>String(v)))] : item.value;
+  return {
+    fact: String(item.fact||'Source field'),
+    value,
+    provenance: {
+      objectType: item.provenance?.objectType||'',
+      field: item.provenance?.field||'',
+    },
+    verified: false,
+    redacted: item.flags?.redacted === true,
+  };
+}
+
+// Inventory contract only. Server vendor/version stay out of the well-fact list.
+// Missing surveys, logs and history are not padded up to 10 facts.
+export function sourceBackedSummary(contract) {
+  const seen = new Set();
+  const facts = [];
+  const serverMetadata = [];
+  const take = (bucket, item) => {
+    if (!item || item.value == null || item.value === '') return;
+    const key = factKey(item);
+    if (seen.has(key)) return;
+    seen.add(key);
+    bucket.push(cleanFact(item));
+  };
+  const bag = contract?.sourceBackedFacts || {};
+  for (const item of bag.wellIdentityAndWellbores || []) take(facts, item);
+  for (const item of bag.serverMetadata || []) take(serverMetadata, item);
+  const gaps = Array.isArray(contract?.coverageGaps) ? contract.coverageGaps.map(x=>String(x)) : [];
+  const stations = contract?.surveyDerivedIntervals?.surveyIntervals;
+  const intervals = Array.isArray(stations) ? stations.filter(s => Number.isFinite(+s?.start) && Number.isFinite(+s?.end)).map(s => ({
+    start:+s.start, end:+s.end, estimated:true, jointCount:'unknown', verified:false,
+  })) : [];
+  const enoughForTen = facts.length >= 10;
+  return {
+    facts,
+    serverMetadata,
+    substantiveFactCount: facts.length,
+    enoughForTen,
+    verified: false,
+    message: enoughForTen
+      ? facts.length+' source-backed facts.'
+      : 'There is not enough source-backed data for 10 facts ('+facts.length+' source-backed).',
+    survey: {
+      status: intervals.length ? 'estimated' : 'unavailable',
+      intervals,
+      jointCount: 'unknown',
+      note: intervals.length
+        ? 'Survey spans are estimates. None of them is one physical joint.'
+        : 'No surveys were read. No joints are invented. The 13 m reference is not a measurement.',
+    },
+    gaps,
   };
 }

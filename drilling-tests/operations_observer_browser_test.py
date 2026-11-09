@@ -14,7 +14,7 @@ HARNESS = """<!doctype html><html lang="en"><head><meta charset="UTF-8">
 background:#452300;color:#fff2ce;padding:5px 8px;font:bold 11px system-ui;
 pointer-events:none">OFFLINE SMOKE TEST · SYNTHETIC FIXTURE</div>
 <script type="module">
-import {open} from '/operations.js?v=ops-observer-r4';
+import {open} from '/operations.js?v=j13-20261109';
 import {minCurvStations} from '/geo.js';
 import {synth} from '/conn.js?v=fp-ops-r2-20261108';
 const ft = .3048;
@@ -227,6 +227,82 @@ def verify(browser, base, screenshots, name, viewport, touch=False):
     print(f"PASS {name}: all dashboard values, live gates, layout, overlays, image and Escape")
 
 
+SUMMARY = """<!doctype html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Selected well summary fixture</title>
+<style>
+body{margin:0;background:#071019;color:#eaf4ff;font:15px system-ui,sans-serif}
+main{padding:16px;max-width:880px}
+h1{font-size:20px;margin:0 0 8px}
+.banner{background:#452300;color:#fff2ce;padding:8px 10px;font-weight:700}
+p{line-height:1.4}
+li{margin:6px 0}
+small{color:#b4c6d7}
+</style></head><body>
+<div class="banner">OFFLINE FIXTURE · SANITIZED CONTRACT · NOT A LIVE WELL</div>
+<main id="out"></main>
+<script id="contract" type="application/json">__CONTRACT__</script>
+<script type="module">
+import {sourceBackedSummary} from '/rtoc_summary.js?v=j13-20261109';
+const contract = JSON.parse(document.getElementById('contract').textContent);
+const summary = sourceBackedSummary(contract);
+const out = document.getElementById('out');
+const h = document.createElement('h1');
+h.id = 'summaryMessage';
+h.textContent = summary.message;
+const meta = document.createElement('p');
+meta.id = 'summaryMeta';
+meta.textContent = summary.substantiveFactCount + ' source-backed well facts · verified ' + summary.verified
+  + ' · ' + summary.serverMetadata.length + ' server capability rows kept separate · survey ' + summary.survey.status;
+const list = document.createElement('ol');
+for (const fact of summary.facts) {
+  const li = document.createElement('li');
+  li.textContent = fact.fact + ': ' + (Array.isArray(fact.value) ? fact.value.join(', ') : fact.value);
+  list.append(li);
+}
+const server = document.createElement('p');
+server.id = 'serverNote';
+server.textContent = 'Server metadata is not counted: ' + summary.serverMetadata.map(row => row.fact).join(' · ');
+const gaps = document.createElement('p');
+gaps.id = 'gaps';
+gaps.textContent = summary.gaps.join(' | ');
+out.append(h, meta, list, server, gaps);
+document.documentElement.dataset.ready = '1';
+</script></body></html>"""
+
+
+def verify_summary(browser, base, screenshots, name, viewport, touch=False):
+    contract = (Path(__file__).parent / "fixtures" / "well-summary-safe.json").read_text()
+    context = browser.new_context(viewport=viewport, is_mobile=touch, has_touch=touch, service_workers="block")
+    blocked = []
+    context.route("**/*", lambda route: route.continue_() if route.request.url.startswith(base + "/")
+                  else (blocked.append(route.request.url), route.abort()))
+    page = context.new_page()
+    page.route(base + "/__summary_test", lambda route: route.fulfill(
+        status=200, content_type="text/html", body=SUMMARY.replace("__CONTRACT__", contract)))
+    errors = []
+    page.on("pageerror", lambda error: errors.append(str(error)))
+    page.goto(base + "/__summary_test")
+    page.wait_for_function("() => document.documentElement.dataset.ready === '1'")
+    message = page.locator("#summaryMessage")
+    expect(message).to_contain_text("not enough source-backed data for 10 facts")
+    expect(message).to_contain_text("(6 source-backed)")
+    expect(page.locator("#summaryMeta")).to_contain_text("verified false")
+    expect(page.locator("#summaryMeta")).to_contain_text("survey unavailable")
+    expect(page.locator("ol li")).to_have_count(6)
+    expect(page.locator("body")).to_contain_text("DR101L")
+    expect(page.locator("ol")).not_to_contain_text("Adaga")
+    expect(page.locator("#serverNote")).to_contain_text("Adaga")
+    expect(page.locator("#gaps")).to_contain_text("502")
+    expect(page.locator("#gaps")).to_contain_text("504")
+    assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1")
+    page.screenshot(path=screenshots / f"summary-{name}.png", full_page=True)
+    assert not errors, errors
+    assert not blocked, blocked
+    context.close()
+    print(f"PASS {name}: sanitized contract shows 6 facts, not 10")
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--base-url", default="http://127.0.0.1:8913")
@@ -239,4 +315,6 @@ if __name__ == "__main__":
             "--no-sandbox", "--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"])
         verify(browser,args.base_url,args.screenshots,"desktop",{"width":1680,"height":970})
         verify(browser,args.base_url,args.screenshots,"mobile",{"width":390,"height":844},touch=True)
+        verify_summary(browser,args.base_url,args.screenshots,"desktop",{"width":1680,"height":970})
+        verify_summary(browser,args.base_url,args.screenshots,"mobile",{"width":390,"height":844},touch=True)
         browser.close()

@@ -1,5 +1,6 @@
-import {FT, TRACKS, actualSurveyStations, drilledIntervals, feedConnectionIntervals, feedJoints, feedSource, finite, imageRows,
-  jointProgress, latestChannel, readSamples, surveyDepthIntervals, surveyDoglegs, surveyHoleContext, surveyMatches} from './operations_data.js?v=ops-observer-r4';
+import {FT, TRACKS, actualSurveyStations, drilledIntervals, fallbackInterval, feedConnectionIntervals, feedJoints, feedSource, finite, imageRows,
+  jointProgress, latestChannel, readSamples, surveyDepthIntervals, surveyDoglegs, surveyHoleContext, surveyMatches} from './operations_data.js?v=j13-20261109';
+import {sourceBackedSummary} from './rtoc_summary.js?v=j13-20261109';
 import {chart, doglegChart, imageLog} from './operations_plots.js?v=ops-observer-r4';
 import {minCurvStations, samplePath} from './geo.js?v=fp-ops-r2-20261108';
 import {createCutaway} from './operations_scene.js?v=ops-observer-r1';
@@ -39,7 +40,7 @@ const MARKUP = `
         <p class="ops-note ops-muted">Hole MD at each connection. An interval can span a stand.</p>
         <h2 class="ops-heading">Survey MD intervals</h2>
         <ul class="ops-list ops-status" id="opsSurveyIntervals"></ul>
-        <p class="ops-note ops-muted">Stand length requires surveys at both stand ends.</p>
+        <p class="ops-note ops-muted">Survey-to-survey spans are estimates. A span is not one joint, and a gap is not split into joints.</p>
         <h2 class="ops-heading">Source checks</h2><ul class="ops-list ops-status" id="opsNext"></ul>
       </aside>
       <main class="ops-center">
@@ -47,6 +48,7 @@ const MARKUP = `
           <div class="ops-flex"><strong id="opsJoint">Joint progress</strong><strong id="opsMetres"></strong><strong class="ops-pct" id="opsPct"></strong></div>
           <div class="ops-bar" id="opsBar"></div>
           <div class="ops-flex ops-muted"><span id="opsStart"></span><span id="opsEnd"></span></div>
+          <p class="ops-note" id="opsJointEstimate"></p>
         </section>
         <section class="ops-panel ops-stage" aria-label="Interactive 3D well cutaway">
           <canvas id="opsScene" aria-label="3D well cutaway. Drag to orbit and scroll to zoom."></canvas>
@@ -79,6 +81,7 @@ const MARKUP = `
     </section>
     <p class="ops-note ops-muted" id="opsTrackWindow"></p>
     <div class="ops-tracks">${TRACK_HTML}</div>
+    <section class="ops-panel ops-pad" id="opsWellSummary" aria-label="Selected well summary"></section>
     <footer class="ops-footer"><span id="opsSurvey"></span><span id="opsFooter"></span></footer>
     </div>
     </div>
@@ -197,6 +200,14 @@ function renderTally(model) {
     return rows;
   });
   statuses('opsSurveyIntervals',surveyRows.length ? surveyRows : [['No matched source survey intervals','']]);
+  const fallback = !joints.length && !model.surveyIntervals.length ? fallbackInterval(model.hd) : null;
+  set('opsJointEstimate', joints.length
+    ? 'Reported joint boundaries stay separate from survey-span estimates. A survey span is not one joint.'
+    : fallback
+      ? fallback.basis
+      : model.surveyIntervals.length
+        ? 'Survey spans are estimates only. Joint count inside a gap is unknown.'
+        : 'No measured joint length. Nothing is invented.');
   statuses('opsNext',[
     ['Time log', model.source === 'WITSML LIVE' ? 'Advancing' : 'Unavailable'],
     ['Joint boundaries', joints.length ? 'Source reported' : 'Unavailable'],
@@ -321,6 +332,39 @@ function render() {
     (finite(latest?.tf) ? fmt(latest.tf,0) + '°' : '—'));
   set('opsFooter',latest ? 'READ-ONLY · SAMPLE ' + new Date(latest.t*1000).toISOString().replace('T',' ').slice(0,19) + ' UTC' :
       'READ-ONLY · WAITING FOR A WITSML TIME LOG');
+  renderInventory(api?.wellContract);
+}
+
+function renderInventory(contract) {
+  const host = $('opsWellSummary');
+  if (!host) return;
+  const summary = sourceBackedSummary(contract);
+  host.replaceChildren();
+  const title = document.createElement('h2');
+  title.textContent = 'Selected well';
+  const lead = document.createElement('p');
+  lead.className = 'ops-note';
+  lead.textContent = summary.message;
+  host.append(title, lead);
+  if (!summary.facts.length) return;
+  const list = document.createElement('ul');
+  list.className = 'ops-list';
+  for (const fact of summary.facts) {
+    const li = document.createElement('li');
+    const name = document.createElement('span');
+    const value = document.createElement('b');
+    name.textContent = fact.fact;
+    value.textContent = Array.isArray(fact.value) ? fact.value.join(', ') : String(fact.value);
+    li.append(name, value);
+    list.append(li);
+  }
+  host.append(list);
+  if (summary.serverMetadata.length) {
+    const note = document.createElement('p');
+    note.className = 'ops-note';
+    note.textContent = 'Server vendor and version are capability data, not well facts (' + summary.serverMetadata.length + ' kept separate).';
+    host.append(note);
+  }
 }
 
 async function loadFeedImage() {

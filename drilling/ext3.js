@@ -3,7 +3,7 @@ let C,S,PH,el,PANEL;const COLORS=['#4fc3f7','#ffb74d','#81c784','#e57373','#ba68
 const TR={formulas:[],on:false,tracks:[],t:[],data:{},marks:[],win:120,paused:false,offset:0,cursor:null,last:-1e9,dt:0.25,max:14400};
 const KEY='dw33-traces-v1';
 const simFeed=()=>/SIMULATED/i.test((GX.feedState||{}).src||'');
-const sigSrc=k=>{const m={spp:'spp',Q:'Q',hook:'hook',wob:'wob',rpm:'rpm',md:'md',quill:'quill'};if(window.WML&&m[k]&&WML.mode=='replay')return 'replay';if(window.WML&&m[k]&&WML.liveMode&&WML.healthy())return 'live';const v=m[k]&&C.SRC?C.SRC[m[k]]:'sim';if(v=='live'&&window.WML&&WML.mode=='replay')return 'replay';if(v=='live'&&(GX.feedState||{}).status!='live')return 'sim';return v=='live'&&simFeed()?'live-sim':v};
+const sigSrc=k=>{const m={spp:'spp',Q:'Q',hook:'hook',wob:'wob',rpm:'rpm',md:'md',quill:'quill'};if(window.WML&&m[k]&&WML.mode=='replay')return 'replay';if(window.WML&&m[k]&&WML.liveMode&&WML.healthy())return 'live';const v=m[k]&&C.SRC?C.SRC[m[k]]:'sim';if(v=='disconnected')return 'disconnected';if(v=='live'&&window.WML&&WML.mode=='replay')return 'replay';if(v=='live'&&window.WML&&!WML.simulated&&!WML.healthy())return 'disconnected';if(v=='live'&&(GX.feedState||{}).status!='live')return 'sim';return v=='live'&&simFeed()?'live-sim':v};
 const liveTag=(id,d)=>(window.WML&&WML.drives&&WML.drives(id))||d||'sim';// LIVE when a WITSML channel drives this signal
 // ---- signal catalogue ----
 function catalogue(){const L=[];const add=(id,label,unit,get,src)=>{const isF=String(id).startsWith('f:'),w=!isF&&!!U.dim(unit);L.push({id,label,u0:unit,get unit(){return (w||isF)?U.u(unit):unit},get:w?()=>{const v=get();return v==null?v:U.v(unit,v)}:get,src:src||(()=>'sim'),group:label.split(' · ')[0]})};
@@ -168,7 +168,7 @@ export async function init(ctx){C=ctx;S=C.S;PH=C.PH;el=C.el;PANEL=C.PANEL;ui();
  setInterval(panelHook,300);setInterval(sigBadges,500);setInterval(()=>{if(TR.on){const n=catalogue().length;if(n!=CAT.length&&document.activeElement!==picker)renderTree();refreshCat()}},2000);
  U.on((o,n)=>{for(const tr of TR.tracks){const k=U.f(tr.u0,n)/U.f(tr.u0,o);if(k!=1&&TR.data[tr.id])TR.data[tr.id]=TR.data[tr.id].map(v=>v==null?v:v*k)}try{build()}catch{}});
  Object.assign(window.GX,{traces:{TR,addTrack,rmTrack,open,toCSV,catalogue:()=>(refreshCat(),CAT.map(c=>({id:c.id,label:c.label,unit:c.unit}))),entSignals:n=>entSignals(C.ents.find(e=>e.name==n)).map(c=>c.id),addFormula,renderTree}});
- try{(await import('./ext4.js?v=fp-ops-r2-20261108')).init(C)}catch(err){console.error('ext4',err)}
+ try{(await import('./ext4.js?v=j13-20261109')).init(C)}catch(err){console.error('ext4',err)}
  try{(await import('./ext5.js?v=5922')).init(C)}catch(err){console.error('ext5',err)}
  try{(await import('./wmlinvui.js?v=5923')).init(C)}catch(err){console.error('wmlinv',err)} try{(await import('./input.js?v=c6')).init(C)}catch(err){console.error('input',err)} try{(await import('./vpad.js?v=b9')).init()}catch(err){console.error('vpad',err)}
  try{(await import('./ext6.js?v=592')).init(C)}catch(err){console.error('ext6',err)}

@@ -6,6 +6,8 @@ export const m=ft=>ft*FT;
 // slips are RELEASED. No fixed joint length is assumed. The first joint is flagged partial (recording began mid-joint).
 export function segment(samples){const J=[];let cur=null,prev=null;
  for(const s of samples){
+  // A logged gap ends the open joint. The next sample starts a new one. Depth is not bridged across the gap.
+  if(s.gapBefore){if(cur){cur.open=false;cur.partial=true}cur=null;prev=null}
   if(!cur&&!s.slips){cur={n:J.length+1,startMd:s.md,startT:s.t,endMd:s.md,endT:s.t,open:true,partial:J.length==0&&!(prev&&prev.slips),slide:0,rotate:0,off:0,i0:samples.indexOf(s),i1:samples.indexOf(s)};J.push(cur)}
   if(cur){if(prev&&!s.slips&&!prev.slips){const d=Math.max(0,s.md-prev.md);if(d>0){if(s.mode=='slide')cur.slide+=d;else cur.rotate+=d}else if(!s.gapBefore)cur.off+=Math.max(0,s.t-prev.t)}
    cur.endMd=Math.max(cur.endMd,s.md);cur.endT=s.t;cur.i1=samples.indexOf(s);

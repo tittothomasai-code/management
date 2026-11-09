@@ -1,7 +1,7 @@
 // Drilling physics ported from v2 sandbox (first-pass, uncalibrated values). SIMULATED.
 import {ropMudFactor} from './ropmud.js';
 export const R=Math.PI/180, FT=0.3048;
-export const STAND_LENGTH_M=27.4;
+export const STAND_LENGTH_M=13; // Nominal drill-pipe joint, metres. Physics, the stabbed joint and the pick-up sequence use this one length.
 export function minCurv(p,m1,i1,a1,m2,i2,a2){i1*=R;a1*=R;i2*=R;a2*=R;const cb=Math.cos(i2-i1)-Math.sin(i1)*Math.sin(i2)*(1-Math.cos(a2-a1));const b=Math.acos(Math.max(-1,Math.min(1,cb)));const rf=b<1e-6?1:2/b*Math.tan(b/2),dm=m2-m1;
  return [p[0]+dm/2*(Math.sin(i1)*Math.cos(a1)+Math.sin(i2)*Math.cos(a2))*rf,p[1]+dm/2*(Math.sin(i1)*Math.sin(a1)+Math.sin(i2)*Math.sin(a2))*rf,p[2]+dm/2*(Math.cos(i1)+Math.cos(i2))*rf]}
 export const PLAN={kop_md:1500,bur:3,hold_inc:35,azi:45,td_md:3500};
@@ -49,7 +49,7 @@ export function step(S,dt){const t=S.t,F=S.faults,mw=P.mud.mw_ppg;
  if(S.rnOp)rc=S.rnOp.kind=='break'?-20:20;
  if(S.seq&&S.seq.tdOverride!=null)rc=S.seq.tdOverride;
  // manual roughneck operation (break-out / make-up)
- if(S.rnOp&&S.t-S.rnOp.t0>=6){if(S.rnOp.kind=='break'){S.connected=false;ev(S,'Roughneck: connection broken out')}else{S.connected=true;if(S.newJoint){S.L+=27.4/FT;S.newJoint=0}ev(S,'Roughneck: connection made up')}S.rnOp=null}
+ if(S.rnOp&&S.t-S.rnOp.t0>=6){if(S.rnOp.kind=='break'){S.connected=false;ev(S,'Roughneck: connection broken out')}else{S.connected=true;if(S.newJoint){S.L+=STAND_LENGTH_M/FT;S.newJoint=0}ev(S,'Roughneck: connection made up')}S.rnOp=null}
  rc=Math.max(-P.td.max_rpm,Math.min(P.td.max_rpm,rc));if(S.td.torque>P.td.max_torque&&rc>0){rc=0;if(!S._tq){ev(S,'Top drive torque limit: rotation stalled');S._tq=1}}else S._tq=0;
  S.td.rpm+=(rc-S.td.rpm)*dt/P.td.tau_s;S.td.theta+=S.td.rpm/60*dt*2*Math.PI;
  // pumps

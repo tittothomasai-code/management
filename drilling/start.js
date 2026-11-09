@@ -98,7 +98,7 @@ async function choose(g){const go=g||ST.items[ST.i]?.dataset.go;beep(880,.1);
  if(go?.startsWith('open:')){close('edm');const m=await import('./edmui.js?v=c2');m.openSaved(go.slice(5)).catch(e=>alert('Could not open saved site: '+e.message));return}
  if(go=='edm'){close('edm');const m=await import('./edmui.js?v=c2');m.open();return}if(go=='back')return back();
  if(go=='continue'||go=='simFree')return close(go);
- if(go=='rtoc'){close('rtoc');const m=await import('./rtoc.js?v=u1');m.open();return}
+ if(go=='rtoc'){close('rtoc');const m=await import('./rtoc.js?v=j13-20261109');m.open();return}
  if(go=='simA'){close('simA');const P=await wait(()=>window.GX?.wplan);P.calc(JSON.parse(JSON.stringify(P.DEFAULT)));return}
  if(go=='well'){close('wplan');const P=await wait(()=>window.GX?.wplan);P.calc({...JSON.parse(JSON.stringify(P.DEFAULT)),name:'New well (SIM)',targets:[{name:'TD',tvd:1000,n:100,e:0,tol:30,dls:3}],casing:[],steps:[],assumed:['targets','surface','kop','dls']});P.open('inputs');return}
  if(go=='login'){close('join');await wait(()=>window.GX?.player);const m=await import('./player.js?v=592');m.join(true);
@@ -123,12 +123,12 @@ export function show(){api();if(ST.el)return;const st=document.createElement('st
 /* v5.12.19: guide link in Settings installed at module load (phones often skip the start screen, so show() never ran) */
 function installGuide(){const gl=()=>{const g=document.getElementById('uig_set');if(!g||document.getElementById('setGuide'))return;const a=document.createElement('a');a.id='setGuide';a.href='./user-guide.html';a.target='_blank';a.rel='noopener';a.textContent='User guide (HTML / PDF)';a.style.cssText='display:block;color:#9cf;font-size:12px;margin:6px 0';g.appendChild(a);const b=document.createElement('a');b.id='setWdash';b.href='#';b.textContent='📊 WITSML dashboard (logs + image logs)';b.style.cssText=a.style.cssText;b.onclick=e=>{e.preventDefault();import('./wdash.js?v=fp-ops-r2-20261108').then(m=>m.open())};g.appendChild(b)};gl();if(!window.__dwGuideMO){window.__dwGuideMO=new MutationObserver(gl);window.__dwGuideMO.observe(document.body,{childList:true,subtree:true})}}
 installGuide();
-import('./rtoc.js?v=u1').catch(()=>{});/* Steve's RTOC: recorder + HUD button */
+import('./rtoc.js?v=j13-20261109').catch(()=>{});/* Steve's RTOC: recorder + HUD button */
 const API={ST,show,shouldShow,hasSave,reveal,groupOf,last:null,enter:d=>{if(ST.el)close(d||'simFree');return true}};function api(){window.dwStart=API;window.GX=window.GX||{};if(window.GX.start!==API)window.GX.start=API;return API}api();addEventListener('load',api);setTimeout(api,3000);
 if(shouldShow()){if(document.body)show();else addEventListener('DOMContentLoaded',show)}
 
 if(new URLSearchParams(location.search).has('workover'))import('./workover.js?v=b15');
 
-const openOperations = () => import('./operations.js?v=ops-observer-r4').then(m => m.open()).catch(e => console.error('Drilling operations',e));
+const openOperations = () => import('./operations.js?v=j13-20261109').then(m => m.open()).catch(e => console.error('Drilling operations',e));
 $('opsDashboard').addEventListener('click',openOperations);
 if(q.has('operations')) openOperations();

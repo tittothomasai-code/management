@@ -10,9 +10,9 @@ import * as THREE from 'three';
 import {OrbitControls} from './vendor/OrbitControls.js';
 import * as WML from './rtoc_wml.js?v=a2';
 import * as HI from './rtoc_hist.js?v=h1';
-import * as SUM from './rtoc_summary.js?v=s1';
-import * as C from './rtoc_core.js?v=r1';
-import {planPath,PLAN} from './physics.js?v=b4';
+import * as SUM from './rtoc_summary.js?v=j13-20261109';
+import * as C from './rtoc_core.js?v=j13-20261109';
+import {planPath,PLAN} from './physics.js?v=j13-20261109';
 import {compose} from './rtoc_scene_model.js?v=u1';import {createScene3D,loadRig} from './rtoc_scene3d.js?v=u1';import {mapKey,SHORTCUTS} from './rtoc_input.js?v=u1';import {fromGame} from './rtoc_adapter.js?v=u1';import {antiCollision} from './rtoc_status.js?v=u1';import {GLTFLoader} from './vendor/loaders/GLTFLoader.js';
 const RIG={m:null,st:'idle'};// Codex land_rig.glb (assets/codex), loaded once on first open; procedural derrick until/if it fails
 const $=id=>document.getElementById(id),FT=C.FT,M=C.m;
@@ -119,7 +119,7 @@ export function open(){if(ST.el){render();return API}startRecorder();
  if(RIG.st=='idle'){RIG.st='loading';loadRig(GLTFLoader,new URL('./assets/codex/land_rig.glb',import.meta.url).href).then(m=>{RIG.m=m;RIG.st=m?'glb':'fallback';ST._k=null;ST.scenes.forEach(s=>s.fitKey=null)})}
  const el=document.createElement('section');el.id='rtoc';el.setAttribute('role','dialog');el.setAttribute('aria-label',"Steve's RTOC");
  el.innerHTML=`<div class="hdr pn"><span class=brand>ROBOTYX <b>/</b> DRILLING WORLD <b>·</b> STEVE'S RTOC</span><span id=rtSrc class=badge>WITSML NOT CONNECTED</span><span id=rtWell style="flex:1;text-align:center;font-weight:700"></span><label id=rtWselL style=font-size:11px>Source <select id=rtWsel aria-label="Select live WITSML well or explicit demo"></select></label><span id=rtBusy class=na style=font-size:11px></span>
- <button id=rtConnectW type=button>Connect live WITSML</button><button id=rtSummaryB type=button>Well summary · 10 facts</button>
+ <button id=rtConnectW type=button>Connect live WITSML</button><button id=rtSummaryB type=button>Well summary</button>
  <button id=rtKeys title="Keyboard shortcuts (?)">Keys<kbd>?</kbd></button><button id=rtCtxB aria-pressed=true title="Whole-well framing and context card (C)">Whole-well context<kbd>C</kbd></button><button id=rtClose aria-label="Close RTOC">Close<kbd>Esc</kbd></button></div>
  <div class=main><div class=left><div class="pn tally"><h3>Joint tally <span>MD (m)</span></h3><div id=rtTally></div></div><div class=pn><h3>Next up</h3><div id=rtNext></div></div></div>
  <div class=ctr><div class="pn score" id=rtScore></div><div class="viewrow" id=rtViews><div class="pn ctxw" id=rtCtx><h3>Whole-well snapshot <span id=rtCtxAs></span></h3><div class=ctxin><div class=v3 id=rtCtx3><div class=cap><span>WHOLE WELL · <span id=rtCtxSrc></span></span><span id=rtCtxGeo>ILLUSTRATIVE GEOLOGY · NOT TO SCALE</span></div><div class=leg><span style=color:#38d6c8>━ Surveyed</span> · <span style=color:#ffb347>┅ Estimate to bit</span> · <span style=color:#ccd>┅ Plan</span> · <span style=color:#9ab>▮ Casing</span></div></div><div class=kp id=rtKpi></div></div></div>
@@ -154,7 +154,7 @@ function showSummary(){
  const stats=document.createElement('div');stats.className='summaryGrid';
  for(const x of m.stats){const card=document.createElement('div');card.className='summaryStat';const l=document.createElement('small');l.textContent=x.label;const v=document.createElement('b');v.textContent=x.value;card.append(l,v);stats.append(card)}
  body.append(stats);
- const h=document.createElement('h3');h.textContent='10 data-derived facts';body.append(h);
+ const h=document.createElement('h3');h.textContent=m.message||'Source-backed facts';body.append(h);
  const facts=document.createElement('div');facts.className='summaryFacts';
  for(const [i,x] of m.facts.entries()){const card=document.createElement('div');card.className='summaryFact';const l=document.createElement('small');l.textContent='FACT '+(i+1)+' · '+x.label;const v=document.createElement('b');v.textContent=x.value;const p=document.createElement('p');p.textContent=x.detail;card.append(l,v,p);facts.append(card)}
  body.append(facts);
