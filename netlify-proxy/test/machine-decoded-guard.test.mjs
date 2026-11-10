@@ -1,9 +1,12 @@
-// /witsml-machine port of the echo-guard review gaps (G1-G6). Synthetic data only, no network.
+// /witsml-machine: shared echo guard, redact-in-place policy (8 Nov). Review cases G1-G6, N1-N9, F1, H5.
+// Synthetic data only, no network.
 import assert from "node:assert/strict";
 import https from "node:https";
 import { after, test } from "node:test";
 import { createVerifiedDispatch, enforceMachinePolicy } from "../netlify/lib/machine-policy.mjs";
 import { adaptMachineResult } from "../netlify/lib/machine-reader-adapter.mjs";
+import { slotsMatchDocument } from "../netlify/lib/redaction-slots.mjs";
+import { anyViewContains } from "../netlify/lib/witsml-echo-guard.mjs";
 
 const USER = "rig-user-id";
 const KEY = "synthetic-not-real-caller-key-0123456789abcd";
@@ -72,71 +75,113 @@ async function call(soap, auth = basic(PASSWORD)) {
 function refused(out, reason, label) {
   assert.equal(out.status, 502, label + ": " + out.raw.slice(0, 200));
   assert.equal(out.body.reason, reason, label + ": " + out.raw.slice(0, 200));
-  for (const secret of SECRETS) assert.equal(out.raw.includes(secret), false, label + " leaks");
+  assert.equal(anyViewContains(out.raw, SECRETS), false, label + " leaks");
   assert.throws(() => adaptMachineResult(out.body, "WMLS_GetFromStore"), (err) => err.code === "MACHINE_REFUSED" && err.reason === reason, label);
 }
 
-test("G1: password split by a tag whose attribute holds '>' is refused", async () => {
-  refused(await call(ok(wells(PASSWORD.slice(0, 3) + '<x a=">"/>' + PASSWORD.slice(3)))), "credential-reflection", "dq");
-  refused(await call(ok(wells(PASSWORD.slice(0, 3) + "<x a='>'/>" + PASSWORD.slice(3)))), "credential-reflection", "sq");
+function redacted(out, slots, label, password = PASSWORD) {
+  assert.equal(out.status, 200, label + ": " + out.raw.slice(0, 200));
+  assert.equal(out.body.passwordRedacted, true, label);
+  assert.equal(out.body.redactionScope, "slots", label);
+  assert.deepEqual(out.body.redactedSlots, slots, label);
+  assert.equal(slotsMatchDocument(out.body.xml, slots), true, label + " slots resolve");
+  const secrets = [password, USER + ":" + password, basic(password).slice(6), KEY];
+  assert.equal(anyViewContains(out.raw, secrets), false, label + " leaks in a decoded view");
+  const adapted = adaptMachineResult(out.body, "WMLS_GetFromStore");
+  assert.equal(adapted.redactionScope, "slots", label);
+}
+test("G1 / N1-N3: a password split across markup is refused", async () => {
+  const cases = {
+    "G1 dq": PASSWORD.slice(0, 3) + '<x a=">"/>' + PASSWORD.slice(3),
+    "G1 sq": PASSWORD.slice(0, 3) + "<x a='>'/>" + PASSWORD.slice(3),
+    "N1": "<![CDATA[<!--]]>" + PASSWORD.slice(0, 3) + "<b/>" + PASSWORD.slice(3) + "<![CDATA[-->]]>",
+    "N2": "<![CDATA[<?]]>" + PASSWORD.slice(0, 3) + "<b/>" + PASSWORD.slice(3) + "<![CDATA[?>]]>",
+    "N3": "<![CDATA[<x ]]>" + PASSWORD.slice(0, 3) + "<b/>" + PASSWORD.slice(3) + "<![CDATA[>]]>",
+    "comment split": PASSWORD.slice(0, 3) + "<!-- c -->" + PASSWORD.slice(3),
+  };
+  for (const [label, name] of Object.entries(cases)) refused(await call(ok(wells(name))), "credential-reflection", label);
 });
 
-test("G2: zero-padded character references (9 and 16 hex, 11 decimal) are refused", async () => {
-  refused(await call(ok(wells(refs(PASSWORD, 9)))), "credential-reflection", "hex9");
-  refused(await call(ok(wells(refs(PASSWORD, 16)))), "credential-reflection", "hex16");
+test("G2 / CDATA: padded references and a CDATA-joined text node are redacted in place", async () => {
   const dec11 = [...PASSWORD].map((c) => "&#" + String(c.codePointAt(0)).padStart(11, "0") + ";").join("");
-  refused(await call(ok(wells(dec11))), "credential-reflection", "dec11");
-  refused(await call(ok(wells("x"), refs(TOKEN, 9))), "credential-reflection", "token in supp");
-});
-
-test("G3: DOCTYPE / ENTITY declarations are refused as unsafe-markup, with or without the password", async () => {
-  const split = `<!DOCTYPE wells [<!ENTITY a "${PASSWORD.slice(0, 3)}"><!ENTITY b "${PASSWORD.slice(3)}">]>`;
-  refused(await call(ok(wells("&a;&b;", split))), "unsafe-markup", "split entities");
-  refused(await call(ok(wells("plain", "<!DOCTYPE wells>"))), "unsafe-markup", "bare doctype");
-  refused(await call(ok(wells("plain"), "see <!ENTITY x 'y'>")), "unsafe-markup", "entity in supp");
-  refused(await call(ok(wells("plain"), "&lt;!doctype x&gt;")), "unsafe-markup", "escaped lowercase doctype in supp");
-});
-
-test("G4: a decoded password past the 300-character fault cut is refused", async () => {
-  for (const at of [282, 294, 299, 320]) {
-    refused(await call(fault("x".repeat(at) + PASSWORD.slice(0, 4) + "<!-- -->" + PASSWORD.slice(4))), "credential-reflection", "fault@" + at);
+  for (const [label, name] of Object.entries({ hex9: refs(PASSWORD, 9), hex16: refs(PASSWORD, 16), dec11, cdata: PASSWORD.slice(0, 3) + "<![CDATA[" + PASSWORD.slice(3) + "]]>-2" })) {
+    const out = await call(ok(wells(name)));
+    redacted(out, ["well-name/1"], label);
+    assert.match(out.body.xml, /<name>\*\*\*(-2)?<\/name>/, label);
   }
-  const clean = await call(fault("y".repeat(400)));
-  assert.equal(clean.status, 200, clean.raw.slice(0, 200));
-  assert.equal(clean.body.error, "SOAP fault: " + "y".repeat(300));
+  refused(await call(ok(wells("x"), refs(TOKEN, 9))), "credential-reflection", "token in supp is never redacted");
 });
 
-test("G5: malformed Basic headers never reach the store", async () => {
-  for (const auth of ["Basic AAA=" + TOKEN, "Basic " + TOKEN + "=", "Basic " + TOKEN.slice(1), "Basic  " + TOKEN]) {
+test("G3 / F1: declarations are refused as unsafe-xml; escaped declaration text is data", async () => {
+  const split = `<!DOCTYPE wells [<!ENTITY a "${PASSWORD.slice(0, 3)}"><!ENTITY b "${PASSWORD.slice(3)}">]>`;
+  refused(await call(ok(wells("&a;&b;", split))), "unsafe-xml", "split entities");
+  refused(await call(ok(wells("plain", "<!DOCTYPE wells>"))), "unsafe-xml", "bare doctype");
+  refused(await call(ok(wells("plain"), "see <!ENTITY x 'y'>")), "unsafe-xml", "entity in supp");
+  const f1 = await call(ok(wells("&lt;!DOCTYPE note&gt;"), "&lt;!doctype x&gt;"));
+  assert.equal(f1.status, 200, f1.raw.slice(0, 200));
+  assert.equal(f1.body.passwordRedacted, undefined);
+});
+
+test("G4: the full fault is redacted before the 300-character cut; a split fault is refused", async () => {
+  for (const at of [282, 294, 299, 320]) {
+    const out = await call(fault("x".repeat(at) + refs(PASSWORD, 4) + " end"));
+    assert.equal(out.status, 200, "fault@" + at + " " + out.raw.slice(0, 120));
+    assert.equal(out.body.passwordRedacted, true);
+    assert.deepEqual(out.body.redactedSlots, ["fault/1"]);
+    assert.equal(out.body.error, "SOAP fault: " + ("x".repeat(at) + "*** end").slice(0, 300));
+  }
+  refused(await call(fault("x".repeat(294) + PASSWORD.slice(0, 4) + "<!-- -->" + PASSWORD.slice(4))), "credential-reflection", "fault split");
+});
+
+test("N4-N9: entity text in the password, HTML-rules references and attribute normalisation are redacted", async () => {
+  const cases = [
+    ["N4", "Pw&amp;4821", wells("Pw&amp;amp;4821"), "well-name/1"],
+    ["N5", PASSWORD, wells("Syn&amp;#116hPAD"), "well-name/1"],
+    ["N6", "Synth.Pw!4821", wells("Synth&amp;period;Pw&amp;excl;4821"), "well-name/1"],
+    ["N7", "Pw&4821x", wells("Pw&amp;amp4821x"), "well-name/1"],
+    ["N8", PASSWORD, wells("Syn&amp;#x74hPAD"), "well-name/1"],
+    ["N9", "Synth Pw4821", `<wells ${NS}><well uid="Synth\tPw4821"><name>n</name></well></wells>`, "well-uid/1"],
+  ];
+  for (const [label, password, xml, slot] of cases) redacted(await call(ok(xml), basic(password)), [slot], label, password);
+});
+
+test("multi-well id-only list: names with the password (literal or encoded) are slots and every well stays", async () => {
+  const names = Array.from({ length: 300 }, (_, i) => i % 3 === 0 ? PASSWORD + "-" + i : i % 3 === 1 ? refs(PASSWORD, 2) + "-" + i : "Other " + i);
+  const xml = `<wells ${NS}>` + names.map((n, i) => `<well uid="SYNTH-W${i + 1}"><name>${n}</name></well>`).join("") + "</wells>";
+  const out = await call(ok(xml));
+  redacted(out, Array.from({ length: 200 }, (_, k) => "well-name/" + (Math.floor(k / 2) * 3 + (k % 2) + 1)), "300 wells");
+  assert.equal((out.body.xml.match(/<well uid="SYNTH-W\d+">/g) || []).length, 300);
+  assert.match(out.body.xml, /<name>\*\*\*-1<\/name>/);
+  assert.match(out.body.xml, /<name>Other 2<\/name>/);
+});
+
+test("G5 / H5: malformed Basic headers never reach the store", async () => {
+  for (const auth of ["Basic AAA=" + TOKEN, "Basic " + TOKEN + "=", "Basic " + TOKEN.slice(1), "Basic  " + TOKEN, "Basic AAAAA", "Basic " + Buffer.from(USER + ":").toString("base64")]) {
     const before = dispatched;
     const out = await call(ok(wells("plain")), auth);
     assert.notEqual(out.status, 200, auth.length + " " + out.raw.slice(0, 120));
     assert.equal(dispatched, before, "dispatched with malformed header");
-    for (const secret of SECRETS) assert.equal(out.raw.includes(secret), false);
+    assert.equal(anyViewContains(out.raw, SECRETS), false);
   }
 });
 
 test("G6: 20k unterminated comment/CDATA/PI/quote openers stay linear and correct", async () => {
-  for (const [label, flood] of [["comment", "<!--"], ["cdata", "<![CDATA["], ["pi", "<?"], ["quote", '<a b="']]) {
+  for (const [label, flood] of [["comment", "<!--"], ["cdata", "<![CDATA["], ["pi", "<?"], ["quote", '<a b="'], ["cdata+comment", "<![CDATA[<!--]]>"]]) {
     const start = performance.now();
     const out = await call(ok(wells("plain"), flood.repeat(20000)));
     const ms = performance.now() - start;
     assert.ok(ms < 400, label + " took " + ms.toFixed(0) + " ms");
     assert.ok(out.status === 200 || out.status === 502, label + " " + out.status);
-    for (const secret of SECRETS) assert.equal(out.raw.includes(secret), false);
+    assert.equal(anyViewContains(out.raw, SECRETS), false);
   }
 });
 
-test("CDATA and comment splits are refused (also open at 22285bf); clean and literal-password replies still 200", async () => {
+test("clean replies and literal-password replies keep their existing shape", async () => {
   const clean = await call(ok(wells("Clean &amp; Co")));
   assert.equal(clean.status, 200, clean.raw.slice(0, 200));
   assert.equal(clean.body.result, 1);
   assert.equal(clean.body.passwordRedacted, undefined);
   const literal = await call(ok(wells(PASSWORD + "-1")));
-  assert.equal(literal.status, 200, literal.raw.slice(0, 200));
-  assert.equal(literal.body.passwordRedacted, true);
-  assert.deepEqual(literal.body.redactedSlots, ["well-name/1"]);
-  assert.equal(literal.raw.includes(PASSWORD), false);
-  refused(await call(ok(wells(PASSWORD.slice(0, 3) + "<![CDATA[" + PASSWORD.slice(3) + "]]>"))), "credential-reflection", "cdata");
-  refused(await call(ok(wells(PASSWORD.slice(0, 3) + "<!-- c -->" + PASSWORD.slice(3)))), "credential-reflection", "comment");
+  redacted(literal, ["well-name/1"], "literal");
+  assert.match(literal.body.xml, /<name>\*\*\*-1<\/name>/);
 });
