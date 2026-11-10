@@ -107,12 +107,13 @@ Deno.test("supabase fallback: what cannot be redacted is 422 with no document", 
   assert(upstreamCalls > 0, "stub used");
 });
 
-Deno.test("supabase fallback: 2 MiB cap, markup-split and &#x; FFFD (review 3)", async () => {
+Deno.test("supabase fallback: 1.5 MiB cap, markup-split and &#x; FFFD (review 3/4)", async () => {
   const p = "SynthPw-4821";
-  const under = await ask({ xml: "<w>" + "x".repeat((2 << 20) - 1000) + "</w>" }, p);
-  assert(under.status === 200 && typeof under.body.xml === "string", "under 2 MiB " + under.text.slice(0, 120));
-  const over = await ask({ xml: "<w>" + "x".repeat((2 << 20) + 1000) + "</w>" }, p);
-  assert(over.status === 422 && over.body.reason === "guard-limit" && over.body.xml === undefined, "over 2 MiB " + over.text.slice(0, 160));
+  const cap = 1.5 * 1024 * 1024;
+  const under = await ask({ xml: "<w>" + "x".repeat(cap - 1000) + "</w>" }, p);
+  assert(under.status === 200 && typeof under.body.xml === "string", "under 1.5 MiB " + under.text.slice(0, 120));
+  const over = await ask({ xml: "<w>" + "x".repeat(cap + 1000) + "</w>" }, p);
+  assert(over.status === 422 && over.body.reason === "guard-limit" && over.body.xml === undefined, "over 1.5 MiB " + over.text.slice(0, 160));
   const mn = (m: string) => "<logs " + NS + '><log uidWell="W" uidWellbore="B" uid="L"><name>n</name><logCurveInfo uid="c1"><mnemonic>' + m + "</mnemonic><unit>m</unit></logCurveInfo></log></logs>";
   for (const m of ["&lt;xmp&gt;&lt;!--&lt;/xmp&gt;Synth&lt;!--&gt;Pw-4821", "&lt;textarea&gt;&lt;!--&lt;/textarea&gt;Synth&lt;!--&gt;Pw-4821", "Synth&lt;B&gt;Pw-4821"]) {
     const r = await ask({ xml: mn(m) }, p);
@@ -125,6 +126,27 @@ Deno.test("supabase fallback: 2 MiB cap, markup-split and &#x; FFFD (review 3)",
   leakFree(f, fp, "&#x;");
 });
 
+Deno.test("supabase fallback: a bare '<' in text and quoted wellbore names are not refused (review 4)", async () => {
+  const p = "SynthPw-4821";
+  const row = "<data>2026-11-07T01:55:00Z,12.5,345.2,1800,120.4,22.1,95,210.3,15.2,8.4</data>";
+  const ltLog = (bytes: number) => {
+    const head = "<logs " + NS + '><log uidWell="W" uidWellbore="B" uid="L"><name>SPP &lt; 200 bar</name><logCurveInfo uid="c"><mnemonic>SPP</mnemonic><curveDescription>SPP &lt; 200 bar</curveDescription></logCurveInfo><logData>';
+    return head + row.repeat(Math.floor((bytes - head.length - 40) / row.length)) + "</logData></log></logs>";
+  };
+  for (const bytes of [1 << 20, 1.5 * 1024 * 1024 - 256]) {
+    const xml = ltLog(bytes);
+    const r = await ask({ xml }, p);
+    assert(r.status === 200 && r.body.xml === xml && r.body.passwordRedacted === undefined, bytes + " " + r.text.slice(0, 160));
+  }
+  const t = "\n        ";
+  const hdr = "<logs " + NS + ">" + Array.from({ length: 40 }, (_, i) => '\n    <log uidWell="w' + i + '" uidWellbore="b" uid="l' + i + '">' + t + "<nameWellbore>12 \u00bc\" Surface Hole</nameWellbore>" + t +
+    '<endIndex uom="m">2281.5</endIndex>' + t + "<commonData>" + t + "    <itemState>actual</itemState>" + t + "</commonData>\n    </log>").join("") + "\n</logs>";
+  for (const pw of ["actual2281", "Actual2281", "hole2281", "actual123"]) {
+    const r = await ask({ xml: hdr }, pw);
+    assert(r.status === 200 && r.body.xml === hdr && r.body.passwordRedacted === undefined, pw + " " + r.text.slice(0, 160));
+  }
+});
+
 Deno.test("supabase fallback: full WHATWG named references (&fjlig; &COPY &notin;) and slot-limit (re-review 2)", async () => {
   for (const [p, text] of [["Xfjord99", "X&amp;fjlig;ord99"], ["Synth\u00a9Pw", "Synth&amp;COPYPw"], ["Pw\u2209x99", "Pw&amp;notin;x99"]]) {
     const r = await ask({ xml: well(text) }, p);
@@ -132,10 +154,10 @@ Deno.test("supabase fallback: full WHATWG named references (&fjlig; &COPY &notin
     leakFree(r, p, text);
   }
   const p = "SynthPw-4821";
-  const many = "<wells " + NS + ">" + Array.from({ length: 32000 }, (_, i) => '<well uid="W' + i + '"><name>' + p + "</name></well>").join("") + "</wells>";
+  const many = "<wells " + NS + ">" + Array.from({ length: 25000 }, (_, i) => '<well uid="W' + i + '"><name>' + p + "</name></well>").join("") + "</wells>";
   const t0 = performance.now();
   const r = await ask({ xml: many }, p);
-  assert(performance.now() - t0 < 2000, "32k hits took " + (performance.now() - t0).toFixed(0) + " ms");
+  assert(performance.now() - t0 < 2000, "25k hits took " + (performance.now() - t0).toFixed(0) + " ms");
   assert(r.status === 200 && r.body.redactionFailure === "slot-limit" && r.body.xml === undefined, "slot-limit " + r.text.slice(0, 200));
   leakFree(r, p, "slot-limit");
   assert(upstreamCalls > 0, "stub used");
