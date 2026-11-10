@@ -2,14 +2,25 @@
 //
 // A store reply can carry the caller's password in a form that is not the
 // literal text: XML-escaped inside the inner document (&lt; &amp; ...),
-// numeric character references (&#70; &#x46;), split across CDATA sections,
-// split by comments or child tags, or escaped more than once. The browser
-// reader decodes all of these (DOMParser, unesc), so a literal-only scan is
-// fail-open. This module builds fully decoded views of a reply field and
-// reports whether any of them contains a credential.
+// numeric character references (&#70; &#x46;, with any number of leading
+// zeros), split across CDATA sections, split by comments or child tags
+// (including tags whose quoted attribute values contain ">"), or escaped
+// more than once. The browser reader decodes all of these (DOMParser,
+// unesc), so a literal-only scan is fail-open. This module builds fully
+// decoded views of a reply field and reports whether any of them contains a
+// credential.
 //
-// Callers refuse with HTTP 422 and no document when echoes() is true.
-// Nothing here logs. Secrets never leave this module except as booleans.
+// A DOCTYPE or ENTITY declaration anywhere in a reply is refused outright:
+// DOMParser expands internal entities, so no scan of the undeclared text can
+// be complete.
+//
+// All scanning is linear in the input: comments, CDATA and processing
+// instructions are removed with indexOf loops, and an unterminated opener
+// stops that pass (the raw view is still scanned).
+//
+// Callers refuse with HTTP 422 and no document when guardReason() is set
+// (echoes() is the boolean form). Nothing here logs. Secrets never leave
+// this module except as booleans.
 //
 // The same bytes ship in three places (drilling game proxy, Netlify game
 // proxy lib, Supabase fallback); tests pin the sha256.
@@ -17,7 +28,13 @@
 const MIN_SECRET = 4;
 const MAX_ROUNDS = 8;
 const NAMED = { lt: "<", gt: ">", amp: "&", quot: '"', apos: "'", nbsp: "\u00a0" };
-const ENTITY_RE = /&(#[xX][0-9a-fA-F]{1,8}|#[0-9]{1,10}|[A-Za-z][A-Za-z0-9]{1,8});/g;
+// Leading zeros are unlimited (XML allows them); the significant digits are
+// bounded so the code point stays in range.
+const ENTITY_RE = /&(#[xX]0*[0-9a-fA-F]{1,6}|#0*[0-9]{1,7}|[A-Za-z][A-Za-z0-9]{1,8});/g;
+// Quote-aware tag. '<' cannot occur inside an XML attribute value, so a
+// quoted run stops at '<' and the match stays linear.
+const TAG_RE = /<\/?[A-Za-z_](?:[^<>"']|"[^"<]*"|'[^'<]*')*>/g;
+const DECLARATION_RE = /<!\s*(?:DOCTYPE|ENTITY)\b/i;
 
 const long = (value) => [...String(value ?? "")].length >= MIN_SECRET;
 
@@ -38,12 +55,25 @@ function decodeEntitiesOnce(text) {
   });
 }
 
-const joinCdata = (text) => text.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1");
-const stripMarkup = (text) => text
-  .replace(/<!--[\s\S]*?-->/g, "")
-  .replace(/<\?[\s\S]*?\?>/g, "")
-  .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
-  .replace(/<\/?[A-Za-z_][^<>]*>/g, "");
+// Remove every open...close section in one linear pass. keepInner keeps the
+// section body (CDATA) instead of dropping it (comments, PIs). An opener
+// with no closer ends the pass and the rest is kept as is.
+function cutSections(text, open, close, keepInner) {
+  let out = "";
+  let i = 0;
+  for (;;) {
+    const start = text.indexOf(open, i);
+    if (start < 0) return out + text.slice(i);
+    const end = text.indexOf(close, start + open.length);
+    if (end < 0) return out + text.slice(i);
+    out += text.slice(i, start) + (keepInner ? text.slice(start + open.length, end) : "");
+    i = end + close.length;
+  }
+}
+
+const joinCdata = (text) => cutSections(text, "<![CDATA[", "]]>", true);
+const stripMarkup = (text) => cutSections(joinCdata(cutSections(text, "<!--", "-->", false)), "<?", "?>", false)
+  .replace(TAG_RE, "");
 
 function fixpoint(text, step) {
   let current = text;
@@ -65,6 +95,8 @@ export function decodedViews(value) {
 }
 
 // Credentials that must never come back to the browser, from the Basic header.
+// An empty list means the header could not be decoded; callers must refuse
+// the request rather than skip the scan.
 export function credentialSecrets(auth) {
   const match = /^Basic ([A-Za-z0-9+/]+={0,2})$/.exec(String(auth || ""));
   if (!match) return [];
@@ -90,25 +122,31 @@ function strings(value, out = []) {
   return out;
 }
 
-// True when any string anywhere in value (object keys included) contains a
-// secret in any decoded view.
-export function echoes(value, secrets) {
+// "unsafe-markup" when any string (in any decoded view) declares a DOCTYPE
+// or ENTITY; "credential-reflection" when any decoded view contains a
+// secret; otherwise null. Object keys are scanned too.
+export function guardReason(value, secrets) {
   const list = (secrets || []).filter((secret) => typeof secret === "string" && long(secret));
-  if (!list.length) return false;
   for (const text of strings(value)) {
     for (const view of decodedViews(text)) {
-      if (list.some((secret) => view.includes(secret))) return true;
+      if (DECLARATION_RE.test(view)) return "unsafe-markup";
+      if (list.some((secret) => view.includes(secret))) return "credential-reflection";
     }
   }
-  return false;
+  return null;
+}
+
+// True when guardReason() would refuse.
+export function echoes(value, secrets) {
+  return guardReason(value, secrets) !== null;
 }
 
 // The 422 body. Fixed text; any field whose key or value would contain a
 // secret is dropped, so the body never carries one.
-export function echoRefusal(secrets) {
-  const body = { result: -1, error: "proxy refusal", code: "proxy-refusal", reason: "credential-reflection" };
+export function echoRefusal(secrets, reason = "credential-reflection") {
+  const body = { result: -1, error: "proxy refusal", code: "proxy-refusal", reason: reason === "unsafe-markup" ? "unsafe-markup" : "credential-reflection" };
   for (const key of Object.keys(body)) {
-    if (echoes({ [key]: body[key] }, secrets)) delete body[key];
+    if (guardReason({ [key]: body[key] }, secrets) === "credential-reflection") delete body[key];
   }
-  return echoes(body, secrets) ? {} : body;
+  return guardReason(body, secrets) === "credential-reflection" ? {} : body;
 }

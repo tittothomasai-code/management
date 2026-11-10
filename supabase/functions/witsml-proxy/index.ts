@@ -14,7 +14,7 @@
 //    decoded form (named and numeric entities, CDATA joins, markup stripped, repeated decoding) for the
 //    caller's password, user:password pair, Basic token and header. Any hit is HTTP 422
 //    {code:"proxy-refusal", reason:"credential-reflection"} with no document. See witsml-echo-guard.mjs.
-import { credentialSecrets, echoes, echoRefusal } from "./witsml-echo-guard.mjs";
+import { credentialSecrets, echoRefusal, guardReason } from "./witsml-echo-guard.mjs";
 const ORIGIN = "https://tittothomasai-code.github.io";
 const UPSTREAM = "https://australia.adagasolutions.com/WMLS";
 const UP_HOST = "australia.adagasolutions.com";
@@ -66,7 +66,10 @@ Deno.serve(async (req: Request) => {
   const auth = req.headers.get("X-Witsml-Authorization") || "";
   if (!/^Basic [A-Za-z0-9+/=]{4,1024}$/.test(auth)) return json(400, { result: -1, error: "credentials required (X-Witsml-Authorization: Basic …)" }, origin);
   const secrets: string[] = credentialSecrets(auth);
-  const reply = (o: Record<string, unknown>) => echoes(o, secrets) ? json(422, echoRefusal(secrets), origin) : json(200, o, origin);
+  // A header that passes the shape check but does not decode gives no secrets to scan for: refuse instead of skipping the scan.
+  if (!secrets.length) return json(400, { result: -1, error: "credentials required (X-Witsml-Authorization: Basic …)" }, origin);
+  // extra: untruncated text that must also be clean (the fault is cut to 300 characters after this check).
+  const reply = (o: Record<string, unknown>, extra: string[] = []) => { const why = guardReason([o, extra], secrets); return why ? json(422, echoRefusal(secrets, why), origin) : json(200, o, origin); };
   const t0 = Date.now();
   let up: Response;
   try {
@@ -83,7 +86,7 @@ Deno.serve(async (req: Request) => {
   if (up.status === 401 || up.status === 403) { await up.body?.cancel(); return json(up.status, { result: -1, error: "Authentication failed (" + up.status + ")" }, origin); }
   const body = await up.text();
   const fault = tag(body, "faultstring");
-  if (fault) return reply({ result: -1, error: "SOAP fault: " + unesc(fault).slice(0, 300) });
+  if (fault) return reply({ result: -1, error: "SOAP fault: " + unesc(fault).slice(0, 300) }, [unesc(fault)]);
   if (up.status >= 400) return json(200, { result: -1, error: "HTTP " + up.status }, origin);
   const res = tag(body, "Result");
   const xml = unesc(tag(body, "XMLout") || tag(body, "CapabilitiesOut") || "");

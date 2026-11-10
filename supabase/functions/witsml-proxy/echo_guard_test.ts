@@ -44,6 +44,30 @@ Deno.test("supabase fallback: clean reply keeps the document", async () => {
   }
 });
 
+Deno.test("supabase fallback: review gaps G1-G5 refuse", async () => {
+  const pad = (s: string, w: number) => [...s].map((c) => "&#x" + c.codePointAt(0)!.toString(16).padStart(w, "0") + ";").join("");
+  for (const p of PASSWORDS) {
+    const cases: [string, string, () => Promise<{ status: number; text: string; body: Record<string, unknown> }>][] = [
+      ["G1 tag split with > in attribute", "credential-reflection", () => ask({ xml: well(esc(p.slice(0, 3)) + '<x a=">"/>' + esc(p.slice(3))) }, p)],
+      ["G2 hex refs padded to 9", "credential-reflection", () => ask({ xml: well(pad(p, 9)) }, p)],
+      ["G3 DOCTYPE entities", "unsafe-markup", () => ask({ xml: '<!DOCTYPE wells [<!ENTITY a "' + esc(p.slice(0, 3)) + '"><!ENTITY b "' + esc(p.slice(3)) + '">]>' + well("&a;&b;") }, p)],
+      ["G4 fault past 300", "credential-reflection", () => ask({ fault: "x".repeat(294) + p }, p)],
+    ];
+    for (const [label, reason, pending] of cases) {
+      const r = await pending();
+      assert(r.status === 422 && r.body.reason === reason, label + " " + r.status + " " + r.text.slice(0, 80));
+      for (const s of [p, USER + ":" + p, basic(p).slice(6)]) assert(!r.text.includes(s), label + " leak");
+    }
+  }
+  const before = upstreamCalls;
+  const res = await handler!(new Request("https://fn.invalid/witsml-proxy", { method: "POST",
+    headers: { Origin: "https://tittothomasai-code.github.io", "Content-Type": "application/json", "X-Witsml-Authorization": "Basic AAA=" + basic("FAKE-PW-123").slice(6) },
+    body: JSON.stringify({ op: "WMLS_GetFromStore", url: "https://australia.adagasolutions.com/WMLS", wmlType: "well", query: "<wells/>" }) }));
+  assert(res.status === 400, "G5 malformed header " + res.status);
+  await res.text();
+  assert(upstreamCalls === before, "G5 no upstream call");
+});
+
 Deno.test("supabase fallback: echoes in xml, supp, fault and version are 422 with no document", async () => {
   for (const p of PASSWORDS) {
     const cases: [string, () => Promise<{ status: number; text: string; body: Record<string, unknown> }>][] = [

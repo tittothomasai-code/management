@@ -7,7 +7,7 @@ import https from "node:https";
 import { EventEmitter } from "node:events";
 import { after, describe, test } from "node:test";
 
-const ECHO_GUARD_SHA256 = "34a4c3ed3fa0e79fdd3a3451b4c30316c779c25082410a314d5089972eeb64a1";
+const ECHO_GUARD_SHA256 = "a502ce201fa138762ab131da4e54d78842dc66df9fae4fdcd7d94e9389ab48f4";
 const originalRequest = https.request;
 let next = { status: 200, body: "" }, upstreamCalls = 0;
 https.request = (url, opts, cb) => {
