@@ -31,6 +31,27 @@ export const LIMITS = Object.freeze({
   maxDepth: 64,
 });
 
+// Page caps for maxReturnNodes. Every type keeps 1000. Only wmlType=log may ask for
+// more, up to LOG_MAX_RETURN_NODES, so long time logs can be backfilled in fewer calls.
+// Why 7000 and not GetCap's 10,000 rows / 100,000 points:
+//  * maxResp (2 MiB of upstream SOAP) is unchanged and still fails closed. A 10-channel
+//    1 s row is ~130 B typical and ~225 B worst case once escaped (24-char ISO time,
+//    9 values up to 16 chars, commas, escaped <data></data>, indent: 204 B measured in
+//    the test fixture). 7000 x 225 B = 1.58 MB leaves >=25% headroom under 2 MiB;
+//    10,000 rows (2.04-2.25 MB) would not fit.
+//  * maxElements (10,000) is unchanged. It bounds the SOAP envelope walk; XMLout itself
+//    is bounded by maxResp (it is only walked when it holds the literal password, and a
+//    7000-row page plus ~100-150 header elements stays under 10,000 there too).
+//  * 7000 rows x 10 channels = 70,000 points, under GetCap's 100,000.
+//  * timeoutMs (9 s) is unchanged. A slow page times out and fails closed (no partial
+//    body is returned); callers should halve the page size and retry.
+export const DEFAULT_MAX_RETURN_NODES = 1000;
+export const LOG_MAX_RETURN_NODES = 7000;
+
+export function maxReturnNodesFor(wmlType) {
+  return wmlType === "log" ? LOG_MAX_RETURN_NODES : DEFAULT_MAX_RETURN_NODES;
+}
+
 const SOAP_ACTIONS = Object.freeze({
   WMLS_GetVersion: '"http://www.witsml.org/action/120/Store.WMLS_GetVersion"',
   WMLS_GetCap: '"http://www.witsml.org/action/120/Store.WMLS_GetCap"',
@@ -454,7 +475,7 @@ function allowedText(s) {
   return true;
 }
 
-function boundOptions(options) {
+function boundOptions(options, wmlType) {
   if (!/^[A-Za-z0-9=.;,_:+/ -]{0,2048}$/.test(options)) return null;
   if (options.length > LIMITS.maxOptions) return null;
   const mentions = options.split("maxReturnNodes=").length - 1;
@@ -468,7 +489,7 @@ function boundOptions(options) {
     return next;
   }
   const n = Number(found[0][1]);
-  if (!Number.isInteger(n) || n < 1 || n > 1000) return null;
+  if (!Number.isInteger(n) || n < 1 || n > maxReturnNodesFor(wmlType)) return null;
   return options;
 }
 
@@ -903,7 +924,7 @@ function validateFields(raw) {
   const options = clean.options == null ? "" : clean.options;
   if (typeof options !== "string") return { error: json(400, { result: -1, error: "bad options" }) };
   if (options.length > LIMITS.maxOptions) return { error: json(413, { result: -1, error: "options too large" }) };
-  const bounded = boundOptions(options);
+  const bounded = boundOptions(options, clean.wmlType);
   if (bounded == null) return { error: json(400, { result: -1, error: "bad options" }) };
   return { op, fields: { wmlType: clean.wmlType, query: clean.query, options: bounded } };
 }
