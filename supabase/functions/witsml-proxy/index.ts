@@ -19,9 +19,11 @@
 //    (structural), a DOCTYPE/ENTITY declaration (unsafe-xml), an over-size reply (guard-limit) or a guard error
 //    (guard-error). A Basic header without a usable user:password is 400.
 import { GAME_REDACTION_MARK, attachRedactionMeta, credentialParts, credentialSecrets, echoRefusal, guardFields, guardReason } from "./witsml-echo-guard.mjs";
-// Supabase Edge has less memory than the Netlify function: the guard reads at most 2 MiB per field here (a larger
-// reply is 422 guard-limit). Passed as a parameter so the guard file stays byte-identical to the Netlify copy.
-const SUPABASE_MAX_FIELD_CHARS = 2 * 1024 * 1024;
+// Supabase Edge has 256 MB per worker: the guard reads at most 1.5 MiB per field here (hostile dense-markup
+// input peaks near 220 MB RSS at 1.5 MiB in Deno, about 245 MB at 2 MiB). A larger field is refused with
+// guard-limit (fail closed); the Netlify route keeps the 4 MiB cap. Passed as a parameter so the guard file
+// stays byte-identical to the Netlify copy.
+const SUPABASE_MAX_FIELD_CHARS = 1.5 * 1024 * 1024;
 const ORIGIN = "https://tittothomasai-code.github.io";
 const UPSTREAM = "https://australia.adagasolutions.com/WMLS";
 const UP_HOST = "australia.adagasolutions.com";

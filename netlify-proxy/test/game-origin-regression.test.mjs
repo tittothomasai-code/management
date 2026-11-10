@@ -99,6 +99,7 @@ describe("game origin regression", { concurrency: 1 }, () => {
       "netlify-proxy/test/game-proxy-echo-gaps.test.mjs",
       "netlify-proxy/test/game-proxy-echo-review2.test.mjs",
       "netlify-proxy/test/game-proxy-echo-review3.test.mjs",
+      "netlify-proxy/test/game-proxy-echo-review4.test.mjs",
       "netlify-proxy/test/game-proxy-echo.test.mjs",
       "supabase/functions/witsml-proxy/echo_guard_test.ts",
       "supabase/functions/witsml-proxy/index.ts",

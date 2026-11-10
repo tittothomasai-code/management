@@ -8,7 +8,7 @@ import { EventEmitter } from "node:events";
 import { after, describe, test } from "node:test";
 import { guardReason } from "../netlify/lib/witsml-echo-guard.mjs";
 
-const ECHO_GUARD_SHA256 = "b7dda3741dcdda4cde87cd998eb6f92aff1fed7c92c7463f3d5484752e2193b2";
+const ECHO_GUARD_SHA256 = "1b305bba60cb27a4d175f776c012f6209d080ec8903158583aee6a8ea88bf0b7";
 const originalRequest = https.request;
 let next = { status: 200, body: "" }, upstreamCalls = 0;
 https.request = (url, opts, cb) => {
