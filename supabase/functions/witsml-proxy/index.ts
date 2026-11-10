@@ -19,6 +19,9 @@
 //    (structural), a DOCTYPE/ENTITY declaration (unsafe-xml), an over-size reply (guard-limit) or a guard error
 //    (guard-error). A Basic header without a usable user:password is 400.
 import { GAME_REDACTION_MARK, attachRedactionMeta, credentialParts, credentialSecrets, echoRefusal, guardFields, guardReason } from "./witsml-echo-guard.mjs";
+// Supabase Edge has less memory than the Netlify function: the guard reads at most 2 MiB per field here (a larger
+// reply is 422 guard-limit). Passed as a parameter so the guard file stays byte-identical to the Netlify copy.
+const SUPABASE_MAX_FIELD_CHARS = 2 * 1024 * 1024;
 const ORIGIN = "https://tittothomasai-code.github.io";
 const UPSTREAM = "https://australia.adagasolutions.com/WMLS";
 const UP_HOST = "australia.adagasolutions.com";
@@ -76,10 +79,10 @@ Deno.serve(async (req: Request) => {
   const refuse = (why: string) => json(422, echoRefusal(secrets, why), origin);
   // Redact the password in place where that is safe, refuse otherwise; build() sees only guarded fields.
   const reply = (fields: Record<string, string>, build: (f: Record<string, string>) => Record<string, unknown>) => {
-    const g = guardFields(fields, creds, { mark: GAME_REDACTION_MARK, xmlKeys: ["xml"], slotKeys: { supp: "supp/1", fault: "fault/1" } });
+    const g = guardFields(fields, creds, { mark: GAME_REDACTION_MARK, xmlKeys: ["xml"], slotKeys: { supp: "supp/1", fault: "fault/1" }, maxFieldChars: SUPABASE_MAX_FIELD_CHARS });
     if (!g.ok) return refuse(g.reason ?? "guard-error");
     const o = attachRedactionMeta(build(g.fields), g);
-    const why = guardReason({ ...o, xml: undefined }, secrets);
+    const why = guardReason({ ...o, xml: undefined }, secrets, { maxFieldChars: SUPABASE_MAX_FIELD_CHARS });
     return why ? refuse(why) : json(200, o, origin);
   };
   const t0 = Date.now();
