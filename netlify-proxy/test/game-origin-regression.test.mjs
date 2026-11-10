@@ -16,7 +16,9 @@ import handler, { DEPLOY_REVISION_EQUIVALENCE } from "../netlify/functions/witsm
 // revision, and a green test is not an Adaga connection.
 
 const CANONICAL = {
-  "../netlify/lib/core.mjs": "74c687f08f4499bacb89b5d3a394859102e17707a8804c277cf4121589eb7825",
+  // core.mjs changed on purpose: credential echo guard (PR #22 review B1). The running
+  // tryfecta-witsml-proxy deploy is still 74c687f0...eb7825 until this is released.
+  "../netlify/lib/core.mjs": "174c7b05196b39034417a00676a77ba50635a92c71bceaa005ef0cf2df7f058d",
   "../netlify/functions/witsml-proxy.mjs": "d8c4e95580c2544567fe658d6ae41d1b5cce4b02c47da6a7c0d93eb205736b34",
   "../netlify.toml": "ecf28bdecdd81726a880eab4ddf070d74f2d1f011a7c6d2d0c1c247d2484bb39",
 };
@@ -57,14 +59,14 @@ function gameReq({ method = "POST", origin, headers = {}, body = "{}" } = {}) {
 }
 
 describe("game origin regression", { concurrency: 1 }, () => {
-  test("canonical proxy bytes are unchanged", () => {
+  test("canonical proxy bytes match the pinned revision", () => {
     for (const [rel, hash] of Object.entries(CANONICAL)) assert.equal(sha(rel), hash, rel);
     const core = readFileSync(new URL("../netlify/lib/core.mjs", import.meta.url), "utf8");
     assert.match(core, /rejectUnauthorized:\s*false/);
     assert.match(core, /origin not allowed/);
   });
 
-  test("this change stays inside the backend proxy and does not touch the game route", () => {
+  test("this change stays inside the proxies (game route only gains the echo guard)", () => {
     const root = fileURLToPath(new URL("../../", import.meta.url));
     const run = (args) => execFileSync("git", args, { cwd: root, encoding: "utf8" }).trim();
     const lines = (value) => value ? value.split("\n").filter(Boolean) : [];
@@ -91,7 +93,12 @@ describe("game origin regression", { concurrency: 1 }, () => {
       "netlify-proxy/test/machine-policy.test.mjs",
       "netlify-proxy/test/machine-reader-adapter.test.mjs",
       "netlify-proxy/test/machine-redaction-slots.test.mjs",
-    ]);
+      "netlify-proxy/netlify/lib/witsml-echo-guard.mjs",
+      "netlify-proxy/test/game-proxy-echo.test.mjs",
+      "supabase/functions/witsml-proxy/echo_guard_test.ts",
+      "supabase/functions/witsml-proxy/index.ts",
+      "supabase/functions/witsml-proxy/witsml-echo-guard.mjs",
+    ].sort());
   });
 
   test("the machine function wires verified TLS and does not import the game proxy", () => {
