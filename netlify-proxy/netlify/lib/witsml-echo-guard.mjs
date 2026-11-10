@@ -388,9 +388,12 @@ export function anyViewContains(s, secrets, markup = "plain") {
 // page markup between the two values is swallowed and the region may close
 // in the next value or in the page markup. Values that end in plain text
 // never join, so neighbouring plain values (`actual` + `2281`) are not read
-// as one. Markup can also move later text in front of earlier text (CSS
-// order, foster parenting): a run with markup is read twice over, and up to
-// four times when it holds table markup (nested foster parenting).
+// as one. A hidden region stays open only while the tokenizer can still be
+// inside markup; once every state is back in text it is closed. Markup that
+// can reorder shown text (style, dir, class, bdo/bdi, table elements: CSS
+// order and foster parenting) lets any markup-delimited piece follow any
+// other: such a run is read twice over, and up to four times with table
+// markup (nested foster parenting).
 //
 // One linear shift-and scan over all secrets at once (secrets that contain
 // another secret are dropped; each kept secret is cut to a prefix so that all
@@ -404,7 +407,8 @@ const RAW_TEXT = new Set(["script", "style", "xmp", "iframe", "noembed", "nofram
 const isAlpha = (c) => (c >= 65 && c <= 90) || (c >= 97 && c <= 122);
 const opensAt = (s, i) => { const c = s.charCodeAt(i + 1); return i + 1 >= s.length || isAlpha(c) || c === 33 || c === 47 || c === 63; };
 const hasMarkup = (s) => { for (let i = s.indexOf("<"); i >= 0; i = s.indexOf("<", i + 1)) if (opensAt(s, i)) return true; return false; };
-const TABLEISH = /<\/?[tTcC]/g;
+const TABLEISH = /<\/?(?:table|tbody|thead|tfoot|tr|td|th|caption|colgroup|col|template)[\s/>]/gi;
+const REORDER = /style|\bdir\s*=|<bd[io]|\bclass\s*=|<\/?(?:table|tbody|thead|tfoot|tr|td|th|caption|colgroup|col|template)[\s/>]/i;
 
 // Tokenizer states (a small subset of the HTML tokenizer; see above).
 const T_DATA = 0, T_NAME = 1, T_BAN = 2, T_AN = 3, T_AAN = 4, T_BAV = 5, T_DQ = 6, T_SQ = 7, T_UNQ = 8, T_AQ = 9, T_SC = 10,
@@ -500,32 +504,35 @@ function stepState(state, s, i, spendFn) {
     default: return null;
   }
 }
+// One tokenizer step over s[i] for every state in the set.
+function advance(set, s, i, spendFn) {
+  spendFn(set.length);
+  let next = null;
+  for (let j = 0; j < set.length; j += 1) {
+    const state = set[j];
+    const out = state.w > i ? null : stepState(state, s, i, spendFn);
+    if (out === null) { if (next) next.push(state); continue; }
+    if (!next) next = set.slice(0, j);
+    next.push(...out);
+  }
+  if (next === null) return set;
+  const seen = new Map();
+  for (const state of next) {
+    if (state.k === T_UNKNOWN) return UNKNOWN_SET;
+    const key = state.k + "|" + state.n + "|" + state.c + "|" + state.w + "|" + (state.start ? 1 : 0);
+    if (!seen.has(key)) seen.set(key, state);
+  }
+  return seen.size > 32 ? UNKNOWN_SET : [...seen.values()];
+}
+const UNKNOWN_SET = [st(T_UNKNOWN)];
+const DATA_SET = [st(T_DATA)];
+// Positions only matter inside one value.
+const acrossValues = (set) => set.map((state) => ({ ...state, c: -1, w: 0 }));
 // The tokenizer state set after reading s from `states`.
 function tokenize(states, s, spendFn) {
   let set = states;
-  const n = s.length;
-  for (let i = 0; i < n; i += 1) {
-    spendFn(set.length);
-    let next = null;
-    for (let j = 0; j < set.length; j += 1) {
-      const state = set[j];
-      const out = state.w > i ? null : stepState(state, s, i, spendFn);
-      if (out === null) { if (next) next.push(state); continue; }
-      if (!next) next = set.slice(0, j);
-      next.push(...out);
-    }
-    if (next === null) continue;
-    const seen = new Map();
-    for (const state of next) {
-      if (state.k === T_UNKNOWN) return [st(T_UNKNOWN)];
-      const key = state.k + "|" + state.n + "|" + state.c + "|" + state.w + "|" + (state.start ? 1 : 0);
-      if (!seen.has(key)) seen.set(key, state);
-    }
-    set = [...seen.values()];
-    if (set.length > 32) return [st(T_UNKNOWN)];
-  }
-  // Positions only matter inside one value.
-  return set.map((state) => ({ ...state, c: -1, w: 0 }));
+  for (let i = 0; i < s.length && set !== UNKNOWN_SET; i += 1) set = advance(set, s, i, spendFn);
+  return acrossValues(set);
 }
 const endsInText = (set) => set.length === 1 && set[0].k === T_DATA;
 
@@ -559,20 +566,24 @@ function markupSplitHit(values, secrets) {
   // Runs of values read together.
   const runs = [];
   let run = null;
-  let states = [st(T_DATA)];
-  for (const v of values) {
+  let states = DATA_SET;
+  for (let k = 0; k < values.length; k += 1) {
+    const v = values[k];
     const carried = !endsInText(states);
     if (!carried) run = null;
     const markup = hasMarkup(v);
     if (!carried && !markup && !v.includes("\0")) continue;
     if (!run) { run = []; runs.push(run); }
     run.push(v);
-    states = carried || markup ? tokenize(states, v, spendFn) : [st(T_DATA)];
+    // The last value's end state joins nothing.
+    if (k === values.length - 1) break;
+    states = carried || markup ? tokenize(states, v, spendFn) : DATA_SET;
   }
   const packs = matchPacks(secrets);
   for (const r of runs) {
     let tables = 0;
-    for (const v of r) { TABLEISH.lastIndex = 0; while (TABLEISH.exec(v) && tables < 2) tables += 1; }
+    const reorder = r.some((v) => REORDER.test(v));
+    if (reorder) for (const v of r) { TABLEISH.lastIndex = 0; while (tables < 2 && TABLEISH.exec(v)) tables += 1; }
     for (const pack of packs) {
       let used = 0;
       let starts = 0;
@@ -584,7 +595,7 @@ function markupSplitHit(values, secrets) {
         goal |= 1 << (used - 1);
       }
       try {
-        if (shiftAnd(r, 2 + tables, starts, goal, spendFn)) return true;
+        if (shiftAnd(r, reorder ? 2 + tables : 1, reorder, starts, goal, spendFn)) return true;
       } finally {
         for (const p of pack) for (let k = 0; k < p.length; k += 1) MATCH_MASK[p.charCodeAt(k)] = 0;
       }
@@ -592,9 +603,10 @@ function markupSplitHit(values, secrets) {
   }
   return false;
 }
-function shiftAnd(values, passes, starts, goal, spendFn) {
+function shiftAnd(values, passes, reorder, starts, goal, spendFn) {
   let d = 0;
   let skip = 0;
+  let jump = 0;
   let pending = null;
   const later = (at, mask) => {
     if (!mask) return;
@@ -602,18 +614,19 @@ function shiftAnd(values, passes, starts, goal, spendFn) {
     pending.set(at, (pending.get(at) || 0) | mask);
   };
   for (let pass = 0; pass < passes; pass += 1) {
+    let set = DATA_SET;
     for (let v = 0; v < values.length; v += 1) {
       const s = values[v];
       spendFn(s.length);
       // Joined values: the page markup in between is hidden.
-      if (v > 0) d = skip;
+      if (v > 0) { d = skip | jump; set = acrossValues(set); }
       pending = null;
       const n = s.length;
       for (let i = 0; i < n; i += 1) {
         if (pending !== null) { const extra = pending.get(i); if (extra !== undefined) { d |= extra; pending.delete(i); if (!pending.size) pending = null; } }
         const c = s.charCodeAt(i);
         if (c === 60) {
-          if (opensAt(s, i)) skip |= d;
+          if (opensAt(s, i)) { skip |= d; if (reorder) jump |= d; }
           if (s.startsWith("<![CDATA[", i)) later(i + 9, d);
         } else if (c === 38) {
           const ref = readRef(s, i, true);
@@ -628,13 +641,23 @@ function shiftAnd(values, passes, starts, goal, spendFn) {
         const next = ((d << 1) | starts) & MATCH_MASK[c];
         d = c === 0 ? next | d : next;
         if (d & goal) return true;
-        if (c === 62) d |= skip;
+        if (c === 60 || set !== DATA_SET) {
+          set = advance(set, s, i, spendFn);
+          if (set.length === 1 && set[0].k === T_DATA && set[0].w <= i + 1) set = DATA_SET;
+        }
+        if (c === 62) {
+          // Shown text may resume here; once every tokenizer state is back
+          // in text, no earlier region is still open.
+          d |= skip | jump;
+          if (set.length === 1 && set[0].k === T_DATA) { skip = 0; set = DATA_SET; }
+        }
       }
       if (pending !== null) { const tail = pending.get(n); if (tail !== undefined) d |= tail; }
     }
-    // Foster parenting: text from the end may be shown before the start.
-    skip |= d;
-    d |= skip;
+    // Reordering (CSS, foster parenting): text from the end may be shown
+    // before the start.
+    jump |= d | skip;
+    d |= jump;
   }
   return false;
 }
