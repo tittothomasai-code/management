@@ -6,8 +6,9 @@ import { readFileSync } from "node:fs";
 import https from "node:https";
 import { EventEmitter } from "node:events";
 import { after, describe, test } from "node:test";
+import { guardReason } from "../netlify/lib/witsml-echo-guard.mjs";
 
-const ECHO_GUARD_SHA256 = "a502ce201fa138762ab131da4e54d78842dc66df9fae4fdcd7d94e9389ab48f4";
+const ECHO_GUARD_SHA256 = "44b7d880ba37e5cc1bdd2909ae0af7ea2d467c74a10a3386ac4d8feaa1be108a";
 const originalRequest = https.request;
 let next = { status: 200, body: "" }, upstreamCalls = 0;
 https.request = (url, opts, cb) => {
@@ -43,10 +44,17 @@ async function ask(reply, { password, op = "WMLS_GetFromStore", status = 200 }) 
   return { status: res.status, text, body: JSON.parse(text) };
 }
 const secretsOf = (p) => [p, USER + ":" + p, basic(p), basic(p).slice(6)];
-function refused(r, p, label) {
+function refused(r, p, label, reason = "credential-reflection") {
   assert.equal(r.status, 422, label + " " + r.text.slice(0, 100));
-  assert.deepEqual(r.body, { result: -1, error: "proxy refusal", code: "proxy-refusal", reason: "credential-reflection" }, label);
+  assert.deepEqual(r.body, { result: -1, error: "proxy refusal", code: "proxy-refusal", reason }, label);
   for (const s of secretsOf(p)) assert.equal(r.text.includes(s), false, label);
+}
+function redacted(r, p, slots, label) {
+  assert.equal(r.status, 200, label + " " + r.text.slice(0, 160));
+  assert.equal(r.body.passwordRedacted, true, label);
+  assert.equal(r.body.redactionScope, "slots", label);
+  assert.deepEqual(r.body.redactedSlots, slots, label);
+  assert.equal(guardReason(r.body, secretsOf(p)), null, label + " leaks in a decoded view");
 }
 const PASSWORDS = { plain: "FAKE-PW-123", special: "Synth<&Pw9", quotes: 'Sy"nth\'Pw>9', unicode: "Pässwört€9" };
 const well = (name) => "<wells " + NS + '><well uid="SYNTH-W1"><name>' + name + "</name></well></wells>";
@@ -75,31 +83,47 @@ describe("deployed game proxy credential echo guard", { concurrency: 1 }, () => 
     }
   });
 
-  test("XMLout, CapabilitiesOut and Result echoes are refused, literal or encoded", async () => {
+  test("XMLout and CapabilitiesOut password echoes are redacted in place, literal or encoded", async () => {
     for (const [kind, p] of Object.entries(PASSWORDS)) {
-      for (const [form, v] of Object.entries({ literal: esc(p), dec: dec(p), hex: hex(p), double: esc(esc(p)), cdata: "<![CDATA[" + p.slice(0, 3) + "]]><![CDATA[" + p.slice(3) + "]]>", comment: esc(p.slice(0, 3)) + "<!-- x -->" + esc(p.slice(3)) })) {
-        refused(await ask({ xml: well(v) }, { password: p }), p, kind + " xml " + form);
+      for (const [form, v] of Object.entries({ literal: esc(p), dec: dec(p), hex: hex(p), double: esc(esc(p)), cdata: "<![CDATA[" + p.slice(0, 3) + "]]><![CDATA[" + p.slice(3) + "]]>" })) {
+        const r = await ask({ xml: well(v + "-7") }, { password: p });
+        redacted(r, p, ["well-name/1"], kind + " xml " + form);
+        assert.match(r.body.xml, /<name>\[redacted\]-7<\/name>/, kind + " xml " + form);
       }
-      refused(await ask({ raw: "<Result>1</Result><CapabilitiesOut>" + esc("<capServers " + NS + "><contact><name>" + dec(p) + "</name></contact></capServers>") + "</CapabilitiesOut>" }, { password: p, op: "WMLS_GetCap" }), p, kind + " cap");
+      const cap = await ask({ raw: "<Result>1</Result><CapabilitiesOut>" + esc("<capServers " + NS + "><contact><name>" + dec(p) + "</name></contact></capServers>") + "</CapabilitiesOut>" }, { password: p, op: "WMLS_GetCap" });
+      redacted(cap, p, ["text/1"], kind + " cap");
+    }
+  });
+
+  test("echoes that cannot be redacted safely are refused", async () => {
+    for (const [kind, p] of Object.entries(PASSWORDS)) {
+      refused(await ask({ xml: well(esc(p.slice(0, 3)) + "<!-- x -->" + esc(p.slice(3))) }, { password: p }), p, kind + " split by comment");
       refused(await ask({ raw: "<Result>" + dec(p) + "</Result>" }, { password: p, op: "WMLS_GetVersion" }), p, kind + " version");
       refused(await ask({ xml: well(dec(USER + ":" + p)) }, { password: p }), p, kind + " pair");
+      refused(await ask({ xml: well(basic(p).slice(6)) }, { password: p }), p, kind + " token");
     }
   });
 
-  test("SuppMsgOut echoes are refused, literal or encoded", async () => {
+  test("SuppMsgOut password echoes are redacted to the supp/1 slot", async () => {
     for (const [kind, p] of Object.entries(PASSWORDS)) {
       for (const [form, v] of Object.entries({ literal: p, dec: dec(p), hex: hex(p), escaped: esc(p) })) {
-        refused(await ask({ xml: well("Synth"), supp: "bad password " + v, result: "-401" }, { password: p }), p, kind + " supp " + form);
+        const r = await ask({ xml: well("Synth"), supp: "bad password " + v, result: "-401" }, { password: p });
+        redacted(r, p, ["supp/1"], kind + " supp " + form);
+        assert.equal(r.body.supp, "bad password [redacted]", kind + " supp " + form);
+        assert.equal(r.body.result, -401);
       }
     }
   });
 
-  test("SOAP fault echoes are refused on HTTP 200 and 500", async () => {
+  test("SOAP fault password echoes are redacted to fault/1 on HTTP 200 and 500; a Basic header is refused", async () => {
     for (const [kind, p] of Object.entries(PASSWORDS)) {
       for (const status of [200, 500]) {
-        for (const [form, v] of Object.entries({ literal: p, dec: dec(p), escaped: esc(p), header: basic(p) })) {
-          refused(await ask({ fault: "login " + v + " rejected" }, { password: p, status }), p, kind + " fault " + form + " " + status);
+        for (const [form, v] of Object.entries({ literal: p, dec: dec(p), escaped: esc(p) })) {
+          const r = await ask({ fault: "login " + v + " rejected" }, { password: p, status });
+          redacted(r, p, ["fault/1"], kind + " fault " + form + " " + status);
+          assert.equal(r.body.error, "SOAP fault: login [redacted] rejected");
         }
+        refused(await ask({ fault: "login " + basic(p) + " rejected" }, { password: p, status }), p, kind + " fault header " + status);
       }
     }
   });

@@ -10,11 +10,15 @@
 //  * TLS certificate verification is ALWAYS on. The Supabase Edge runtime has no per-host way to skip it
 //    (no Deno flags; Deno.createHttpClient has no "ignore errors" option), so an expired upstream cert -> 502.
 //  * Never logs headers, bodies or credentials (no console output at all).
-//  * Credential echo guard: xml, supp, the SOAP fault error and the version string are checked in fully
-//    decoded form (named and numeric entities, CDATA joins, markup stripped, repeated decoding) for the
-//    caller's password, user:password pair, Basic token and header. Any hit is HTTP 422
-//    {code:"proxy-refusal", reason:"credential-reflection"} with no document. See witsml-echo-guard.mjs.
-import { credentialSecrets, echoRefusal, guardReason } from "./witsml-echo-guard.mjs";
+//  * Credential echo guard (witsml-echo-guard.mjs): xml, supp, the full SOAP fault (before truncation) and the
+//    version string are read the way the browser reads them (XML tokenizer, every XML and HTML decoding round).
+//    A password-only match is redacted in place to "[redacted]" and returned 200 with passwordRedacted,
+//    redactionScope "slots" and redactedSlots (role/ordinal). Anything that cannot be redacted safely is 422
+//    {code:"proxy-refusal", reason}: the user:password pair, Basic token or header (credential-reflection), a
+//    password split across markup or outside a slot role (credential-reflection), in an element/attribute name
+//    (structural), a DOCTYPE/ENTITY declaration (unsafe-xml), an over-size reply (guard-limit) or a guard error
+//    (guard-error). A Basic header without a usable user:password is 400.
+import { GAME_REDACTION_MARK, attachRedactionMeta, credentialParts, credentialSecrets, echoRefusal, guardFields, guardReason } from "./witsml-echo-guard.mjs";
 const ORIGIN = "https://tittothomasai-code.github.io";
 const UPSTREAM = "https://australia.adagasolutions.com/WMLS";
 const UP_HOST = "australia.adagasolutions.com";
@@ -65,11 +69,19 @@ Deno.serve(async (req: Request) => {
   if (op === "WMLS_GetFromStore" && !/^[A-Za-z]{2,40}$/.test(String(a.wmlType || ""))) return json(400, { result: -1, error: "bad wmlType" }, origin);
   const auth = req.headers.get("X-Witsml-Authorization") || "";
   if (!/^Basic [A-Za-z0-9+/=]{4,1024}$/.test(auth)) return json(400, { result: -1, error: "credentials required (X-Witsml-Authorization: Basic …)" }, origin);
+  const creds = credentialParts(auth);
+  // No usable user:password in the header: nothing to scan for, so refuse instead of skipping the scan.
+  if (!creds) return json(400, { result: -1, error: "credentials required (X-Witsml-Authorization: Basic …)" }, origin);
   const secrets: string[] = credentialSecrets(auth);
-  // A header that passes the shape check but does not decode gives no secrets to scan for: refuse instead of skipping the scan.
-  if (!secrets.length) return json(400, { result: -1, error: "credentials required (X-Witsml-Authorization: Basic …)" }, origin);
-  // extra: untruncated text that must also be clean (the fault is cut to 300 characters after this check).
-  const reply = (o: Record<string, unknown>, extra: string[] = []) => { const why = guardReason([o, extra], secrets); return why ? json(422, echoRefusal(secrets, why), origin) : json(200, o, origin); };
+  const refuse = (why: string) => json(422, echoRefusal(secrets, why), origin);
+  // Redact the password in place where that is safe, refuse otherwise; build() sees only guarded fields.
+  const reply = (fields: Record<string, string>, build: (f: Record<string, string>) => Record<string, unknown>) => {
+    const g = guardFields(fields, creds, { mark: GAME_REDACTION_MARK, xmlKeys: ["xml"], slotKeys: { supp: "supp/1", fault: "fault/1" } });
+    if (!g.ok) return refuse(g.reason ?? "guard-error");
+    const o = attachRedactionMeta(build(g.fields), g);
+    const why = guardReason({ ...o, xml: undefined }, secrets);
+    return why ? refuse(why) : json(200, o, origin);
+  };
   const t0 = Date.now();
   let up: Response;
   try {
@@ -86,9 +98,11 @@ Deno.serve(async (req: Request) => {
   if (up.status === 401 || up.status === 403) { await up.body?.cancel(); return json(up.status, { result: -1, error: "Authentication failed (" + up.status + ")" }, origin); }
   const body = await up.text();
   const fault = tag(body, "faultstring");
-  if (fault) return reply({ result: -1, error: "SOAP fault: " + unesc(fault).slice(0, 300) }, [unesc(fault)]);
+  if (fault) return reply({ fault: unesc(fault) }, (f) => ({ result: -1, error: "SOAP fault: " + f.fault.slice(0, 300) }));
   if (up.status >= 400) return json(200, { result: -1, error: "HTTP " + up.status }, origin);
   const res = tag(body, "Result");
   const xml = unesc(tag(body, "XMLout") || tag(body, "CapabilitiesOut") || "");
-  return reply({ result: op === "WMLS_GetVersion" ? 1 : +(res ?? -1), version: op === "WMLS_GetVersion" ? res : undefined, xml, supp: unesc(tag(body, "SuppMsgOut") || ""), ms: Date.now() - t0 });
+  const version = op === "WMLS_GetVersion" ? res : undefined;
+  return reply({ xml, supp: unesc(tag(body, "SuppMsgOut") || ""), version: version ?? "" },
+    (f) => ({ result: op === "WMLS_GetVersion" ? 1 : +(res ?? -1), version: version == null ? version : f.version, xml: f.xml, supp: f.supp, ms: Date.now() - t0 }));
 });
