@@ -1,6 +1,7 @@
 // Credential echo guard on the Supabase fallback proxy (index.ts).
 // Synthetic only: Deno.serve is captured, fetch is replaced with a canned responder. No store calls.
 // Run: deno test --allow-read supabase/functions/witsml-proxy/echo_guard_test.ts
+import { anyViewContains } from "./witsml-echo-guard.mjs";
 let handler: ((req: Request) => Promise<Response>) | null = null;
 let next = { status: 200, body: "" };
 let upstreamCalls = 0;
@@ -44,50 +45,64 @@ Deno.test("supabase fallback: clean reply keeps the document", async () => {
   }
 });
 
-Deno.test("supabase fallback: review gaps G1-G5 refuse", async () => {
+type Reply = { status: number; text: string; body: Record<string, unknown> };
+const leakFree = (r: Reply, p: string, label: string) => {
+  for (const s of [p, USER + ":" + p, basic(p).slice(6), basic(p)]) assert(!anyViewContains(r.text, [s]), label + " leak");
+};
+
+Deno.test("supabase fallback: password-only echoes are redacted in place with slots", async () => {
   const pad = (s: string, w: number) => [...s].map((c) => "&#x" + c.codePointAt(0)!.toString(16).padStart(w, "0") + ";").join("");
   for (const p of PASSWORDS) {
-    const cases: [string, string, () => Promise<{ status: number; text: string; body: Record<string, unknown> }>][] = [
+    const cases: [string, string[], () => Promise<Reply>][] = [
+      ["xml literal", ["well-name/1"], () => ask({ xml: well(esc(p)) }, p)],
+      ["xml dec", ["well-name/1"], () => ask({ xml: well(dec(p)) }, p)],
+      ["xml hex padded to 9 (G2)", ["well-name/1"], () => ask({ xml: well(pad(p, 9)) }, p)],
+      ["xml double", ["well-name/1"], () => ask({ xml: well(esc(esc(p))) }, p)],
+      ["xml cdata", ["well-name/1"], () => ask({ xml: well("<![CDATA[" + p.slice(0, 3) + "]]><![CDATA[" + p.slice(3) + "]]>") }, p)],
+      ["supp literal", ["supp/1"], () => ask({ xml: well("x"), supp: "bad " + p }, p)],
+      ["supp dec", ["supp/1"], () => ask({ xml: well("x"), supp: "bad " + dec(p) }, p)],
+      ["fault literal past 300 (G4)", ["fault/1"], () => ask({ fault: "x".repeat(294) + p }, p)],
+      ["fault dec 500", ["fault/1"], () => ask({ fault: "login " + dec(p) }, p, "WMLS_GetFromStore", 500)],
+    ];
+    for (const [label, slots, pending] of cases) {
+      const r = await pending();
+      assert(r.status === 200 && r.body.passwordRedacted === true && r.body.redactionScope === "slots", label + " " + r.status + " " + r.text.slice(0, 120));
+      assert(JSON.stringify(r.body.redactedSlots) === JSON.stringify(slots), label + " slots " + JSON.stringify(r.body.redactedSlots));
+      leakFree(r, p, label);
+    }
+  }
+  const html = await ask({ xml: well("Synth&amp;#80w-4821") }, "SynthPw-4821");
+  assert(html.status === 200 && html.body.passwordRedacted === true, "N5 html numeric ref " + html.text.slice(0, 120));
+  const n4 = await ask({ xml: well("Pw&amp;amp;4821") }, "Pw&amp;4821");
+  assert(n4.status === 200 && n4.body.passwordRedacted === true, "N4 " + n4.text.slice(0, 120));
+});
+
+Deno.test("supabase fallback: what cannot be redacted is 422 with no document", async () => {
+  for (const p of PASSWORDS) {
+    const cases: [string, string, () => Promise<Reply>][] = [
       ["G1 tag split with > in attribute", "credential-reflection", () => ask({ xml: well(esc(p.slice(0, 3)) + '<x a=">"/>' + esc(p.slice(3))) }, p)],
-      ["G2 hex refs padded to 9", "credential-reflection", () => ask({ xml: well(pad(p, 9)) }, p)],
-      ["G3 DOCTYPE entities", "unsafe-markup", () => ask({ xml: '<!DOCTYPE wells [<!ENTITY a "' + esc(p.slice(0, 3)) + '"><!ENTITY b "' + esc(p.slice(3)) + '">]>' + well("&a;&b;") }, p)],
-      ["G4 fault past 300", "credential-reflection", () => ask({ fault: "x".repeat(294) + p }, p)],
+      ["N1 comment opener inside CDATA", "credential-reflection", () => ask({ xml: well("<![CDATA[<!--]]>" + esc(p.slice(0, 3)) + "<b/>" + esc(p.slice(3)) + "<![CDATA[-->]]>") }, p)],
+      ["G3 DOCTYPE entities", "unsafe-xml", () => ask({ xml: '<!DOCTYPE wells [<!ENTITY a "' + esc(p.slice(0, 3)) + '"><!ENTITY b "' + esc(p.slice(3)) + '">]>' + well("&a;&b;") }, p)],
+      ["pair", "credential-reflection", () => ask({ xml: well(dec(USER + ":" + p)) }, p)],
+      ["fault header", "credential-reflection", () => ask({ fault: "auth " + basic(p) }, p)],
+      ["version", "credential-reflection", () => ask({ raw: "<Result>" + dec(p) + "</Result>" }, p, "WMLS_GetVersion")],
+      ["element name", "structural", () => ask({ xml: "<wells " + NS + "><xPwName/></wells>" }, "PwName")],
     ];
     for (const [label, reason, pending] of cases) {
       const r = await pending();
-      assert(r.status === 422 && r.body.reason === reason, label + " " + r.status + " " + r.text.slice(0, 80));
-      for (const s of [p, USER + ":" + p, basic(p).slice(6)]) assert(!r.text.includes(s), label + " leak");
+      assert(r.status === 422 && r.body.code === "proxy-refusal" && r.body.reason === reason, label + " " + r.status + " " + r.text.slice(0, 100));
+      assert(!("xml" in r.body) && !("supp" in r.body), label + " body");
+      leakFree(r, p, label);
     }
   }
-  const before = upstreamCalls;
-  const res = await handler!(new Request("https://fn.invalid/witsml-proxy", { method: "POST",
-    headers: { Origin: "https://tittothomasai-code.github.io", "Content-Type": "application/json", "X-Witsml-Authorization": "Basic AAA=" + basic("FAKE-PW-123").slice(6) },
-    body: JSON.stringify({ op: "WMLS_GetFromStore", url: "https://australia.adagasolutions.com/WMLS", wmlType: "well", query: "<wells/>" }) }));
-  assert(res.status === 400, "G5 malformed header " + res.status);
-  await res.text();
-  assert(upstreamCalls === before, "G5 no upstream call");
-});
-
-Deno.test("supabase fallback: echoes in xml, supp, fault and version are 422 with no document", async () => {
-  for (const p of PASSWORDS) {
-    const cases: [string, () => Promise<{ status: number; text: string; body: Record<string, unknown> }>][] = [
-      ["xml literal", () => ask({ xml: well(esc(p)) }, p)],
-      ["xml dec", () => ask({ xml: well(dec(p)) }, p)],
-      ["xml double", () => ask({ xml: well(esc(esc(p))) }, p)],
-      ["xml cdata", () => ask({ xml: well("<![CDATA[" + p.slice(0, 3) + "]]><![CDATA[" + p.slice(3) + "]]>") }, p)],
-      ["supp literal", () => ask({ xml: well("x"), supp: "bad " + p }, p)],
-      ["supp dec", () => ask({ xml: well("x"), supp: "bad " + dec(p) }, p)],
-      ["fault literal", () => ask({ fault: "login " + p }, p)],
-      ["fault dec 500", () => ask({ fault: "login " + dec(p) }, p, "WMLS_GetFromStore", 500)],
-      ["fault header", () => ask({ fault: "auth " + basic(p) }, p)],
-      ["version", () => ask({ raw: "<Result>" + dec(p) + "</Result>" }, p, "WMLS_GetVersion")],
-    ];
-    for (const [label, pending] of cases) {
-      const r = await pending();
-      assert(r.status === 422, label + " status " + r.status + " " + r.text.slice(0, 80));
-      assert(r.body.code === "proxy-refusal" && !("xml" in r.body) && !("supp" in r.body), label + " body");
-      for (const s of [p, USER + ":" + p, basic(p).slice(6)]) assert(!r.text.includes(s), label + " leak");
-    }
+  for (const auth of ["Basic AAA=" + basic("FAKE-PW-123").slice(6), "Basic AAAAA", "Basic " + btoa("nocolonhere"), "Basic " + btoa("synth-user:")]) {
+    const before = upstreamCalls;
+    const res = await handler!(new Request("https://fn.invalid/witsml-proxy", { method: "POST",
+      headers: { Origin: "https://tittothomasai-code.github.io", "Content-Type": "application/json", "X-Witsml-Authorization": auth },
+      body: JSON.stringify({ op: "WMLS_GetFromStore", url: "https://australia.adagasolutions.com/WMLS", wmlType: "well", query: "<wells/>" }) }));
+    assert(res.status === 400, "H5 malformed header " + res.status);
+    await res.text();
+    assert(upstreamCalls === before, "H5 no upstream call");
   }
   assert(upstreamCalls > 0, "stub used");
   globalThis.fetch = originalFetch;
