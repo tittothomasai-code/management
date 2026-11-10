@@ -87,6 +87,7 @@ describe("game origin regression", { concurrency: 1 }, () => {
       "netlify-proxy/test/fixtures/rtoc_hist.js",
       "netlify-proxy/test/fixtures/wdash_core.js",
       "netlify-proxy/test/game-origin-regression.test.mjs",
+      "netlify-proxy/test/machine-decoded-guard.test.mjs",
       "netlify-proxy/test/machine-handler.test.mjs",
       "netlify-proxy/test/machine-match-surface.test.mjs",
       "netlify-proxy/test/machine-multiwell-slots.test.mjs",

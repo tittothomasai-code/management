@@ -47,6 +47,7 @@ const REFUSAL_REASONS = new Set([
   "credential-reflection",
   "format-character",
   "credential-reflection-and-format-character",
+  "unsafe-markup",
 ]);
 
 function hide(target, key, value) {

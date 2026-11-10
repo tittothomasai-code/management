@@ -10,6 +10,7 @@
 import { authenticateCaller, headerValues, readCallerConfig } from "./machine-auth.mjs";
 import { authFailedResponse, deniedResponse, disabledResponse } from "./machine-disabled.mjs";
 import { locateAndRedact, MAX_REDACTION_SLOTS, REDACTION_SLOT_RE } from "./redaction-slots.mjs";
+import { guardReason } from "./witsml-echo-guard.mjs";
 
 export const FIXED_UPSTREAM = "https://australia.adagasolutions.com/WMLS";
 export const WITSML_NS = "http://www.witsml.org/message/120";
@@ -1090,6 +1091,18 @@ function finishUpstream(op, up, ms, fields) {
   const redacted = slots.length > 0;
   if ([xmlOut, suppOut, resultOut, faultOut].some((value) => password && value.includes(password))) {
     return seal(502, { result: -1, error: "upstream response rejected", reason: "parser-format" });
+  }
+  // Decoded-view guard (shared with /witsml-proxy). Literal password hits are
+  // already slot-redacted above; anything still visible after entity, CDATA,
+  // comment, PI or tag decoding is refused, and so is any DOCTYPE/ENTITY
+  // declaration. It runs on the full fields, before any fault/supp truncation.
+  const guarded = guardReason([xmlOut, suppOut, resultOut, faultOut], fields.long);
+  if (guarded) {
+    return sealRefusal(502, {
+      result: -1,
+      error: "upstream response refused",
+      reason: guarded === "unsafe-markup" ? "unsafe-markup" : "credential-reflection",
+    }, fields);
   }
   const meta = { redacted, scope: structural ? "response" : "slots", slots };
   if (parsed.kind === "fault") {
