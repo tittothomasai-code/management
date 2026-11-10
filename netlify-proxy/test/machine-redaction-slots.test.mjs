@@ -76,13 +76,13 @@ test("well uid redaction names only that slot and keeps the other fields", async
   assert.equal(out.body.passwordRedacted, true);
   assert.equal(out.body.redactionScope, "slots");
   assert.deepEqual(out.body.redactedSlots, ["well-uid/1"]);
-  assert.equal(out.body.xml.includes('uid="***"'), true);
+  assert.equal(out.body.xml.includes('uid="[redacted]"'), true);
   assert.equal(out.body.xml.includes("<name>Synth North</name>"), true);
   assert.equal(out.body.xml.includes("<num>1500</num>"), true);
   hidden(out.raw, [password]);
   const ranges = redactedRanges(out.body.xml, out.body.redactedSlots);
   assert.equal(ranges.length, 1);
-  assert.equal(out.body.xml.slice(ranges[0].start, ranges[0].end), "***");
+  assert.equal(out.body.xml.slice(ranges[0].start, ranges[0].end), "[redacted]");
   assert.equal(out.body.xml.includes("Synth North"), true);
   const adapted = adaptMachineResult(out.body, "WMLS_GetFromStore");
   assert.deepEqual(adapted.redactedSlots, ["well-uid/1"]);
@@ -95,7 +95,7 @@ test("a redacted log row is the whole data text and the other row stays", async 
   assert.equal(out.status, 200, out.raw);
   assert.deepEqual(out.body.redactedSlots, ["log-data/2"]);
   assert.equal(out.body.xml.includes("<data>10,20</data>"), true);
-  assert.equal(out.body.xml.includes("<data>***,5</data>"), true);
+  assert.equal(out.body.xml.includes("<data>[redacted],5</data>"), true);
   assert.equal(out.body.xml.includes(password), false);
   const ranges = redactedRanges(out.body.xml, out.body.redactedSlots);
   assert.equal(out.body.xml.slice(ranges[0].start, ranges[0].end).includes("10,20"), false);
@@ -119,11 +119,11 @@ test("other text, comments, and attribute values get separate slots", async () =
 
 test("a preexisting star marker is not listed as a redaction", async () => {
   const password = "ONLY-NAME";
-  const out = await call(`<wells><well uid="KEEP"><name>${password}</name><num>***</num></well></wells>`, password);
+  const out = await call(`<wells><well uid="KEEP"><name>${password}</name><num>[redacted]</num></well></wells>`, password);
   assert.equal(out.status, 200, out.raw);
   assert.deepEqual(out.body.redactedSlots, ["well-name/1"]);
-  assert.equal(out.body.xml.includes("<num>***</num>"), true);
-  assert.equal(out.body.xml.includes("<name>***</name>"), true);
+  assert.equal(out.body.xml.includes("<num>[redacted]</num>"), true);
+  assert.equal(out.body.xml.includes("<name>[redacted]</name>"), true);
   const ranges = redactedRanges(out.body.xml, out.body.redactedSlots);
   assert.equal(ranges.length, 1);
   const nameStart = out.body.xml.indexOf("<name>");
@@ -131,7 +131,7 @@ test("a preexisting star marker is not listed as a redaction", async () => {
   const numStart = out.body.xml.indexOf("<num>");
   assert.equal(ranges[0].start > nameStart && ranges[0].end <= nameEnd, true);
   assert.equal(ranges[0].start > numStart, false);
-  assert.equal(out.body.xml.slice(numStart, out.body.xml.indexOf("</num>")), "<num>***");
+  assert.equal(out.body.xml.slice(numStart, out.body.xml.indexOf("</num>")), "<num>[redacted]");
 });
 
 test("only the namespace that contained the password is listed", async () => {

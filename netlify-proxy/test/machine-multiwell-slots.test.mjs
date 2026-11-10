@@ -81,7 +81,7 @@ test("multi-well id-only list: 200 matching well names come back as 200 named sl
   assert.equal(out.body.redactionFailure, undefined);
   assert.deepEqual(out.body.redactedSlots, Array.from({ length: 200 }, (_, i) => "well-name/" + (i + 1)));
   assert.equal(slotsMatchDocument(out.body.xml, out.body.redactedSlots), true);
-  assert.equal((out.body.xml.match(/<name>\*\*\*-/g) || []).length, 200);
+  assert.equal((out.body.xml.match(/<name>\[redacted\]-/g) || []).length, 200);
   assert.equal(out.body.xml.includes('uid="SYNTH-W200"'), true);
   hidden(out.raw, [password]);
   const adapted = adaptMachineResult(out.body, "WMLS_GetFromStore");

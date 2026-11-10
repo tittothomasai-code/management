@@ -16,7 +16,8 @@ export const MAX_REDACTION_SLOTS = 1024;
 export const REDACTION_SLOT_RE = /^(?:attribute-value|comment|fault|log-data|namespace-uri|supp|text|well-country|well-field|well-name|well-uid|wellbore-identity)\/[1-9][0-9]{0,3}$/;
 
 const STRUCTURAL = new Set(["attribute-name", "element-name"]);
-const VALUE_MARK = "***";
+// One placeholder on every route (game and machine): "[redacted]".
+const VALUE_MARK = "[redacted]";
 const NAME_MARK = "xx";
 
 function localName(qualified) {

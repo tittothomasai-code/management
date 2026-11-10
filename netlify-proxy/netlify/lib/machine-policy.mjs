@@ -10,6 +10,7 @@
 import { authenticateCaller, headerValues, readCallerConfig } from "./machine-auth.mjs";
 import { authFailedResponse, deniedResponse, disabledResponse } from "./machine-disabled.mjs";
 import { locateAndRedact, MAX_REDACTION_SLOTS, REDACTION_SLOT_RE } from "./redaction-slots.mjs";
+import { guardFields, guardReason } from "./witsml-echo-guard.mjs";
 
 export const FIXED_UPSTREAM = "https://australia.adagasolutions.com/WMLS";
 export const WITSML_NS = "http://www.witsml.org/message/120";
@@ -345,9 +346,11 @@ function redactFault(value, fields) {
   return out;
 }
 
-// Value placeholder is three characters, so it cannot contain a credential
-// of the minimum length. Name placeholder is a short XML name token.
-const VALUE_MARK = "***";
+// Value placeholder: "[redacted]", the same mark as the game route, so every
+// consumer (reader.py contains_redacted, the game) sees one placeholder. A
+// password that occurs inside the mark (or that the mark plus its neighbours
+// rebuild) is caught by the post-redaction checks and refused.
+const VALUE_MARK = "[redacted]";
 
 function passwordValue(fields) {
   const value = fields && fields.named && fields.named.find((item) => item.name === "password")?.value;
@@ -378,6 +381,9 @@ function tokenSafe(token, password) {
 // itself is safe, redactionScope is "response" and redactionFailure names the
 // fixed, value-free reason: "structural", "slot-limit" or "slot-token".
 const REDACTION_FAILURES = new Set(["structural", "slot-limit", "slot-token"]);
+// Refusal reasons the shared guard can give on this route (machine adapter
+// REFUSAL_REASONS and reader.py allow the same names).
+const GUARD_REFUSALS = new Set(["credential-reflection", "unsafe-xml", "guard-limit", "guard-error"]);
 function attachRedaction(obj, meta, password) {
   if (!meta || meta.redacted !== true) return obj;
   obj.passwordRedacted = true;
@@ -1061,6 +1067,41 @@ function finishUpstream(op, up, ms, fields) {
   let suppOut = typeof parsed.supp === "string" ? parsed.supp : "";
   let resultOut = typeof parsed.resultText === "string" ? parsed.resultText : "";
   let faultOut = typeof parsed.fault === "string" ? parsed.fault : "";
+  // Shared guard first (the same module as the game route). Password-only
+  // matches, literal or encoded (XML or HTML references at any depth, CDATA),
+  // are redacted in place to VALUE_MARK with role/ordinal slots. Anything that
+  // cannot be redacted safely is refused: another credential, a password split
+  // across markup or outside a slot role, a DOCTYPE/ENTITY declaration
+  // (unsafe-xml), or a guard size/work limit or error. A password in an
+  // element or attribute name keeps the existing structural answer.
+  // A literal password in XML that does not parse keeps the existing
+  // parser-format refusal (no document is guessed at).
+  if (password && xmlOut.includes(password)) {
+    try { walk(xmlOut); }
+    catch { return seal(502, { result: -1, error: "upstream response rejected", reason: "parser-format" }); }
+  }
+  // Result has no slot role: a literal password there keeps the existing
+  // result-format answer below, and the final scan refuses any encoded form.
+  const guardedReply = guardFields(
+    { xml: xmlOut, supp: suppOut, fault: faultOut },
+    { password, blocking: fields.long.filter((value) => value !== password) },
+    { mark: VALUE_MARK, xmlKeys: ["xml"], slotKeys: { supp: "supp/1", fault: "fault/1" } },
+  );
+  if (guardedReply.ok && guardedReply.withheld === "slot-limit") {
+    // More than MAX_REDACTION_SLOTS slots: the guard stopped early; the
+    // document is withheld (same answer as attachRedaction over the cap).
+    return seal(200, attachRedaction({ result: 1 }, { redacted: true, scope: "response", slots: [], failure: "slot-limit" }, password));
+  }
+  if (!guardedReply.ok) {
+    if (guardedReply.reason === "structural") {
+      return seal(200, attachRedaction({ result: 1 }, { redacted: true, scope: "response", slots: [], failure: "structural" }, password));
+    }
+    return sealRefusal(502, { result: -1, error: "upstream response refused", reason: GUARD_REFUSALS.has(guardedReply.reason) ? guardedReply.reason : "credential-reflection" }, fields);
+  }
+  xmlOut = guardedReply.fields.xml;
+  suppOut = guardedReply.fields.supp;
+  faultOut = guardedReply.fields.fault;
+  const guardSlots = guardedReply.slots;
   let xmlSlots = [];
   let structural = false;
   if (password && xmlOut.includes(password)) {
@@ -1084,12 +1125,23 @@ function finishUpstream(op, up, ms, fields) {
   suppOut = redactedSupp.text;
   resultOut = redactedResult.text;
   faultOut = redactedFault.text;
-  const slots = xmlSlots.slice();
-  if (redactedSupp.redacted) slots.push("supp/1");
-  if (redactedFault.redacted) slots.push("fault/1");
+  const slots = guardSlots.slice();
+  for (const slot of xmlSlots) if (!slots.includes(slot)) slots.push(slot);
+  if (redactedSupp.redacted && !slots.includes("supp/1")) slots.push("supp/1");
+  if (redactedFault.redacted && !slots.includes("fault/1")) slots.push("fault/1");
   const redacted = slots.length > 0;
   if ([xmlOut, suppOut, resultOut, faultOut].some((value) => password && value.includes(password))) {
     return seal(502, { result: -1, error: "upstream response rejected", reason: "parser-format" });
+  }
+  // Defence in depth: the redacted fields are scanned once more, whole and
+  // before any fault/supp truncation, with every decoded view.
+  const guarded = guardReason([xmlOut, suppOut, resultOut, faultOut], fields.long);
+  if (guarded) {
+    return sealRefusal(502, {
+      result: -1,
+      error: "upstream response refused",
+      reason: GUARD_REFUSALS.has(guarded) ? guarded : "credential-reflection",
+    }, fields);
   }
   const meta = { redacted, scope: structural ? "response" : "slots", slots };
   if (parsed.kind === "fault") {
