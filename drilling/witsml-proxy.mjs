@@ -28,10 +28,19 @@
 // redactedSlots. Anything else that matched is HTTP 422 code "proxy-refusal"
 // with no document. 502 stays the transport failure.
 //
+// Encoded echoes (B1 in the PR #22 review): the checks above match the literal
+// password only, but the reader entity-decodes what it receives (wdash_core
+// unesc, DOMParser). Every reply this route builds therefore goes through
+// witsml-echo-guard.mjs, which scans fully decoded views (named and numeric
+// entities, CDATA joins, comments and tags removed, repeated decoding). Any
+// password, user:password pair, Basic token or header found there is HTTP 422
+// code "proxy-refusal", reason "credential-reflection", with no document.
+//
 // No reply body, fault text, or credential is written to the log.
 
 import https from "node:https";
 import { locateAndRedact, MAX_REDACTION_SLOTS, REDACTION_SLOT_RE } from "./witsml-redaction-slots.mjs";
+import { credentialSecrets, echoes, echoRefusal } from "./witsml-echo-guard.mjs";
 
 export const ORIGIN = "https://tittothomasai-code.github.io";
 export const ORIGINS = new Set([ORIGIN, "https://drilling.robotyx.systems"]);
@@ -206,16 +215,14 @@ export function makeProxy({ upstream, skipHost, perMin = 60, transport = httpsRe
     if (up.status >= 300 && up.status < 400) return json(200, { result: -1, error: "upstream redirect refused" }, origin);
     const body = up.text, fault = tag(body, "faultstring");
     const res = tag(body, "Result"), xml = unesc(tag(body, "XMLout") || tag(body, "CapabilitiesOut") || ""), supp = unesc(tag(body, "SuppMsgOut") || "");
-    if (fault) {
-      const shaped = redactStoreReply({ op, res, xml: "", supp: "", fault: unesc(fault), password: creds.password, blockers: creds.blockers, ms: Date.now() - t0 });
-      return json(shaped.status, shaped.body, origin);
-    }
+    const secrets = credentialSecrets(auth);
+    const send = (shaped) => echoes(shaped.body, secrets) ? json(422, echoRefusal(secrets), origin) : json(shaped.status, shaped.body, origin);
+    if (fault) return send(redactStoreReply({ op, res, xml: "", supp: "", fault: unesc(fault), password: creds.password, blockers: creds.blockers, ms: Date.now() - t0 }));
     if (up.status >= 400) return json(200, { result: -1, error: "HTTP " + up.status }, origin);
-    const shaped = redactStoreReply({ op, res, xml, supp, fault: "", password: creds.password, blockers: creds.blockers, ms: Date.now() - t0 });
-    return json(shaped.status, shaped.body, origin);
+    return send(redactStoreReply({ op, res, xml, supp, fault: "", password: creds.password, blockers: creds.blockers, ms: Date.now() - t0 }));
   };
 }
 
 const UPSTREAM = "https://australia.adagasolutions.com/WMLS";
 export default makeProxy({ upstream: UPSTREAM, skipHost: "australia.adagasolutions.com", perMin: 60 });
-export const config = { path: "/witsml-proxy" };
+export const config = { path: "/witsml-proxy", rateLimit: { windowLimit: 60, windowSize: 60, aggregateBy: ["ip", "domain"] } };

@@ -1,6 +1,11 @@
 plugins = []
-headers = []
 redirects = []
+
+# ES modules must be served as JavaScript (strict MIME check for module scripts).
+[[headers]]
+  for = "/*.mjs"
+  [headers.values]
+    Content-Type = "text/javascript; charset=utf-8"
 
 [functions]
 

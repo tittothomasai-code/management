@@ -1,6 +1,8 @@
 """Browser smoke test against a local server serving the candidate site."""
 import argparse
+import json
 import re
+import subprocess
 from pathlib import Path
 
 from playwright.sync_api import expect, sync_playwright
@@ -332,6 +334,87 @@ def verify_policy(browser, base, screenshots, name, viewport, touch=False):
     print(f"PASS {name}: redacted, refused, and disconnected stay distinct")
 
 
+HOSTED_PROXY = "https://tryfecta-witsml-proxy.netlify.app/witsml-proxy"
+SYNTH_PASSWORD = "FAKE-PW-123"
+
+
+def proxy_fixtures():
+    """Real handler output from drilling/witsml-proxy.mjs (stubbed transport, no network)."""
+    script = Path(__file__).parent / "witsml_proxy_fixture.mjs"
+    out = subprocess.run(["node", str(script), SYNTH_PASSWORD], check=True, capture_output=True, text=True).stdout
+    data = json.loads(out)
+    assert data["refusal"]["status"] == 422, data["refusal"]
+    assert data["redacted"]["status"] == 200 and data["redacted"]["body"].get("passwordRedacted") is True, data["redacted"]
+    assert SYNTH_PASSWORD not in out
+    return data
+
+
+def verify_proxy_path(browser, base, screenshots):
+    """Send a real 422 and a real redacted reply through the game's own call() path."""
+    fixtures = proxy_fixtures()
+    context = browser.new_context(viewport={"width": 1680, "height": 970}, service_workers="block")
+    queue, served, blocked, mjs = [], [], [], []
+
+    def handle(route):
+        url = route.request.url
+        if url.startswith(base + "/"):
+            return route.continue_()
+        if url.split("?")[0] == HOSTED_PROXY and route.request.method == "POST" and queue:
+            item = queue.pop(0)
+            served.append(item["status"])
+            return route.fulfill(status=item["status"], content_type="application/json",
+                                 headers={"Access-Control-Allow-Origin": "*"}, body=json.dumps(item["body"]))
+        if url.split("?")[0] == HOSTED_PROXY and route.request.method == "OPTIONS":
+            return route.fulfill(status=204, headers={"Access-Control-Allow-Origin": "*",
+                                 "Access-Control-Allow-Headers": "Content-Type, X-Witsml-Authorization",
+                                 "Access-Control-Allow-Methods": "POST, GET, OPTIONS"})
+        blocked.append(url)
+        return route.abort()
+
+    context.route("**/*", handle)
+    page = context.new_page()
+    errors = []
+    page.on("pageerror", lambda error: errors.append(str(error)))
+    page.on("response", lambda r: mjs.append((r.url, r.headers.get("content-type", ""))) if ".mjs" in r.url else None)
+    page.goto(base + "/index.html?v=j13d-20261109", wait_until="domcontentloaded")
+    page.wait_for_function("() => window.GX && window.GX.witsml && window.GX.witsml.call", timeout=20000)
+    assert mjs and all("javascript" in ct for _, ct in mjs), mjs
+
+    queue.append(fixtures["refusal"])
+    refused = page.evaluate("""async () => {
+      const W = window.GX.witsml; W.WML.transportDead = null; W.WML.authDead = false;
+      try { await W.call('WMLS_GetFromStore', 'well', '<wells/>', ''); return {threw: false}; }
+      catch (e) { return {threw: true, message: e.message, proxyRefusal: !!e.proxyRefusal,
+        wml: !!W.WML.proxyRefusal, dead: W.WML.transportDead || null, badge: document.getElementById('sim')?.textContent || ''}; }
+    }""")
+    assert refused["threw"] and refused["message"] == "refused by proxy", refused
+    assert refused["proxyRefusal"] and refused["wml"] and not refused["dead"], refused
+    assert refused["badge"] in ("", "refused by proxy"), refused
+    page.screenshot(path=screenshots / "proxy-path-refused.png")
+
+    queue.append(fixtures["redacted"])
+    redacted = page.evaluate("""async () => {
+      const W = window.GX.witsml; W.WML.proxyRefusal = false; W.WML.redactionHold = false; W.WML.identityStop = false;
+      W.WML.redactedFields = [];
+      const j = await W.call('WMLS_GetFromStore', 'well', '<wells/>', '');
+      return {applied: j.redactionApplied === true, xml: j.xml, fields: (j.redactedFields || []).map(f => f.field),
+        wmlFields: (W.WML.redactedFields || []).map(f => f.field)};
+    }""")
+    assert redacted["applied"], redacted
+    assert "***" not in redacted["xml"] and "<name></name>" in redacted["xml"], redacted
+    assert "SYNTH-FIELD" in redacted["xml"], redacted
+    assert redacted["fields"] == ["name"] and "name" in redacted["wmlFields"], redacted
+
+    assert served == [422, 200], served
+    html = page.content()
+    assert SYNTH_PASSWORD not in html
+    assert not errors, errors
+    # Unrelated page widgets (weather) are aborted; nothing may try a WITSML store or another proxy.
+    assert not [u for u in blocked if re.search(r"witsml|adaga|WMLS|supabase", u, re.I)], blocked
+    context.close()
+    print("PASS proxy path: real 422 -> refused by proxy (not DISCONNECTED); real redacted reply -> slot dropped, field marked; .mjs served as JavaScript")
+
+
 def verify_summary(browser, base, screenshots, name, viewport, touch=False):
     contract = (Path(__file__).parent / "fixtures" / "well-summary-safe.json").read_text()
     context = browser.new_context(viewport=viewport, is_mobile=touch, has_touch=touch, service_workers="block")
@@ -376,6 +459,7 @@ if __name__ == "__main__":
         browser = playwright.chromium.launch(executable_path=args.chromium, args=[
             "--no-sandbox", "--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"])
         verify_game(browser, args.base_url)
+        verify_proxy_path(browser, args.base_url, args.screenshots)
         verify(browser,args.base_url,args.screenshots,"desktop",{"width":1680,"height":970})
         verify(browser,args.base_url,args.screenshots,"mobile",{"width":390,"height":844},touch=True)
         verify_policy(browser,args.base_url,args.screenshots,"desktop",{"width":1680,"height":970})
