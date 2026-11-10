@@ -22,10 +22,9 @@
 // that, every decoding round is scanned (never only the last), with two rule
 // sets: XML (strict, ';' required) and HTML (numeric refs with optional ';',
 // the full WHATWG named-reference table, longest match, including the legacy
-// names that need no ';'), because the game puts names into innerHTML; text
-// content that still holds "<" is also read the way the HTML parser shows it
-// (tags, comments and bogus comments dropped) and a password there is
-// refused. Redaction maps a match found at any
+// names that need no ';'), because the game puts names into innerHTML; when
+// a value holds "<" or a quote, a secret that HTML markup could assemble from
+// the values (see markupSplitHit) is refused. Redaction maps a match found at any
 // round back to the exact span of the node's decoded text, replaces that span
 // with the mark, and re-serializes only that node. Every reply is re-scanned
 // after redaction with all views; anything left is refused.
@@ -92,7 +91,6 @@ const C1 = { 0x80: 0x20ac, 0x82: 0x201a, 0x83: 0x0192, 0x84: 0x201e, 0x85: 0x202
 
 const isDec = (c) => c >= 48 && c <= 57;
 const isHex = (c) => isDec(c) || (c >= 65 && c <= 70) || (c >= 97 && c <= 102);
-const isAlpha = (c) => (c >= 65 && c <= 90) || (c >= 97 && c <= 122);
 const isAlnum = (c) => isDec(c) || (c >= 65 && c <= 90) || (c >= 97 && c <= 122);
 const own = (table, key) => Object.prototype.hasOwnProperty.call(table, key) ? table[key] : undefined;
 
@@ -104,6 +102,9 @@ function readRef(s, at, html) {
     if (s[j] === "x" || s[j] === "X") { hex = true; j += 1; }
     const digitsStart = j;
     while (j < s.length && (hex ? isHex(s.charCodeAt(j)) : isDec(s.charCodeAt(j)))) j += 1;
+    // Chrome reads "&#x;" / "&#X;" (no digits) as U+FFFD; "&#;", "&#x" and
+    // "&#xg;" stay literal (checked against Chrome 156).
+    if (j === digitsStart && hex && html && s[j] === ";") return { ch: "\ufffd", end: j + 1 };
     if (j === digitsStart) return null;
     const semi = s[j] === ";";
     if (!semi && !html) return null;
@@ -367,56 +368,85 @@ export function anyViewContains(s, secrets) {
   try { return viewsContain(s, list); } finally { if (outer) budget = Infinity; }
 }
 
-// The text an HTML parser shows for s put into innerHTML: tags, comments
-// (including "<!-->" and "--!>"), bogus comments ("<!x>", "<?x>", "</ x>")
-// and end tags are dropped; a "<" that opens none of these is text.
-// References are left for valueHit's HTML rounds. Detection only: a game
-// sink that renders store text unescaped (renderMap) must not show a
-// password that the XML views do not see.
-function htmlTextView(s) {
-  spend(s.length);
-  const n = s.length;
-  let out = "";
-  let last = 0;
-  let i = s.indexOf("<");
-  while (i >= 0 && i < n) {
-    const c = s.charCodeAt(i + 1);
-    let end = -1;
-    if (s.startsWith("<!--", i)) {
-      if (s.startsWith("<!-->", i)) end = i + 5;
-      else if (s.startsWith("<!--->", i)) end = i + 6;
-      else {
-        const a = s.indexOf("-->", i + 4);
-        const b = s.indexOf("--!>", i + 4);
-        end = a < 0 && b < 0 ? n : (b < 0 || (a >= 0 && a < b)) ? a + 3 : b + 4;
-      }
-    } else if (c === 33 || c === 63 || (c === 47 && !(isAlpha(s.charCodeAt(i + 2)) || s.charCodeAt(i + 2) === 62))) {
-      const gt = s.indexOf(">", i + 2);
-      end = gt < 0 ? n : gt + 1;
-    } else if (c === 47 && s.charCodeAt(i + 2) === 62) {
-      end = i + 3;
-    } else if (isAlpha(c) || (c === 47 && isAlpha(s.charCodeAt(i + 2)))) {
-      let j = i + 2;
-      let afterEq = false;
-      for (; j < n; j += 1) {
-        const cc = s.charCodeAt(j);
-        if (cc === 62) break;
-        if (afterEq && (cc === 34 || cc === 39)) {
-          const close = s.indexOf(s[j], j + 1);
-          if (close < 0) { j = n; break; }
-          j = close;
-          afterEq = false;
-        } else if (cc === 61) afterEq = true;
-        else if (!isWs(cc)) afterEq = false;
-      }
-      end = j >= n ? n : j + 1;
+// ------------------------------------------------- HTML markup-split matcher
+// The game puts store text into innerHTML (renderMap cells and attributes on
+// the live build). Whatever the HTML parser does with markup there (comments,
+// "<!-->", bogus comments, raw-text and RCDATA elements such as xmp,
+// textarea, style, script, title, noscript, noembed, noframes, iframe,
+// plaintext, foreign CDATA, unclosed quotes, foster-parented table text),
+// the text it shows is the source with some regions hidden, every hidden
+// region starting at a "<" (in store text or in the page's own markup between
+// two values) and the shown text resuming after a ">" (again in store text or
+// page markup), with references decoded or not (raw text keeps them literal),
+// U+0000 dropped, "<![CDATA[" and "]]>" dropped, and foster parenting moving
+// later text in front of earlier text. So, without modelling the tokenizer,
+// a secret is reported when it can be read off the values, in document order
+// or with one wrap-around (the foster-parenting reorder), skipping any number
+// of regions that start at a "<" or a value boundary and end at a ">" or a
+// value boundary. Bit-parallel (shift-and) over secret prefixes of up to 31
+// characters, linear in the input; it only runs when a value holds "<" or a
+// quote (no other value can open hidden markup), and it reads each value on
+// its own, so one value cannot hide what another shows.
+const MATCH_MASK = new Int32Array(65536);
+function markupSplitHit(values, secrets) {
+  if (!values.some((v) => v.includes("<") || v.includes("\"") || v.includes("'"))) return false;
+  let total = 0;
+  for (const v of values) total += v.length;
+  for (const secret of secrets) {
+    const p = secret.length > 31 ? secret.slice(0, 31) : secret;
+    spend(total + p.length);
+    for (let k = 0; k < p.length; k += 1) MATCH_MASK[p.charCodeAt(k)] |= 1 << k;
+    try {
+      if (shiftAnd(values, p.length)) return true;
+    } finally {
+      for (let k = 0; k < p.length; k += 1) MATCH_MASK[p.charCodeAt(k)] = 0;
     }
-    if (end < 0) { i = s.indexOf("<", i + 1); continue; }
-    out += s.slice(last, i);
-    last = end;
-    i = end < n ? s.indexOf("<", end) : -1;
   }
-  return out + s.slice(Math.min(last, n));
+  return false;
+}
+function shiftAnd(values, length) {
+  const goal = 1 << (length - 1);
+  let d = 0;
+  let skip = 0;
+  let pending = null;
+  const later = (at, mask) => {
+    if (!mask) return;
+    if (!pending) pending = new Map();
+    pending.set(at, (pending.get(at) || 0) | mask);
+  };
+  for (let pass = 0; pass < 2; pass += 1) {
+    for (const s of values) {
+      skip |= d;
+      d |= skip;
+      pending = null;
+      const n = s.length;
+      for (let i = 0; i < n; i += 1) {
+        if (pending !== null) { const extra = pending.get(i); if (extra !== undefined) { d |= extra; pending.delete(i); if (!pending.size) pending = null; } }
+        const c = s.charCodeAt(i);
+        if (c === 60) {
+          skip |= d;
+          if (s.startsWith("<![CDATA[", i)) later(i + 9, d);
+        } else if (c === 38) {
+          const ref = readRef(s, i, true);
+          if (ref) {
+            let r = d;
+            for (let k = 0; k < ref.ch.length; k += 1) { r = ((r << 1) | 1) & MATCH_MASK[ref.ch.charCodeAt(k)]; if (r & goal) return true; }
+            later(ref.end, r);
+          }
+        } else if (c === 93 && s.startsWith("]]>", i)) {
+          later(i + 3, d);
+        }
+        const next = ((d << 1) | 1) & MATCH_MASK[c];
+        d = c === 0 ? next | d : next;
+        if (d & goal) return true;
+        if (c === 62) d |= skip;
+      }
+      if (pending !== null) { const tail = pending.get(n); if (tail !== undefined) d |= tail; }
+    }
+    skip |= d;
+    d |= skip;
+  }
+  return false;
 }
 
 function viewsContain(s, list) {
@@ -428,10 +458,12 @@ function viewsContain(s, list) {
     for (const attr of parsed.attrs) if (valueHit(attr.d, list)) return true;
     for (const pi of parsed.pis) if (valueHit(current.slice(pi.start, pi.end), list)) return true;
     for (const comment of parsed.comments) if (valueHit(current.slice(comment.start, comment.end), list)) return true;
+    // Each text node and attribute value on its own, in document order.
+    const values = [...parsed.texts, ...parsed.attrs].sort((x, y) => x.start - y.start).map((item) => item.d);
+    if (markupSplitHit(values, list)) return true;
     const next = parsed.textContent;
     if (next === current) return false;
     if (valueHit(next, list)) return true;
-    if (next.includes("<") && valueHit(htmlTextView(next), list)) return true;
     current = next;
   }
   return false;
@@ -498,7 +530,12 @@ function redactValue(text, password, mark) {
     if (!current.includes("&")) return { out: current, count };
     const spans = deepSpans(current, password);
     if (!spans) return { out: current, count };
-    for (let k = spans.length - 1; k >= 0; k -= 1) current = current.slice(0, spans[k][0]) + mark + current.slice(spans[k][1]);
+    // One pass: spans are sorted and disjoint.
+    const parts = [];
+    let last = 0;
+    for (const [start, end] of spans) { parts.push(current.slice(last, start), mark); last = end; }
+    parts.push(current.slice(last));
+    current = parts.join("");
     count += spans.length;
   }
   if (current.includes(password) || deepSpans(current, password)) return { fail: true };
@@ -749,6 +786,12 @@ function strings(value, out = []) {
   return out;
 }
 
+// Per-field size cap: MAX_FIELD_CHARS, or a lower one the route passes.
+function fieldCap(opts) {
+  const lower = opts && Number.isInteger(opts.maxFieldChars) && opts.maxFieldChars > 0 ? opts.maxFieldChars : MAX_FIELD_CHARS;
+  return Math.min(lower, MAX_FIELD_CHARS);
+}
+
 // The same fields with every string emptied (a withheld reply).
 function emptied(fields) {
   const out = {};
@@ -761,6 +804,8 @@ function emptied(fields) {
 //   opts.mark      replacement text ("[redacted]" on every route)
 //   opts.xmlKeys   fields read as XML documents (others are plain text)
 //   opts.slotKeys  plain-text fields that may be redacted whole, and their slot
+//   opts.maxFieldChars  a lower per-field cap for this route (never above
+//                  MAX_FIELD_CHARS); the Supabase fallback passes 2 MiB
 // Returns { ok: true, fields, redacted, slots }, or { ok: false, reason }, or,
 // when more than MAX_REDACTION_SLOTS slots would be needed,
 // { ok: true, withheld: "slot-limit", redacted: true, slots: [], fields }
@@ -774,7 +819,8 @@ export function guardFields(fields, creds, opts = {}) {
     const blocking = uniq(((creds && creds.blocking) || []).filter(long));
     const all = password ? uniq([password, ...blocking]) : blocking;
     const keys = Object.keys(fields || {}).filter((key) => typeof fields[key] === "string" && fields[key] !== "");
-    if (keys.some((key) => fields[key].length > MAX_FIELD_CHARS)) return { ok: false, reason: "guard-limit" };
+    const cap = fieldCap(opts);
+    if (keys.some((key) => fields[key].length > cap)) return { ok: false, reason: "guard-limit" };
     budget = WORK_FACTOR * keys.reduce((sum, key) => sum + fields[key].length, 0) + (4 << 20);
     if (password && mark.includes(password)) return { ok: false, reason: "credential-reflection" };
     const parsed = {};
@@ -847,11 +893,12 @@ export function attachRedactionMeta(reply, guarded) {
 
 // Detection only: a GUARD_REASONS value, or null. Object keys are scanned
 // too. Never throws.
-export function guardReason(value, secrets) {
+export function guardReason(value, secrets, opts = {}) {
   try {
     const list = uniq((secrets || []).filter(long));
+    const cap = fieldCap(opts);
     for (const text of strings(value)) {
-      if (text.length > MAX_FIELD_CHARS) return "guard-limit";
+      if (text.length > cap) return "guard-limit";
       if (parseXmlText(text).decl) return "unsafe-xml";
       if (anyViewContains(text, list)) return "credential-reflection";
     }
