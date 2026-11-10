@@ -9,9 +9,11 @@
 // * Credential echo guard: xml, supp, the SOAP fault error and the version string are checked in fully
 //   decoded form (named and numeric entities, CDATA joins, markup stripped, repeated decoding) for the
 //   caller's password, user:password pair, Basic token and header. Any hit is HTTP 422
-//   {code:"proxy-refusal", reason:"credential-reflection"} with no document. See witsml-echo-guard.mjs.
+//   {code:"proxy-refusal", reason:"credential-reflection"} with no document; a DOCTYPE/ENTITY declaration is
+//   422 reason "unsafe-markup". The full fault is checked before it is truncated. A Basic header that does not
+//   decode is 400. See witsml-echo-guard.mjs.
 import https from "node:https";
-import { credentialSecrets, echoes, echoRefusal } from "./witsml-echo-guard.mjs";
+import { credentialSecrets, echoRefusal, guardReason } from "./witsml-echo-guard.mjs";
 export const ORIGIN = "https://tittothomasai-code.github.io";
 export const ORIGINS = new Set([ORIGIN, "https://drilling.robotyx.systems"]);
 const OPS = new Set(["WMLS_GetVersion", "WMLS_GetCap", "WMLS_GetFromStore"]);
@@ -82,7 +84,10 @@ export function makeProxy({ upstream, skipHost, perMin = 60 }) {
     const auth = req.headers.get("X-Witsml-Authorization") || "";
     if (!/^Basic [A-Za-z0-9+/=]{4,1024}$/.test(auth)) return json(400, { result: -1, error: "credentials required (X-Witsml-Authorization: Basic …)" }, origin);
     const secrets = credentialSecrets(auth);
-    const reply = o => echoes(o, secrets) ? json(422, echoRefusal(secrets), origin) : json(200, o, origin);
+    // A header that passes the shape check but does not decode gives no secrets to scan for: refuse instead of skipping the scan.
+    if (!secrets.length) return json(400, { result: -1, error: "credentials required (X-Witsml-Authorization: Basic …)" }, origin);
+    // extra: untruncated text that must also be clean (the fault is cut to 300 characters after this check).
+    const reply = (o, extra = []) => { const why = guardReason([o, extra], secrets); return why ? json(422, echoRefusal(secrets, why), origin) : json(200, o, origin); };
     const t0 = Date.now(); let up;
     try {
       up = await httpsRequest(upstream, { method: "POST", skipHost, body: envelope(op, a),
@@ -95,7 +100,7 @@ export function makeProxy({ upstream, skipHost, perMin = 60 }) {
     if (up.status === 401 || up.status === 403) return json(up.status, { result: -1, error: "Authentication failed (" + up.status + ")" }, origin);
     if (up.status >= 300 && up.status < 400) return json(200, { result: -1, error: "upstream redirect refused" }, origin);
     const body = up.text, fault = tag(body, "faultstring");
-    if (fault) return reply({ result: -1, error: "SOAP fault: " + unesc(fault).slice(0, 300) });
+    if (fault) return reply({ result: -1, error: "SOAP fault: " + unesc(fault).slice(0, 300) }, [unesc(fault)]);
     if (up.status >= 400) return json(200, { result: -1, error: "HTTP " + up.status }, origin);
     const res = tag(body, "Result"), xml = unesc(tag(body, "XMLout") || tag(body, "CapabilitiesOut") || "");
     return reply({ result: op === "WMLS_GetVersion" ? 1 : +(res ?? -1), version: op === "WMLS_GetVersion" ? res : undefined, xml, supp: unesc(tag(body, "SuppMsgOut") || ""), ms: Date.now() - t0 });

@@ -18,7 +18,7 @@ import handler, { DEPLOY_REVISION_EQUIVALENCE } from "../netlify/functions/witsm
 const CANONICAL = {
   // core.mjs changed on purpose: credential echo guard (PR #22 review B1). The running
   // tryfecta-witsml-proxy deploy is still 74c687f0...eb7825 until this is released.
-  "../netlify/lib/core.mjs": "174c7b05196b39034417a00676a77ba50635a92c71bceaa005ef0cf2df7f058d",
+  "../netlify/lib/core.mjs": "18b8db557200edc6f3cc8d523665e77acbfda2107b1adfa445b37af8c55a58cc",
   "../netlify/functions/witsml-proxy.mjs": "d8c4e95580c2544567fe658d6ae41d1b5cce4b02c47da6a7c0d93eb205736b34",
   "../netlify.toml": "ecf28bdecdd81726a880eab4ddf070d74f2d1f011a7c6d2d0c1c247d2484bb39",
 };
@@ -94,6 +94,7 @@ describe("game origin regression", { concurrency: 1 }, () => {
       "netlify-proxy/test/machine-reader-adapter.test.mjs",
       "netlify-proxy/test/machine-redaction-slots.test.mjs",
       "netlify-proxy/netlify/lib/witsml-echo-guard.mjs",
+      "netlify-proxy/test/game-proxy-echo-gaps.test.mjs",
       "netlify-proxy/test/game-proxy-echo.test.mjs",
       "supabase/functions/witsml-proxy/echo_guard_test.ts",
       "supabase/functions/witsml-proxy/index.ts",
