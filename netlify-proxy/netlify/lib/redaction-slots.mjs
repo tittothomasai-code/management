@@ -5,11 +5,13 @@
 // element-name and attribute-name hits are structural: the reply must be
 // withheld, because a rewritten name is not a stable field.
 // "supp/1" and "fault/1" refer to those whole strings, not to XML nodes.
-// More than 64 slots, an ordinal the document does not have, or a slot
+// More than MAX_REDACTION_SLOTS (1024) slots, an ordinal the document does not have, or a slot
 // string that contains the password means the map is incomplete: withhold
 // the document instead of guessing.
 
-export const MAX_REDACTION_SLOTS = 64;
+// 1024 so a multi-well id-only list (one well-name or well-uid slot per well) can be
+// named instead of withheld. Ordinals stay within the 4-digit REDACTION_SLOT_RE.
+export const MAX_REDACTION_SLOTS = 1024;
 
 export const REDACTION_SLOT_RE = /^(?:attribute-value|comment|fault|log-data|namespace-uri|supp|text|well-country|well-field|well-name|well-uid|wellbore-identity)\/[1-9][0-9]{0,3}$/;
 

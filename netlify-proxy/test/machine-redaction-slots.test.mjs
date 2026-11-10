@@ -170,11 +170,12 @@ test("an attribute name redaction withholds the document", async () => {
 
 test("too many redacted rows withhold the document instead of a partial map", async () => {
   const password = "ROW-MARK";
-  const rows = Array.from({ length: 65 }, () => `<data>${password}</data>`).join("");
+  const rows = Array.from({ length: 1025 }, () => `<data>${password}</data>`).join("");
   const out = await call(`<logs><logData>${rows}</logData></logs>`, password);
   assert.equal(out.status, 200, out.raw);
   assert.equal(out.body.passwordRedacted, true);
   assert.equal(out.body.redactionScope, "response");
+  assert.equal(out.body.redactionFailure, "slot-limit");
   assert.equal(out.body.xml, undefined);
   assert.equal(out.body.redactedSlots, undefined);
   hidden(out.raw, [password]);
