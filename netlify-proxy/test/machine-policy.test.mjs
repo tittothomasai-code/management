@@ -776,7 +776,7 @@ describe("machine read policy", { concurrency: 1 }, () => {
     }), depsFor(faulted)));
     assert.equal(fault.status, 200);
     assert.equal(fault.body.passwordRedacted, true);
-    assert.equal(fault.body.error, "SOAP fault: ***");
+    assert.equal(fault.body.error, "SOAP fault: [redacted]");
     assert.equal(fault.raw.includes(password), false);
     assert.equal(fault.body.xml, undefined);
   });
@@ -1006,7 +1006,7 @@ describe("machine read policy", { concurrency: 1 }, () => {
     }), depsFor(secretImpl)));
     assert.equal(secret.status, 200, secret.raw);
     assert.equal(secret.body.passwordRedacted, true);
-    assert.equal(secret.body.xml, "<name>***</name>");
+    assert.equal(secret.body.xml, "<name>[redacted]</name>");
     assert.equal(secret.body.reason, undefined);
     assert.equal(secret.raw.includes(password), false);
     assert.equal(secret.raw.includes(user + ":" + password), false);
@@ -1029,7 +1029,7 @@ describe("machine read policy", { concurrency: 1 }, () => {
     }), depsFor(parsedImpl)));
     assert.equal(parsedEcho.status, 200, parsedEcho.raw);
     assert.equal(parsedEcho.body.passwordRedacted, true);
-    assert.equal(parsedEcho.body.xml, "<name>***</name>");
+    assert.equal(parsedEcho.body.xml, "<name>[redacted]</name>");
     assert.equal(parsedEcho.raw.includes(password), false);
     const keyImpl = fakeHttps({ text: soap("WMLS_GetFromStore", "<Result>1</Result><XMLout>&lt;name&gt;" + CALLER_KEY + "&lt;/name&gt;</XMLout>") });
     const keyEcho = await read(await enforceMachinePolicy(makeReq({
@@ -1088,7 +1088,7 @@ describe("machine read policy", { concurrency: 1 }, () => {
     }), depsFor(fakeHttps({ text: soap("WMLS_GetFromStore", "<Result>1</Result><XMLout>&lt;name&gt;" + password + "&lt;/name&gt;</XMLout>") }))));
     assert.equal(passwordOnly.status, 200, passwordOnly.raw);
     assert.equal(passwordOnly.body.passwordRedacted, true);
-    assert.equal(passwordOnly.body.xml, "<name>***</name>");
+    assert.equal(passwordOnly.body.xml, "<name>[redacted]</name>");
     assert.equal(passwordOnly.raw.includes(password), false);
     const pairOnly = await echo("<Result>1</Result><XMLout>&lt;name&gt;" + rawPair + "&lt;/name&gt;</XMLout>", "raw-pair");
     assert.equal(pairOnly.body.credentialClass, "password+raw-pair");
@@ -1110,7 +1110,7 @@ describe("machine read policy", { concurrency: 1 }, () => {
     }), depsFor(fakeHttps({ text: soap("WMLS_GetFromStore", "<Result>1</Result><XMLout>&lt;name&gt;Q&#90;JV&lt;/name&gt;</XMLout>") }))));
     assert.equal(entity.status, 200, entity.raw);
     assert.equal(entity.body.passwordRedacted, true);
-    assert.equal(entity.body.xml, "<name>***</name>");
+    assert.equal(entity.body.xml, "<name>[redacted]</name>");
     assert.equal(entity.raw.includes(password), false);
     const tokenChar = token.charCodeAt(4);
     const tokenEncoded = token.slice(0, 4) + "&#" + tokenChar + ";" + token.slice(5);

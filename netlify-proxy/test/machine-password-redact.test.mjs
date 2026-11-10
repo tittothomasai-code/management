@@ -87,7 +87,7 @@ test("redacts a well uid and keeps the unmodified name and number", async () => 
   const out = await call(store(xml), password);
   assert.equal(out.status, 200, out.raw);
   assert.equal(out.body.passwordRedacted, true);
-  assert.equal(out.body.xml.includes('uid="***"'), true);
+  assert.equal(out.body.xml.includes('uid="[redacted]"'), true);
   assert.equal(out.body.xml.includes("<name>Synth North</name>"), true);
   assert.equal(out.body.xml.includes("<num>1500</num>"), true);
   assert.equal(out.body.xml.includes(password), false);
@@ -105,7 +105,7 @@ test("redacts a well name attribute without changing the uid", async () => {
   assert.equal(out.status, 200, out.raw);
   assert.equal(out.body.passwordRedacted, true);
   assert.equal(out.body.xml.includes('uid="SYNTH-1"'), true);
-  assert.equal(out.body.xml.includes('name="***"'), true);
+  assert.equal(out.body.xml.includes('name="[redacted]"'), true);
   assert.equal(out.body.xml.includes("<num>42</num>"), true);
   assert.equal(out.raw.includes(password), false);
 });
@@ -116,7 +116,7 @@ test("a numeric overlap is marked and is not the original measurement", async ()
   const out = await call(store(xml), password);
   assert.equal(out.status, 200, out.raw);
   assert.equal(out.body.passwordRedacted, true);
-  assert.equal(out.body.xml.includes("<data>***0,25</data>"), true);
+  assert.equal(out.body.xml.includes("<data>[redacted]0,25</data>"), true);
   assert.equal(out.body.xml.includes("15000"), false);
   assert.equal(out.body.xml.includes("1500"), false);
 });
@@ -142,7 +142,7 @@ test("redacts a decoded entity and leaves an absent field untouched", async () =
   const hit = await call(present, password);
   assert.equal(hit.status, 200, hit.raw);
   assert.equal(hit.body.passwordRedacted, true);
-  assert.equal(hit.body.xml.includes("<name>***</name>"), true);
+  assert.equal(hit.body.xml.includes("<name>[redacted]</name>"), true);
   assert.equal(hit.body.xml.includes('uid="SYNTH-1"'), true);
   assert.equal(hit.raw.includes(password), false);
 

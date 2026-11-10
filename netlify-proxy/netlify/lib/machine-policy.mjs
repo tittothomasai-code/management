@@ -346,9 +346,11 @@ function redactFault(value, fields) {
   return out;
 }
 
-// Value placeholder is three characters, so it cannot contain a credential
-// of the minimum length. Name placeholder is a short XML name token.
-const VALUE_MARK = "***";
+// Value placeholder: "[redacted]", the same mark as the game route, so every
+// consumer (reader.py contains_redacted, the game) sees one placeholder. A
+// password that occurs inside the mark (or that the mark plus its neighbours
+// rebuild) is caught by the post-redaction checks and refused.
+const VALUE_MARK = "[redacted]";
 
 function passwordValue(fields) {
   const value = fields && fields.named && fields.named.find((item) => item.name === "password")?.value;
@@ -1085,6 +1087,11 @@ function finishUpstream(op, up, ms, fields) {
     { password, blocking: fields.long.filter((value) => value !== password) },
     { mark: VALUE_MARK, xmlKeys: ["xml"], slotKeys: { supp: "supp/1", fault: "fault/1" } },
   );
+  if (guardedReply.ok && guardedReply.withheld === "slot-limit") {
+    // More than MAX_REDACTION_SLOTS slots: the guard stopped early; the
+    // document is withheld (same answer as attachRedaction over the cap).
+    return seal(200, attachRedaction({ result: 1 }, { redacted: true, scope: "response", slots: [], failure: "slot-limit" }, password));
+  }
   if (!guardedReply.ok) {
     if (guardedReply.reason === "structural") {
       return seal(200, attachRedaction({ result: 1 }, { redacted: true, scope: "response", slots: [], failure: "structural" }, password));

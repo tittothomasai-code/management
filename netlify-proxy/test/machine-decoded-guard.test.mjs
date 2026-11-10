@@ -107,7 +107,7 @@ test("G2 / CDATA: padded references and a CDATA-joined text node are redacted in
   for (const [label, name] of Object.entries({ hex9: refs(PASSWORD, 9), hex16: refs(PASSWORD, 16), dec11, cdata: PASSWORD.slice(0, 3) + "<![CDATA[" + PASSWORD.slice(3) + "]]>-2" })) {
     const out = await call(ok(wells(name)));
     redacted(out, ["well-name/1"], label);
-    assert.match(out.body.xml, /<name>\*\*\*(-2)?<\/name>/, label);
+    assert.match(out.body.xml, /<name>\[redacted\](-2)?<\/name>/, label);
   }
   refused(await call(ok(wells("x"), refs(TOKEN, 9))), "credential-reflection", "token in supp is never redacted");
 });
@@ -128,7 +128,7 @@ test("G4: the full fault is redacted before the 300-character cut; a split fault
     assert.equal(out.status, 200, "fault@" + at + " " + out.raw.slice(0, 120));
     assert.equal(out.body.passwordRedacted, true);
     assert.deepEqual(out.body.redactedSlots, ["fault/1"]);
-    assert.equal(out.body.error, "SOAP fault: " + ("x".repeat(at) + "*** end").slice(0, 300));
+    assert.equal(out.body.error, "SOAP fault: " + ("x".repeat(at) + "[redacted] end").slice(0, 300));
   }
   refused(await call(fault("x".repeat(294) + PASSWORD.slice(0, 4) + "<!-- -->" + PASSWORD.slice(4))), "credential-reflection", "fault split");
 });
@@ -151,7 +151,7 @@ test("multi-well id-only list: names with the password (literal or encoded) are 
   const out = await call(ok(xml));
   redacted(out, Array.from({ length: 200 }, (_, k) => "well-name/" + (Math.floor(k / 2) * 3 + (k % 2) + 1)), "300 wells");
   assert.equal((out.body.xml.match(/<well uid="SYNTH-W\d+">/g) || []).length, 300);
-  assert.match(out.body.xml, /<name>\*\*\*-1<\/name>/);
+  assert.match(out.body.xml, /<name>\[redacted\]-1<\/name>/);
   assert.match(out.body.xml, /<name>Other 2<\/name>/);
 });
 
@@ -183,5 +183,5 @@ test("clean replies and literal-password replies keep their existing shape", asy
   assert.equal(clean.body.passwordRedacted, undefined);
   const literal = await call(ok(wells(PASSWORD + "-1")));
   redacted(literal, ["well-name/1"], "literal");
-  assert.match(literal.body.xml, /<name>\*\*\*-1<\/name>/);
+  assert.match(literal.body.xml, /<name>\[redacted\]-1<\/name>/);
 });

@@ -124,7 +124,7 @@ test("literal, decoded, supp, fault, result, and comment surfaces stay distinct"
   const literal = await call({ text: store(well(PASSWORD)) });
   assert.equal(literal.status, 200);
   assert.equal(literal.body.passwordRedacted, true);
-  assert.equal(literal.body.xml.includes("<name>***</name>"), true);
+  assert.equal(literal.body.xml.includes("<name>[redacted]</name>"), true);
   assert.equal(literal.body.xml.includes(`uid="${WELL}"`), true);
   assert.equal(literal.body.xml.includes(PASSWORD), false);
   assert.equal(literal.impl.calls[0].body.includes(PASSWORD), false);
@@ -134,21 +134,21 @@ test("literal, decoded, supp, fault, result, and comment surfaces stay distinct"
   const decoded = await call({ text: soap(`<q1:WMLS_GetFromStoreResponse xmlns:q1="http://www.witsml.org/message/120"><Result>1</Result><XMLout>${entityXml}</XMLout></q1:WMLS_GetFromStoreResponse>`) });
   assert.equal(decoded.status, 200);
   assert.equal(decoded.body.passwordRedacted, true);
-  assert.equal(decoded.body.xml.includes("<name>***</name>"), true);
+  assert.equal(decoded.body.xml.includes("<name>[redacted]</name>"), true);
   assert.equal(decoded.body.xml.includes(PASSWORD), false);
   hidden(decoded);
 
   const supp = await call({ text: store(well("Synth North"), "<SuppMsgOut>Q&#90;JV</SuppMsgOut>") });
   assert.equal(supp.status, 200);
   assert.equal(supp.body.passwordRedacted, true);
-  assert.equal(supp.body.supp, "***");
+  assert.equal(supp.body.supp, "[redacted]");
   assert.equal(supp.body.xml.includes("Synth North"), true);
   hidden(supp);
 
   const fault = await call({ text: soap('<soap:Fault><faultstring>Q&#90;JV</faultstring></soap:Fault>') });
   assert.equal(fault.status, 200);
   assert.equal(fault.body.passwordRedacted, true);
-  assert.equal(fault.body.error, "SOAP fault: ***");
+  assert.equal(fault.body.error, "SOAP fault: [redacted]");
   hidden(fault);
 
   const result = await call({ text: store(well("Synth North")).replace("<Result>1</Result>", "<Result>Q&#90;JV</Result>") });
@@ -205,7 +205,7 @@ test("a normal well document can match a password that is only ordinary markup",
   assert.equal(out.status, 200, out.raw);
   assert.equal(out.body.passwordRedacted, true);
   assert.equal(QUERY.includes(needle), true);
-  assert.equal(out.body.xml.includes("http://www.witsml.org/***/1series"), true);
+  assert.equal(out.body.xml.includes("http://www.witsml.org/[redacted]/1series"), true);
   assert.equal(out.body.xml.includes("Synth North"), true);
   assert.equal(out.raw.includes(needle), false);
   assert.equal(out.impl.calls[0].headers.Authorization, auth);
@@ -228,9 +228,9 @@ test("reports a credential field and well UID without returning any values", asy
   const out = await call({ text: store(xml) });
   assert.equal(out.status, 200, out.raw);
   assert.equal(out.body.passwordRedacted, true);
-  assert.equal(out.body.xml.includes('uid="***"'), true);
-  assert.equal(out.body.xml.includes("<password>***</password>"), true);
-  assert.equal(out.body.xml.includes("Authorization='***'"), true);
+  assert.equal(out.body.xml.includes('uid="[redacted]"'), true);
+  assert.equal(out.body.xml.includes("<password>[redacted]</password>"), true);
+  assert.equal(out.body.xml.includes("Authorization='[redacted]'"), true);
   hidden(out);
 });
 
@@ -248,8 +248,8 @@ test("namespace and credential field labels come from a fixed vocabulary", async
   const out = await call({ text: store(xml) });
   assert.equal(out.status, 200, out.raw);
   assert.equal(out.body.passwordRedacted, true);
-  assert.equal(out.body.xml.includes("https://fixture.invalid/***"), true);
-  assert.equal(out.body.xml.includes("<untrusted-field>***</untrusted-field>"), true);
+  assert.equal(out.body.xml.includes("https://fixture.invalid/[redacted]"), true);
+  assert.equal(out.body.xml.includes("<untrusted-field>[redacted]</untrusted-field>"), true);
   assert.equal(out.body.xml.includes(`uid="${WELL}"`), true);
   hidden(out);
 });
@@ -261,10 +261,10 @@ test("a password that collides with a static response key still returns redacted
   assert.equal(out.status, 200, out.raw);
   assert.equal(out.body.passwordRedacted, true);
   assert.equal(out.body.result, 1);
-  assert.equal(out.body.xml.includes("<name>***</name>"), true);
+  assert.equal(out.body.xml.includes("<name>[redacted]</name>"), true);
   assert.equal(out.body.xml.includes(pass), false);
   const adapted = adaptMachineResult(out.body, "WMLS_GetFromStore");
   assert.equal(adapted.passwordRedacted, true);
   assert.equal(adapted.xml.includes(pass), false);
-  assert.equal(inspect(adapted).includes("<name>***</name>"), true);
+  assert.equal(inspect(adapted).includes("<name>[redacted]</name>"), true);
 });
