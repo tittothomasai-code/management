@@ -375,7 +375,9 @@ function tokenSafe(token, password) {
 // passwordRedacted stays on every redacted reply. Slots are added only when
 // every changed node has one complete role/ordinal and none of those tokens
 // contain the password. Otherwise the document is omitted and, when the word
-// itself is safe, redactionScope is "response".
+// itself is safe, redactionScope is "response" and redactionFailure names the
+// fixed, value-free reason: "structural", "slot-limit" or "slot-token".
+const REDACTION_FAILURES = new Set(["structural", "slot-limit", "slot-token"]);
 function attachRedaction(obj, meta, password) {
   if (!meta || meta.redacted !== true) return obj;
   obj.passwordRedacted = true;
@@ -398,6 +400,8 @@ function attachRedaction(obj, meta, password) {
   delete obj.versions;
   obj.result = -1;
   if (tokenSafe("response", password) && tokenSafe("redactionScope", password)) obj.redactionScope = "response";
+  const failure = meta.failure || (slots.length > MAX_REDACTION_SLOTS ? "slot-limit" : "slot-token");
+  if (REDACTION_FAILURES.has(failure) && tokenSafe(failure, password) && tokenSafe("redactionFailure", password)) obj.redactionFailure = failure;
   return obj;
 }
 
@@ -1065,7 +1069,7 @@ function finishUpstream(op, up, ms, fields) {
       return seal(502, { result: -1, error: "upstream response rejected", reason: "parser-format" });
     }
     if (redactedXml.structural) {
-      return seal(200, attachRedaction({ result: 1 }, { redacted: true, scope: "response", slots: [] }, password));
+      return seal(200, attachRedaction({ result: 1 }, { redacted: true, scope: "response", slots: [], failure: "structural" }, password));
     }
     xmlOut = redactedXml.xml;
     xmlSlots = redactedXml.slots || [];
