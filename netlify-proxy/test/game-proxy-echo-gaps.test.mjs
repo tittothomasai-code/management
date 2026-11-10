@@ -176,9 +176,12 @@ describe("echo guard review gaps, redact-in-place policy", { concurrency: 1 }, (
   });
 
   test("R1 / G6: large and adversarial replies never throw; floods stay linear", async () => {
-    const big = await ask({ raw: "<Result>1</Result><XMLout>&lt;a" + "x".repeat(10_500_000) + "</XMLout>" }, { password: P });
-    assert.equal(big.status, 200, "10.5 MB '<a' run");
+    const big = await ask({ raw: "<Result>1</Result><XMLout>&lt;a" + "x".repeat(4_000_000) + "</XMLout>" }, { password: P });
+    assert.equal(big.status, 200, "4 MB '<a' run, under the 4 MiB field cap");
     assert.equal(big.cors, "https://tittothomasai-code.github.io");
+    const huge = await ask({ raw: "<Result>1</Result><XMLout>&lt;a" + "x".repeat(10_500_000) + "</XMLout>" }, { password: P });
+    refused(huge, P, "10.5 MB '<a' run over the field cap", "guard-limit");
+    assert.equal(huge.cors, "https://tittothomasai-code.github.io");
     for (const [label, unit] of [["comment", "<!--"], ["cdata", "<![CDATA["], ["pi", "<?"], ["quote", '<a b="'], ["cdata+comment", "<![CDATA[<!--]]>"]]) {
       const start = performance.now();
       const r = await ask({ xml: well("plain"), supp: unit.repeat(20000) }, { password: P });
