@@ -105,5 +105,21 @@ Deno.test("supabase fallback: what cannot be redacted is 422 with no document", 
     assert(upstreamCalls === before, "H5 no upstream call");
   }
   assert(upstreamCalls > 0, "stub used");
+});
+
+Deno.test("supabase fallback: full WHATWG named references (&fjlig; &COPY &notin;) and slot-limit (re-review 2)", async () => {
+  for (const [p, text] of [["Xfjord99", "X&amp;fjlig;ord99"], ["Synth\u00a9Pw", "Synth&amp;COPYPw"], ["Pw\u2209x99", "Pw&amp;notin;x99"]]) {
+    const r = await ask({ xml: well(text) }, p);
+    assert(r.status === 200 && r.body.redactionScope === "slots" && String(r.body.xml).includes("<name>[redacted]</name>"), text + " " + r.text.slice(0, 200));
+    leakFree(r, p, text);
+  }
+  const p = "SynthPw-4821";
+  const many = "<wells " + NS + ">" + Array.from({ length: 32000 }, (_, i) => '<well uid="W' + i + '"><name>' + p + "</name></well>").join("") + "</wells>";
+  const t0 = performance.now();
+  const r = await ask({ xml: many }, p);
+  assert(performance.now() - t0 < 2000, "32k hits took " + (performance.now() - t0).toFixed(0) + " ms");
+  assert(r.status === 200 && r.body.redactionFailure === "slot-limit" && r.body.xml === undefined, "slot-limit " + r.text.slice(0, 200));
+  leakFree(r, p, "slot-limit");
+  assert(upstreamCalls > 0, "stub used");
   globalThis.fetch = originalFetch;
 });
