@@ -23,8 +23,8 @@
 // sets: XML (strict, ';' required) and HTML (numeric refs with optional ';',
 // the full WHATWG named-reference table, longest match, including the legacy
 // names that need no ';'), because the game puts names into innerHTML; when
-// a value holds "<" or a quote, a secret that HTML markup could assemble from
-// the values (see markupSplitHit) is refused. Redaction maps a match found at any
+// a value holds markup, a secret that the HTML parser could assemble from
+// it (see markupSplitHit) is refused. Redaction maps a match found at any
 // round back to the exact span of the node's decoded text, replaces that span
 // with the mark, and re-serializes only that node. Every reply is re-scanned
 // after redaction with all views; anything left is refused.
@@ -360,52 +360,239 @@ function valueHit(s, secrets) {
 // string, every round of XML and HTML reference decoding, and every round of
 // re-reading the text as XML (text content and attribute values), each of
 // those also HTML-decoded. Every round is scanned.
-export function anyViewContains(s, secrets) {
+// markup: "plain" (default; the whole string may be HTML), "xml" (each value
+// of the XML document may be HTML) or "none" (no markup-split check).
+export function anyViewContains(s, secrets, markup = "plain") {
   const list = (secrets || []).filter(long);
   if (typeof s !== "string" || s === "" || !list.length) return false;
   const outer = budget === Infinity;
   if (outer) budget = WORK_FACTOR * s.length + (1 << 20);
-  try { return viewsContain(s, list); } finally { if (outer) budget = Infinity; }
+  try { return viewsContain(s, list, markup); } finally { if (outer) budget = Infinity; }
 }
 
 // ------------------------------------------------- HTML markup-split matcher
-// The game puts store text into innerHTML (renderMap cells and attributes on
-// the live build). Whatever the HTML parser does with markup there (comments,
-// "<!-->", bogus comments, raw-text and RCDATA elements such as xmp,
-// textarea, style, script, title, noscript, noembed, noframes, iframe,
-// plaintext, foreign CDATA, unclosed quotes, foster-parented table text),
-// the text it shows is the source with some regions hidden, every hidden
-// region starting at a "<" (in store text or in the page's own markup between
-// two values) and the shown text resuming after a ">" (again in store text or
-// page markup), with references decoded or not (raw text keeps them literal),
-// U+0000 dropped, "<![CDATA[" and "]]>" dropped, and foster parenting moving
-// later text in front of earlier text. So, without modelling the tokenizer,
-// a secret is reported when it can be read off the values, in document order
-// or with one wrap-around (the foster-parenting reorder), skipping any number
-// of regions that start at a "<" or a value boundary and end at a ">" or a
-// value boundary. Bit-parallel (shift-and) over secret prefixes of up to 31
-// characters, linear in the input; it only runs when a value holds "<" or a
-// quote (no other value can open hidden markup), and it reads each value on
-// its own, so one value cannot hide what another shows.
+// The game puts each store value into innerHTML (renderMap cells on the live
+// build). What the HTML parser shows from one value is that value with some
+// regions hidden: every hidden region starts at real markup ("<" followed by
+// a letter, "!", "/" or "?") and the shown text resumes after a ">" (comments,
+// bogus comments, raw-text and RCDATA elements such as xmp, textarea, style,
+// script, title, noscript, noembed, noframes, iframe, plaintext, foreign
+// CDATA and quoted attributes all end on a ">"), with references decoded or
+// not (raw text keeps them literal), U+0000 dropped and "<![CDATA[" / "]]>"
+// dropped. A bare "<" ("SPP < 200 bar", "ROP<5") is text and hides nothing.
+//
+// Values are read on their own. A value continues into the next one only
+// when an HTML tokenizer (state set; foreign content, script escapes and
+// CDATA are branched both ways) can end the value inside markup (tag,
+// attribute quote, comment, bogus comment, raw text, plaintext): then the
+// page markup between the two values is swallowed and the region may close
+// in the next value or in the page markup. Values that end in plain text
+// never join, so neighbouring plain values (`actual` + `2281`) are not read
+// as one. Markup can also move later text in front of earlier text (CSS
+// order, foster parenting): a run with markup is read twice over, and up to
+// four times when it holds table markup (nested foster parenting).
+//
+// One linear shift-and scan over all secrets at once (secrets that contain
+// another secret are dropped; each kept secret is cut to a prefix so that all
+// fit one 31-bit word when possible, which can only add matches), run once
+// per field after redaction, with its own work budget (MATCH_WORK per input
+// character); over budget fails closed (guard-limit). Values with no markup
+// and no NUL are skipped. A hit is refused (credential-reflection).
 const MATCH_MASK = new Int32Array(65536);
+const MATCH_WORK = 24;
+const RAW_TEXT = new Set(["script", "style", "xmp", "iframe", "noembed", "noframes", "noscript", "textarea", "title", "plaintext"]);
+const isAlpha = (c) => (c >= 65 && c <= 90) || (c >= 97 && c <= 122);
+const opensAt = (s, i) => { const c = s.charCodeAt(i + 1); return i + 1 >= s.length || isAlpha(c) || c === 33 || c === 47 || c === 63; };
+const hasMarkup = (s) => { for (let i = s.indexOf("<"); i >= 0; i = s.indexOf("<", i + 1)) if (opensAt(s, i)) return true; return false; };
+const TABLEISH = /<\/?[tTcC]/g;
+
+// Tokenizer states (a small subset of the HTML tokenizer; see above).
+const T_DATA = 0, T_NAME = 1, T_BAN = 2, T_AN = 3, T_AAN = 4, T_BAV = 5, T_DQ = 6, T_SQ = 7, T_UNQ = 8, T_AQ = 9, T_SC = 10,
+  T_COMMENT = 11, T_BOGUS = 12, T_RAW = 13, T_PLAIN = 14, T_CDATA = 15, T_UNKNOWN = 16;
+const st = (k, n = "", c = -1, w = 0, start = false) => ({ k, n, c, w, start });
+const ws = (c) => c === 32 || c === 9 || c === 10 || c === 12 || c === 13;
+function emitTag(state) {
+  if (state.start && RAW_TEXT.has(state.n)) return [st(state.n === "plaintext" ? T_PLAIN : T_RAW, state.n), st(T_DATA)];
+  return [st(T_DATA)];
+}
+function stepState(state, s, i, spendFn) {
+  const c = s.charCodeAt(i);
+  switch (state.k) {
+    case T_DATA: {
+      if (c !== 60) return null;
+      if (i + 1 >= s.length) return [st(T_UNKNOWN)];
+      const d = s.charCodeAt(i + 1);
+      if (isAlpha(d)) return [st(T_NAME, "", -1, i + 1, true)];
+      if (d === 47) {
+        if (isAlpha(s.charCodeAt(i + 2))) return [st(T_NAME, "", -1, i + 2, false)];
+        if (s.charCodeAt(i + 2) === 62) return [st(T_DATA, "", -1, i + 3)];
+        return [st(T_BOGUS, "", -1, i + 2)];
+      }
+      if (d === 33) {
+        if (s.startsWith("<!--", i)) return [st(T_COMMENT, "", i + 4, i + 4)];
+        if (s.startsWith("<![CDATA[", i)) return [st(T_CDATA, "", -1, i + 9), st(T_BOGUS, "", -1, i + 2)];
+        return [st(T_BOGUS, "", -1, i + 2)];
+      }
+      if (d === 63) return [st(T_BOGUS, "", -1, i + 2)];
+      return null;
+    }
+    case T_NAME:
+      if (ws(c)) return [{ ...state, k: T_BAN }];
+      if (c === 47) return [{ ...state, k: T_SC }];
+      if (c === 62) return emitTag(state);
+      return state.n.length < 10 ? [{ ...state, n: state.n + String.fromCharCode(c >= 65 && c <= 90 ? c + 32 : c) }] : null;
+    case T_BAN:
+      if (ws(c)) return null;
+      if (c === 47) return [{ ...state, k: T_SC }];
+      if (c === 62) return emitTag(state);
+      return [{ ...state, k: T_AN }];
+    case T_AN:
+      if (ws(c)) return [{ ...state, k: T_AAN }];
+      if (c === 47) return [{ ...state, k: T_SC }];
+      if (c === 61) return [{ ...state, k: T_BAV }];
+      if (c === 62) return emitTag(state);
+      return null;
+    case T_AAN:
+      if (ws(c)) return null;
+      if (c === 47) return [{ ...state, k: T_SC }];
+      if (c === 61) return [{ ...state, k: T_BAV }];
+      if (c === 62) return emitTag(state);
+      return [{ ...state, k: T_AN }];
+    case T_BAV:
+      if (ws(c)) return null;
+      if (c === 34) return [{ ...state, k: T_DQ }];
+      if (c === 39) return [{ ...state, k: T_SQ }];
+      if (c === 62) return emitTag(state);
+      return [{ ...state, k: T_UNQ }];
+    case T_DQ: return c === 34 ? [{ ...state, k: T_AQ }] : null;
+    case T_SQ: return c === 39 ? [{ ...state, k: T_AQ }] : null;
+    case T_UNQ:
+      if (ws(c)) return [{ ...state, k: T_BAN }];
+      if (c === 62) return emitTag(state);
+      return null;
+    case T_AQ:
+    case T_SC:
+      if (ws(c)) return [{ ...state, k: T_BAN }];
+      if (c === 47) return [{ ...state, k: T_SC }];
+      if (c === 62) return emitTag(state);
+      return [{ ...state, k: T_AN }];
+    case T_COMMENT: {
+      if (c !== 62) return null;
+      const from = state.c;
+      if (from >= 0 && (i === from || (i === from + 1 && s.charCodeAt(from) === 45))) return [st(T_DATA)];
+      if (i >= 2 && i - 2 >= Math.max(from, 0) && s.startsWith("--", i - 2)) return [st(T_DATA)];
+      if (i >= 3 && i - 3 >= Math.max(from, 0) && s.startsWith("--!", i - 3)) return [st(T_DATA)];
+      return null;
+    }
+    case T_BOGUS: return c === 62 ? [st(T_DATA)] : null;
+    case T_CDATA: return c === 93 && s.startsWith("]]>", i) ? [st(T_DATA, "", -1, i + 3)] : null;
+    case T_RAW: {
+      if (c !== 60 || s.charCodeAt(i + 1) !== 47) return null;
+      const name = state.n;
+      spendFn(name.length);
+      if (s.slice(i + 2, i + 2 + name.length).toLowerCase() !== name) return null;
+      const after = i + 2 + name.length;
+      if (after < s.length && !ws(s.charCodeAt(after)) && s.charCodeAt(after) !== 47 && s.charCodeAt(after) !== 62) return null;
+      // An end tag; script may be double-escaped, so it may also stay raw.
+      const closed = st(T_BAN, "", -1, after, false);
+      return name === "script" ? [closed, state] : [closed];
+    }
+    default: return null;
+  }
+}
+// The tokenizer state set after reading s from `states`.
+function tokenize(states, s, spendFn) {
+  let set = states;
+  const n = s.length;
+  for (let i = 0; i < n; i += 1) {
+    spendFn(set.length);
+    let next = null;
+    for (let j = 0; j < set.length; j += 1) {
+      const state = set[j];
+      const out = state.w > i ? null : stepState(state, s, i, spendFn);
+      if (out === null) { if (next) next.push(state); continue; }
+      if (!next) next = set.slice(0, j);
+      next.push(...out);
+    }
+    if (next === null) continue;
+    const seen = new Map();
+    for (const state of next) {
+      if (state.k === T_UNKNOWN) return [st(T_UNKNOWN)];
+      const key = state.k + "|" + state.n + "|" + state.c + "|" + state.w + "|" + (state.start ? 1 : 0);
+      if (!seen.has(key)) seen.set(key, state);
+    }
+    set = [...seen.values()];
+    if (set.length > 32) return [st(T_UNKNOWN)];
+  }
+  // Positions only matter inside one value.
+  return set.map((state) => ({ ...state, c: -1, w: 0 }));
+}
+const endsInText = (set) => set.length === 1 && set[0].k === T_DATA;
+
+// Patterns: drop secrets that contain another secret, then cut prefixes so
+// that every kept secret fits one 31-bit word (at least 8 characters each;
+// more secrets than that use more words).
+function matchPacks(secrets) {
+  const kept = [];
+  for (const s of uniq(secrets).sort((x, y) => x.length - y.length)) if (!kept.some((t) => s.includes(t))) kept.push(s);
+  const total = kept.reduce((sum, t) => sum + Math.min(t.length, 31), 0);
+  const per = total <= 31 ? 31 : Math.max(8, Math.floor(31 / kept.length));
+  const packs = [];
+  let cur = [];
+  let used = 0;
+  for (const p of kept.map((t) => t.slice(0, per))) {
+    if (used + p.length > 31) { packs.push(cur); cur = []; used = 0; }
+    cur.push(p);
+    used += p.length;
+  }
+  if (cur.length) packs.push(cur);
+  return packs;
+}
+
 function markupSplitHit(values, secrets) {
-  if (!values.some((v) => v.includes("<") || v.includes("\"") || v.includes("'"))) return false;
+  if (!values.some((v) => v.includes("<") || v.includes("\0"))) return false;
+  if (!values.some((v) => hasMarkup(v) || v.includes("\0"))) return false;
   let total = 0;
   for (const v of values) total += v.length;
-  for (const secret of secrets) {
-    const p = secret.length > 31 ? secret.slice(0, 31) : secret;
-    spend(total + p.length);
-    for (let k = 0; k < p.length; k += 1) MATCH_MASK[p.charCodeAt(k)] |= 1 << k;
-    try {
-      if (shiftAnd(values, p.length)) return true;
-    } finally {
-      for (let k = 0; k < p.length; k += 1) MATCH_MASK[p.charCodeAt(k)] = 0;
+  let work = MATCH_WORK * total + (1 << 20);
+  const spendFn = (n) => { work -= n; if (work < 0) throw new GuardLimit("guard-limit"); };
+  // Runs of values read together.
+  const runs = [];
+  let run = null;
+  let states = [st(T_DATA)];
+  for (const v of values) {
+    const carried = !endsInText(states);
+    if (!carried) run = null;
+    const markup = hasMarkup(v);
+    if (!carried && !markup && !v.includes("\0")) continue;
+    if (!run) { run = []; runs.push(run); }
+    run.push(v);
+    states = carried || markup ? tokenize(states, v, spendFn) : [st(T_DATA)];
+  }
+  const packs = matchPacks(secrets);
+  for (const r of runs) {
+    let tables = 0;
+    for (const v of r) { TABLEISH.lastIndex = 0; while (TABLEISH.exec(v) && tables < 2) tables += 1; }
+    for (const pack of packs) {
+      let used = 0;
+      let starts = 0;
+      let goal = 0;
+      for (const p of pack) {
+        starts |= 1 << used;
+        for (let k = 0; k < p.length; k += 1) MATCH_MASK[p.charCodeAt(k)] |= 1 << (used + k);
+        used += p.length;
+        goal |= 1 << (used - 1);
+      }
+      try {
+        if (shiftAnd(r, 2 + tables, starts, goal, spendFn)) return true;
+      } finally {
+        for (const p of pack) for (let k = 0; k < p.length; k += 1) MATCH_MASK[p.charCodeAt(k)] = 0;
+      }
     }
   }
   return false;
 }
-function shiftAnd(values, length) {
-  const goal = 1 << (length - 1);
+function shiftAnd(values, passes, starts, goal, spendFn) {
   let d = 0;
   let skip = 0;
   let pending = null;
@@ -414,43 +601,47 @@ function shiftAnd(values, length) {
     if (!pending) pending = new Map();
     pending.set(at, (pending.get(at) || 0) | mask);
   };
-  for (let pass = 0; pass < 2; pass += 1) {
-    for (const s of values) {
-      skip |= d;
-      d |= skip;
+  for (let pass = 0; pass < passes; pass += 1) {
+    for (let v = 0; v < values.length; v += 1) {
+      const s = values[v];
+      spendFn(s.length);
+      // Joined values: the page markup in between is hidden.
+      if (v > 0) d = skip;
       pending = null;
       const n = s.length;
       for (let i = 0; i < n; i += 1) {
         if (pending !== null) { const extra = pending.get(i); if (extra !== undefined) { d |= extra; pending.delete(i); if (!pending.size) pending = null; } }
         const c = s.charCodeAt(i);
         if (c === 60) {
-          skip |= d;
+          if (opensAt(s, i)) skip |= d;
           if (s.startsWith("<![CDATA[", i)) later(i + 9, d);
         } else if (c === 38) {
           const ref = readRef(s, i, true);
           if (ref) {
             let r = d;
-            for (let k = 0; k < ref.ch.length; k += 1) { r = ((r << 1) | 1) & MATCH_MASK[ref.ch.charCodeAt(k)]; if (r & goal) return true; }
+            for (let k = 0; k < ref.ch.length; k += 1) { r = ((r << 1) | starts) & MATCH_MASK[ref.ch.charCodeAt(k)]; if (r & goal) return true; }
             later(ref.end, r);
           }
         } else if (c === 93 && s.startsWith("]]>", i)) {
           later(i + 3, d);
         }
-        const next = ((d << 1) | 1) & MATCH_MASK[c];
+        const next = ((d << 1) | starts) & MATCH_MASK[c];
         d = c === 0 ? next | d : next;
         if (d & goal) return true;
         if (c === 62) d |= skip;
       }
       if (pending !== null) { const tail = pending.get(n); if (tail !== undefined) d |= tail; }
     }
+    // Foster parenting: text from the end may be shown before the start.
     skip |= d;
     d |= skip;
   }
   return false;
 }
 
-function viewsContain(s, list) {
+function viewsContain(s, list, markup) {
   if (valueHit(s, list)) return true;
+  if (markup === "plain" && markupSplitHit([s], list)) return true;
   let current = s;
   for (let round = 0; round < MAX_ROUNDS; round += 1) {
     if (!current.includes("<") && !current.includes("&")) return false;
@@ -458,9 +649,11 @@ function viewsContain(s, list) {
     for (const attr of parsed.attrs) if (valueHit(attr.d, list)) return true;
     for (const pi of parsed.pis) if (valueHit(current.slice(pi.start, pi.end), list)) return true;
     for (const comment of parsed.comments) if (valueHit(current.slice(comment.start, comment.end), list)) return true;
-    // Each text node and attribute value on its own, in document order.
-    const values = [...parsed.texts, ...parsed.attrs].sort((x, y) => x.start - y.start).map((item) => item.d);
-    if (markupSplitHit(values, list)) return true;
+    // Once per field: each text node and attribute value, in document order.
+    if (round === 0 && markup === "xml") {
+      const values = [...parsed.texts, ...parsed.attrs].sort((x, y) => x.start - y.start).map((item) => item.d);
+      if (markupSplitHit(values, list)) return true;
+    }
     const next = parsed.textContent;
     if (next === current) return false;
     if (valueHit(next, list)) return true;
@@ -805,7 +998,7 @@ function emptied(fields) {
 //   opts.xmlKeys   fields read as XML documents (others are plain text)
 //   opts.slotKeys  plain-text fields that may be redacted whole, and their slot
 //   opts.maxFieldChars  a lower per-field cap for this route (never above
-//                  MAX_FIELD_CHARS); the Supabase fallback passes 2 MiB
+//                  MAX_FIELD_CHARS); the Supabase fallback passes 1.5 MiB
 // Returns { ok: true, fields, redacted, slots }, or { ok: false, reason }, or,
 // when more than MAX_REDACTION_SLOTS slots would be needed,
 // { ok: true, withheld: "slot-limit", redacted: true, slots: [], fields }
@@ -828,7 +1021,8 @@ export function guardFields(fields, creds, opts = {}) {
       parsed[key] = parseXmlText(fields[key]);
       if (parsed[key].decl) return { ok: false, reason: "unsafe-xml" };
     }
-    for (const key of keys) if (anyViewContains(fields[key], blocking)) return { ok: false, reason: "credential-reflection" };
+    // Markup splits are checked once, on the reply that would be returned.
+    for (const key of keys) if (anyViewContains(fields[key], blocking, "none")) return { ok: false, reason: "credential-reflection" };
     const out = { ...fields };
     const slots = new Set();
     let limited = false;
@@ -859,7 +1053,7 @@ export function guardFields(fields, creds, opts = {}) {
     if (limited) return { ok: true, withheld: "slot-limit", redacted: true, slots: [], fields: emptied(fields) };
     for (const key of keys) parsed[key] = null;
     for (const key of keys) {
-      if (anyViewContains(out[key], all)) return { ok: false, reason: "credential-reflection" };
+      if (anyViewContains(out[key], all, xmlKeys.has(key) ? "xml" : "plain")) return { ok: false, reason: "credential-reflection" };
       if (xmlKeys.has(key) && out[key] !== fields[key] && parseXmlText(out[key]).decl) return { ok: false, reason: "unsafe-xml" };
     }
     return { ok: true, fields: out, redacted: slots.size > 0, slots: [...slots] };
