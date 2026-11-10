@@ -10,6 +10,20 @@
 //  * TLS certificate verification is ALWAYS on. The Supabase Edge runtime has no per-host way to skip it
 //    (no Deno flags; Deno.createHttpClient has no "ignore errors" option), so an expired upstream cert -> 502.
 //  * Never logs headers, bodies or credentials (no console output at all).
+//  * Credential echo guard (witsml-echo-guard.mjs): xml, supp, the full SOAP fault (before truncation) and the
+//    version string are read the way the browser reads them (XML tokenizer, every XML and HTML decoding round).
+//    A password-only match is redacted in place to "[redacted]" and returned 200 with passwordRedacted,
+//    redactionScope "slots" and redactedSlots (role/ordinal). Anything that cannot be redacted safely is 422
+//    {code:"proxy-refusal", reason}: the user:password pair, Basic token or header (credential-reflection), a
+//    password split across markup or outside a slot role (credential-reflection), in an element/attribute name
+//    (structural), a DOCTYPE/ENTITY declaration (unsafe-xml), an over-size reply (guard-limit) or a guard error
+//    (guard-error). A Basic header without a usable user:password is 400.
+import { GAME_REDACTION_MARK, attachRedactionMeta, credentialParts, credentialSecrets, echoRefusal, guardFields, guardReason } from "./witsml-echo-guard.mjs";
+// Supabase Edge has 256 MB per worker: the guard reads at most 1.5 MiB per field here (hostile dense-markup
+// input peaks near 220 MB RSS at 1.5 MiB in Deno, about 245 MB at 2 MiB). A larger field is refused with
+// guard-limit (fail closed); the Netlify route keeps the 4 MiB cap. Passed as a parameter so the guard file
+// stays byte-identical to the Netlify copy.
+const SUPABASE_MAX_FIELD_CHARS = 1.5 * 1024 * 1024;
 const ORIGIN = "https://tittothomasai-code.github.io";
 const UPSTREAM = "https://australia.adagasolutions.com/WMLS";
 const UP_HOST = "australia.adagasolutions.com";
@@ -60,6 +74,19 @@ Deno.serve(async (req: Request) => {
   if (op === "WMLS_GetFromStore" && !/^[A-Za-z]{2,40}$/.test(String(a.wmlType || ""))) return json(400, { result: -1, error: "bad wmlType" }, origin);
   const auth = req.headers.get("X-Witsml-Authorization") || "";
   if (!/^Basic [A-Za-z0-9+/=]{4,1024}$/.test(auth)) return json(400, { result: -1, error: "credentials required (X-Witsml-Authorization: Basic …)" }, origin);
+  const creds = credentialParts(auth);
+  // No usable user:password in the header: nothing to scan for, so refuse instead of skipping the scan.
+  if (!creds) return json(400, { result: -1, error: "credentials required (X-Witsml-Authorization: Basic …)" }, origin);
+  const secrets: string[] = credentialSecrets(auth);
+  const refuse = (why: string) => json(422, echoRefusal(secrets, why), origin);
+  // Redact the password in place where that is safe, refuse otherwise; build() sees only guarded fields.
+  const reply = (fields: Record<string, string>, build: (f: Record<string, string>) => Record<string, unknown>) => {
+    const g = guardFields(fields, creds, { mark: GAME_REDACTION_MARK, xmlKeys: ["xml"], slotKeys: { supp: "supp/1", fault: "fault/1" }, maxFieldChars: SUPABASE_MAX_FIELD_CHARS });
+    if (!g.ok) return refuse(g.reason ?? "guard-error");
+    const o = attachRedactionMeta(build(g.fields), g);
+    const why = guardReason({ ...o, xml: undefined }, secrets, { maxFieldChars: SUPABASE_MAX_FIELD_CHARS });
+    return why ? refuse(why) : json(200, o, origin);
+  };
   const t0 = Date.now();
   let up: Response;
   try {
@@ -76,9 +103,11 @@ Deno.serve(async (req: Request) => {
   if (up.status === 401 || up.status === 403) { await up.body?.cancel(); return json(up.status, { result: -1, error: "Authentication failed (" + up.status + ")" }, origin); }
   const body = await up.text();
   const fault = tag(body, "faultstring");
-  if (fault) return json(200, { result: -1, error: "SOAP fault: " + unesc(fault).slice(0, 300) }, origin);
+  if (fault) return reply({ fault: unesc(fault) }, (f) => ({ result: -1, error: "SOAP fault: " + f.fault.slice(0, 300) }));
   if (up.status >= 400) return json(200, { result: -1, error: "HTTP " + up.status }, origin);
   const res = tag(body, "Result");
   const xml = unesc(tag(body, "XMLout") || tag(body, "CapabilitiesOut") || "");
-  return json(200, { result: op === "WMLS_GetVersion" ? 1 : +(res ?? -1), version: op === "WMLS_GetVersion" ? res : undefined, xml, supp: unesc(tag(body, "SuppMsgOut") || ""), ms: Date.now() - t0 }, origin);
+  const version = op === "WMLS_GetVersion" ? res : undefined;
+  return reply({ xml, supp: unesc(tag(body, "SuppMsgOut") || ""), version: version ?? "" },
+    (f) => ({ result: op === "WMLS_GetVersion" ? 1 : +(res ?? -1), version: version == null ? version : f.version, xml: f.xml, supp: f.supp, ms: Date.now() - t0 }));
 });

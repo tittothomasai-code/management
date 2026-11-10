@@ -6,7 +6,16 @@
 // * TLS: verified everywhere, EXCEPT a per-request https.Agent({rejectUnauthorized:false}) used ONLY when the
 //   upstream hostname === cfg.skipHost (australia.adagasolutions.com, whose cert is expired). Never global.
 // * Cheap per-instance rate limit per client IP.
+// * Credential echo guard (witsml-echo-guard.mjs): xml, supp, the full SOAP fault (before truncation) and the
+//   version string are read the way the browser reads them (XML tokenizer, every XML and HTML decoding round).
+//   A password-only match is redacted in place to "[redacted]" and returned 200 with passwordRedacted,
+//   redactionScope "slots" and redactedSlots (role/ordinal). Anything that cannot be redacted safely is 422
+//   {code:"proxy-refusal", reason}: the user:password pair, Basic token or header (credential-reflection), a
+//   password split across markup or outside a slot role (credential-reflection), in an element/attribute name
+//   (structural), a DOCTYPE/ENTITY declaration (unsafe-xml), an over-size reply (guard-limit) or a guard error
+//   (guard-error). A Basic header without a usable user:password is 400.
 import https from "node:https";
+import { GAME_REDACTION_MARK, attachRedactionMeta, credentialParts, credentialSecrets, echoRefusal, guardFields, guardReason } from "./witsml-echo-guard.mjs";
 export const ORIGIN = "https://tittothomasai-code.github.io";
 export const ORIGINS = new Set([ORIGIN, "https://drilling.robotyx.systems"]);
 const OPS = new Set(["WMLS_GetVersion", "WMLS_GetCap", "WMLS_GetFromStore"]);
@@ -76,6 +85,19 @@ export function makeProxy({ upstream, skipHost, perMin = 60 }) {
     if (op === "WMLS_GetFromStore" && !/^[A-Za-z]{2,40}$/.test(String(a.wmlType || ""))) return json(400, { result: -1, error: "bad wmlType" }, origin);
     const auth = req.headers.get("X-Witsml-Authorization") || "";
     if (!/^Basic [A-Za-z0-9+/=]{4,1024}$/.test(auth)) return json(400, { result: -1, error: "credentials required (X-Witsml-Authorization: Basic …)" }, origin);
+    const creds = credentialParts(auth);
+    // No usable user:password in the header: nothing to scan for, so refuse instead of skipping the scan.
+    if (!creds) return json(400, { result: -1, error: "credentials required (X-Witsml-Authorization: Basic …)" }, origin);
+    const secrets = credentialSecrets(auth);
+    const refuse = why => json(422, echoRefusal(secrets, why), origin);
+    // Redact the password in place where that is safe, refuse otherwise; build() sees only guarded fields.
+    const reply = (fields, build) => {
+      const g = guardFields(fields, creds, { mark: GAME_REDACTION_MARK, xmlKeys: ["xml"], slotKeys: { supp: "supp/1", fault: "fault/1" } });
+      if (!g.ok) return refuse(g.reason);
+      const o = attachRedactionMeta(build(g.fields), g);
+      const why = guardReason({ ...o, xml: undefined }, secrets);
+      return why ? refuse(why) : json(200, o, origin);
+    };
     const t0 = Date.now(); let up;
     try {
       up = await httpsRequest(upstream, { method: "POST", skipHost, body: envelope(op, a),
@@ -88,9 +110,11 @@ export function makeProxy({ upstream, skipHost, perMin = 60 }) {
     if (up.status === 401 || up.status === 403) return json(up.status, { result: -1, error: "Authentication failed (" + up.status + ")" }, origin);
     if (up.status >= 300 && up.status < 400) return json(200, { result: -1, error: "upstream redirect refused" }, origin);
     const body = up.text, fault = tag(body, "faultstring");
-    if (fault) return json(200, { result: -1, error: "SOAP fault: " + unesc(fault).slice(0, 300) }, origin);
+    if (fault) return reply({ fault: unesc(fault) }, f => ({ result: -1, error: "SOAP fault: " + f.fault.slice(0, 300) }));
     if (up.status >= 400) return json(200, { result: -1, error: "HTTP " + up.status }, origin);
     const res = tag(body, "Result"), xml = unesc(tag(body, "XMLout") || tag(body, "CapabilitiesOut") || "");
-    return json(200, { result: op === "WMLS_GetVersion" ? 1 : +(res ?? -1), version: op === "WMLS_GetVersion" ? res : undefined, xml, supp: unesc(tag(body, "SuppMsgOut") || ""), ms: Date.now() - t0 }, origin);
+    const version = op === "WMLS_GetVersion" ? res : undefined;
+    return reply({ xml, supp: unesc(tag(body, "SuppMsgOut") || ""), version: version ?? "" },
+      f => ({ result: op === "WMLS_GetVersion" ? 1 : +(res ?? -1), version: version == null ? version : f.version, xml: f.xml, supp: f.supp, ms: Date.now() - t0 }));
   };
 }
