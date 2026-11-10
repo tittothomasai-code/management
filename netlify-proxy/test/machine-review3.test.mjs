@@ -1,4 +1,4 @@
-// Review 3 on the machine route: P3 one-pass redaction cost, L3 markup splits, L4 &#x;.
+// Review 3/4 on the machine route: P3 one-pass redaction cost, L3 markup splits, L4 &#x;, F1/F2 no false refusals.
 // Synthetic values only. Sockets are blocked.
 import assert from "node:assert/strict";
 import https from "node:https";
@@ -116,4 +116,27 @@ test("L4: &#x; is U+FFFD, so an FFFD password is redacted", async () => {
   assert.equal(out.body.passwordRedacted, true);
   assert.deepEqual(out.body.redactedSlots, ["well-name/1"]);
   assert.equal(out.raw.includes("Qz&amp;#x;Zq99"), false);
+});
+
+// Review 4 (F1/F2): benign '<' in text and quoted wellbore names are never refused.
+test("F1: 'SPP &lt; 200 bar' logs of about 1 MiB and 1.5 MiB return the document", async () => {
+  const row = "<data>2026-11-07T01:55:00Z,12.5,345.2,1800,120.4,22.1,95,210.3,15.2,8.4</data>";
+  for (const kb of [1024, 1500]) {
+    const head = `<logs ${NS}><log uidWell="W" uidWellbore="B" uid="L"><name>SPP &lt; 200 bar</name><logCurveInfo uid="c"><mnemonic>SPP</mnemonic><curveDescription>SPP &lt; 200 bar</curveDescription></logCurveInfo><logData>`;
+    const xml = head + row.repeat(Math.floor((kb * 1024 - head.length - 40) / row.length)) + "</logData></log></logs>";
+    const out = await call(store(xml), P);
+    assert.equal(out.status, 200, kb + " KB " + out.raw.slice(0, 160));
+    assert.equal(out.body.xml, xml);
+    assert.notEqual(out.body.passwordRedacted, true);
+  }
+});
+
+test("F2: 'actual' + '2281' from neighbouring values is not a password", async () => {
+  const t = "\n        ";
+  const xml = `<logs ${NS}>` + Array.from({ length: 40 }, (_, i) => `\n    <log uidWell="w${i}" uidWellbore="b" uid="l${i}">${t}<nameWellbore>12 \u00bc" Surface Hole</nameWellbore>${t}<endIndex uom="m">2281.5</endIndex>${t}<commonData>${t}    <itemState>actual</itemState>${t}</commonData>\n    </log>`).join("") + "\n</logs>";
+  for (const pw of ["actual2281", "Actual2281", "actual123"]) {
+    const out = await call(store(xml), pw);
+    assert.equal(out.status, 200, pw + " " + out.raw.slice(0, 160));
+    assert.equal(out.body.xml, xml);
+  }
 });
