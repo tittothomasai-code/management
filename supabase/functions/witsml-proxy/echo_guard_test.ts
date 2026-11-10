@@ -107,6 +107,24 @@ Deno.test("supabase fallback: what cannot be redacted is 422 with no document", 
   assert(upstreamCalls > 0, "stub used");
 });
 
+Deno.test("supabase fallback: 2 MiB cap, markup-split and &#x; FFFD (review 3)", async () => {
+  const p = "SynthPw-4821";
+  const under = await ask({ xml: "<w>" + "x".repeat((2 << 20) - 1000) + "</w>" }, p);
+  assert(under.status === 200 && typeof under.body.xml === "string", "under 2 MiB " + under.text.slice(0, 120));
+  const over = await ask({ xml: "<w>" + "x".repeat((2 << 20) + 1000) + "</w>" }, p);
+  assert(over.status === 422 && over.body.reason === "guard-limit" && over.body.xml === undefined, "over 2 MiB " + over.text.slice(0, 160));
+  const mn = (m: string) => "<logs " + NS + '><log uidWell="W" uidWellbore="B" uid="L"><name>n</name><logCurveInfo uid="c1"><mnemonic>' + m + "</mnemonic><unit>m</unit></logCurveInfo></log></logs>";
+  for (const m of ["&lt;xmp&gt;&lt;!--&lt;/xmp&gt;Synth&lt;!--&gt;Pw-4821", "&lt;textarea&gt;&lt;!--&lt;/textarea&gt;Synth&lt;!--&gt;Pw-4821", "Synth&lt;B&gt;Pw-4821"]) {
+    const r = await ask({ xml: mn(m) }, p);
+    assert(r.status === 422 && r.body.reason === "credential-reflection", m + " " + r.text.slice(0, 160));
+    leakFree(r, p, m);
+  }
+  const fp = "Qz\ufffdZq99";
+  const f = await ask({ xml: well("Qz&amp;#x;Zq99") }, fp);
+  assert(f.status === 200 && String(f.body.xml).includes("<name>[redacted]</name>"), "&#x; " + f.text.slice(0, 160));
+  leakFree(f, fp, "&#x;");
+});
+
 Deno.test("supabase fallback: full WHATWG named references (&fjlig; &COPY &notin;) and slot-limit (re-review 2)", async () => {
   for (const [p, text] of [["Xfjord99", "X&amp;fjlig;ord99"], ["Synth\u00a9Pw", "Synth&amp;COPYPw"], ["Pw\u2209x99", "Pw&amp;notin;x99"]]) {
     const r = await ask({ xml: well(text) }, p);
