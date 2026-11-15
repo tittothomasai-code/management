@@ -1,0 +1,2 @@
+// Include before the existing Home/Escape handler. Other game shortcuts stay unchanged.
+(function(){if(window.__robotyxBhaGuard)return;const guard=event=>{if(!window.G?.bhaBuilder?.active)return;event.stopImmediatePropagation();if(event.key!=='Escape')return;event.preventDefault();try{window.G.bhaBuilder.requestExit();}catch(error){const notice=document.querySelector('#bha-builder-ui .bb-notice');if(notice){notice.textContent=error.message;notice.dataset.error='true';}}};window.addEventListener('keydown',guard,true);window.__robotyxBhaGuard=guard;})();

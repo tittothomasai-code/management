@@ -1,0 +1,1634 @@
+{
+  "version": "1.0.2",
+  "units": "metres",
+  "assets": [
+    {
+      "kind": "pdc-bit",
+      "name": "PDC bit",
+      "lengthM": 0.3,
+      "odIn": 6.125,
+      "idIn": 0,
+      "lods": [
+        {
+          "level": 0,
+          "triangles": 53051,
+          "parts": [
+            "crown",
+            "bit-body",
+            "blades",
+            "gauge-pads",
+            "cutters",
+            "cutters",
+            "cutters",
+            "fluid-nozzles",
+            "fluid-nozzles",
+            "fluid-nozzles",
+            "gauge-wear-buttons",
+            "uphole-connection"
+          ]
+        },
+        {
+          "level": 1,
+          "triangles": 8484,
+          "parts": [
+            "crown",
+            "bit-body",
+            "blades",
+            "gauge-pads",
+            "cutters",
+            "cutters",
+            "fluid-nozzles",
+            "fluid-nozzles",
+            "fluid-nozzles",
+            "gauge-wear-buttons",
+            "uphole-connection"
+          ]
+        },
+        {
+          "level": 2,
+          "triangles": 1656,
+          "parts": [
+            "crown",
+            "bit-body",
+            "blades",
+            "gauge-pads",
+            "cutters",
+            "cutters",
+            "fluid-nozzles",
+            "fluid-nozzles"
+          ]
+        }
+      ],
+      "bytes": 2172328,
+      "licence": "CC0-1.0",
+      "source": "pdc-bit.js",
+      "compression": "EXT_meshopt_compression"
+    },
+    {
+      "kind": "roller-bit",
+      "name": "Roller-cone bit",
+      "lengthM": 0.28,
+      "odIn": 6.125,
+      "idIn": 0,
+      "lods": [
+        {
+          "level": 0,
+          "triangles": 10640,
+          "parts": [
+            "bit-body",
+            "uphole-connection",
+            "uphole-connection",
+            "roller-cones",
+            "roller-cones"
+          ]
+        },
+        {
+          "level": 1,
+          "triangles": 3552,
+          "parts": [
+            "bit-body",
+            "uphole-connection",
+            "uphole-connection",
+            "roller-cones",
+            "roller-cones"
+          ]
+        },
+        {
+          "level": 2,
+          "triangles": 224,
+          "parts": [
+            "bit-body",
+            "uphole-connection",
+            "roller-cones"
+          ]
+        }
+      ],
+      "bytes": 458584,
+      "licence": "CC0-1.0",
+      "source": "geometry.js",
+      "compression": "EXT_meshopt_compression"
+    },
+    {
+      "kind": "core-bit",
+      "name": "Core bit",
+      "lengthM": 0.25,
+      "odIn": 6.125,
+      "idIn": 2.5,
+      "lods": [
+        {
+          "level": 0,
+          "triangles": 21136,
+          "parts": [
+            "bit-body",
+            "uphole-connection",
+            "uphole-connection",
+            "cutting-blades",
+            "cutters",
+            "fluid-nozzles"
+          ]
+        },
+        {
+          "level": 1,
+          "triangles": 4464,
+          "parts": [
+            "bit-body",
+            "uphole-connection",
+            "uphole-connection",
+            "cutting-blades",
+            "cutters",
+            "fluid-nozzles"
+          ]
+        },
+        {
+          "level": 2,
+          "triangles": 464,
+          "parts": [
+            "bit-body",
+            "uphole-connection",
+            "cutting-blades",
+            "fluid-nozzles"
+          ]
+        }
+      ],
+      "bytes": 827452,
+      "licence": "CC0-1.0",
+      "source": "geometry.js",
+      "compression": "EXT_meshopt_compression"
+    },
+    {
+      "kind": "near-bit",
+      "name": "Near-bit sub",
+      "lengthM": 0.89,
+      "odIn": 5,
+      "idIn": 1.375,
+      "lods": [
+        {
+          "level": 0,
+          "triangles": 9504,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "service-features"
+          ]
+        },
+        {
+          "level": 1,
+          "triangles": 2688,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "service-features"
+          ]
+        },
+        {
+          "level": 2,
+          "triangles": 512,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "uphole-connection",
+            "service-features"
+          ]
+        }
+      ],
+      "bytes": 405624,
+      "licence": "CC0-1.0",
+      "source": "geometry.js",
+      "compression": "EXT_meshopt_compression"
+    },
+    {
+      "kind": "motor",
+      "name": "Mud motor",
+      "lengthM": 7.48,
+      "odIn": 4.75,
+      "idIn": 1.5,
+      "lods": [
+        {
+          "level": 0,
+          "triangles": 24448,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "bearing-housing",
+            "bearing-housing",
+            "power-section",
+            "helical-rotor",
+            "stator",
+            "drive-shaft",
+            "bearing-pack"
+          ]
+        },
+        {
+          "level": 1,
+          "triangles": 4320,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "bearing-housing",
+            "bearing-housing",
+            "power-section",
+            "helical-rotor",
+            "stator",
+            "drive-shaft",
+            "bearing-pack"
+          ]
+        },
+        {
+          "level": 2,
+          "triangles": 896,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "uphole-connection",
+            "bearing-housing",
+            "bearing-housing",
+            "helical-rotor",
+            "stator",
+            "drive-shaft",
+            "bearing-pack"
+          ]
+        }
+      ],
+      "bytes": 985380,
+      "licence": "CC0-1.0",
+      "source": "geometry.js",
+      "compression": "EXT_meshopt_compression"
+    },
+    {
+      "kind": "rss",
+      "name": "Rotary steerable tool",
+      "lengthM": 4,
+      "odIn": 4.75,
+      "idIn": 1.5,
+      "lods": [
+        {
+          "level": 0,
+          "triangles": 11760,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "bearing-housing",
+            "bearing-housing",
+            "steering-pads"
+          ]
+        },
+        {
+          "level": 1,
+          "triangles": 2976,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "bearing-housing",
+            "bearing-housing",
+            "steering-pads"
+          ]
+        },
+        {
+          "level": 2,
+          "triangles": 584,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "uphole-connection",
+            "bearing-housing",
+            "bearing-housing",
+            "steering-pads"
+          ]
+        }
+      ],
+      "bytes": 482520,
+      "licence": "CC0-1.0",
+      "source": "geometry.js",
+      "compression": "EXT_meshopt_compression"
+    },
+    {
+      "kind": "float-sub",
+      "name": "Float valve sub",
+      "lengthM": 0.6,
+      "odIn": 4.75,
+      "idIn": 1.75,
+      "lods": [
+        {
+          "level": 0,
+          "triangles": 9760,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "service-features",
+            "check-valve"
+          ]
+        },
+        {
+          "level": 1,
+          "triangles": 2784,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "service-features",
+            "check-valve"
+          ]
+        },
+        {
+          "level": 2,
+          "triangles": 544,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "uphole-connection",
+            "service-features",
+            "check-valve"
+          ]
+        }
+      ],
+      "bytes": 424200,
+      "licence": "CC0-1.0",
+      "source": "geometry.js",
+      "compression": "EXT_meshopt_compression"
+    },
+    {
+      "kind": "ubho",
+      "name": "Orienting sub",
+      "lengthM": 0.87,
+      "odIn": 4.67,
+      "idIn": 2.75,
+      "lods": [
+        {
+          "level": 0,
+          "triangles": 10016,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "service-features",
+            "orientation-sleeve"
+          ]
+        },
+        {
+          "level": 1,
+          "triangles": 2880,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "service-features",
+            "orientation-sleeve"
+          ]
+        },
+        {
+          "level": 2,
+          "triangles": 576,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "uphole-connection",
+            "service-features",
+            "orientation-sleeve"
+          ]
+        }
+      ],
+      "bytes": 428208,
+      "licence": "CC0-1.0",
+      "source": "geometry.js",
+      "compression": "EXT_meshopt_compression"
+    },
+    {
+      "kind": "pony",
+      "name": "Pony collar",
+      "lengthM": 1.67,
+      "odIn": 4.5625,
+      "idIn": 2.625,
+      "lods": [
+        {
+          "level": 0,
+          "triangles": 7456,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection"
+          ]
+        },
+        {
+          "level": 1,
+          "triangles": 1920,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection"
+          ]
+        },
+        {
+          "level": 2,
+          "triangles": 256,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "uphole-connection"
+          ]
+        }
+      ],
+      "bytes": 288756,
+      "licence": "CC0-1.0",
+      "source": "geometry.js",
+      "compression": "EXT_meshopt_compression"
+    },
+    {
+      "kind": "gap-sub",
+      "name": "Gap sub",
+      "lengthM": 1.04,
+      "odIn": 4.75,
+      "idIn": 2.75,
+      "lods": [
+        {
+          "level": 0,
+          "triangles": 8992,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "service-features"
+          ]
+        },
+        {
+          "level": 1,
+          "triangles": 2496,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "service-features"
+          ]
+        },
+        {
+          "level": 2,
+          "triangles": 448,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "uphole-connection",
+            "service-features"
+          ]
+        }
+      ],
+      "bytes": 380340,
+      "licence": "CC0-1.0",
+      "source": "geometry.js",
+      "compression": "EXT_meshopt_compression"
+    },
+    {
+      "kind": "nmdc",
+      "name": "Nonmagnetic drill collar",
+      "lengthM": 5.97,
+      "odIn": 4.6875,
+      "idIn": 2.6875,
+      "lods": [
+        {
+          "level": 0,
+          "triangles": 9184,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "machined-flutes"
+          ]
+        },
+        {
+          "level": 1,
+          "triangles": 3072,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "machined-flutes"
+          ]
+        },
+        {
+          "level": 2,
+          "triangles": 256,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "uphole-connection"
+          ]
+        }
+      ],
+      "bytes": 389480,
+      "licence": "CC0-1.0",
+      "source": "geometry.js",
+      "compression": "EXT_meshopt_compression"
+    },
+    {
+      "kind": "mwd",
+      "name": "MWD collar",
+      "lengthM": 9.37,
+      "odIn": 4.75,
+      "idIn": 2.6875,
+      "lods": [
+        {
+          "level": 0,
+          "triangles": 11088,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "sensor-bands",
+            "sensor-bands",
+            "sensor-windows",
+            "electronics",
+            "electronics"
+          ]
+        },
+        {
+          "level": 1,
+          "triangles": 3312,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "sensor-bands",
+            "sensor-bands",
+            "sensor-windows",
+            "electronics",
+            "electronics"
+          ]
+        },
+        {
+          "level": 2,
+          "triangles": 752,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "uphole-connection",
+            "sensor-bands",
+            "sensor-bands",
+            "sensor-windows",
+            "electronics",
+            "electronics"
+          ]
+        }
+      ],
+      "bytes": 381840,
+      "licence": "CC0-1.0",
+      "source": "geometry.js",
+      "compression": "EXT_meshopt_compression"
+    },
+    {
+      "kind": "mwd-probe",
+      "name": "MWD probe",
+      "lengthM": 3.2,
+      "odIn": 1.875,
+      "idIn": 0.5,
+      "lods": [
+        {
+          "level": 0,
+          "triangles": 11088,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "sensor-bands",
+            "sensor-bands",
+            "sensor-windows",
+            "electronics",
+            "electronics"
+          ]
+        },
+        {
+          "level": 1,
+          "triangles": 3312,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "sensor-bands",
+            "sensor-bands",
+            "sensor-windows",
+            "electronics",
+            "electronics"
+          ]
+        },
+        {
+          "level": 2,
+          "triangles": 752,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "uphole-connection",
+            "sensor-bands",
+            "sensor-bands",
+            "sensor-windows",
+            "electronics",
+            "electronics"
+          ]
+        }
+      ],
+      "bytes": 375968,
+      "licence": "CC0-1.0",
+      "source": "geometry.js",
+      "compression": "EXT_meshopt_compression"
+    },
+    {
+      "kind": "gamma",
+      "name": "Gamma tool",
+      "lengthM": 2,
+      "odIn": 4.75,
+      "idIn": 1.5,
+      "lods": [
+        {
+          "level": 0,
+          "triangles": 11088,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "sensor-bands",
+            "sensor-bands",
+            "sensor-windows",
+            "electronics",
+            "electronics"
+          ]
+        },
+        {
+          "level": 1,
+          "triangles": 3312,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "sensor-bands",
+            "sensor-bands",
+            "sensor-windows",
+            "electronics",
+            "electronics"
+          ]
+        },
+        {
+          "level": 2,
+          "triangles": 752,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "uphole-connection",
+            "sensor-bands",
+            "sensor-bands",
+            "sensor-windows",
+            "electronics",
+            "electronics"
+          ]
+        }
+      ],
+      "bytes": 389652,
+      "licence": "CC0-1.0",
+      "source": "geometry.js",
+      "compression": "EXT_meshopt_compression"
+    },
+    {
+      "kind": "resistivity",
+      "name": "Resistivity tool",
+      "lengthM": 3,
+      "odIn": 4.75,
+      "idIn": 1.5,
+      "lods": [
+        {
+          "level": 0,
+          "triangles": 13136,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "sensor-bands",
+            "sensor-bands",
+            "sensor-windows",
+            "electronics",
+            "electronics"
+          ]
+        },
+        {
+          "level": 1,
+          "triangles": 4080,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "sensor-bands",
+            "sensor-bands",
+            "sensor-windows",
+            "electronics",
+            "electronics"
+          ]
+        },
+        {
+          "level": 2,
+          "triangles": 1008,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "uphole-connection",
+            "sensor-bands",
+            "sensor-bands",
+            "sensor-windows",
+            "electronics",
+            "electronics"
+          ]
+        }
+      ],
+      "bytes": 440000,
+      "licence": "CC0-1.0",
+      "source": "geometry.js",
+      "compression": "EXT_meshopt_compression"
+    },
+    {
+      "kind": "density",
+      "name": "Density tool",
+      "lengthM": 3.5,
+      "odIn": 4.75,
+      "idIn": 1.5,
+      "lods": [
+        {
+          "level": 0,
+          "triangles": 11088,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "sensor-bands",
+            "sensor-bands",
+            "sensor-windows",
+            "electronics",
+            "electronics"
+          ]
+        },
+        {
+          "level": 1,
+          "triangles": 3312,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "sensor-bands",
+            "sensor-bands",
+            "sensor-windows",
+            "electronics",
+            "electronics"
+          ]
+        },
+        {
+          "level": 2,
+          "triangles": 752,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "uphole-connection",
+            "sensor-bands",
+            "sensor-bands",
+            "sensor-windows",
+            "electronics",
+            "electronics"
+          ]
+        }
+      ],
+      "bytes": 384744,
+      "licence": "CC0-1.0",
+      "source": "geometry.js",
+      "compression": "EXT_meshopt_compression"
+    },
+    {
+      "kind": "sonic",
+      "name": "Sonic tool",
+      "lengthM": 3.5,
+      "odIn": 4.75,
+      "idIn": 1.5,
+      "lods": [
+        {
+          "level": 0,
+          "triangles": 14160,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "sensor-bands",
+            "sensor-bands",
+            "sensor-windows",
+            "electronics",
+            "electronics"
+          ]
+        },
+        {
+          "level": 1,
+          "triangles": 4464,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "sensor-bands",
+            "sensor-bands",
+            "sensor-windows",
+            "electronics",
+            "electronics"
+          ]
+        },
+        {
+          "level": 2,
+          "triangles": 1136,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "uphole-connection",
+            "sensor-bands",
+            "sensor-bands",
+            "sensor-windows",
+            "electronics",
+            "electronics"
+          ]
+        }
+      ],
+      "bytes": 465260,
+      "licence": "CC0-1.0",
+      "source": "geometry.js",
+      "compression": "EXT_meshopt_compression"
+    },
+    {
+      "kind": "stabilizer",
+      "name": "Spiral stabilizer",
+      "lengthM": 1.2,
+      "odIn": 6.05,
+      "idIn": 2,
+      "lods": [
+        {
+          "level": 0,
+          "triangles": 8176,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "stabilizer-blades"
+          ]
+        },
+        {
+          "level": 1,
+          "triangles": 2208,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "stabilizer-blades"
+          ]
+        },
+        {
+          "level": 2,
+          "triangles": 328,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "uphole-connection",
+            "stabilizer-blades"
+          ]
+        }
+      ],
+      "bytes": 332196,
+      "licence": "CC0-1.0",
+      "source": "geometry.js",
+      "compression": "EXT_meshopt_compression"
+    },
+    {
+      "kind": "straight-stabilizer",
+      "name": "Straight stabilizer",
+      "lengthM": 1.2,
+      "odIn": 6.05,
+      "idIn": 2,
+      "lods": [
+        {
+          "level": 0,
+          "triangles": 8176,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "stabilizer-blades"
+          ]
+        },
+        {
+          "level": 1,
+          "triangles": 2208,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "stabilizer-blades"
+          ]
+        },
+        {
+          "level": 2,
+          "triangles": 328,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "uphole-connection",
+            "stabilizer-blades"
+          ]
+        }
+      ],
+      "bytes": 328260,
+      "licence": "CC0-1.0",
+      "source": "geometry.js",
+      "compression": "EXT_meshopt_compression"
+    },
+    {
+      "kind": "reamer",
+      "name": "Roller reamer",
+      "lengthM": 1.8,
+      "odIn": 6.05,
+      "idIn": 2,
+      "lods": [
+        {
+          "level": 0,
+          "triangles": 12784,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "roller-cutters",
+            "roller-cutters"
+          ]
+        },
+        {
+          "level": 1,
+          "triangles": 3936,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "roller-cutters",
+            "roller-cutters"
+          ]
+        },
+        {
+          "level": 2,
+          "triangles": 328,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "uphole-connection",
+            "roller-cutters"
+          ]
+        }
+      ],
+      "bytes": 474112,
+      "licence": "CC0-1.0",
+      "source": "geometry.js",
+      "compression": "EXT_meshopt_compression"
+    },
+    {
+      "kind": "hole-opener",
+      "name": "Hole opener",
+      "lengthM": 1.5,
+      "odIn": 8.5,
+      "idIn": 2,
+      "lods": [
+        {
+          "level": 0,
+          "triangles": 8416,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "stabilizer-blades"
+          ]
+        },
+        {
+          "level": 1,
+          "triangles": 2304,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "stabilizer-blades"
+          ]
+        },
+        {
+          "level": 2,
+          "triangles": 352,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "uphole-connection",
+            "stabilizer-blades"
+          ]
+        }
+      ],
+      "bytes": 342880,
+      "licence": "CC0-1.0",
+      "source": "geometry.js",
+      "compression": "EXT_meshopt_compression"
+    },
+    {
+      "kind": "crossover",
+      "name": "Crossover sub",
+      "lengthM": 0.61,
+      "odIn": 4.75,
+      "idIn": 2.25,
+      "lods": [
+        {
+          "level": 0,
+          "triangles": 9504,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "service-features"
+          ]
+        },
+        {
+          "level": 1,
+          "triangles": 2688,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "service-features"
+          ]
+        },
+        {
+          "level": 2,
+          "triangles": 512,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "uphole-connection",
+            "service-features"
+          ]
+        }
+      ],
+      "bytes": 406260,
+      "licence": "CC0-1.0",
+      "source": "geometry.js",
+      "compression": "EXT_meshopt_compression"
+    },
+    {
+      "kind": "safety",
+      "name": "Safety joint",
+      "lengthM": 1.01,
+      "odIn": 4.875,
+      "idIn": 2.25,
+      "lods": [
+        {
+          "level": 0,
+          "triangles": 9504,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "service-features"
+          ]
+        },
+        {
+          "level": 1,
+          "triangles": 2688,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "service-features"
+          ]
+        },
+        {
+          "level": 2,
+          "triangles": 512,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "uphole-connection",
+            "service-features"
+          ]
+        }
+      ],
+      "bytes": 402980,
+      "licence": "CC0-1.0",
+      "source": "geometry.js",
+      "compression": "EXT_meshopt_compression"
+    },
+    {
+      "kind": "jar",
+      "name": "Drilling jar",
+      "lengthM": 5.5,
+      "odIn": 4.75,
+      "idIn": 2.25,
+      "lods": [
+        {
+          "level": 0,
+          "triangles": 14624,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "service-features",
+            "sliding-mandrel",
+            "sliding-mandrel"
+          ]
+        },
+        {
+          "level": 1,
+          "triangles": 5952,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "service-features",
+            "sliding-mandrel",
+            "sliding-mandrel"
+          ]
+        },
+        {
+          "level": 2,
+          "triangles": 576,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "uphole-connection",
+            "service-features",
+            "sliding-mandrel"
+          ]
+        }
+      ],
+      "bytes": 723484,
+      "licence": "CC0-1.0",
+      "source": "geometry.js",
+      "compression": "EXT_meshopt_compression"
+    },
+    {
+      "kind": "shock",
+      "name": "Shock sub",
+      "lengthM": 2,
+      "odIn": 4.75,
+      "idIn": 2.25,
+      "lods": [
+        {
+          "level": 0,
+          "triangles": 14624,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "service-features",
+            "sliding-mandrel",
+            "sliding-mandrel"
+          ]
+        },
+        {
+          "level": 1,
+          "triangles": 5952,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "service-features",
+            "sliding-mandrel",
+            "sliding-mandrel"
+          ]
+        },
+        {
+          "level": 2,
+          "triangles": 576,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "uphole-connection",
+            "service-features",
+            "sliding-mandrel"
+          ]
+        }
+      ],
+      "bytes": 744452,
+      "licence": "CC0-1.0",
+      "source": "geometry.js",
+      "compression": "EXT_meshopt_compression"
+    },
+    {
+      "kind": "collar",
+      "name": "Drill collar",
+      "lengthM": 9.1,
+      "odIn": 4.75,
+      "idIn": 2.25,
+      "lods": [
+        {
+          "level": 0,
+          "triangles": 7456,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection"
+          ]
+        },
+        {
+          "level": 1,
+          "triangles": 1920,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection"
+          ]
+        },
+        {
+          "level": 2,
+          "triangles": 256,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "uphole-connection"
+          ]
+        }
+      ],
+      "bytes": 285024,
+      "licence": "CC0-1.0",
+      "source": "geometry.js",
+      "compression": "EXT_meshopt_compression"
+    },
+    {
+      "kind": "spiral-collar",
+      "name": "Spiral drill collar",
+      "lengthM": 9.1,
+      "odIn": 4.75,
+      "idIn": 2.25,
+      "lods": [
+        {
+          "level": 0,
+          "triangles": 9184,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "machined-flutes"
+          ]
+        },
+        {
+          "level": 1,
+          "triangles": 3072,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "machined-flutes"
+          ]
+        },
+        {
+          "level": 2,
+          "triangles": 256,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "uphole-connection"
+          ]
+        }
+      ],
+      "bytes": 385744,
+      "licence": "CC0-1.0",
+      "source": "geometry.js",
+      "compression": "EXT_meshopt_compression"
+    },
+    {
+      "kind": "hwdp",
+      "name": "Heavyweight drill pipe",
+      "lengthM": 9.72,
+      "odIn": 4,
+      "idIn": 2.75,
+      "lods": [
+        {
+          "level": 0,
+          "triangles": 8992,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "tool-joints",
+            "centre-upset"
+          ]
+        },
+        {
+          "level": 1,
+          "triangles": 2496,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "tool-joints",
+            "centre-upset"
+          ]
+        },
+        {
+          "level": 2,
+          "triangles": 448,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "uphole-connection",
+            "tool-joints",
+            "centre-upset"
+          ]
+        }
+      ],
+      "bytes": 359216,
+      "licence": "CC0-1.0",
+      "source": "geometry.js",
+      "compression": "EXT_meshopt_compression"
+    },
+    {
+      "kind": "drill-pipe",
+      "name": "Drill pipe",
+      "lengthM": 9.5,
+      "odIn": 4,
+      "idIn": 3.25,
+      "lods": [
+        {
+          "level": 0,
+          "triangles": 8480,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "tool-joints"
+          ]
+        },
+        {
+          "level": 1,
+          "triangles": 2304,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "tool-joints"
+          ]
+        },
+        {
+          "level": 2,
+          "triangles": 384,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "uphole-connection",
+            "tool-joints"
+          ]
+        }
+      ],
+      "bytes": 343432,
+      "licence": "CC0-1.0",
+      "source": "geometry.js",
+      "compression": "EXT_meshopt_compression"
+    },
+    {
+      "kind": "core-barrel",
+      "name": "Core barrel",
+      "lengthM": 6,
+      "odIn": 4.75,
+      "idIn": 2.5,
+      "lods": [
+        {
+          "level": 0,
+          "triangles": 8480,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "inner-barrel",
+            "core-catcher"
+          ]
+        },
+        {
+          "level": 1,
+          "triangles": 2304,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "inner-barrel",
+            "core-catcher"
+          ]
+        },
+        {
+          "level": 2,
+          "triangles": 384,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "uphole-connection",
+            "inner-barrel",
+            "core-catcher"
+          ]
+        }
+      ],
+      "bytes": 331348,
+      "licence": "CC0-1.0",
+      "source": "geometry.js",
+      "compression": "EXT_meshopt_compression"
+    },
+    {
+      "kind": "core-ring",
+      "name": "Core catcher ring",
+      "lengthM": 0.16,
+      "odIn": 4.75,
+      "idIn": 2.5,
+      "lods": [
+        {
+          "level": 0,
+          "triangles": 9504,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "service-features"
+          ]
+        },
+        {
+          "level": 1,
+          "triangles": 2688,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "service-features"
+          ]
+        },
+        {
+          "level": 2,
+          "triangles": 512,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "uphole-connection",
+            "service-features"
+          ]
+        }
+      ],
+      "bytes": 409544,
+      "licence": "CC0-1.0",
+      "source": "geometry.js",
+      "compression": "EXT_meshopt_compression"
+    },
+    {
+      "kind": "fishing-sub",
+      "name": "Fishing sub",
+      "lengthM": 0.65,
+      "odIn": 4.75,
+      "idIn": 2,
+      "lods": [
+        {
+          "level": 0,
+          "triangles": 9504,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "service-features"
+          ]
+        },
+        {
+          "level": 1,
+          "triangles": 2688,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "downhole-connection",
+            "uphole-connection",
+            "uphole-connection",
+            "service-features"
+          ]
+        },
+        {
+          "level": 2,
+          "triangles": 512,
+          "parts": [
+            "tool-housing",
+            "downhole-connection",
+            "uphole-connection",
+            "service-features"
+          ]
+        }
+      ],
+      "bytes": 406060,
+      "licence": "CC0-1.0",
+      "source": "geometry.js",
+      "compression": "EXT_meshopt_compression"
+    }
+  ],
+  "totalBytes": 15955328
+}

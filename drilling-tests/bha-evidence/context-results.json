@@ -1,0 +1,21 @@
+{
+  "results": [
+    {
+      "width": 390,
+      "check": "Ops editor saves to shared library, returns without navigation, retains draft"
+    },
+    {
+      "width": 390,
+      "check": "Directional Drilling loads Ops saved assembly, reuses game canvas, Escape restores cabin scenario"
+    },
+    {
+      "width": 1920,
+      "check": "Ops editor saves to shared library, returns without navigation, retains draft"
+    },
+    {
+      "width": 1920,
+      "check": "Directional Drilling loads Ops saved assembly, reuses game canvas, Escape restores cabin scenario"
+    }
+  ],
+  "testMode": "Candidate game static files with read-only production fallback. All writes and API calls blocked. Phone touch/viewport emulation; software WebGL."
+}

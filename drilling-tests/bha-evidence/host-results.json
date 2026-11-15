@@ -1,0 +1,17 @@
+{
+  "checks": [
+    "Tools opens BHA builder",
+    "Escape restores rig camera, projection, environment and target",
+    "rig quaternion and controls restored",
+    "all original scene visibility restored",
+    "HUD, selected rig panel, equipment positions and URL preserved",
+    "F, A and G stay inside the builder without firing game shortcuts",
+    "one original canvas only",
+    "BHA button enters from Tools",
+    "button returns to rig"
+  ],
+  "errors": [],
+  "blockedWrites": [],
+  "testMode": "Candidate game index and local frontend/module files; missing unchanged host assets read-only from production. No live files changed.",
+  "host": "https://drilling.robotyx.systems"
+}

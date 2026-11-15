@@ -1,0 +1,11 @@
+CC0 1.0 Universal
+
+To the extent possible under law, the authors waive all copyright and related
+or neighboring rights to the original BHA GLB assets, procedural texture
+images, bha-builder/geometry.js and bha-builder/pdc-bit.js provided in this package.
+You may copy, modify, distribute and use these assets, including commercially,
+without permission. The assets are supplied without warranty.
+
+Full legal instrument: https://creativecommons.org/publicdomain/zero/1.0/legalcode
+This dedication does not apply to third-party runtime or build tools. Their
+separate licence notices are listed in RESOURCES.md and included in the build.
