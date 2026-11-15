@@ -2,19 +2,14 @@ Command: ROBOTYX_CHROMIUM_PATH=/usr/bin/chromium npm run build
 Exit: 0
 
 ✓ nav-check: all 111 entitlement modules have a nav-group/pin home.
-ℹ tests 2770
+ℹ tests 2771
 ℹ suites 16
-ℹ pass 2767
+ℹ pass 2768
 ℹ fail 0
 ℹ cancelled 0
 ℹ skipped 3
 ℹ todo 0
-ℹ duration_ms 372305.630196
+ℹ duration_ms 564368.648187
 vite v5.4.21 building for production...
-✓ built in 24.85s
-PWA v1.3.0
-mode      generateSW
-precache  186 entries (9949.18 KiB)
-files generated
-
-Existing bundle and Browserslist warnings remain.
+✓ built in 42.42s
+PWA service worker generation passed. Existing bundle and Browserslist warnings remain.

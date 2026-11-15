@@ -1,7 +1,7 @@
 # In-game BHA builder handoff
 
 Source: tittothomasai-code/the-dome, branch `build/field-pumps-site`, PR #824.
-Release head: fb51927f4336f6865d0c443d9e007b6791db934f.
+Release head: 3ee30fcfa88a2f365ee196a5fe1066e7251a3c97.
 The release zip resolves this value and includes `HEAD.txt`.
 Review only. Do not merge or deploy.
 
