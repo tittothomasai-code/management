@@ -1,6 +1,6 @@
 // wmlinvui.js v5.9.2.3: phone-first "Well data" panel. Runs the whole-well inventory when a WITSML well opens (after the well load, sequential).
 // Tabs: Inventory · Trajectories · Logs · Casing · BHA · Fluids · Ops · Msgs/Risks · Site. Every row carries its source tag (LIVE / SIM-TEST).
-import * as INV from './wmlinv.js?v=5923';
+import * as INV from './wmlinv.js?v=whole-history-r1';
 const ST={I:null,running:false,tab:'inv',cache:{}};const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const f1=v=>v==null||!isFinite(v)?'—':(+v).toFixed(1);const tg=t=>`<span class="ivtag ${t=='LIVE'?'live':'sim'}">${t}</span>`;
 let P,B;

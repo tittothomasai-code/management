@@ -1,4 +1,4 @@
-// edmstream.js v5.9.4.1: streaming EDM reader for very large exports (hundreds of MB). Works in a Web Worker and in node.
+// edmstream.js v5.15.2 (DR101L: MSL-datum depths, field targets, formation picks, parent wellbore; other files read as before). was v5.9.4.1: streaming EDM reader for very large exports (hundreds of MB). Works in a Web Worker and in node.
 // The file is read in slices from the local Blob/File (zip central directory from the tail; each .xml entry inflated as a stream),
 // so the whole text is never held in memory. Only the tables/columns the viewer needs are kept; survey stations are packed
 // into numeric arrays and decimated. Nothing is uploaded. Output is tagged IMPORT (never LIVE). EDM lengths are feet → metres.
@@ -77,8 +77,15 @@ export function world(R,{units='ft',name='EDM'}={}){const L=units=='m'?1:FT,len=
  const ptg=new Map(T('DP_PROJECT_TARGET').map(t=>[t.project_target_id,t])),tgW=by(T('CD_PROJ_TARG_WELL_LINK'),'well_id'),tgB=by(T('CD_PROJECT_TARGET_WB_LINK'),'wellbore_id'),tgOld=by(T('CD_TARGET').concat(T('CD_WP_TARGET')),'wellbore_id');
  const tgt=t=>({name:t.target_name||t.project_target_id||t.target_id,tvd:r1(len(num(pick(t,'target_tvd','tvd')))),lat:num(t.geo_latitude),lon:num(t.geo_longitude),dN:r1(len(num(pick(t,'offset_north','ns')))),dE:r1(len(num(pick(t,'offset_east','ew')))),r:r1(len(num(pick(t,'radius','target_radius','tolerance_right'))))});
  const wells=[],wbs=[];
+ // v5.15.2 (DR101L): EDM keeps MD/TVD relative to the project system datum. When that is Mean Sea Level and trajectories start at a
+ // negative MD (the depth reference sits above MSL), depths are moved to below the well's depth reference datum (default datum, else
+ // RKB/KB/RT/DF, else the highest), so MDs match the plan reports. Other files are read exactly as before.
+ const mslSys=[...projects.values()].some(p=>/mean sea level|\bmsl\b/i.test(p.sysDatum||''));let negTop=false;
+ for(const g of Object.values(R.S.def).concat(Object.values(R.S.svy))){const m=Math.min(...g.md.filter(Number.isFinite));if(m<-1/L){negTop=true;break}}
+ const mslMode=mslSys&&negTop;
+ const fieldTargets=T('DP_PROJECT_TARGET').map(t=>({name:t.target_name||t.project_target_id,lat:num(t.geo_latitude),lon:num(t.geo_longitude),mapE:r1(len(num(t.geo_map_easting))),mapN:r1(len(num(t.geo_map_northing))),tvdss:r1(len(num(t.target_tvd))),dip:num(t.dip_angle),dipDir:num(t.dip_direction),shape:t.target_geometry??null})).filter(t=>t.lat!=null&&t.lon!=null&&Math.abs(t.lat)>0.001);
  for(const w of wellRows){const s=siteBy.get(w.site_id);const dl=(datums.get(w.well_id)||[]).map(d=>({name:d.datum_name,elev:r1(len(num(pick(d,'datum_elevation','elevation')))),def:d.is_default=='Y',date:ts(d.date_established)}));
-  const dd=dl.find(d=>d.def)||dl[0]||null;
+  const dd=dl.find(d=>d.def)||dl[0]||null;const ref=mslMode?(dl.find(d=>d.def)||dl.find(d=>/^(RKB|KB|RT|DF|DFE|KBE)\b/i.test(d.name||''))||[...dl].sort((a,b)=>(b.elev??-1e9)-(a.elev??-1e9))[0]||null):null,sh=ref?.elev??0;
   // ground level from real fields only: datum named GL/GE/ground → onshore Compass ground elevation (water_depth) → default datum minus air gap → n/a
   const gD=dl.find(d=>/^(GL|GE)\b|ground/i.test(d.name||'')&&d.elev!=null),ag=len(num(pick(datums.get(w.well_id)?.find(d=>d.is_default=='Y')||{},'air_gap','airgap'))),wd=len(num(w.water_depth));
   const gl=gD?{v:gD.elev,src:'datum '+gD.name}:w.is_subsea!='Y'&&wd!=null&&wd!==0?{v:r1(wd),src:'ground elevation (water_depth)'}:dd&&dd.elev!=null&&ag!=null?{v:r1(dd.elev-ag),src:dd.name+' minus air gap'}:{v:null,src:null};let E,N;const la=num(w.geo_latitude),lo=num(w.geo_longitude);
@@ -86,20 +93,21 @@ export function world(R,{units='ft',name='EDM'}={}){const L=units=='m'?1:FT,len=
   const W={id:w.well_id,site:w.site_id,siteName:s?.name||null,project:s?.project||null,name:pick(w,'well_common_name','well_legal_name','well_name')||w.well_id,lat:la,lon:lo,E:r1(E),N:r1(N),
    mapE:r1(len(num(w.geo_offset_east))),mapN:r1(len(num(w.geo_offset_north))),datum:dd,datums:dl,waterDepth:r1(len(num(w.water_depth))),gl:gl.v,glSrc:gl.src,subsea:w.is_subsea=='Y',spud:ts(pick(w,'spud_date','date_spud','spud_dt'))||null,operator:pick(w,'operator','operator_name','company_name')||customer||null,created:ts(w.create_date),updated:ts(w.update_date),wbs:[],
    targets:(tgW.get(w.well_id)||[]).map(x=>ptg.get(x.project_target_id)).filter(Boolean).map(tgt)};
-  wells.push(W);s?.wells.push(W.id);const del=dd?.elev??0;
+  if(ref){W.depthRef={name:ref.name,elev:ref.elev,note:'MD/TVD below '+ref.name+' ('+ref.elev+' m above '+(P0?.sysDatum||'system datum')+'); file stores them relative to '+(P0?.sysDatum||'system datum')}}
+  wells.push(W);s?.wells.push(W.id);const del=ref?sh:(dd?.elev??0);
   for(const b of wbsBy.get(w.well_id)||[]){const id=b.wellbore_id;const traj=[];
-   const add=(kind,h,g)=>{if(!g)return;const p=pathOf(g,L);if(!p)return;traj.push({kind,name:h?.name||h?.survey_name||h?.plan_name||kind,phase:(h?.phase||designById.get(h?.design_id)?.phase||'').toUpperCase()||null,company:h?.company||null,date:ts(h?.header_date||h?.effective_date),stations:p.n,mdMax:r1(p.pts.at(-1).md),maxDls:p.maxDls,pts:p.pts,end:(q=>({md:r1(q.md),tvd:r1(q.tvd),E:r1(E+q.ew),N:r1(N+q.ns)}))(p.pts.at(-1))})};
+   const add=(kind,h,g)=>{if(!g)return;const p=pathOf(g,L);if(!p)return;if(ref&&sh)for(const q of p.pts){q.md+=sh;q.tvd+=sh}if(p.maxDls!=null&&p.maxDls>100)p.maxDls=null;traj.push({kind,name:h?.name||h?.survey_name||h?.plan_name||kind,phase:(h?.phase||designById.get(h?.design_id)?.phase||'').toUpperCase()||null,company:h?.company||null,date:ts(h?.header_date||h?.effective_date),stations:p.n,mdMax:r1(p.pts.at(-1).md),maxDls:p.maxDls,pts:p.pts,end:(q=>({md:r1(q.md),tvd:r1(q.tvd),E:r1(E+q.ew),N:r1(N+q.ns)}))(p.pts.at(-1))})};
    for(const h of defH.get(id)||[])add('definitive',h,R.S.def[h.def_survey_header_id||h.definitive_survey_id]);for(const h of svH.get(id)||[])add('survey',h,R.S.svy[h.survey_header_id]);for(const h of plH.get(id)||[])add('plan',h,R.S.plan[h.plan_id]);
-   const rank=t=>(t.kind=='definitive'?0:t.kind=='survey'?2:4)+(t.phase=='ACTUAL'?0:1);traj.sort((a,b)=>rank(a)-rank(b));const best=traj[0]||null;
+   const rank=t=>(t.kind=='definitive'?0:t.kind=='survey'?2:4)+(t.phase=='ACTUAL'?0:1)+(mslMode&&t.phase=='PROTOTYPE'?0.5:0)-(mslMode&&t.phase=='PLAN'&&t.date?Date.parse(t.date)/1e14:0);traj.sort((a,b)=>rank(a)-rank(b));const best=traj[0]||null;
    const sc=(scen.get(id)||[]).map(d=>({name:d.name||d.design_name,phase:(d.phase||'').toUpperCase(),version:d.version||null}));const actual=traj.some(t=>t.phase=='ACTUAL'&&t.kind!='plan')||sc.some(d=>d.phase=='ACTUAL');
    const asm=(asmBy.get(id)||[]).map(a=>({name:a.assembly_name,type:a.string_type||null,size:num(pick(a,'assembly_size','od_casing','od')),hole:num(a.hole_size),base:r1(len(num(pick(a,'md_assembly_base','md_base')))),baseTVD:r1(len(num(a.tvd_assembly_base))),top:r1(len(num(pick(a,'md_assembly_top','md_top')))),length:r1(len(num(a.length_total))),
     comps:(compBy.get(a.assembly_id)||[]).sort((x,y)=>(num(x.sequence_no)||0)-(num(y.sequence_no)||0)).map(c=>({type:pick(c,'sect_type_code','comp_type_code','description','catalog_key_desc'),od:num(c.od_body),grade:c.grade||null,weight:num(c.nominal_weight),len:r1(len(num(c.length))),burst:num(c.pressure_burst),collapse:num(c.pressure_collapse)}))}));
    const path=best?decimate(best.pts).map(p=>({md:r1(p.md),E:r1(E+p.ew),N:r1(N+p.ns),Z:r1(p.tvd-del),tvd:r1(p.tvd)})):null;
    wbs.push({id,well:w.well_id,site:w.site_id,name:pick(b,'wellbore_name','wellbore_common_name')||id,status:actual?'Drilled (actual surveys)':traj.length||sc.length?'Planned':'No trajectory',
-    bhMD:r1(len(num(b.bh_md))??best?.mdMax??null),bhTVD:r1(len(num(b.bh_tvd))??best?.pts.at(-1).tvd??null),koMD:r1(len(num(b.ko_md))),deviated:b.is_deviated=='Y',bhLat:num(b.geo_latitude_bh),bhLon:num(b.geo_longitude_bh),
+    bhMD:mslMode?(best?.mdMax??null):r1(len(num(b.bh_md))??best?.mdMax??null),bhTVD:mslMode?(best?r1(best.pts.at(-1).tvd):null):r1(len(num(b.bh_tvd))??best?.pts.at(-1).tvd??null),koMD:mslMode?(num(b.ko_md)!=null&&len(num(b.ko_md))+sh>0?r1(len(num(b.ko_md))+sh):null):r1(len(num(b.ko_md))),deviated:b.is_deviated=='Y',bhLat:num(b.geo_latitude_bh),bhLon:num(b.geo_longitude_bh),
     designs:sc,traj:traj.map(({pts,...t})=>t),kind:best?.kind||null,path,st:best?trajStats(best.pts):null,casing:asm.filter(a=>/casing|liner|conductor|tubing/i.test((a.type||'')+' '+(a.name||''))),assemblies:asm,
     cases:(caseBy.get(id)||[]).map(c=>c.case_name),holes:(holeBy.get(id)||[]).sort((x,y)=>(num(x.sequence_no)||0)-(num(y.sequence_no)||0)).map(h=>({type:h.sect_type_code,d:num(h.effective_diameter),len:r1(len(num(h.length)))})),
-    formations:(fmBy.get(id)||[]).length,targets:(tgB.get(id)||[]).map(x=>ptg.get(x.project_target_id)).filter(Boolean).map(tgt).concat((tgOld.get(id)||[]).map(tgt))});W.wbs.push(id)}}
+    formations:(fmBy.get(id)||[]).length,formationList:(()=>{const seen=new Set();return (fmBy.get(id)||[]).map(f=>({name:f.formation_name,md:r1(len(num(f.prognosed_md))+(mslMode?sh:0)),tvd:r1(len(num(f.prognosed_tvd))+(mslMode?sh:0)),dip:num(f.dip_angle),phase:(f.phase||'').toUpperCase()||null,seq:num(f.sequence_no)})).filter(f=>{const k=f.name+'|'+f.md+'|'+f.tvd;if(seen.has(k))return false;seen.add(k);return true}).sort((a,b)=>(a.seq??0)-(b.seq??0)||(a.tvd??0)-(b.tvd??0))})(),parent:b.parent_wellbore_id||null,targets:(tgB.get(id)||[]).map(x=>ptg.get(x.project_target_id)).filter(Boolean).map(tgt).concat((tgOld.get(id)||[]).map(tgt))});W.wbs.push(id)}}
  const wbBy=new Map(wbs.map(b=>[b.id,b]));
  for(const W of wells){const bs=W.wbs.map(i=>wbBy.get(i));W.status=bs.some(b=>/Drilled/.test(b.status))?'Drilled':bs.some(b=>b.status=='Planned')?'Planned':'No trajectory';W.td=Math.max(0,...bs.map(b=>b.bhMD||0))||null;W.tvd=Math.max(0,...bs.map(b=>b.bhTVD||0))||null}
  const wBy=new Map(wells.map(w=>[w.id,w]));
@@ -110,7 +118,7 @@ export function world(R,{units='ft',name='EDM'}={}){const L=units=='m'?1:FT,len=
  const bx=(f)=>{let e0=Infinity,e1=-Infinity,n0=Infinity,n1=-Infinity,z1=0;const ext=(E,N)=>{e0=Math.min(e0,E);e1=Math.max(e1,E);n0=Math.min(n0,N);n1=Math.max(n1,N)};
   for(const s of sites)if(f(s))ext(s.E,s.N);for(const w of wells)if(f(w))ext(w.E,w.N);for(const b of wbs)if(f(b))for(const p of b.path||[]){ext(p.E,p.N);z1=Math.max(z1,p.Z)}if(!Number.isFinite(e0)){e0=n0=-100;e1=n1=100}return {e0,e1,n0,n1,maxDepth:z1}};
  const bounds=bx(x=>!x.outlier),boundsAll=bx(()=>true);
- return {tag:'IMPORT',name,customer,units,geo,crs,origin:{lat:lat0,lon:lon0},projects:[...projects.values()],sites,wells,wbs,bounds,boundsAll,outliers:nOut,tables:R.cnt,files:R.files,ms:R.ms,built:new Date().toISOString()}}
+ return {tag:'IMPORT',parser:'v5.15.2',depthMode:mslMode?'below well depth reference (file was MSL-relative)':'as in file',fieldTargets,name,customer,units,geo,crs,origin:{lat:lat0,lon:lon0},projects:[...projects.values()],sites,wells,wbs,bounds,boundsAll,outliers:nOut,tables:R.cnt,files:R.files,ms:R.ms,built:new Date().toISOString()}}
 // legacy tables for the pad-level parser in edm.js (small files only): station rows rebuilt from packed arrays
 export function legacyTables(R){const T={...R.T};const rows=(st,tab,key)=>{for(const [k,g] of Object.entries(R.S[st])){const a=T[tab]||(T[tab]=[]);for(let i=0;i<g.md.length;i++)a.push({[key]:k,wellbore_id:g.wb,md:String(g.md[i]),inclination:String(g.inc[i]),azimuth:String(g.azi[i])})}};
  rows('def','CD_DEFINITIVE_SURVEY_STATION','definitive_survey_id');rows('svy','CD_SURVEY_STATION','survey_header_id');rows('plan','CD_PLAN_STATION','plan_id');

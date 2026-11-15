@@ -159,9 +159,12 @@ export function close(){if(!ST.el)return;ST.stage?.dispose();ST.stage=null;clear
 // ---------- entry points: button beside the showroom selector (start screen + Settings), GX.rigBuilder ----------
 function pin(){window.GX=window.GX||{};if(!window.GX.rigBuilder)window.GX.rigBuilder=api()}
 // One showroom (v5.12.4+): the A/B/C selector is gone, so the button sits in the start bar / Settings group itself.
-function mk(id){const b=document.createElement('button');b.type='button';b.className='rbOpen';b.id=id;b.textContent='Rig builder';b.setAttribute('aria-label','Open the rig builder');b.onclick=e=>{e.preventDefault();e.stopPropagation();open()};return b}
-function inject(){if(!$('rbBtnStart')){const s=$('srabStart'),bar=$('start')?.querySelector('.bar');if(s)s.appendChild(mk('rbBtnStart'));else if(bar&&$('st_showroom')){const b=mk('rbBtnStart');if(bar.firstElementChild)bar.firstElementChild.after(b);else bar.appendChild(b)}}
- if(!$('rbBtnSet')){const s=$('srabSet')||$('uig_set');if(s)s.appendChild(mk('rbBtnSet'))}}
+function mk(id,label){const b=document.createElement('button');b.type='button';b.className='rbOpen';b.id=id;b.textContent=label||'Build your rig';b.setAttribute('aria-label','Open the rig builder');b.setAttribute('role','menuitem');b.onclick=e=>{e.preventDefault();e.stopPropagation();open()};return b}
+function inject(){if(!$('rbBtnStart')){const s=$('srabStart'),menu=$('stMenu'),bar=$('start')?.querySelector('.bar');
+  if(s)s.appendChild(mk('rbBtnStart'));
+  else if(menu){const b=mk('rbBtnStart','Build your rig'),sync=$('stSync');if(sync)sync.before(b);else menu.appendChild(b)}
+  else if(bar&&$('st_showroom')){const b=mk('rbBtnStart');if(bar.firstElementChild)bar.firstElementChild.after(b);else bar.appendChild(b)}}
+ if(!$('rbBtnSet')){const s=$('srabSet')||$('uig_set');if(s)s.appendChild(mk('rbBtnSet','Build your rig'))}}
 export function init(){if(typeof document=='undefined'||window.__rb)return;window.__rb=1;pin();catalogue();let n=0;const t=setInterval(()=>{pin();if(++n>120)clearInterval(t)},500);
  let q=0;new MutationObserver(()=>{if(q)return;q=1;requestAnimationFrame(()=>{q=0;inject()})}).observe(document.body,{childList:true,subtree:true});inject()}
 if(typeof document!='undefined'){if(document.body)init();else addEventListener('DOMContentLoaded',init)}

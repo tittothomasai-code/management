@@ -9,18 +9,19 @@ const GROUPS=[['equip','Equipment and exploded view'],['bha','BHA'],['geo','Surv
 const MAP=[['addeq','equip','Add equipment'],['Equipment library ▾','equip','Equipment library'],['Add sensor','equip'],['Export layout','equip'],['Import layout','equip'],['dsgbtn','equip','Rig designer'],['btnExpl','equip','Exploded view'],
  ['btnBhaB','bha','BHA builder'],
  ['btnSur','geo','Surveys'],['btnLay','geo','Subsurface layers'],['btnBit','geo','Bit depth'],['g8btn','geo','Geosteering'],['under','geo','Underground view'],['btnStrat','geo','Earth model (lithology)'],
- ['opsDashboard','seq','Drilling operations dashboard'],['conn','seq','Run connection'],['btnConn','seq','Connections'],['seqedbtn','seq','Sequence editor'],['pause','seq'],['spd','seq'],
+ ['opsDashboard','seq','Drilling operations dashboard'],['fieldPumps','seq','Field pumps and utilities'],['conn','seq','Run connection'],['btnConn','seq','Connections'],['seqedbtn','seq','Sequence editor'],['spd','seq'],
  ['wbtn','set','WITSML connection'],['wlm','set'],['units','set'],['btnPlayer','set','Switch player']];
-const TOOL_TGT={wbtn:'witsml',addeq:'eqmenu','Equipment library':'libmenu'};const STAY=new Set(['pause','spd','units','wlm','clr','uiLog','uiFrm']);const FULL=new Set(['wshop','ss56','designer','seqeditor']);
-const PANEL_SKIP=new Set(['uiTop','uiNav','uiTools','uiX','mdock','sim','clock','log','appVer','bithud','wtoast','panels','plJoin','g8btn','svhud','eqmenu','libmenu','nosurv','vpad','edmmap']);
+const TOOL_TGT={wbtn:'witsml',addeq:'eqmenu','Equipment library':'libmenu'};const STAY=new Set(['pause','spd','units','wlm','clr','uiLog','uiFrm','uiFpShow','uiFrmBanner','uiPadBtn','uiPobShow','uiAlShow','uiDropzShow','uiWxShow']);const FULL=new Set(['wshop','ss56','designer','seqeditor']);
+const PANEL_SKIP=new Set(['uiTop','uiNav','uiTools','uiX','mdock','sim','clock','log','appVer','bithud','wtoast','panels','plJoin','g8btn','svhud','eqmenu','libmenu','nosurv','vpad','edmmap','pobHud','alHud','alPanel','rigClock','uvToast','flowPressure','stratBit','vpToggle','rcWheel']);
 let cur=null,prevVis=new Set(),rop={md:null,t:0,v:0};
 function css(){const s=document.createElement('style');s.textContent=`
-body.ui57.ui57 #hud,body.ui57.ui57 #hud.msheet,body.ui57 #mdock,body.ui57 #sim,body.ui57 #clock,body.ui57 #bithud,body.ui57 #chatHead{display:none!important}
+body.ui57.ui57 #hud,body.ui57.ui57 #hud.msheet,body.ui57 #mdock,body.ui57 #hudToolsBtn,body.ui57 #bithud,body.ui57 #chatHead{display:none!important}
+body.ui57 #uiNav button:not(#uiTab_home):not(#uiTab_tools){display:none!important}
 body.ui57 #log.uihide,body.ui57 #geoRd.uihide{display:none!important}
 #uiTop{position:fixed;top:calc(4px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:9500;display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:calc(100vw - 12px);font:12px system-ui;color:#e8eef5;pointer-events:none}
 body.mob #uiTop{font-size:11px;gap:4px}body.mob #uiTop span{padding:2px 6px}#uiTop.hid{display:none}#uiTools #g8btn{position:static!important;inset:auto!important;transform:none!important}
 #uiTop span{background:rgba(10,16,26,.82);border:1px solid #2a3a50;border-radius:10px;padding:3px 8px;white-space:nowrap}
-#uiTop .st{font-weight:700}#uiTop .st.SIM{background:#8a6a10}#uiTop .st.LIVE{background:#1db954;color:#000}
+#uiTop .st{font-weight:700}#uiTop .st.SIM{display:none}#uiTop .st.LIVE{background:#087f8c;color:#fff}
 #uiNav{position:fixed;left:0;right:0;bottom:0;height:calc(52px + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);box-sizing:border-box;z-index:9600;display:flex;background:rgba(10,16,26,.96);border-top:1px solid #2a3a50}
 #uiNav button{flex:1;background:none;border:0;color:#cdd;font:12px system-ui;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-width:0}
 #uiNav button b{font-size:18px;font-weight:400}#uiNav button.on{color:#7cf;background:#16263a}
@@ -34,21 +35,44 @@ body.mob #uiTop{font-size:11px;gap:4px}body.mob #uiTop span{padding:2px 6px}#uiT
 #appVer{bottom:calc(56px + env(safe-area-inset-bottom))!important}
 body.ui57 #chatSheet{bottom:calc(52px + env(safe-area-inset-bottom))!important;left:0!important;width:100%!important;border-radius:14px 14px 0 0!important}
 @media (min-width:700px){body.ui57 #chatSheet{left:auto!important;right:12px!important;width:380px!important}}
-body.ui57 .msheet.mcol{max-height:none!important}`;document.head.appendChild(s)}
-function find(k){return $(k)||[...document.querySelectorAll('#hud > *')].find(e=>e.textContent.trim()==k)}
-function buildTools(){const T=document.createElement('section');T.id='uiTools';T.innerHTML='<b style="font-size:16px">Tools</b>'+GROUPS.map(([k,l])=>`<h4>${l}</h4><div class=g id=uig_${k}></div>`).join('');document.body.appendChild(T);
+body.ui57 .msheet.mcol{max-height:none!important}
+body.ui57:not(.gdShowFp) #flowPressure .fp-buttons{display:none!important}
+body.ui57:not(.gdShowFp) #flowPressure:has(.fp-panel[hidden]){display:none!important}
+body.ui57:not(.gdShowFrm) #stratBit{display:none!important}
+body.ui57:not(.gdShowPad) #vpToggle{display:none!important}
+body.ui57:not(.gdShowPob) #pobHud{display:none!important}
+body.ui57.gdShowPob #pobHud{display:block!important}
+body.ui57:not(.gdShowAlerts) #alHud{display:none!important}
+body.ui57.gdShowAlerts #alHud{display:block!important}
+body.ui57:not(.gdShowDropz) .dropz-modebar,body.ui57:not(.gdShowDropz) .dropz-chip{display:none!important}
+body.ui57.gdShowDropz .dropz-modebar,body.ui57.gdShowDropz .dropz-chip{display:block!important}
+body.ui57:not(.gdShowWx) #rigClock,body.ui57:not(.gdShowWx) #uvToast{display:none!important}
+body.ui57.gdShowWx #rigClock,body.ui57.gdShowWx #uvToast{display:block!important}
+body.desk #flowPressure{right:calc(var(--dkR,0px) + 8px)}
+body.ui57.desk #vpToggle{bottom:56px!important}
+body.mob.ui57.gdShowPad:is(.gdShowAlerts,.gdShowPob,.gdShowWx) #vpToggle{bottom:calc(220px + env(safe-area-inset-bottom))!important}`;document.head.appendChild(s)}
+function find(k){return $(k)||[...document.querySelectorAll('#hud button,#hud select,#hud span,#hudTools button,#hudTools select,#hudTools span')].find(e=>e.textContent.trim()==k)}
+function buildTools(){const T=document.createElement('section');T.id='uiTools';T.innerHTML='<b style="font-size:16px">Tools</b><h4>Panels</h4><div class=g id=uig_panels></div><h4>On-screen</h4><div class=g id=uig_overlay></div>'+GROUPS.map(([k,l])=>`<h4>${l}</h4><div class=g id=uig_${k}></div>`).join('')+'<h4>Trigger a fault</h4><div class=g id=uig_fault></div><h4>Time and log</h4><div class=g id=uig_rec></div>';document.body.appendChild(T);
  const hud=$('hud');if(!hud)return;
+ const pause=$('pause');if(pause){pause.classList.add('gamePause');document.body.appendChild(pause)}
  for(const [k,g,lab] of MAP){const e=find(k);if(!e)continue;if(lab&&e.tagName=='BUTTON')e.textContent=lab;if(k=='spd'){const s=document.createElement('span');s.textContent='Time speed';$('uig_seq').appendChild(s)}$('uig_'+g).appendChild(e)}
  // faults + feed + camera + leftovers
- for(const e of [...hud.children]){const t=e.textContent.trim();
+ const leftover=[...hud.querySelectorAll(':scope > *:not(#hudTools), #hudTools > *')];
+ for(const e of leftover){const t=e.textContent.trim();
+  if(e.id=='pause'||e.id=='hudToolsBtn'||e.id=='hudTools'){if(e.id!='pause')e.style.display='none';continue}
   if(e.id=='plBadge'||e.id=='btnSS56'||e.id=='trbtn'){e.style.display='none';continue}
-  if(/^Faults/.test(t)){e.textContent='Faults (SIM):'}
-  if(/^Faults|Washout|Motor stall|Plugged nozzle|Brake fade/.test(t)||e.id=='clr'){if(e.id=='clr')e.textContent='Clear faults';$('uig_seq').appendChild(e);continue}
-  if(/^Time$/.test(t)){e.remove();continue}
+  if(/^Faults/.test(t)||/^Time$/.test(t)){e.remove();continue}
+  if(/^(Washout|Motor stall|Plugged nozzle|Brake fade)$/.test(t)||e.dataset.f){$('uig_fault').appendChild(e);continue}
+  if(e.id=='clr'){e.textContent='Clear faults';$('uig_fault').appendChild(e);continue}
+  if(e.id=='clock'||e.id=='log'){e.classList.remove('uihide','msheet','mcol');$('uig_rec').appendChild(e);continue}
   if(/^Camera/.test(t)){$('uig_set').appendChild(e);continue}
   if(/^Feed/.test(t)){$('uig_set').appendChild(e);continue}
   $('uig_adv').appendChild(e)}
+ const clock=$('clock'),log=$('log');if(clock&&clock.parentNode!==$('uig_rec'))$('uig_rec').appendChild(clock);if(log){log.classList.remove('uihide','msheet','mcol');if(log.parentNode!==$('uig_rec'))$('uig_rec').appendChild(log)}
  const mk=(g,l,f,id)=>{const b=document.createElement('button');b.textContent=l;if(id)b.id=id;b.onclick=f;$('uig_'+g).appendChild(b)};
+ mk('panels','Data',()=>$('uiTab_data')?.click(),'uiTools_data');mk('panels','Slide sheet',()=>$('uiTab_sheet')?.click(),'uiTools_sheet');mk('panels','Crew',()=>$('uiTab_crew')?.click(),'uiTools_crew');mk('panels','Well plan',()=>$('uiTab_plan')?.click(),'uiTools_plan');
+ const mkVis=(l,id,cls)=>{const b=document.createElement('button');b.id=id;b.type='button';const sync=()=>{const on=document.body.classList.contains(cls);b.setAttribute('aria-pressed',String(on));b.textContent=l+': '+(on?'ON':'OFF')};b.onclick=()=>{document.body.classList.toggle(cls);sync()};sync();$('uig_overlay').appendChild(b)};
+ mkVis('Flow / Pressure','uiFpShow','gdShowFp');mkVis('Formation banner','uiFrmBanner','gdShowFrm');mkVis('Gamepad button','uiPadBtn','gdShowPad');mkVis('POB','uiPobShow','gdShowPob');mkVis('Alerts','uiAlShow','gdShowAlerts');mkVis('DROPZ','uiDropzShow','gdShowDropz');mkVis('Weather','uiWxShow','gdShowWx');
  mk('seq','Sequence player',()=>show($('seqpanel')),'uiSeq');
  const sig=[...document.body.children].find(e=>/^Signal sources/.test(e.textContent.trim()));if(sig){sig.id=sig.id||'sigsrc';mk('set','Signal sources',()=>show(sig),'uiSig')}
  mk('equip','BOP tests',()=>import('./bop.js?v=b10').then(m=>m.open()),'uiBop');mk('adv','Events log',()=>{$('log')?.classList.toggle('uihide')},'uiLog');mk('adv','Formation at bit',()=>{$('geoRd')?.classList.toggle('uihide')},'uiFrm');
@@ -130,7 +154,7 @@ function tick(){const s=status(),T=$('uiTop');if(T)T.innerHTML=`<span>${s.well}<
 export function init(){if(typeof document=='undefined')return;const q=new URLSearchParams(location.search);window.GX=window.GX||{};
  if(q.get('ui')=='classic'){GX.ui={classic:true};return}
  document.body.classList.add('ui57');css();buildNav();buildTools();
- for(const id of ['seqpanel','geoRd','log'])if($(id)){if(id=='seqpanel')$(id).style.display='none';else $(id).classList.add('uihide')}
+ for(const id of ['seqpanel','geoRd'])if($(id)){if(id=='seqpanel')$(id).style.display='none';else $(id).classList.add('uihide')}
  const sig=$('sigsrc');if(sig)sig.style.display='none';const ch=$('chatSheet');if(ch)ch.style.setProperty('display','none','important');
  dcss();dload();prevVis=new Set(panels().filter(vis));GX.ui={show,closeAll,status,tick,classic:false,DK,dockOpen,dockClose,layout};import('./dock.js?v=3').then(m=>m.init()).catch(e=>console.warn('dock',e));
  DK.restoring=true;deskMode();addEventListener('resize',()=>{deskMode();layout()});setTimeout(()=>{if(DK.on)for(const k of DK.open)if(!vis(del(k))){try{DK.busy=true;OPEN[k]()}catch(e){}DK.busy=false}layout();setTimeout(()=>{DK.restoring=false;tick()},1200)},1500);setInterval(tick,400);tick()}

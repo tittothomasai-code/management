@@ -2,7 +2,7 @@
 // live rig/well views, 3D trajectory). Discovers EVERY object in a well (all wellbores -> all time + depth logs incl. FE / mud / survey logs,
 // trajectories, mudLogs), reads data, selects the live / real-time branch by default, and builds Depth and Time views (channels mapped through
 // bit-depth / hole-depth). Transport is injected (call(op,wmlType,query,options) -> {xml}); credentials never pass through this module.
-import * as K from './wdash_core.js?v=fp-ops-r2-20261108';
+import * as K from './wdash_core.js?v=well-summary-r1';
 export const NS='xmlns="http://www.witsml.org/schemas/1series" version="1.4.1.1"';
 const xa=s=>String(s??'').replace(/[&"<>]/g,c=>({'&':'&amp;','"':'&quot;','<':'&lt;','>':'&gt;'}[c]));
 export const ids=(x,t)=>[...String(x).matchAll(new RegExp('<(?:\\w+:)?'+t+'\\b([^>]*?)(?:/>|>([\\s\\S]*?)</(?:\\w+:)?'+t+'>)','g'))].map(m=>({uid:(m[1].match(/\buid="([^"]*)"/)||[])[1],name:(((m[2]||'').match(/<(?:\w+:)?name>([^<]*)</)||[])[1]||'').trim()})).filter(w=>w.uid);
@@ -21,7 +21,7 @@ function xmlOf(reply) {
   if (refusal) throw refusal;
   return X(reply);
 }
-function scopedXml(reply, type, {well, bore, uid}) {
+export function scopeWmlXml(reply, type, {well, bore, uid} = {}) {
   const xml=xmlOf(reply);
   const rootObjects=new RegExp('<(?:[\\w.-]+:)?'+type+'(?=[\\s/>])([^>]*?)>', 'g');
   for (const [, attributes] of xml.matchAll(rootObjects)) {
@@ -48,11 +48,11 @@ export async function readKnownWell(call, uid) {
 // io from any transport
 export function makeIO(call){return {
  listWells:async()=>ids(xmlOf(await call('WMLS_GetFromStore','well',`<wells ${NS}><well uid=""><name/></well></wells>`,'returnElements=id-only')),'well'),
- listWbs:async w=>ids(scopedXml(await call('WMLS_GetFromStore','wellbore',`<wellbores ${NS}><wellbore uidWell="${xa(w)}" uid=""><name/></wellbore></wellbores>`,'returnElements=id-only'),'wellbore',{well:w}),'wellbore'),
- listLogs:async(w,b)=>K.parseLogs(scopedXml(await call('WMLS_GetFromStore','log',`<logs ${NS}><log uidWell="${xa(w)}" uidWellbore="${xa(b)}" uid=""/></logs>`,'returnElements=header-only'),'log',{well:w,bore:b})).map(l=>({...l,uidWellbore:l.uidWellbore||b})),
- listTraj:async(w,b)=>K.parseTraj(scopedXml(await call('WMLS_GetFromStore','trajectory',`<trajectorys ${NS}><trajectory uidWell="${xa(w)}" uidWellbore="${xa(b)}" uid=""/></trajectorys>`,'returnElements=all'),'trajectory',{well:w,bore:b})).map(t=>({...t,uidWellbore:t.uidWellbore||b})),
- listMud:async(w,b)=>K.parseMudLogs(scopedXml(await call('WMLS_GetFromStore','mudLog',`<mudLogs ${NS}><mudLog uidWell="${xa(w)}" uidWellbore="${xa(b)}" uid=""/></mudLogs>`,'returnElements=all'),'mudLog',{well:w,bore:b})).map(t=>({...t,uidWellbore:t.uidWellbore||b})),
- readLog:async(w,s)=>{const L=K.parseLogs(scopedXml(await call('WMLS_GetFromStore','log',`<logs ${NS}><log uidWell="${xa(w)}" uidWellbore="${xa(s.wb)}" uid="${xa(s.uid)}">${rangeQ(s)}<logData><data/></logData></log></logs>`,'returnElements=data-only;maxReturnNodes=2000'),'log',{well:w,bore:s.wb,uid:s.uid}))[0];
+ listWbs:async w=>ids(scopeWmlXml(await call('WMLS_GetFromStore','wellbore',`<wellbores ${NS}><wellbore uidWell="${xa(w)}" uid=""><name/></wellbore></wellbores>`,'returnElements=id-only'),'wellbore',{well:w}),'wellbore'),
+ listLogs:async(w,b)=>K.parseLogs(scopeWmlXml(await call('WMLS_GetFromStore','log',`<logs ${NS}><log uidWell="${xa(w)}" uidWellbore="${xa(b)}" uid=""/></logs>`,'returnElements=header-only'),'log',{well:w,bore:b})).map(l=>({...l,uidWellbore:l.uidWellbore||b})),
+ listTraj:async(w,b)=>K.parseTraj(scopeWmlXml(await call('WMLS_GetFromStore','trajectory',`<trajectorys ${NS}><trajectory uidWell="${xa(w)}" uidWellbore="${xa(b)}" uid=""/></trajectorys>`,'returnElements=all'),'trajectory',{well:w,bore:b})).map(t=>({...t,uidWellbore:t.uidWellbore||b})),
+ listMud:async(w,b)=>K.parseMudLogs(scopeWmlXml(await call('WMLS_GetFromStore','mudLog',`<mudLogs ${NS}><mudLog uidWell="${xa(w)}" uidWellbore="${xa(b)}" uid=""/></mudLogs>`,'returnElements=all'),'mudLog',{well:w,bore:b})).map(t=>({...t,uidWellbore:t.uidWellbore||b})),
+ readLog:async(w,s)=>{const L=K.parseLogs(scopeWmlXml(await call('WMLS_GetFromStore','log',`<logs ${NS}><log uidWell="${xa(w)}" uidWellbore="${xa(s.wb)}" uid="${xa(s.uid)}">${rangeQ(s)}<logData><data/></logData></log></logs>`,'returnElements=data-only;maxReturnNodes=2000'),'log',{well:w,bore:s.wb,uid:s.uid}))[0];
   if(L&&L.rows.length){if(!s.ml||!s.rows.length){s.ml=null;s.rows=[]}K.appendRows(s,L.ml,L.rows,L.ul);return L.rows.length}return 0}}}
 async function optional(read, onError) {
   try { return await read(); }

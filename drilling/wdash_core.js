@@ -24,7 +24,7 @@ export function parseLogs(x){x=String(x||'');return tagAll(x,'log').map(L=>{cons
  if(ld){ml=tag1(ld.body,'mnemonicList').split(',').map(s=>s.trim()).filter(Boolean);ul=tag1(ld.body,'unitList').split(',').map(s=>s.trim());
   const isArr=ml.map(m=>(curves.find(c=>c.mn==m)?.array)||0);
   rows=tagAll(ld.body,'data').map(d=>splitRow(unesc(d.body.trim()),isArr))}
- const it=tag1(b,'indexType');return {uid:attr(L.attr,'uid'),uidWellbore:attr(L.attr,'uidWellbore'),obj:'log',end:tag1(b,'endDateTimeIndex')||tag1(b,'endIndex'),start:tag1(b,'startDateTimeIndex')||tag1(b,'startIndex'),name:tag1(b,'name'),indexType:it,time:/time/i.test(it),indexCurve:tag1(b,'indexCurve'),curves,ml,ul,rows}})}
+ const it=tag1(b,'indexType'),startTag=tagAll(b,'startIndex')[0],endTag=tagAll(b,'endIndex')[0];return {uid:attr(L.attr,'uid'),uidWell:attr(L.attr,'uidWell'),uidWellbore:attr(L.attr,'uidWellbore'),obj:'log',end:tag1(b,'endDateTimeIndex')||tag1(b,'endIndex'),start:tag1(b,'startDateTimeIndex')||tag1(b,'startIndex'),indexUom:attr(startTag?.attr||endTag?.attr||'','uom'),name:tag1(b,'name'),indexType:it,time:/time/i.test(it),indexCurve:tag1(b,'indexCurve'),curves,ml,ul,rows}})}
 // a data row: comma separated; array curve values are space-separated numbers in one cell (1.4.1.1 convention); time index kept as ms
 export function splitRow(s,isArr=[]){return s.split(',').map((c,i)=>{c=c.trim();if(c==='')return NaN;if(isArr[i]||/\s/.test(c)&&i>0)return c.split(/\s+/).map(Number);
  if(i==0&&/\d{4}-\d\d-\d\dT/.test(c))return Date.parse(c);return +c})}
@@ -108,7 +108,7 @@ export function combine(sets,mode,M,primary){const out={ml:[],ul:[],rows:[],src:
   s.ml.forEach((m,j)=>{if(j==0)return;let mn=m;if(out.src[mn])mn=m+'@'+(s.short||s.uid);if(out.src[mn])return;out.src[mn]={set:s.uid,name:s.name,how:nat(s)?'native':'mapped',orig:m};out.ml.push(mn);out.ul.push(s.ul?.[j]||'');cols.push([sm,j])})}
  out.rows=idx.map((x,i)=>[x,...cols.map(([sm,j])=>sm===gs?gs.rows[i][j]:sm.at(x,j))]);return out}
 // trajectory stations -> depth set rows [md,inc,azi,tvd]
-export function parseTraj(x){x=String(x||'');return tagAll(x,'trajectory').map(T=>{const st=tagAll(T.body,'trajectoryStation').map(s=>[+tag1(s.body,'md'),+tag1(s.body,'incl'),+tag1(s.body,'azi'),+tag1(s.body,'tvd')]).filter(r=>Number.isFinite(r[0])).sort((a,b)=>a[0]-b[0]);
+export function parseTraj(x){x=String(x||'');const value=(body,name,kind)=>{const t=tagAll(body,name)[0];if(!t)return NaN;let v=+unesc(t.body.trim()),u=(t.attr.match(/\buom="([^"]*)"/)||[])[1]?.toLowerCase()||'';if(kind==='length'&&/^(ft|feet|foot|ft_us|usft)$/.test(u))v*=0.3048;if(kind==='angle'&&u==='rad')v*=180/Math.PI;return v};return tagAll(x,'trajectory').map(T=>{const st=tagAll(T.body,'trajectoryStation').map(s=>[value(s.body,'md','length'),value(s.body,'incl','angle'),value(s.body,'azi','angle'),value(s.body,'tvd','length')]).filter(r=>Number.isFinite(r[0])).sort((a,b)=>a[0]-b[0]);
  return {uid:attr(T.attr,'uid'),uidWellbore:attr(T.attr,'uidWellbore'),name:tag1(T.body,'name'),obj:'trajectory',time:false,ml:['MD','INCL','AZI','TVD'],ul:['m','dega','dega','m'],rows:st}})}
 // mudLog geology intervals -> depth set rows [mdTop, ropAv, lith% ] (interval tops)
 export function parseMudLogs(x){x=String(x||'');return tagAll(x,'mudLog').map(L=>{const gi=tagAll(L.body,'geologyInterval').map(g=>[+tag1(g.body,'mdTop'),+tag1(g.body,'ropAv')||NaN,+tag1(tagAll(g.body,'lithology')[0]?.body||'','lithPc')||NaN]).filter(r=>Number.isFinite(r[0])).sort((a,b)=>a[0]-b[0]);

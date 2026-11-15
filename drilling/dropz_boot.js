@@ -19,7 +19,7 @@ async function boot(){const until=Date.now()+60000;while(!window.G?._scene||!win
   return L.map((v,j)=>v+[o.x,o.y,o.z][j])};
  window.dropz=attachDropz(G._scene,THREE,{register,game:true,camera:G.cam,renderer:null,canvas:document.querySelector('body > canvas'),resolvePosition,
   floorY:item=>item.zone==='pipe deck'?.25:((ent('Rig mast')?.getWorldPosition(new THREE.Vector3()).y)||0)+GX.rig.dims.floorH+.2});
- {const st=document.createElement('style');st.id='dropzBootCss';st.textContent='@media (pointer:coarse),(max-width:760px){.dropz-modebar button,[class*=dropz] button{min-height:44px;min-width:44px}}';document.head.appendChild(st)}
+ {const st=document.createElement('style');st.id='dropzBootCss';st.textContent='@media (pointer:coarse),(max-width:760px){.dropz-modebar button,[class*=dropz] button{min-height:44px;min-width:44px}}@media (max-width:820px),(hover:none) and (pointer:coarse){.dropz-modebar,.dropz-chip{display:none!important}}';document.head.appendChild(st)}
  // honesty banner while the overlay is visible (section: not folded by mobile.js)
  const b=document.createElement('section');b.id='dropzNote';b.setAttribute('role','note');b.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:56px;z-index:100013;max-width:min(94vw,760px);background:#2a1208ee;color:#ffd9b0;border:1px solid #ff9a4a;border-radius:8px;padding:6px 10px;font:12px/1.35 system-ui;text-align:center;pointer-events:none;display:none';
  b.textContent='DROPZ TRAINING ILLUSTRATION · SAMPLE register (15 demo items, not a rig inventory or inspection) · positions approximate · red zones are an illustrative assumption, NOT an official DROPS distance or exclusion/safe zone · native asset/BOM mapping not available (0/15 sample items match game catalogue)';

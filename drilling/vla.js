@@ -108,9 +108,9 @@ export async function demo(){if(D.on)return;const S=document.getElementById('sta
 export function stopDemo(){D.abort=true;if(T.run&&!T.run.done)T.run.abort=true;endDemo()}
 function endDemo(){if(!D.on)return;D.on=false;T.intrude=false;wxSet('clear');render()}
 function demoBar(){const b=$('vlaDemo');if(!b)return;b.style.display=D.on?'flex':'none';if(D.on)$('vlaDemoT').textContent=`Demo ${Math.min(D.i+1,5)}/5: ${DEMO[Math.min(D.i,4)]}`}
-function mainBtn(){if($('vlaMain'))return;const b=document.createElement('button');b.id='vlaMain';b.textContent='▶ Watch VLA demo';b.title='Watch the robot (VLA) simulation';
- b.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:calc(64px + env(safe-area-inset-bottom));z-index:100002;background:#f2b705;color:#111;font:700 15px system-ui;border:2px solid #fff;border-radius:22px;padding:10px 20px;cursor:pointer;box-shadow:0 4px 14px #0008';
- b.onclick=()=>D.on?stopDemo():demo();document.body.appendChild(b);setInterval(()=>{b.textContent=D.on?'■ Stop VLA demo':'▶ Watch VLA demo';b.style.background=D.on?'#c62828':'#f2b705';b.style.color=D.on?'#fff':'#111'},300)}
+function mainBtn(){if($('vlaMain'))return;const b=document.createElement('button');b.id='vlaMain';b.textContent='Watch the demo';b.title='Watch the robot simulation';b.type='button';
+ b.hidden=true;b.setAttribute('aria-hidden','true');
+ b.onclick=()=>D.on?stopDemo():demo();document.body.appendChild(b)}
 // ---- panel ----
 const $=id=>document.getElementById(id);const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 function vision(E){const s=24,cx=110,cz=80,X=x=>cx+x*s,Z=z=>cz+z*s;const P=zonePath(T.run?.intent||'stand');let h=`<svg viewBox="0 0 220 160" width="220" height="160" style="background:#0b1118;border:1px solid #345;border-radius:4px">`;
