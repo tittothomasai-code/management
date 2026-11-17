@@ -5,7 +5,7 @@ import {resolve,extname,relative} from 'node:path';
 import {execFileSync} from 'node:child_process';
 const root=resolve(import.meta.dirname,'..'),output=process.env.PICTURES_OUTPUT||'/workspace/shared/downloads',gallery=resolve(output,'robotyx-pictures');await mkdir(gallery,{recursive:true});
 const groups=[
- ['ops-pumps','Ops pump states',resolve(root,'drilling-tests/pump-evidence')],
+ ['ops-pumps','Drilling dashboard status',resolve(root,'drilling-tests/equipment-evidence')],
  ['ops-surveys','Ops survey popup',resolve(root,'drilling-tests/survey-alert-evidence')],
  ['bha-components','All BHA components',resolve(root,'drilling-tests/bha-component-pictures')],
  ['bha-game','BHA in the game and reports',resolve(root,'drilling-tests/bha-evidence')],
@@ -22,7 +22,7 @@ const style=`body{margin:0;background:#f0f3f5;color:#172b37;font:16px/1.5 system
 const sections=groups.map(([group,title])=>`<section id="${group}"><h2>${title}</h2><div>${records.filter(r=>r.group===group).map(figure).join('')}</div></section>`).join('');
 const intro=`<h1>Robotyx picture gallery</h1><p>${records.length} full-resolution pictures. Click a picture to open the original. Ops captures use SIM data; BHA and field pictures are original schematic model renders and earlier stored SIM captures. They are not live equipment photographs.</p>`;
 await writeFile(resolve(gallery,'index.html'),`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Robotyx pictures</title><style>${style}</style></head><body><main>${intro}<nav>${groups.map(([g,t])=>`<a href="#${g}">${t}</a>`).join('')}</nav>${sections}<footer><small>Game integration source: ${head}. Production release pending hosting access.</small></footer></main></body></html>`);
-const choices=[['ops-pumps','card-on-390.png','Pumps ON'],['ops-pumps','card-off-390.png','Pumps OFF'],['ops-pumps','card-stale-390.png','Current state UNKNOWN'],['ops-surveys','survey-green-390.png','Survey received'],['bha-components','pdc-bit.png','PDC bit · full view and detail'],['field-world','desktop-overview.png','Field world']];
+const choices=[['ops-pumps','header-on-390.png','Pumps ON'],['ops-pumps','header-off-390.png','Pumps OFF'],['ops-pumps','header-stale-390.png','Current state UNKNOWN'],['ops-surveys','survey-green-390.png','Survey received'],['bha-components','pdc-bit.png','PDC bit · full view and detail'],['field-world','desktop-overview.png','Field world']];
 const featured=choices.map(([g,file,title])=>{const found=records.find(r=>r.group===g&&r.file.endsWith('/'+file));return found?{...found,name:title}:null;}).filter(Boolean);
 await writeFile(resolve(gallery,'overview.html'),`<!doctype html><html><head><meta charset="utf-8"><style>${style}</style></head><body><main><h1>Robotyx · pumps, surveys and asset pictures</h1><p>SIM previews · ${records.length} original full-resolution pictures in the gallery</p><div class="overview">${featured.map(figure).join('')}</div></main></body></html>`);
 await writeFile(resolve(gallery,'pictures-manifest.json'),JSON.stringify({head,count:records.length,categories:groups.map(([id,title])=>({id,title,count:records.filter(r=>r.group===id).length})),pictures:records},null,2)+'\n');

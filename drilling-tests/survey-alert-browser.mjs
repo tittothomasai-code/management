@@ -5,7 +5,7 @@ import {resolve, extname} from 'node:path';
 import assert from 'node:assert/strict';
 const root = resolve(import.meta.dirname, '..'), evidence = resolve(root, 'drilling-tests/survey-alert-evidence');
 await mkdir(evidence, {recursive: true});
-const pumpEvidence = resolve(root, 'drilling-tests/pump-evidence');await mkdir(pumpEvidence, {recursive: true});
+const pumpEvidence = resolve(root, 'drilling-tests/equipment-evidence');await mkdir(pumpEvidence, {recursive: true});
 const stubs = {
   'opsnow_wire.js': `export const cfg={url:'SIM fixture',proxy:'offline'};export const state={dead:false,calls:0,errors:0};export const hasCred=()=>!!window.__simSigned;export const rememberedUser=()=>'';export const signIn=()=>{};export const signOut=()=>{window.__simSigned=false};export async function get(){state.calls++;return window.__simRead();}`,
   'opsnow_views.js': `export const init=()=>{},draw=()=>{},getPlan=()=>null,getKb=()=>null;`,
@@ -43,7 +43,7 @@ try {
     await page.goto(origin + '/ops');
     if((await readFile(resolve(root,'drilling/ops.html'),'utf8')).includes('bha-builder/context-launcher')){await page.locator('[data-bha-context]').waitFor();assert.equal(await page.locator('[data-bha-context]').count(),1);}
     await page.evaluate(async () => {
-      const m = await import('./opsnow.js?v=pumps1117');window.__testOps = m;window.__simSigned = true;
+      const m = await import('./opsnow.js?v=compact1117');window.__testOps = m;window.__simSigned = true;
       Object.assign(m.testState, {well: {uid: 'sim-well', name: 'SIM FIELD'}, wb: {uid: 'sim-bore', name: 'SIM WB1'}, trajUid: 'sim-survey',
         log: {name: 'SIM depth log', time: false, changed: new Date().toISOString()}, data: {ml: [], ul: [], rows: [[100], [113]]}});
       window.__simStations = [{uid: 'sim-100', md: 100, t: '2026-11-17T01:50:00Z'}];
@@ -60,7 +60,8 @@ try {
       const values = [on?600:0,on?2100:0,on?120:0,on?20:0,on?6:0,on?3:0,on?580:0,20,15,113,113];
       const time = mode !== 'depth';if(!time)ml[0]='MD';
       S.log = {uid:'sim-flow',name:time?'SIM time log':'SIM depth log',time,changed:new Date(now).toISOString()};
-      S.data = {ml,ul,rows:[[time?now-delay-10000:100,...values],[time?now-delay:113,...values]]};
+      const previous=[...values],older=[...values];previous[8]=8;older[8]=20;values[8]=12.8;
+      S.data = {ml,ul,rows:[[time?now-delay-20000:87,...older],[time?now-delay-10000:100,...previous],[time?now-delay:113,...values]]};
       S.map = C.mapChannels(ml,ul,S.log);if(mode==='missing')delete S.map.flowIn;
       S.advancedAt = mode==='on'?now-1000:null;S.watchFrom=now-180000;S.timeLog=null;S.pumpSample=null;
       __testOps.testRender();
@@ -68,26 +69,39 @@ try {
     for(const mode of ['on','off','stale','depth','missing']) {
       await setPump(mode);const panel=page.locator('#onPumps');
       assert.equal(await panel.getAttribute('data-state'),['on','off'].includes(mode)?mode:'unknown');
-      const animation=await panel.locator('.on-pump-rotor').evaluate(el=>getComputedStyle(el).animationName);
-      assert.equal(animation,mode==='on'?'on-pump-rotor':'none');
+      assert.equal(await page.locator('.on-pump-picture').count(),0);assert.equal(await page.locator('.on-top #onPumps').count(),1);
+      assert.equal(await panel.getAttribute('data-drive'),['on','off','missing'].includes(mode)?'current':'unknown');
+      if(['on','off'].includes(mode)){assert.match(await panel.locator('[data-drive-value]').innerText(),/12.8 m/);assert.match(await panel.locator('[data-drive-motion]').innerText(),/Rising/);}
       const box=await panel.boundingBox();assert.ok(box.x>=0&&box.x+box.width<=width);
-      await page.screenshot({path:pumpEvidence+`/pumps-${mode}-${width}.png`});
-      await panel.screenshot({path:pumpEvidence+`/card-${mode}-${width}.png`});
+      await page.screenshot({path:pumpEvidence+`/dashboard-${mode}-${width}.png`});
+      await page.locator('.on-top').screenshot({path:pumpEvidence+`/header-${mode}-${width}.png`});
+      assert.ok((await panel.boundingBox()).height<=80);
     }
+    // The carriage moves with the source reading, independently of bit depth.
+    const beforeMarker=await page.locator('[data-drive-marker]').getAttribute('transform');
+    await page.evaluate(()=>{const S=__testOps.testState;S.data.rows.at(-2)[9]=12.8;S.data.rows.at(-1)[9]=8;__testOps.testRender();});
+    assert.match(await page.locator('[data-drive-motion]').innerText(),/Lowering/);
+    assert.notEqual(await page.locator('[data-drive-marker]').getAttribute('transform'),beforeMarker);
+    await page.locator('.on-top').screenshot({path:pumpEvidence+`/header-lowering-${width}.png`});
+    await page.evaluate(()=>{__testOps.testState.data.rows.at(-2)[9]=8;__testOps.testRender();});
+    assert.match(await page.locator('[data-drive-motion]').innerText(),/Holding/);
+    await page.evaluate(()=>{const S=__testOps.testState;S.data.ml.push('TDH');S.data.ul.push('m');S.data.rows.forEach((r,i)=>r.push(25+i));__testOps.testRender();});
+    assert.match(await page.locator('[data-drive-source]').innerText(),/Reported/);
+    assert.match(await page.locator('[data-drive-value]').innerText(),/27.0 m/);
     // Flow from the secondary time log uses the existing readBit transport call.
     await setPump('depth');
     await page.evaluate(async()=>{
       const S=__testOps.testState,now=Date.now(),original=__simRead;
       S.timeLog={uid:'sim-time-secondary',name:'SIM secondary time log',end:new Date(now-1000).toISOString(),curves:[]};
-      __simRead=async()=>({result:1,xml:'<logs><log><logData><mnemonicList>TIME,FLOWIN</mnemonicList><unitList>s,gpm</unitList><data>'+new Date(now-11000).toISOString()+',0</data><data>'+new Date(now-1000).toISOString()+',0</data></logData></log></logs>'});
+      __simRead=async()=>({result:1,xml:'<logs><log><logData><mnemonicList>TIME,FLOWIN,BPOS</mnemonicList><unitList>s,gpm,m</unitList><data>'+new Date(now-11000).toISOString()+',0,20</data><data>'+new Date(now-1000).toISOString()+',0,12</data></logData></log></logs>'});
       await __testOps.testReadBit();__simRead=original;__testOps.testRender();
     });
-    assert.equal(await page.locator('#onPumps').getAttribute('data-state'),'off');
+    assert.equal(await page.locator('#onPumps').getAttribute('data-state'),'off');assert.equal(await page.locator('#onPumps').getAttribute('data-drive'),'current');assert.match(await page.locator('[data-drive-value]').innerText(),/12.0 m/);
     await page.evaluate(()=>{__testOps.testState.wb={uid:'sim-other',name:'SIM OTHER'};__testOps.testRender();});
-    assert.equal(await page.locator('#onPumps').getAttribute('data-state'),'unknown');
+    assert.equal(await page.locator('#onPumps').getAttribute('data-state'),'unknown');assert.equal(await page.locator('#onPumps').getAttribute('data-drive'),'unknown');
     await page.evaluate(()=>{__testOps.testState.wb={uid:'sim-bore',name:'SIM WB1'};});
     await setPump('on');await page.emulateMedia({reducedMotion:'reduce'});
-    assert.equal(await page.locator('#onPumps .on-pump-rotor').evaluate(el=>getComputedStyle(el).animationName),'none');
+    assert.equal(await page.locator('#onPumps').evaluate(el=>getComputedStyle(el).animationName),'none');
     await page.emulateMedia({reducedMotion:'no-preference'});
     await page.locator('#onGear').click();await page.locator('#onSelWb').focus();
     await page.evaluate(async () => { __simStations.push({uid: 'sim-113', md: 113, t: '2026-11-17T02:01:00Z'});await __testOps.testReadSurvey(); });
@@ -122,5 +136,5 @@ try {
     console.log('PASS Ops survey alert', width);await context.close();
   }
   await writeFile(evidence + '/browser-results.json', JSON.stringify({mode: 'Actual Ops source and parsers, local SIM transport and static fixtures only. No external network or real credentials.', results}, null, 2) + '\n');
-  await writeFile(pumpEvidence+'/browser-results.json',JSON.stringify({mode:'Actual Ops render and existing secondary time-log reader; local SIM transport only.',widths:[1920,390],checks:['fresh positive flow ON','fresh zero flow OFF','stale timestamp UNKNOWN despite restamped metadata','depth-indexed flow UNKNOWN','missing flow UNKNOWN','motion only while ON','secondary time log uses existing read','other-well sample rejected','reduced motion','fits viewport'],errors:[]},null,2)+'\n');
+  await writeFile(pumpEvidence+'/browser-results.json',JSON.stringify({mode:'Actual Ops render and existing secondary time-log reader; local SIM transport only.',widths:[1920,390],checks:['compact reminder in dashboard header','no large pump illustration','fresh positive flow ON','fresh zero flow OFF','stale or missing flow unavailable','top-drive marker uses observed block-height range','position and rising direction shown','carriage moves with lowering height','holding direction','direct position overrides block proxy','stale/depth-only position not presented as current','secondary time log uses existing read','other-well sample rejected','fits viewport'],errors:[]},null,2)+'\n');
 } finally { await browser.close();await new Promise(r => server.close(r)); }

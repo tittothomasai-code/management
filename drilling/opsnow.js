@@ -9,7 +9,7 @@ import * as A from './opsnow_ac.js?v=re1115';
 import * as WP from './opsnow_planview.js?v=re1115';
 import * as JS from './opsnow_jsurvey.js?v=re1115';
 import {createSurveyAlerts, reportSurveyStations} from './opsnow_survey_alert.mjs?v=survey1117';
-import {createPumpGraphic, pumpSample} from './opsnow_pumps.mjs?v=pumps1117';
+import {createPumpGraphic, pumpSample, driveChannel, driveSample} from './opsnow_pumps.mjs?v=compact1117';
 const $ = id => document.getElementById(id);
 const PAGE = ['joints', 'wellplan'].includes(document.documentElement.dataset.page) ? document.documentElement.dataset.page : 'ops'; // joints.html / wellplan.html: same data layer, one surface each
 const DEF_WELL = new URLSearchParams(location.search).get('well') || 'DR101L';
@@ -123,7 +123,9 @@ async function readBit() {
   const r = await W.get('log', `<logs ${C.NS}><log uidWell="${C.xa(S.well.uid)}" uidWellbore="${C.xa(S.wb.uid)}" uid="${C.xa(L.uid)}"><startDateTimeIndex>${new Date(end - 120000).toISOString()}</startDateTimeIndex><logData><mnemonicList/><unitList/><data/></logData></log></logs>`, 'returnElements=data-only;maxReturnNodes=5000');
   if (receiptScope !== surveyContext().scope || L !== S.timeLog) return;
   const d = C.parseLogData(r.xml, true), m = C.mapChannels(d.ml, d.ul, L), lv = C.latestValues(d.rows, m);
-  S.pumpSample = {scope: receiptScope, logUid: L.uid, sample: pumpSample({rows: d.rows, channel: m.flowIn, latest: lv.flowIn, time: true, source: L.name})};
+  const dc = driveChannel({ml: d.ml, ul: d.ul, header: L, blockChannel: m.bh});
+  const dh = dc ? C.latestValues(d.rows, {drive: dc}).drive : null;
+  S.pumpSample = {scope: receiptScope, logUid: L.uid, sample: pumpSample({rows: d.rows, channel: m.flowIn, latest: lv.flowIn, time: true, source: L.name}), drive: driveSample({rows: d.rows, channel: dc, latest: dh, time: true, source: L.name})};
   S.bit = lv.bd ? {v: lv.bd.v, at: lv.bd.at, log: L} : null;
 }
 // Whole depth log: page back from the log start up to the first row already held (5,000 rows per call).
@@ -359,7 +361,7 @@ function build() {
   if (PAGE === 'wellplan') { buildCommon(); WP.init(ctx, $('wpHost'), {xlsxRows: VW.xlsxRows}); $('onConnBtn').onclick = () => { S.showSignin = !S.showSignin; render(); }; document.title = 'Well plan · live WITSML'; return; }
   addEventListener('keydown', e => { if (e.key !== 'p' && e.key !== 'P') return; if (e.ctrlKey || e.metaKey || e.altKey || e.repeat || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName || '') || document.activeElement?.isContentEditable) return; location.href = './wellplan.html' + qs; });
   if (PAGE === 'joints') { buildCommon(); S.wantTl = true; VW.initJointsPage(ctx, $('jtHost')); $('onScanBtn').onclick = () => VW.togglePop(true); document.title = 'Joints · live WITSML'; return; }
-  pumpGraphic = createPumpGraphic({before: $('onTiles')});
+  pumpGraphic = createPumpGraphic({host: document.querySelector('.on-depths')});
   $('onTiles').innerHTML = TILES.map(([k, n]) => `<div class="on-tile" data-k="${k}"><small>${n}</small><b id="onV_${k}">—</b><i id="onU_${k}"></i></div>`).join('');
   $('onTrends').innerHTML = TILES.map(([k, n]) => `<div class="on-trend" data-k="${k}"><span><b>${n}</b> <em id="onT_${k}"></em></span><canvas id="onC_${k}"></canvas></div>`).join('');
   buildCommon();
@@ -409,7 +411,11 @@ function render() {
   const lv = C.latestValues(rows, S.map);
   const primaryFlow = pumpSample({rows, channel: S.map.flowIn, latest: lv.flowIn, time: Boolean(L?.time), source: L?.name});
   const secondaryFlow = S.pumpSample?.scope === surveyContext().scope && S.pumpSample?.logUid === S.timeLog?.uid ? S.pumpSample.sample : null;
-  pumpGraphic?.update({signed, now, sample: L?.time ? primaryFlow : secondaryFlow || primaryFlow});
+  const dc = driveChannel({ml: S.data.ml, ul: S.data.ul, header: L, blockChannel: S.map.bh});
+  const dh = dc ? C.latestValues(rows, {drive: dc}).drive : null;
+  const primaryDrive = driveSample({rows, channel: dc, latest: dh, time: Boolean(L?.time), source: L?.name});
+  const secondaryDrive = S.pumpSample?.scope === surveyContext().scope && S.pumpSample?.logUid === S.timeLog?.uid ? S.pumpSample.drive : null;
+  pumpGraphic?.update({signed, now, sample: L?.time ? primaryFlow : secondaryFlow || primaryFlow, driveSample: L?.time ? primaryDrive : secondaryDrive || primaryDrive});
   const state = !signed ? (W.state.dead ? 'Stopped' : 'Not signed in') : !L ? 'Connecting' : C.rigState({fresh, advancedAt: S.advancedAt, watchFrom: S.watchFrom, now, rpm: lv.rpm?.v, rop: lv.rop?.v, flow: lv.flowIn?.v, timeLog: L?.time});
   const chip = $('onState'); chip.textContent = state; chip.dataset.s = /^Drilling/.test(state) ? 'drill' : /No new|Stopped|Not signed/.test(state) ? 'bad' : 'idle';
   // The store re-stamps dTimLastChange about once a minute even when no row is added, so it proves the

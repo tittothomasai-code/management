@@ -105,14 +105,16 @@ keeps a steady green card. Existing polling cadence is unchanged. See
 The Ops script version change and notification assets must accompany this feature;
 keep the BHA context-launcher tag when updating the current release entry HTML.
 
-## Pump activity and picture gallery
+## Compact dashboard pump and top-drive status
 
-Ops includes an original motor/pump/flow graphic. Green ON and stationary OFF
-are inferred only from fresh advancing time-indexed flow samples. Stale, missing
-or depth-indexed readings show UNKNOWN. Individual motor switches are not
-reported. This is an indicator, not a control. The existing time-log read is reused
-without additional WITSML calls. See `drilling-tests/PUMP-GRAPHIC.md`.
+The Ops header contains a small WITSML pump reminder and a slim top-drive position
+rail. The large pump illustration has been removed. Pump status derives from
+fresh flow readings. The top-drive marker uses a direct position channel, or a
+visibly labelled block-height proxy, with Rising/Lowering/Holding feedback. Its
+scale is the observed travel range; no full mast dimensions are inferred. Stale
+or missing readings cannot display a current marker. Existing source reads,
+survey notifications and BHA navigation are preserved. See
+`drilling-tests/PUMP-GRAPHIC.md` and `equipment-evidence/` for tests and screenshots.
 
-The picture scripts produce 32 BHA component sheets with true proportions and
-connection/cutting-face details, plus a downloadable gallery containing the
-Ops states, survey alert, BHA views and earlier field-asset SIM captures.
+Earlier field and BHA picture collections remain available as SIM reference
+captures. They are separate from the compact operational dashboard indicators.
