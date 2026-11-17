@@ -8,6 +8,7 @@ import * as VW from './opsnow_views.js?v=re1115';
 import * as A from './opsnow_ac.js?v=re1115';
 import * as WP from './opsnow_planview.js?v=re1115';
 import * as JS from './opsnow_jsurvey.js?v=re1115';
+import {createSurveyAlerts, reportSurveyStations} from './opsnow_survey_alert.mjs?v=survey1117';
 const $ = id => document.getElementById(id);
 const PAGE = ['joints', 'wellplan'].includes(document.documentElement.dataset.page) ? document.documentElement.dataset.page : 'ops'; // joints.html / wellplan.html: same data layer, one surface each
 const DEF_WELL = new URLSearchParams(location.search).get('well') || 'DR101L';
@@ -25,6 +26,9 @@ const OKEY = w => 'opsnow-offsets:' + (w || '');
 try { const O = JSON.parse(localStorage.getItem(OKEY(DEF_WELL)) || 'null'); if (O) S.offsets = O; } catch {}
 try { const P = JSON.parse(localStorage.getItem('opsnow-plan:' + DEF_WELL) || 'null'); if (P?.p?.path) { S.importedPlan = P.p; S.importedPlanName = P.name || 'plan'; } } catch {}
 const fmt = (v, d = 1) => Number.isFinite(v) ? (Math.abs(v) < 0.5 * 10 ** -d ? 0 : v).toLocaleString('en-AU', {minimumFractionDigits: d, maximumFractionDigits: d}) : '—';
+
+const surveyAlerts = PAGE === 'ops' ? createSurveyAlerts() : null;
+const surveyContext = () => ({scope: S.well && S.wb ? JSON.stringify([S.well.uid, S.wb.uid]) : null, well: S.well?.name, wellbore: S.wb?.name});
 
 // ---------- reads (bounded, sequential) ----------
 async function discover() {
@@ -50,7 +54,7 @@ async function readHeaders(uidWb) {
   return S.headers[uidWb];
 }
 async function selectWellbore(b) {
-  const changed = S.wb?.uid !== b.uid; S.wb = b;
+  const changed = S.wb?.uid !== b.uid; if (changed) surveyAlerts?.clear(); S.wb = b;
   const logs = S.headers[b.uid] || await readHeaders(b.uid);
   const log = (S.override.log && logs.find(l => l.uid === S.override.log)) || C.pickPrimary(logs);
   if (!log) throw new Error('No drilling log with parameters in wellbore ' + b.name);
@@ -106,9 +110,11 @@ async function readStorePlan() {
   } else S.storePlan = null;
 }
 async function readSurvey() {
-  if (!S.trajUid) { S.traj = null; return; }
+  const receiptContext = surveyContext(), receiptTrajectory = S.trajUid;
+  if (!S.trajUid) { S.traj = null; surveyAlerts?.observe({...receiptContext, source: 'witsml', stations: []}); return; }
   const r = await W.get('trajectory', `<trajectorys ${C.NS}><trajectory uidWell="${C.xa(S.well.uid)}" uidWellbore="${C.xa(S.wb.uid)}" uid="${C.xa(S.trajUid)}"/></trajectorys>`, 'returnElements=all');
-  const t = C.parseTrajectory(r.xml); if (t) { t.calc = C.minCurve(t.stations); S.traj = t; buildBranches(); }
+  if (receiptContext.scope !== surveyContext().scope || receiptTrajectory !== S.trajUid) return;
+  const t = C.parseTrajectory(r.xml); if (t) { t.calc = C.minCurve(t.stations); S.traj = t; buildBranches(); surveyAlerts?.observe({...receiptContext, source: 'witsml', stations: t.stations}); }
   render();
 }
 async function readBit() {
@@ -337,7 +343,7 @@ function buildCommon() {
   $('onGo').onclick = () => { const u = $('onUser').value.trim(), p = $('onPass').value; if (!u || !p) return setMsg('Enter username and password'); W.signIn(u, p, $('onRem').checked); $('onPass').value = ''; setMsg('Connecting…'); render(); loop(); };
   $('onGear').onclick = () => { const s = $('onSettings'); s.hidden = !s.hidden; $('onGear').setAttribute('aria-expanded', String(!s.hidden)); render(); };
   $('onClose').onclick = () => { $('onSettings').hidden = true; $('onGear').setAttribute('aria-expanded', 'false'); };
-  $('onOut').onclick = () => { W.signOut(); location.reload(); };
+  $('onOut').onclick = () => { surveyAlerts?.clear(); W.signOut(); location.reload(); };
   $('onReload').onclick = () => { S.due = {data: 0, header: 0, survey: 0, discover: 0, extra: 0}; S.wb = null; loop(); };
   $('onSelWb').onchange = e => { S.override.wb = e.target.value; S.override.log = ''; S.wb = null; S.due.discover = 0; loop(); };
   $('onSelLog').onchange = e => { S.override.log = e.target.value; if (S.wb) { S.log = null; selectWellbore(S.wb).catch(x => setMsg(x.message)); } };
@@ -514,7 +520,7 @@ setInterval(() => { if (built) render(); }, 5000);
 
 // Per-joint report surveys (geosteering reports → ./data/per-joint-surveys.json). Loaded once the wellbore is known, then every 10 min.
 if (PAGE !== 'wellplan') {
-  const jl = () => { if (!S.wb) return setTimeout(jl, 5000); JS.load({well: S.well?.name || DEF_WELL, wellbore: S.wb.name, onChange: () => { try { render(); } catch {} }}); };
+  const jl = () => { if (!S.wb) return setTimeout(jl, 5000); const receiptContext = surveyContext(); JS.load({well: receiptContext.well || DEF_WELL, wellbore: receiptContext.wellbore, onChange: () => { if (receiptContext.scope !== surveyContext().scope) return; surveyAlerts?.observe({...receiptContext, source: 'reports', stations: JS.state().status === 'pending' ? [] : reportSurveyStations(JS.state().rep)}); try { render(); } catch {} }}); };
   setTimeout(jl, 3000); setInterval(jl, 10 * 60 * 1000);
 }
 // dr101l-plan-1115: well-folder plans (RevC0 package) for model vs plan when no other plan is loaded.

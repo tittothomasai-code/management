@@ -1,0 +1,15 @@
+✔ initial history and unchanged polls are quiet; a new batch produces one receipt (1.431249ms)
+✔ backfill, corrections, projections and invalid readings do not announce new surveys (0.35573ms)
+✔ measurement timestamps permit a new survey at the same or shallower depth; old timed data stays quiet (2.305771ms)
+✔ first survey after an empty baseline alerts; failed reads neither reset nor consume the baseline (0.292895ms)
+✔ well, wellbore and feed scopes do not leak receipt state into each other (0.24176ms)
+✔ report provenance suppresses repeated generated files and interpolated joints from the same reports (0.691769ms)
+✔ missing and mismatched report data cannot produce a receipt (1.023883ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 86.847305
