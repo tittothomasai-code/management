@@ -1,0 +1,24 @@
+{
+  "mode": "Actual Ops render and existing secondary time-log reader; local SIM transport only.",
+  "widths": [
+    1920,
+    390
+  ],
+  "checks": [
+    "compact reminder in dashboard header",
+    "no large pump illustration",
+    "fresh positive flow ON",
+    "fresh zero flow OFF",
+    "stale or missing flow unavailable",
+    "top-drive marker uses observed block-height range",
+    "position and rising direction shown",
+    "carriage moves with lowering height",
+    "holding direction",
+    "direct position overrides block proxy",
+    "stale/depth-only position not presented as current",
+    "secondary time log uses existing read",
+    "other-well sample rejected",
+    "fits viewport"
+  ],
+  "errors": []
+}

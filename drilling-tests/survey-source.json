@@ -1,0 +1,13 @@
+{
+  "host": "https://drilling.robotyx.systems/ops",
+  "files": [
+    {
+      "path": "ops.html",
+      "sha256": "677b0fdd86fceb353dff0d6a88b7033f1349acaec7b9db50e674f4481497677b"
+    },
+    {
+      "path": "opsnow.js",
+      "sha256": "9a5c54e698fbb28e80b2d14d6c558e49ffc6bc1c98a62af08dfe5b1a5edecfc4"
+    }
+  ]
+}

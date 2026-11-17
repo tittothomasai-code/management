@@ -1,0 +1,7 @@
+import * as T from 'three';
+import {OrbitControls} from './vendor/orbit-controls.js';
+import {createBhaView} from './view.js';
+const embedded=new URLSearchParams(location.search).get('embedded')==='1'&&window.parent!==window;
+const renderer=new T.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.setSize(innerWidth,innerHeight);renderer.toneMapping=T.ACESFilmicToneMapping;document.body.prepend(renderer.domElement);const scene=new T.Scene();scene.background=new T.Color(0x0e1d2b);const camera=new T.PerspectiveCamera(40,innerWidth/innerHeight,.001,1000),controls=new OrbitControls(camera,renderer.domElement);controls.minDistance=.001;controls.maxDistance=20000;let view;view=createBhaView({scene,camera,controls,canvas:renderer.domElement,onExit:()=>{if(embedded){view.exit();parent.postMessage({type:'robotyx-bha-close'},location.origin);}else view.actions.assembly();}});view.enter();window.bhaBuilder=view;
+if(embedded){view.ui.querySelector('[data-action="exit"]').textContent='Back to workspace';addEventListener('message',event=>{if(event.origin===location.origin&&event.source===parent&&event.data?.type==='robotyx-bha-enter')view.enter();});}
+function frame(){if(view.active){view.update();controls.update();renderer.render(scene,camera);}requestAnimationFrame(frame);}frame();addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});

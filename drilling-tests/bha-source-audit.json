@@ -1,0 +1,878 @@
+{
+  "source": "https://drilling.robotyx.systems",
+  "files": [
+    {
+      "path": "ext3.js",
+      "matches": false,
+      "bytes": 29389,
+      "sha256": "9701ff5237502fb51aa4f0dc65ff2f661e2a6fceaeb288b2853bcf17ed225274"
+    },
+    {
+      "path": "ops3d.js",
+      "matches": true,
+      "bytes": 15146,
+      "sha256": "1d2e0173ea1e0eeedc10843a21f0a33e4a36dee55f93de73781ce7afeb8f28b9"
+    },
+    {
+      "path": "bop.js",
+      "matches": true,
+      "bytes": 22838,
+      "sha256": "0fe2af3f9efecf298e6bfea8ccd8a3a87092c1c33033f983fbe8bac5e48b13ab"
+    },
+    {
+      "path": "ddcab_core.js",
+      "matches": true,
+      "bytes": 15915,
+      "sha256": "3a9f66c9ffaf7e79755a0f8143bfd54688c81fd51332bef683436be3ad6c3cc1"
+    },
+    {
+      "path": "rtoc_status.js",
+      "matches": true,
+      "bytes": 2052,
+      "sha256": "4291796d07d09d3212cf867126acf1b72c4780480adc217cf293291b33015332"
+    },
+    {
+      "path": "flow_pressure_model.js",
+      "matches": true,
+      "bytes": 2956,
+      "sha256": "a030becab0ab8e06c2be7884aa39a45cf0c534d6512d64847672fc5758609d91"
+    },
+    {
+      "path": "anim.js",
+      "matches": true,
+      "bytes": 1277,
+      "sha256": "14a89df56181647b8e7180fc8b5b5d6a622207336b21eb95fea72b2fe63c9183"
+    },
+    {
+      "path": "subsurface.js",
+      "matches": true,
+      "bytes": 17648,
+      "sha256": "6dab06f4f5c9372f6d169ed3e88058b4945ebe37592a22a5d023ab24cf96e967"
+    },
+    {
+      "path": "ddmotorperf.js",
+      "matches": true,
+      "bytes": 7582,
+      "sha256": "74c93743a2c77275d0d084c03fd9115f1e84c9403a4d049d34a2cd62a100c300"
+    },
+    {
+      "path": "rigbuilder_core.js",
+      "matches": true,
+      "bytes": 12550,
+      "sha256": "89fff3e2dfe9ac8056615c66961c55ebb228c4a6e5fd7489c91a5bbbc4e54003"
+    },
+    {
+      "path": "rtoc_core.js",
+      "matches": true,
+      "bytes": 2973,
+      "sha256": "d8abd0f8a494dd4f9f593789d1b7f0a206657a55c7098971f350745c30b7cf0e"
+    },
+    {
+      "path": "operations.css",
+      "matches": false,
+      "bytes": 16709,
+      "sha256": "4950e622d81bcde682b4271c8d6a248d8513d7dfc6deab8acaace9e7e1966d77"
+    },
+    {
+      "path": "ddcab.js",
+      "matches": true,
+      "bytes": 17138,
+      "sha256": "63005a584baa7415dcd16e0a15027b0534ac443e49510b6c4ba612ea70ab5bc5"
+    },
+    {
+      "path": "bom_data.js",
+      "matches": true,
+      "bytes": 11138,
+      "sha256": "ebdf929ac26a8766f20cd17ae079bb664bd8b10d5a8a3d8ea7b2009ea389d54d"
+    },
+    {
+      "path": "ddtracks.js",
+      "matches": true,
+      "bytes": 18207,
+      "sha256": "d9696b3ee18a7d940c79ec456f87aa35b332f5e537da55aae39379042c28fc88"
+    },
+    {
+      "path": "rtoc_input.js",
+      "matches": true,
+      "bytes": 5778,
+      "sha256": "b2c8389cd95714b67914c44be8286e8656111601dd8504f95eed716ab2a9136f"
+    },
+    {
+      "path": "ddglue.js",
+      "matches": true,
+      "bytes": 1808,
+      "sha256": "b0561003ac962265758dd9e44523a3af164ec248ea884c6e0af6c4936189217a"
+    },
+    {
+      "path": "ropmud.js",
+      "matches": true,
+      "bytes": 951,
+      "sha256": "47f80a49e573c3644b455b2b85caa896fee4b6c50789650b4b68f17659383252"
+    },
+    {
+      "path": "ext7.js",
+      "matches": true,
+      "bytes": 21004,
+      "sha256": "c892b7b715e48b08edd88637413629a8b31b680684f3fcc4b7defcac02a39404"
+    },
+    {
+      "path": "wpg.js",
+      "matches": true,
+      "bytes": 52530,
+      "sha256": "b4d7fafe6bdada44048885e99bc4a5647f56fdc8063e54d2643a35bcf7929d32"
+    },
+    {
+      "path": "conn.js",
+      "matches": true,
+      "bytes": 8309,
+      "sha256": "9cd5ee651af12b1658862285f0fbf38839b5d0418f2d39964f5b82f92a2e16c8"
+    },
+    {
+      "path": "units.js",
+      "matches": true,
+      "bytes": 4084,
+      "sha256": "3c966d69ffe8862594b2cdb8502f84a221cc7330caed4c0204c3ebf590b16253"
+    },
+    {
+      "path": "ext.js",
+      "matches": true,
+      "bytes": 32262,
+      "sha256": "8d01b271ee536a09da8380a66f2f4173e1b4bb09a02682dd491b7ff755a201fd"
+    },
+    {
+      "path": "visual.js",
+      "matches": true,
+      "bytes": 8343,
+      "sha256": "70a6bab566264818195050a88c77f3054b115bda74d1b79016116f4b46744125"
+    },
+    {
+      "path": "wellctl.js",
+      "matches": true,
+      "bytes": 13038,
+      "sha256": "094e72a95d91cf4afe1d78880cfedc0cef7c3e309bb7d7dc7222d28991b37235"
+    },
+    {
+      "path": "user-guide.html",
+      "matches": true,
+      "bytes": 26506,
+      "sha256": "2e9db8dff80f06db734fc2c7a996c8b269712d1692f712a9dcb879565a7b0008"
+    },
+    {
+      "path": "operations_scene.js",
+      "matches": false,
+      "bytes": 8360,
+      "sha256": "3a8d6376fa38bbaa5f62b779bf8eeee78dc92c7514e016295db7142ebaa3d6c4"
+    },
+    {
+      "path": "intro.js",
+      "matches": true,
+      "bytes": 3933,
+      "sha256": "4c2e0316e2658965f24f771dc25ca763d08a2cded679563236c2e548faf55c8b"
+    },
+    {
+      "path": "wmlinvui.js",
+      "matches": false,
+      "bytes": 9536,
+      "sha256": "1b8c9178e19188234c84d015291addbfcd33a480d492d34ed4b27f2019ddc2c5"
+    },
+    {
+      "path": "nightsky.js",
+      "matches": true,
+      "bytes": 7887,
+      "sha256": "425fe5d30d34c4236020046a74e7c4c9ef61bd95f31f23fb1a364c6a9f6483bf"
+    },
+    {
+      "path": "night.js",
+      "matches": true,
+      "bytes": 17252,
+      "sha256": "ca809edb3ac60704c4056d27d4928f647d1b1e75e6ad07e6f0ea80a8f5523007"
+    },
+    {
+      "path": "cem3d.js",
+      "matches": true,
+      "bytes": 13941,
+      "sha256": "ba28895def56f64764a4461b9d4eba633f5aa5914a1f02462a2027dfe50c7473"
+    },
+    {
+      "path": "home.js",
+      "matches": true,
+      "bytes": 4510,
+      "sha256": "036cc6e26300fe43899a48ee42553973ae93e0f61ae6f80adc075688683c14bb"
+    },
+    {
+      "path": "operations.js",
+      "matches": false,
+      "bytes": 47986,
+      "sha256": "8f845bec515c80668d79c990cf4035f8ad938e5bad9e543840e2bc035f1d15fe"
+    },
+    {
+      "path": "flow_pressure_view.css",
+      "matches": true,
+      "bytes": 1884,
+      "sha256": "9821fc51a15bc85370f244f5a3046c7d32f245e6ed05b781f0dbb8a85ffbe81f"
+    },
+    {
+      "path": "ddmotor_core.js",
+      "matches": true,
+      "bytes": 5532,
+      "sha256": "1efa56d97be509baf1cc0b34ffcd9ff28fd89e5b9577b112bde71888cfba158b"
+    },
+    {
+      "path": "rigclock.js",
+      "matches": true,
+      "bytes": 32195,
+      "sha256": "a5ea9e4fd5be62db6530cb1dc4f07a96851c6052d57cb619a07e11665618a952"
+    },
+    {
+      "path": "edmui.js",
+      "matches": false,
+      "bytes": 16116,
+      "sha256": "3c7771efd46231e3956680ef5306915452baf05f865729720ce74a67a0d84157"
+    },
+    {
+      "path": "wmlinv.js",
+      "matches": false,
+      "bytes": 13950,
+      "sha256": "c993e823971da94d804bdacd0fd65f65810a3cd6f30f83242ef01d73c9009870"
+    },
+    {
+      "path": "wac.js",
+      "matches": true,
+      "bytes": 24631,
+      "sha256": "1a7d2ac2a4ee805dc96f4f7ecc226583ecc560690d0041f43793c56069f5a24d"
+    },
+    {
+      "path": "rtoc_wml.js",
+      "matches": true,
+      "bytes": 8228,
+      "sha256": "2bc191af817ebfcd87100f9c8bafbd48a0e7f8560ebc58bdc39728ad39c3b817"
+    },
+    {
+      "path": "safety_adapter.js",
+      "matches": true,
+      "bytes": 4341,
+      "sha256": "36bb07d31dc06b325ff64d156b38aa9f951f35efcde65b611cace6c9246ba813"
+    },
+    {
+      "path": "vpad.js",
+      "matches": true,
+      "bytes": 9716,
+      "sha256": "750ddf24e835492245eae39003466996a78530e7b1a9f8f85c0355f27c7e4557"
+    },
+    {
+      "path": "dock.js",
+      "matches": true,
+      "bytes": 7250,
+      "sha256": "7b4ed82049ac81643b3a60f16a593f45427fdcdce3e593b2fa5f90bfdfc10095"
+    },
+    {
+      "path": "workover.js",
+      "matches": true,
+      "bytes": 29966,
+      "sha256": "27232babddc120d9f79ddb9f37827e97b34f1725c1a00fc3c2db032512f1ac92"
+    },
+    {
+      "path": "wwell.js",
+      "matches": false,
+      "bytes": 9992,
+      "sha256": "02481dede65b74c937d3424860203f8ad10c0015b273e2c4c47fd0d21141aa60"
+    },
+    {
+      "path": "physics.js",
+      "matches": true,
+      "bytes": 14014,
+      "sha256": "7ce5a9d3487fe0def8ca0f44d31620928cff821fc8b55cf85745c9f60afd3a20"
+    },
+    {
+      "path": "choke.js",
+      "matches": true,
+      "bytes": 10477,
+      "sha256": "b9ba27a322a42ebb6f426c7f62cec1596a8b26164c2b8c4e55cbc107e07d0f36"
+    },
+    {
+      "path": "showroom3d.js",
+      "matches": true,
+      "bytes": 3816,
+      "sha256": "4fbb2107f1095a3fd3d645c99d552881f1bacd0c4fa47eed301db87eead9fc29"
+    },
+    {
+      "path": "dddrv.js",
+      "matches": true,
+      "bytes": 8369,
+      "sha256": "3bb9a79e7aa0421b930f0ee45262cd7c30ffb603ec5cd9076c92331deeca5541"
+    },
+    {
+      "path": "pressure_core.js",
+      "matches": true,
+      "bytes": 4178,
+      "sha256": "46988504e27016a3d638b3746a9779322c58e62733e892e1a2cd40b6a626549c"
+    },
+    {
+      "path": "monitor.js",
+      "matches": true,
+      "bytes": 15361,
+      "sha256": "b56495eac49af33e3d8a379600943111c561d9c5f791793d2b9edf560136043e"
+    },
+    {
+      "path": "chat.js",
+      "matches": true,
+      "bytes": 4449,
+      "sha256": "8b02afa968e28d7f4e3eb45c246eff11b23cb34509b30694d737b6a4e625b235"
+    },
+    {
+      "path": "start.js",
+      "matches": false,
+      "bytes": 24990,
+      "sha256": "897372b8f83c359eea279eae89d4143cbb76d1f2e09a356c1c04f8f823c641f3"
+    },
+    {
+      "path": "centralizer.js",
+      "matches": true,
+      "bytes": 3049,
+      "sha256": "8cb16b5d2a95c675eb1ed43b09b1d6199a971710ada00d998d83b48e3f032f47"
+    },
+    {
+      "path": "ext14.js",
+      "matches": true,
+      "bytes": 26588,
+      "sha256": "1ddfe6acc12c13a231832fc35f4165bcdc55eb739cac82ea647cc2f6bcb5400c"
+    },
+    {
+      "path": "main.js",
+      "matches": true,
+      "bytes": 47741,
+      "sha256": "ef2e1bfb4f80314c0ad1e0cc4593828dcbe73f0074123af9794051ce1bbed93d"
+    },
+    {
+      "path": "wdash_core.js",
+      "matches": false,
+      "bytes": 16388,
+      "sha256": "80cbb951ef8ac4a2b652d56aaefc461cff23e628c547ce6ca0a8bc281415ab1a"
+    },
+    {
+      "path": "ext4.js",
+      "matches": false,
+      "bytes": 81738,
+      "sha256": "3aad13e7247bc439141076a9f8c8e9900bc1d73c235d9e9ab6b7691cdedf787f"
+    },
+    {
+      "path": "ddp.js",
+      "matches": true,
+      "bytes": 15266,
+      "sha256": "466141b0ff4f65d55fda062c87290d3eba3203ce0e6c09dce7db6cc2484f249e"
+    },
+    {
+      "path": "strat.js",
+      "matches": true,
+      "bytes": 38382,
+      "sha256": "b0bfac3049bb3e48bc491e34b2ac74d4b68523de91aaec3368bf5d0ab8d2027d"
+    },
+    {
+      "path": "safety.js",
+      "matches": true,
+      "bytes": 13408,
+      "sha256": "044577c98904ca70d09f47d2124213a834d676bbaf90cf94d1171c56ce2f44e7"
+    },
+    {
+      "path": "srpick.js",
+      "matches": true,
+      "bytes": 11958,
+      "sha256": "fdac921c7d1d15d4291b7ce213adfdfd179b9b9063c0806bbf255b7c84dbaa00"
+    },
+    {
+      "path": "edmstream.js",
+      "matches": false,
+      "bytes": 21306,
+      "sha256": "812b3df5d3e98e8d579d0961c03a53602f57a8b30129d356e5fdeaea74a5eae0"
+    },
+    {
+      "path": "wellcontrol.js",
+      "matches": true,
+      "bytes": 16085,
+      "sha256": "c2e0d7dd4f83f36c51aa2319c90a317bd0aa7e6808d5b858b68b7c30e6e4d7b8"
+    },
+    {
+      "path": "edmstore.js",
+      "matches": true,
+      "bytes": 3180,
+      "sha256": "4689d20c9f440a8e100ace6f217bd8139a6dc0b14714631cddccafdcc2d0e252"
+    },
+    {
+      "path": "wo2.js",
+      "matches": true,
+      "bytes": 17367,
+      "sha256": "7fbc9a1c4464375b6db0211f965890601ecdb3be707797860e37f69e5ff863ef"
+    },
+    {
+      "path": "index.html",
+      "matches": false,
+      "bytes": 7145,
+      "sha256": "ac53a949e7bb1b9a6acaa401a3382f81400d77301082c1f5d55e635d8f2ba52b"
+    },
+    {
+      "path": "woeng4.js",
+      "matches": true,
+      "bytes": 5595,
+      "sha256": "bd990f771e8134a019497e6b4a4e4bb54f30188727eaa2e4003807d3861f66d5"
+    },
+    {
+      "path": "subtarget.js",
+      "matches": true,
+      "bytes": 3406,
+      "sha256": "7a1259e8c006107ceebfdc9204066c0114ca82b1180b6ab197cd91805d5bf551"
+    },
+    {
+      "path": "wbs.js",
+      "matches": true,
+      "bytes": 10468,
+      "sha256": "a1041b8cc9c495513da2e52efeccb5ed091e45adb8b0f8a95c4b55eba4bc6746"
+    },
+    {
+      "path": "rtoc_hist.js",
+      "matches": true,
+      "bytes": 13501,
+      "sha256": "0eadb616713202af59f1cad63832495cbae72422473b54ba0ef3943a3263a4cf"
+    },
+    {
+      "path": "ext9.js",
+      "matches": true,
+      "bytes": 7552,
+      "sha256": "c1c7c7438d39f53e9f885cb196a0722ca25f803d039765811961d7129d95e41b"
+    },
+    {
+      "path": "wplanpol.js",
+      "matches": true,
+      "bytes": 3903,
+      "sha256": "ea66580cb209c528cb50476cfebc67f7221031cf6fe18d5d9d8b94c5ee9c1f4d"
+    },
+    {
+      "path": "rtoc.js",
+      "matches": true,
+      "bytes": 69573,
+      "sha256": "84883df904c14bca35ede09f2c0c8eeab929cdeeef4132e58ebc63a798914364"
+    },
+    {
+      "path": "wdash.js",
+      "matches": false,
+      "bytes": 39089,
+      "sha256": "aa6c154a83ded4ca04cd66a04dfde8d124be9bb6864a8d1879eee477c9ef6dc2"
+    },
+    {
+      "path": "ext8.js",
+      "matches": true,
+      "bytes": 36651,
+      "sha256": "842eca94a54bc0cfdfb2f9ac60167ada362303c0f6236c2e94f51ef162eebb83"
+    },
+    {
+      "path": "rtoc_scene_model.js",
+      "matches": true,
+      "bytes": 7831,
+      "sha256": "a41d6ec7ce4c2c59a35c578599fcc8436b988b9a69427c54e8c3162d66ce3771"
+    },
+    {
+      "path": "casingtd.js",
+      "matches": true,
+      "bytes": 2128,
+      "sha256": "755e66496c5de9bf9f685a230281e1303a88458428f4bf65e42a394c09c9c104"
+    },
+    {
+      "path": "session.js",
+      "matches": true,
+      "bytes": 12260,
+      "sha256": "a4ff26cdfc073b93f72830161d72b7d2a834b467215620d48820862d3efbea40"
+    },
+    {
+      "path": "wplanac.js",
+      "matches": true,
+      "bytes": 12917,
+      "sha256": "e36370282f602649512a17d8f19440d5b0be6dc2b7b1d8389bafc2a7ff3d004c"
+    },
+    {
+      "path": "ext11.js",
+      "matches": true,
+      "bytes": 19453,
+      "sha256": "a75c7a69333c3a5d313055a7a849c06cc39f53b25db037d694ac2c9dcc757439"
+    },
+    {
+      "path": "wpg_core.js",
+      "matches": true,
+      "bytes": 33008,
+      "sha256": "7630bfff053e2273bc6b434e65ddf8ed311421cf4a2e5c9393abe553e85d54f4"
+    },
+    {
+      "path": "flow_pressure_view.js",
+      "matches": true,
+      "bytes": 12059,
+      "sha256": "6ba6733df5dca628aec2dd740ad57f1d63a559eeda190ae5226156d25115cea4"
+    },
+    {
+      "path": "rigbuilder3d.js",
+      "matches": true,
+      "bytes": 10762,
+      "sha256": "4ca102fc7918564aeccf319d182297f8c4d4ad50f6c855d118160c547ba064d4"
+    },
+    {
+      "path": "rtoc_adapter.js",
+      "matches": true,
+      "bytes": 1870,
+      "sha256": "4c661025d5be29e0f0b095ca75da8971572675510c3599c522cefe97e8c4252f"
+    },
+    {
+      "path": "vla.js",
+      "matches": false,
+      "bytes": 21460,
+      "sha256": "25f188f8ea1916df1638ce473af547d5eee59ca1b19ac8e34889a55ab81f39fb"
+    },
+    {
+      "path": "wplan.js",
+      "matches": true,
+      "bytes": 20143,
+      "sha256": "403b48fe58df5e78a5687289470e4b78d61c01a230ac4411ddb4c3a7c8ce1bb8"
+    },
+    {
+      "path": "dropz_modes.js",
+      "matches": true,
+      "bytes": 13657,
+      "sha256": "cf3a1fdd58782c65af4c0eae04a1a32ecc265ea9548a48e36f83036bb687953d"
+    },
+    {
+      "path": "rigbuilder_store.js",
+      "matches": true,
+      "bytes": 1503,
+      "sha256": "2cac0f18b9401c09fd9caa89c79b1bc9aab805ff34a3d31dc43190d96036cd57"
+    },
+    {
+      "path": "pob.js",
+      "matches": true,
+      "bytes": 13799,
+      "sha256": "18ffcf891a13724a90f59c13ec257a973777329d4a62c42b29830ae83bf4065b"
+    },
+    {
+      "path": "wo4.js",
+      "matches": true,
+      "bytes": 3894,
+      "sha256": "5f8384ded84ccddb5f066e4352afc1b2af24ad535dbf88da825f62e9d636462a"
+    },
+    {
+      "path": "dropz.js",
+      "matches": true,
+      "bytes": 17774,
+      "sha256": "66de438913a4768a5c414f3a8acb47d58e1f0ed9350a09c9c78f37af53207472"
+    },
+    {
+      "path": "casing.js",
+      "matches": true,
+      "bytes": 12760,
+      "sha256": "0b0befffced40e559aa7805fe20918c472e3c67aba7bf2940f61d4deced53a64"
+    },
+    {
+      "path": "fitlot.js",
+      "matches": true,
+      "bytes": 3053,
+      "sha256": "d648ecb109ec7d1f4065780c93ffa8b8d90b521d68a8844b801c77b667d3d9bc"
+    },
+    {
+      "path": "ddtracks_data.js",
+      "matches": true,
+      "bytes": 3706,
+      "sha256": "fc24a00e1a30197209aa17196fc0a07335940bff802ef08412e0fa93af7953ca"
+    },
+    {
+      "path": "bom.js",
+      "matches": true,
+      "bytes": 3762,
+      "sha256": "39a0ee27393e717dedf235eb1d7de0988652bf129fb6714d0aa408b0bc4b71b5"
+    },
+    {
+      "path": "edmworker.js",
+      "matches": false,
+      "bytes": 762,
+      "sha256": "ae19a1bdd443d9b898331172e7fee007ca0180d8be2a65f41f6728f90fdf2333"
+    },
+    {
+      "path": "srassets.js",
+      "matches": true,
+      "bytes": 6955,
+      "sha256": "1cf0138e68b6219b8146002066dea6b2b09100b4a69f9ecebb1b59b1df68d0ee"
+    },
+    {
+      "path": "edmstats.js",
+      "matches": true,
+      "bytes": 6801,
+      "sha256": "0f1656d5e0b04a963f208f1d73f72b983b84ba658ea8042b4c43363236c2519e"
+    },
+    {
+      "path": "rtoc_fixtures.js",
+      "matches": true,
+      "bytes": 13357,
+      "sha256": "8ec83b734a3e3d064c1bf561f79e15b5158187780df75375141683f7ede80c56"
+    },
+    {
+      "path": "player.js",
+      "matches": true,
+      "bytes": 4445,
+      "sha256": "c0ded317af1e8c92a2276f398b84acb8cb5058b591dc52c6c9e12e6b70e6ee9c"
+    },
+    {
+      "path": "ddrun.js",
+      "matches": true,
+      "bytes": 20105,
+      "sha256": "dd691ccfc5cad166f338f5e58c634c0cdb50bd449fe51f3a1576959264f87b58"
+    },
+    {
+      "path": "operations_plots.js",
+      "matches": false,
+      "bytes": 5709,
+      "sha256": "b11418c635c0c6947581025b47ba261523bd4efb8319299b6a08c230b29650c8"
+    },
+    {
+      "path": "woeng2.js",
+      "matches": true,
+      "bytes": 8256,
+      "sha256": "3ba78a90910f6641d5552d335665b12bd0018b4c190850ac6833f6fa15b18967"
+    },
+    {
+      "path": "woeng.js",
+      "matches": true,
+      "bytes": 19079,
+      "sha256": "7e119b08f06d0246f70d42884a5207c286dc986f61567ee442ac86001124cee6"
+    },
+    {
+      "path": "guide.css",
+      "matches": true,
+      "bytes": 2238,
+      "sha256": "37a9716e4f61590d9a7d21d2834b8b95f140e9a5a2e281d841324d515dd74ec5"
+    },
+    {
+      "path": "rtoc_scene3d.js",
+      "matches": true,
+      "bytes": 8379,
+      "sha256": "d2ec7e3d64ceec98fbab9a0403501d01f9913848ff8daaa11e168882c5be554b"
+    },
+    {
+      "path": "edmlabel.js",
+      "matches": true,
+      "bytes": 6075,
+      "sha256": "0c7b3bb96b16d2ddfa48dd01eaaef2d13491aeea744e537c314759ae77074069"
+    },
+    {
+      "path": "fluidsui.js",
+      "matches": true,
+      "bytes": 18949,
+      "sha256": "92f3fa3f28e09ced79061c0a025b3c4f4897ba91e1a0354369ae37c187384288"
+    },
+    {
+      "path": "ui.js",
+      "matches": false,
+      "bytes": 23792,
+      "sha256": "aca1e825b8b9ea718bcc637a41e97c5c09810d448fc22f5a07e20c541187e31a"
+    },
+    {
+      "path": "mobile.js",
+      "matches": false,
+      "bytes": 5934,
+      "sha256": "8a3083b2a0269598768e88c6447ed24387f75479bd0a9b0892548fab55e65db8"
+    },
+    {
+      "path": "ddmotor.js",
+      "matches": true,
+      "bytes": 8629,
+      "sha256": "d55b7ba078ada6471067b995306277856d8745b30688f746ddd60284dc2372aa"
+    },
+    {
+      "path": "fluid3d.js",
+      "matches": true,
+      "bytes": 2513,
+      "sha256": "db250c3448a56c6bbab56dcffa01fc155d3013bccb887999c7a16546d82551a5"
+    },
+    {
+      "path": "rigbuilder.js",
+      "matches": false,
+      "bytes": 30271,
+      "sha256": "c4142940433920bcaa0c657625d17215a0ef83cb8874072febf558eb45b11498"
+    },
+    {
+      "path": "dropz_boot.js",
+      "matches": false,
+      "bytes": 4283,
+      "sha256": "753c8edebc24815c78d2af5995c0b8f699d322efb21c400e4c0d1e5a9ca67ef5"
+    },
+    {
+      "path": "ext2.js",
+      "matches": true,
+      "bytes": 46297,
+      "sha256": "c448e62dcdee0e0107b59698a1d89984e3fa3a5f8ef71fd3cfb1f4862f4d52eb"
+    },
+    {
+      "path": "ac.js",
+      "matches": true,
+      "bytes": 2382,
+      "sha256": "1e9ac63852a97c0d47148f3a960c48ab5ba0fe96f0a1bb8e93594fa071eec38d"
+    },
+    {
+      "path": "operations_data.js",
+      "matches": false,
+      "bytes": 17232,
+      "sha256": "b9c9708b1e83ad70e136fcd69f2f531ad4dda67853d5b05e1bb07b5d762e9ba6"
+    },
+    {
+      "path": "ext6.js",
+      "matches": true,
+      "bytes": 12582,
+      "sha256": "4b05d8298edb04d33f9d4821e2eef091ce7479e8cc11b57cfe5314897649f7bc"
+    },
+    {
+      "path": "fraceng.js",
+      "matches": true,
+      "bytes": 9912,
+      "sha256": "28050f836f7d5c3c7e3960501544f7634742f0f0c88c31a32c7158d094252cac"
+    },
+    {
+      "path": "woeng3.js",
+      "matches": true,
+      "bytes": 6537,
+      "sha256": "3d075f037cfc6b66017f1a367789bc9fd1cd740583ef7599a21c33b1caca9cca"
+    },
+    {
+      "path": "broomstick.js",
+      "matches": true,
+      "bytes": 8192,
+      "sha256": "7aea22df72779c9f1f4ed6f3e06996a2bd4d92dd159f693d43a3fafd3df1e26f"
+    },
+    {
+      "path": "showroomc.js",
+      "matches": true,
+      "bytes": 40542,
+      "sha256": "18fd741011490a5ee8544c0e4615c5b889dfdb292730e2499541df506520b349"
+    },
+    {
+      "path": "srperf.js",
+      "matches": true,
+      "bytes": 3930,
+      "sha256": "7b0e1510eeb2daeec739ad300bb2cc6898757c90013f90a4dfab6af0fdcd27b6"
+    },
+    {
+      "path": "cement.js",
+      "matches": true,
+      "bytes": 8862,
+      "sha256": "c11a8ebdede026bd358d9adfdec07e0328a1f1277f6b411d6c307de0fc40975a"
+    },
+    {
+      "path": "input.js",
+      "matches": true,
+      "bytes": 7661,
+      "sha256": "0441a72d1fab2ca4b1def222369d58f9b6ce830be93426f19a0480bd88c845f0"
+    },
+    {
+      "path": "edmgeo.js",
+      "matches": true,
+      "bytes": 6095,
+      "sha256": "556c57a57c79a6408095b13c1fb37022ea575c2f5b5a6f8f5e574dbe4b3db200"
+    },
+    {
+      "path": "slips.js",
+      "matches": true,
+      "bytes": 6021,
+      "sha256": "2c712212034859a22ef0561244147585d33be7a74fb6fe380dc555df67f96fb0"
+    },
+    {
+      "path": "showroomb.js",
+      "matches": true,
+      "bytes": 49508,
+      "sha256": "eb78e4310230a0c3487d586f90d7f7f0c10603c6d4fe501a960711935cd0f103"
+    },
+    {
+      "path": "ext5.js",
+      "matches": true,
+      "bytes": 22215,
+      "sha256": "6e270d73df7308ded5f8c9e66796cb590d5e64478d47350f490a3c9653c58ff9"
+    },
+    {
+      "path": "rig.js",
+      "matches": true,
+      "bytes": 12862,
+      "sha256": "607a882a164e317e1448d0a427fb4cb027c7b232a9f8d1cabb58b06b6b16c294"
+    },
+    {
+      "path": "ext13.js",
+      "matches": true,
+      "bytes": 16343,
+      "sha256": "6b62ba0a68a9e85175a8b592b9d425819d581ebd20a9e4d76be32977ba09fb07"
+    },
+    {
+      "path": "edmmap.js",
+      "matches": true,
+      "bytes": 56100,
+      "sha256": "2acc5595b24fb08e3d35597ad5451e09a2f2f4d4095f84a1bfd9a7835fd435e3"
+    },
+    {
+      "path": "ext12.js",
+      "matches": true,
+      "bytes": 31228,
+      "sha256": "6063272812ddfbcbf4ae2b5625712c811aa24eeaaeac9a64066e70d454e39221"
+    },
+    {
+      "path": "cemeval.js",
+      "matches": true,
+      "bytes": 9152,
+      "sha256": "ea60080c86d8104bb440b7be229d0892a622914e0cc06d5c42343840410a1902"
+    },
+    {
+      "path": "fluids.js",
+      "matches": true,
+      "bytes": 12274,
+      "sha256": "e549112ee0b5a2aca738fb83a12f0015f8484b6bcfaa4668aafa2429733302e3"
+    },
+    {
+      "path": "geo.js",
+      "matches": true,
+      "bytes": 11665,
+      "sha256": "a2f198a953eeaded435880e1ce45fa0ec8dc90c1b3185d62764ee26e43986f12"
+    },
+    {
+      "path": "sitesync.js",
+      "matches": true,
+      "bytes": 10102,
+      "sha256": "501fcbedf85a7b00c02353929545c480ee8e3dd1e23a4cf13adbf33bc2460d52"
+    },
+    {
+      "path": "showroom.js",
+      "matches": true,
+      "bytes": 41434,
+      "sha256": "cd4a3ac43cf52f2b441bd131afde32d6ee963173a794fb5b7751b2385782b58b"
+    },
+    {
+      "path": "ext10.js",
+      "matches": true,
+      "bytes": 7856,
+      "sha256": "1755a7c3e3650d59aa8abc6ca93d29a15aabcdcbd0303963ed4c207e3e0bade6"
+    },
+    {
+      "path": "geosteer.js",
+      "matches": true,
+      "bytes": 12241,
+      "sha256": "d4f9a02b54007d15d7ec19b13a314b11011c9b2f17a97766e2d9a5f5a751b445"
+    },
+    {
+      "path": "edm.js",
+      "matches": true,
+      "bytes": 8471,
+      "sha256": "55c3a5cbbcc518e0cce8b69c83a062b28ad1f8643dd1ec358d5fd02fdd41d289"
+    }
+  ],
+  "scope": "143 root static frontend files from production baseline; not a complete deploy inventory. Production switching is outside this PR.",
+  "newWorkspaceEntries": [
+    {
+      "path": "ops.html",
+      "sourceSha256": "677b0fdd86fceb353dff0d6a88b7033f1349acaec7b9db50e674f4481497677b"
+    },
+    {
+      "path": "wellplan.html",
+      "sourceSha256": "5bed90128bb8e6bf8e1d1def57a6fefbd7895a00f4aec6b57759147028fdd7a0"
+    },
+    {
+      "path": "live_status.mjs",
+      "sourceSha256": "43f502a4e6cba8591b5a559105f0a772b413fe42380e869129e7d51d0c6ad067"
+    }
+  ]
+}

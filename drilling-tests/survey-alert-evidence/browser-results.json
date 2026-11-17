@@ -1,0 +1,37 @@
+{
+  "mode": "Actual Ops source and parsers, local SIM transport and static fixtures only. No external network or real credentials.",
+  "results": [
+    {
+      "width": 1920,
+      "checks": [
+        "first history quiet",
+        "new WITSML survey pulses green",
+        "focus preserved",
+        "dismiss and duplicate suppression",
+        "new report through existing loader callback",
+        "generated-file metadata quiet",
+        "old well response ignored",
+        "reduced motion",
+        "fits viewport"
+      ],
+      "errors": [],
+      "external": []
+    },
+    {
+      "width": 390,
+      "checks": [
+        "first history quiet",
+        "new WITSML survey pulses green",
+        "focus preserved",
+        "dismiss and duplicate suppression",
+        "new report through existing loader callback",
+        "generated-file metadata quiet",
+        "old well response ignored",
+        "reduced motion",
+        "fits viewport"
+      ],
+      "errors": [],
+      "external": []
+    }
+  ]
+}

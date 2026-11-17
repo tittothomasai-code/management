@@ -2,6 +2,7 @@
 // the user's own saved connection, sequential polite queries (header-only / id-only first, small delay, in-memory cache), stop on 401.
 // Unsupported object types or errors are recorded per row and are NOT an error state. Server data is tagged LIVE (SIM-TEST on the simulated store).
 import * as AC from './ac.js?v=fp-ops-r2-20261108';
+import {scopeWmlXml} from './wwell.js?v=whole-history-r1';
 export const TYPES=['trajectory','log','mudLog','formationMarker','bhaRun','tubular','rig','wbGeometry','fluidsReport','opsReport','message','risk','cementJob','attachment'];
 const GROW={trajectory:1,log:1,mudLog:1};// header-only is defined for growing objects; the rest are listed id-only + a few fields
 const FIELDS={formationMarker:'<name/><mdTopSample uom=""/>',bhaRun:'<name/><dTimStart/><dTimStop/><numBitRun/>',tubular:'<name/><typeTubularAssy/>',rig:'<name/><typeRig/><owner/>',
@@ -27,19 +28,19 @@ export function summarise(t,d){const k=(n,x)=>[...n.getElementsByTagNameNS('*',x
  return {n:objs.length,objs,mdMin:md.length?Math.min(...md):null,mdMax:md.length?Math.max(...md):null,last:ts.at(-1)||''}}
 const unsupported=e=>/-4(05|24|25|60|65)|not support|unsupported|not implemented/i.test((e.result??'')+' '+(e.supp||'')+' '+e.message);
 // main: inventory of one well (all wellbores x all types). onRow(row) for progressive UI.
-export async function inventory(well,{delayMs=150,onRow,force}={}){const key=X().CFG.url+'|'+well;if(!force&&cache.has(key))return cache.get(key);
+export async function inventory(well,{delayMs=1150,onRow,force}={}){const key=X().CFG.url+'|'+well;if(!force&&cache.has(key))return cache.get(key);
  const I={well,tag:tagOf(),started:new Date().toISOString(),cap:null,capNote:'',wellbores:[],rows:[],calls:0,stopped:''};
- try{const g=await X().callRetry('WMLS_GetCap','','','dataVersion=1.4.1.1');I.calls++;I.cap=parseCap(X().normXml(g.xml||''));I.capNote=I.cap?I.cap.size+' object types advertised':'GetCap gave no object list (trying all)'}catch(e){if(e.auth||X().WML.authDead){I.stopped='auth failure (401) — stopped';return I}I.capNote='GetCap failed ('+e.message+') — trying all'}
- try{I.wellbores=await X().listWellbores(well);I.calls++}catch(e){if(e.auth||X().WML.authDead){I.stopped='auth failure (401) — stopped';return I}I.stopped='wellbore list failed: '+e.message;return I}
+ try{const g=await X().callRetry('WMLS_GetCap','','','dataVersion=1.4.1.1');I.calls++;I.cap=parseCap(X().normXml(g.xml||''));I.capNote=I.cap?I.cap.size+' object types advertised':'GetCap gave no object list (trying all)'}catch(e){if(e.auth||e.guardRefusal||e.closed||X().WML.authDead){I.stopped=e.guardRefusal||e.closed?'proxy safety refusal — stopped':'auth failure (401) — stopped';return I}I.capNote='GetCap failed — trying all'}
+ try{I.wellbores=await X().listWellbores(well);I.calls++}catch(e){if(e.auth||e.guardRefusal||e.closed||X().WML.authDead){I.stopped=e.guardRefusal||e.closed?'proxy safety refusal — stopped':'auth failure (401) — stopped';return I}I.stopped='wellbore list failed';return I}
  for(const b of I.wellbores)for(const t of TYPES){if(X().WML.authDead){I.stopped='auth failure (401) — stopped';return I}
   const row={wb:b.uid,wbName:b.name,type:t,n:0,state:'',tag:I.tag};
   if(I.cap&&!I.cap.has(t)){row.state='not supported by server (GetCap)';I.rows.push(row);onRow?.(row,I);continue}
-  const [q,o]=qOf(t,well,b.uid);try{const j=await X().callRetry('WMLS_GetFromStore',t,q,o);I.calls++;const s=summarise(t,X().xml(X().normXml(j.xml||'')));Object.assign(row,s,{state:s.n?'ok':'none'})}
-  catch(e){I.calls++;if(e.auth||X().WML.authDead){I.stopped='auth failure (401) — stopped';row.state='stopped';I.rows.push(row);return I}row.state=unsupported(e)?'not supported by server':'skipped ('+String(e.message).slice(0,60)+')'}
+  const [q,o]=qOf(t,well,b.uid);try{const j=await X().callRetry('WMLS_GetFromStore',t,q,o);I.calls++;const xml=scopeWmlXml(X().normXml(j.xml||''),t,{well,bore:b.uid});const s=summarise(t,X().xml(xml));Object.assign(row,s,{state:s.n?'ok':'none'})}
+  catch(e){I.calls++;if(e.auth||e.guardRefusal||e.closed||X().WML.authDead){I.stopped=e.guardRefusal||e.closed?'proxy safety refusal — stopped':'auth failure (401) — stopped';row.state='stopped';I.rows.push(row);return I}row.state=unsupported(e)?'not supported by server':'skipped (read failed)'}
   I.rows.push(row);onRow?.(row,I);if(delayMs)await sleep(delayMs)}
- I.done=new Date().toISOString();cache.set(key,I);return I}
+ I.unhandledTypes=I.cap?[...I.cap].filter(t=>!TYPES.includes(t)):[];I.done=new Date().toISOString();cache.set(key,I);return I}
 // ---- use the data (full fetch of ONE small object, on demand) ----
-async function getAll(t,w,b,uid){const ns=X().NS,xa=X().xa;const j=await X().callRetry('WMLS_GetFromStore',t,`<${t}s ${ns}><${t} uidWell="${xa(w)}" uidWellbore="${xa(b)}" uid="${xa(uid)}"/></${t}s>`,'returnElements=all');return X().xml(X().normXml(j.xml||''))}
+async function getAll(t,w,b,uid){const ns=X().NS,xa=X().xa;const j=await X().callRetry('WMLS_GetFromStore',t,`<${t}s ${ns}><${t} uidWell="${xa(w)}" uidWellbore="${xa(b)}" uid="${xa(uid)}"/></${t}s>`,'returnElements=all');return X().xml(scopeWmlXml(X().normXml(j.xml||''),t,{well:w,bore:b,uid}))}
 export function parseCasing(d){const k=(n,x)=>[...n.getElementsByTagNameNS('*',x)],tx=(n,x)=>k(n,x)[0]?.textContent.trim()||'';const len=(n,x)=>L(k(n,x)[0]);
  const IN={in:0.0254,m:1,mm:0.001,cm:0.01,ft:M};const dia=(n,x)=>{const e=k(n,x)[0];if(!e)return null;const v=parseFloat(e.textContent);return isFinite(v)?v*(IN[(e.getAttribute('uom')||'in').toLowerCase()]??0.0254):null};
  return k(d,'wbGeometrySection').map(s=>({type:tx(s,'typeHoleCasing'),top:len(s,'mdTop'),bot:len(s,'mdBottom'),id:dia(s,'idSection'),od:dia(s,'odSection'),grade:tx(s,'grade')})).sort((a,b)=>(a.top??0)-(b.top??0))}

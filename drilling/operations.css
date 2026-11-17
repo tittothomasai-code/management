@@ -110,3 +110,112 @@
 
 /* PR12 phone wrap, preserving PR11 native dock rules. */
 @media (max-width:620px){#dwOperations .ops-header .ops-flex{flex-wrap:wrap;gap:6px;max-width:100%}#dwOperations .ops-badge{white-space:normal;flex:1 1 100%}#dwOperations #opsSourceTime{white-space:normal;overflow-wrap:anywhere}}
+
+/* Read-only control room. The trajectory gets the primary visual area. */
+#dwOperations {
+  --line:#33495e; --dim:#b4c6d7;
+  background:#071019; padding-inline:max(8px,env(safe-area-inset-left),env(safe-area-inset-right));
+}
+#dwOperations .ops-header {min-height:47px; gap:8px; margin-bottom:7px}
+#dwOperations .ops-meta {font-weight:700;color:#e4f1ff}
+#dwOperations .ops-panel {background:linear-gradient(145deg,#10202f,#0a1521 88%)}
+#dwOperations .ops-grid {gap:7px}
+#dwOperations .ops-center {grid-template-rows:auto minmax(310px,49vh) auto}
+#dwOperations .ops-stage {background:radial-gradient(ellipse at 32% 17%,#1b4163,#0a1d31 66%,#060e17)}
+#dwOperations .ops-tabs {top:9px;left:10px}
+#dwOperations .ops-tabs button {min-height:32px;padding-inline:13px}
+#dwOperations .ops-empty-view {font-size:14px;font-weight:600}
+#dwOperations .ops-stage canvas {position:absolute;inset:0}
+#dwOperations .ops-progress .ops-flex > strong:first-child {text-transform:uppercase}
+#dwOperations .ops-progress .ops-flex > strong + strong {border-left:1px solid var(--line);padding-left:10px}
+#dwOperations .ops-readonly {font-size:11px;font-weight:800;letter-spacing:.04em;color:#89d4ff;border:1px solid #31536c;border-radius:4px;padding:3px 7px}
+#dwOperations .ops-commands .ops-muted {flex:1;min-width:160px;text-align:right}
+#dwOperations .ops-tracks .ops-muted {padding:0 9px}
+#dwOperations .ops-badge[data-live="true"] {background:#09332a}
+@media(max-width:620px) {
+  #dwOperations .ops-center {grid-template-rows:auto minmax(270px,39vh) auto}
+  #dwOperations .ops-tabs {gap:4px;left:6px;right:6px}
+  #dwOperations .ops-tabs button {padding-inline:7px;min-height:38px}
+  #dwOperations .ops-commands .ops-muted {text-align:left}
+  #dwOperations .ops-header button {min-height:42px}
+  #dwOperations .ops-progress strong {white-space:normal}
+}
+#dwOperations #opsWitsmlDock :is(#wsim,#wrbox,div:has(> #wrep),div:has(> label > #wlmc)) {display:none!important}
+
+#dwOperations .ops-stage [hidden] {display:none}
+#dwOperations .ops-dls {position:absolute;inset:51px 9px 8px;display:grid;grid-template-rows:auto minmax(0,1fr)}
+#dwOperations .ops-dls canvas {position:static;touch-action:auto;cursor:default}
+#dwOperations .ops-fallback {position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
+#dwOperations .ops-fallback text {font-family:system-ui,sans-serif;letter-spacing:.035em}
+#dwOperations .ops-fallback[hidden] {display:none}
+#dwOperations #opsTrackWindow {padding-bottom:0}
+
+/* Control-room presentation: dense, legible status panels with an explicit
+   mode switch. Demo mode has a persistent amber training treatment. */
+#dwOperations {--cyan:#22d5ff;--line:#344b61;--dim:#aebfd0;background:radial-gradient(ellipse at 50% -24%,#183147,#050b12 68%)}
+#dwOperations .ops-shell {max-width:1920px}
+#dwOperations .ops-header {min-height:45px;border-bottom-color:#30485d}
+#dwOperations .ops-mode {display:flex;border:1px solid #35536a;border-radius:5px;overflow:hidden;background:#091522}
+#dwOperations .ops-mode button {border:0;border-radius:0;min-height:30px;padding:5px 10px;font-size:11px;letter-spacing:.06em}
+#dwOperations .ops-mode button[aria-pressed=true] {background:#075580;color:#fff;box-shadow:inset 0 -2px var(--cyan)}
+#dwOperations #opsHistoryMode[aria-pressed=true] {background:#385574;color:#e8f4ff;box-shadow:inset 0 -2px #8ed5ff}
+#dwOperations #opsDemoMode[aria-pressed=true] {background:#8b5513;color:#fff0cf;box-shadow:inset 0 -2px #ffc24d}
+#dwOperations .ops-badge {letter-spacing:.045em}
+#dwOperations .ops-badge[data-demo=true] {color:#ffd477;border-color:#a77736;background:#33240d}
+#dwOperations .ops-badge[data-history=true] {color:#bde0ff;border-color:#6283a0;background:#172b3d}
+#dwOperations .ops-grid {grid-template-columns:minmax(205px,.205fr) minmax(480px,.59fr) minmax(260px,.235fr);gap:7px}
+#dwOperations .ops-center {grid-template-rows:auto minmax(360px,49vh) auto}
+#dwOperations .ops-stage {border-radius:7px;box-shadow:inset 0 0 36px #17314966}
+#dwOperations .ops-panel {border-radius:6px;box-shadow:0 5px 16px #0003}
+#dwOperations .ops-heading {padding:8px 10px}
+#dwOperations .ops-progress {padding:11px 13px}
+#dwOperations .ops-progress .ops-flex:first-child {min-height:28px}
+#dwOperations .ops-progress .ops-flex > strong:first-child {font-size:clamp(17px,1.8vw,24px)}
+#dwOperations .ops-progress .ops-pct {color:#26e5f3;text-shadow:0 0 14px #11d2e966}
+#dwOperations .ops-bar {height:24px;border-radius:4px}
+#dwOperations .ops-list li {padding:7px 10px}
+#dwOperations .ops-joint-find {width:calc(100% - 18px);margin:7px 9px 3px;padding:7px 8px;color:#eaf4ff;background:#091522;border:1px solid #35536a;border-radius:4px;font:inherit}
+#dwOperations .ops-joint-count {padding:2px 9px 5px}
+#dwOperations .ops-joint-pick {display:flex;justify-content:space-between;width:100%;min-height:0;padding:0;border:0;background:transparent;text-align:left;color:#dceeff;font:inherit}
+#dwOperations .ops-joint-pick:hover {background:transparent;color:#fff}
+#dwOperations .ops-joint-pick b {font-weight:750}
+#dwOperations .ops-right {grid-template-rows:auto auto 1fr}
+#dwOperations .ops-radar {grid-template-columns:minmax(112px,1fr) minmax(94px,.8fr);padding:8px 12px}
+#dwOperations .ops-radar svg {max-height:160px}
+#dwOperations .ops-log {margin-top:7px}
+#dwOperations .ops-log canvas {height:64px}
+#dwOperations .ops-tracks {gap:7px}
+#dwOperations .ops-tracks .ops-panel {background:linear-gradient(160deg,#0e2030,#09131f)}
+#dwOperations .ops-tracks canvas {height:102px}
+#dwOperations .ops-footer {border-top:1px solid #1c3042;margin-top:3px;letter-spacing:.03em}
+#dwOperations .ops-summary {margin-top:14px;padding-top:10px;border-top:1px solid #30465a}
+#dwOperations .ops-summary h2 {font-size:13px;margin:0}
+#dwOperations .ops-summary .ops-flex {align-items:center;justify-content:space-between;gap:6px}
+#dwOperations .ops-summary button {background:#10384b;color:#dff5ff;border:1px solid #2382a8;border-radius:6px;padding:5px 8px;font:600 11px system-ui;cursor:pointer}
+#dwOperations .ops-summary button:disabled {opacity:.45;cursor:default}
+#dwOperations .ops-summary-metrics {display:grid;grid-template-columns:1fr 1fr;gap:5px;margin:8px 0}
+#dwOperations .ops-summary-metric {min-width:0;border:1px solid #23394b;border-radius:5px;background:#0c1823;padding:6px}
+#dwOperations .ops-summary-metric b,#dwOperations .ops-summary-metric span {display:block}
+#dwOperations .ops-summary-metric b {font-size:9px;color:#9bb3c5;text-transform:uppercase;letter-spacing:.04em}
+#dwOperations .ops-summary-metric span {font-size:12px;font-weight:700;color:#e6f5ff;margin-top:3px;overflow-wrap:anywhere}
+#dwOperations .ops-summary-facts {padding-left:23px;margin:8px 0;font-size:11px;line-height:1.4}
+#dwOperations .ops-summary-facts li {padding:3px 0 3px 2px}
+#dwOperations .ops-summary-facts li::marker {color:#56cfff;font-weight:700}
+#dwOperations .ops-summary-branches {border-top:1px solid #263c4d;padding-top:6px;margin-top:8px;font-size:10px;line-height:1.4;color:#c5d8e6;overflow-wrap:anywhere}
+#dwOperations .ops-summary-branches h3 {font-size:11px;margin:4px 0;color:#e5f4ff}
+#dwOperations .ops-summary-branches p {margin:4px 0}
+#dwOperations .ops-summary .ops-note {font-size:10px;line-height:1.35;color:#d4bd8c}
+@media (max-width:1100px) {
+  #dwOperations .ops-grid {grid-template-columns:minmax(165px,.25fr) minmax(0,1fr)}
+  #dwOperations .ops-center {grid-template-rows:auto minmax(330px,48vh) auto}
+}
+@media (max-width:620px) {
+  #dwOperations .ops-grid {grid-template-columns:minmax(0,1fr)}
+  #dwOperations .ops-center {grid-template-rows:auto minmax(290px,43vh) auto}
+  #dwOperations .ops-header .ops-flex {align-items:stretch}
+  #dwOperations .ops-header .ops-mode {flex:0 0 auto}
+  #dwOperations #opsHistoryLoad {flex:1 1 auto}
+  #dwOperations .ops-badge[data-demo=true] {flex:1 1 auto;white-space:nowrap}
+  #dwOperations .ops-progress .ops-flex:first-child {gap:6px}
+  #dwOperations .ops-progress .ops-flex > strong + strong {padding-left:6px}
+}

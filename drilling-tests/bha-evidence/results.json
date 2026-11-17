@@ -1,0 +1,17 @@
+{
+  "checks": [
+    "example renders twelve correctly ordered components and an editable report table",
+    "editable dimensions accept fractions and update the physical assembly length",
+    "invalid edits remain visible and block saving until corrected",
+    "desktop drag reorder moves serial and entered data with the model and recalculates the tally",
+    "true-scale connection close-up, motor internals and separate-tools views",
+    "versioned save reuses the shared library and keeps entered well and motor report data",
+    "JSON, spreadsheet-ready CSV and printable PDF report retain current order, values and units",
+    "saved assembly and report values survive reload",
+    "phone touch drag reorders the assembly without losing rows",
+    "phone library, component detail and add controls fit the screen"
+  ],
+  "errors": [],
+  "external": [],
+  "renderer": "Software WebGL. Phone viewport and touch emulation, not physical hardware."
+}

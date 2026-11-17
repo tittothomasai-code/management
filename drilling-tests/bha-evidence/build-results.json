@@ -1,0 +1,16 @@
+{
+  "fullBuild": {
+    "command": "ROBOTYX_CHROMIUM_PATH=/usr/bin/chromium npm run build",
+    "exitCode": 0,
+    "tests": 2771,
+    "passed": 2768,
+    "skipped": 3,
+    "failed": 0
+  },
+  "focusedGeometryDataTests": 8,
+  "workflowBrowserChecks": 10,
+  "hostBrowserChecks": 9,
+  "contextBrowserChecks": 4,
+  "planBeforeDrillMenuChecks": 2,
+  "renderer": "Software WebGL. Phone viewport/touch emulation, not physical hardware."
+}

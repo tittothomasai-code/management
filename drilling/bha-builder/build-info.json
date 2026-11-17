@@ -1,0 +1,10 @@
+{
+  "version": "1.0.2",
+  "source": "SIMULATED",
+  "store": "robotyx.demo.bha-library.v1",
+  "units": {
+    "length": "m",
+    "diameter": "in"
+  },
+  "sourceHead": "3ee30fcfa88a2f365ee196a5fe1066e7251a3c97"
+}

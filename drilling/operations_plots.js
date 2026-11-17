@@ -29,9 +29,9 @@ export function chart(canvas, track, rows, start, end, axis) {
   }
   c.fillStyle = textColor;
   c.textAlign = 'center';
-  c.fillText(axis === 'depth' ? 'MD (m)' : 'Time window', w / 2, h - 3);
+  c.fillText(axis === 'depth' ? 'Hole MD (m)' : 'Time window', w / 2, h - 3);
   if (Number.isFinite(start) && end > start) {
-    const axisLabel = x => axis === 'depth' ? num(x,1) : new Date(x * 1000).toISOString().slice(11,16);
+    const axisLabel = x => axis === 'depth' ? num(x,2) : new Date(x * 1000).toISOString().slice(11,16);
     if (axis !== 'simtime') {
       c.fillText(axisLabel(start), left + 1, h - 3);
       c.fillText(axisLabel(end), right, h - 3);
@@ -68,7 +68,43 @@ export function chart(canvas, track, rows, start, end, axis) {
   }
 }
 
-export function imageLog(canvas, rows, start, end, bit, hole) {
+export function doglegChart(canvas, intervals) {
+  const p = context(canvas);
+  if (!p || !intervals.length) return;
+  const {c,w,h} = p;
+  const start = intervals[0].start, end = intervals.at(-1).end;
+  const left = 42, right = w - 14, top = 20, bottom = h - 40;
+  if (right <= left || bottom <= top) return;
+  const max = Math.max(.1,...intervals.map(row => row.dls));
+  const x = md => left + (md-start) / (end-start) * (right-left);
+  const y = value => bottom - value/max * (bottom-top);
+
+  c.fillStyle = textColor;
+  c.strokeStyle = '#2d4960';
+  c.textAlign = 'left';
+  c.fillText('DLS (°/30 m)',left,11);
+  for (let i = 0; i <= 4; i++) {
+    const value = max*i/4, py = y(value);
+    c.fillText(num(value,2),3,py+3);
+    c.beginPath(); c.moveTo(left,py); c.lineTo(right,py); c.stroke();
+  }
+  for (let i = 0, n = w < 500 ? 2 : 5; i <= n; i++) {
+    const md = start + (end-start)*i/n;
+    c.textAlign = i === 0 ? 'left' : i === n ? 'right' : 'center';
+    c.fillText(num(md,2),x(md),bottom+16);
+  }
+  c.textAlign = 'center';
+  c.fillText('Absolute survey MD (m)',(left+right)/2,h-6);
+
+  c.lineWidth = 3;
+  c.strokeStyle = colors[0];
+  for (const interval of intervals) {
+    const py = y(interval.dls);
+    c.beginPath(); c.moveTo(x(interval.start),py); c.lineTo(x(interval.end),py); c.stroke();
+  }
+}
+
+export function imageLog(canvas, rows, start, end) {
   const p = context(canvas);
   if (!p) return;
   const {c,w,h} = p;
@@ -76,7 +112,7 @@ export function imageLog(canvas, rows, start, end, bit, hole) {
   c.fillStyle = '#0a1421'; c.fillRect(x0, 1, width, bottom);
   if (!(end > start) || !rows.length) {
     c.fillStyle = textColor; c.textAlign = 'center';
-    c.fillText('No depth-aligned image bins for this interval', w / 2, 24);
+    c.fillText('No source-indexed image bins', w / 2, 24);
     return;
   }
   const vals = rows.flatMap(r => r.v.filter(Number.isFinite));
@@ -84,7 +120,7 @@ export function imageLog(canvas, rows, start, end, bit, hole) {
   const span = end - start, x = d => x0 + width * (d - start) / span;
   const steps = rows.slice(1).map((r,i) => r.md - rows[i].md).filter(s => s > 0).sort((a,b) => a-b);
   const step = steps[Math.floor(steps.length / 2)] || Math.min(.15,span);
-  c.save(); c.beginPath(); c.rect(x0, 1, Math.max(0,x(Math.min(end,hole))-x0), bottom); c.clip();
+  c.save(); c.beginPath(); c.rect(x0, 1, width, bottom); c.clip();
   rows.forEach((r,i) => {
     const col = x(r.md);
     const next = rows[i + 1]?.md ?? r.md + step;
@@ -96,9 +132,6 @@ export function imageLog(canvas, rows, start, end, bit, hole) {
     });
   });
   c.restore();
-  if (Number.isFinite(bit) && bit >= start && bit <= end) {
-    c.fillStyle = colors[0]; c.fillRect(x(bit) - .75, 1, 1.5, bottom);
-  }
   c.fillStyle = textColor;
   for (let i = 0, n = w < 540 ? 3 : 7; i <= n; i++) {
     const md = start + span * i / n;

@@ -2,16 +2,17 @@
 // borehole image tracks (unwrapped 0-360°, colour map, sinusoids). Data: WITSML 1.4.1.1 store (via proxy or direct) or SIM.
 // Credentials: held ONLY in this module's memory while the panel is connected. Never written to browser storage (local or session),
 // cookies, URLs, the console or error text. Cleared on Disconnect and on close. SIM data is labelled SIM, never LIVE.
-import * as K from './wdash_core.js?v=fp-ops-r2-20261108';import * as WW from './wwell.js?v=fp-ops-r2-20261108';
+import * as K from './wdash_core.js?v=whole-history-r1';import * as WW from './wwell.js?v=whole-history-r1';import * as WI from './wmlinv.js?v=whole-history-r1';
 const $=id=>document.getElementById(id);
 const HOSTED='https://tryfecta-witsml-proxy.netlify.app/witsml-proxy',LOCAL='http://localhost:8796/soap';
 const NS='xmlns="http://www.witsml.org/schemas/1series" version="1.4.1.1"';
-let CRED=null,TYPED=false;// {user,pass} memory only
-const D={el:null,src:'SIM',mode:'depth',auto:true,top:null,span:{depth:30,time:600},dep:{ml:null,rows:[]},tim:{ml:null,rows:[]},tracks:[],sets:[],P:null,M:null,disc:null,imgs:[],sines:true,timer:0,simMd:1500,simT:0,
+let CRED=null,TYPED=false,priorWitsml=null;// {user,pass} memory only; preserve the app feed when this viewer closes
+const D={el:null,src:'SIM',mode:'depth',auto:true,top:null,span:{depth:30,time:600},dep:{ml:null,rows:[]},tim:{ml:null,rows:[]},tracks:[],sets:[],wbs:[],P:null,M:null,disc:null,imgs:[],sines:true,timer:0,simMd:1500,simT:0,
  conn:{proto:'soap',via:'proxy',proxy:HOSTED,url:'',well:'',wb:'',log:'',logTime:false,connected:false,okAt:0,err:'',sim:false},raf:0};
 export const ST=D;
-const live=()=>D.src=='WITSML'&&D.conn.connected&&!D.conn.sim&&!!D.conn.log&&!!D.P&&Date.now()-D.conn.okAt<120000&&cur().rows.length>0;
-const badge=()=>live()?'LIVE':'SIM';
+// A connected store does not make an archived well live.
+const live=()=>D.src=='WITSML'&&D.conn.connected&&!D.conn.sim&&!!D.conn.log&&D.P?.kind==='realtime'&&Date.now()-D.conn.okAt<120000&&cur().rows.length>0;
+const badge=()=>D.src!=='WITSML'||D.conn.sim?'SIM':live()?'LIVE':D.conn.connected&&D.P?'HISTORY':'SIM';
 const cur=()=>D.mode=='depth'?D.dep:D.tim;
 // ---------- default tracks from available mnemonics ----------
 function defaultTracks(ml){const s=K.findStd(ml),T=[];const c=(k,i)=>{const d=K.STD.find(x=>x[0]==k);return {mn:s[k],min:d[4][0],max:d[4][1],log:!!d[5],color:K.COLORS[i%8]}};
@@ -67,29 +68,29 @@ async function call1(op,wmlType,query,options){const C=D.conn,u=CRED||{user:'',p
   const j=await r.json().catch(()=>null);if(!j)throw NOPRX('proxy answered HTTP '+r.status+(r.status==404?' — check the proxy URL':'')+' (not JSON)');
   const refusal=WW.guardRefusal(j);if(refusal)throw refusal;
   if(j.error){const m=String(j.error);if(/credentials required|Authentication failed/i.test(m))throw AUTH(m);if(/origin not allowed|upstream not allowed|rate limit|upstream (connection|timeout)|TLS/i.test(m))throw NOPRX(m);if(/SOAP fault/i.test(m))throw new Error('Store error ('+m+')');throw new Error('Proxy: '+m)}
-  if(op!='WMLS_GetVersion'&&typeof j.result=='number'&&j.result<0)throw new Error('Store error (result '+j.result+(j.supp?': '+j.supp:'')+')');return {xml:j.xml||'',version:j.version||j.result,result:j.result,supp:j.supp}}
- catch(e){if(e.name=='AbortError')throw Object.assign(new Error('no answer within 45 s'),{timeout:1});if(e instanceof TypeError)throw NOPRX(C.via=='direct'?'browser blocked the request (CORS) or the store is unreachable — use a proxy (see guide)':'cannot reach the proxy (check the proxy URL / network)');if(e.guardRefusal)throw e;throw Object.assign(new Error(K.redact(e.message,[u.user,u.pass])),{auth:e.auth})}
+  if(op!='WMLS_GetVersion'&&typeof j.result=='number'&&j.result<0)throw new Error('Store error (result '+j.result+(j.supp?': '+j.supp:'')+')');C.authDead=false;return {xml:j.xml||'',version:j.version||j.result,result:j.result,supp:j.supp}}
+ catch(e){if(e.auth)C.authDead=true;if(e.name=='AbortError')throw Object.assign(new Error('no answer within 45 s'),{timeout:1});if(e instanceof TypeError)throw NOPRX(C.via=='direct'?'browser blocked the request (CORS) or the store is unreachable — use a proxy (see guide)':'cannot reach the proxy (check the proxy URL / network)');if(e.guardRefusal)throw e;throw Object.assign(new Error(K.redact(e.message,[u.user,u.pass])),{auth:e.auth})}
  finally{clearTimeout(to)}}
 export const ids=(x,t)=>[...String(x).matchAll(new RegExp('<(?:\\w+:)?'+t+'\\b([^>]*?)(?:/>|>([\\s\\S]*?)</(?:\\w+:)?'+t+'>)','g'))].map(m=>({uid:(m[1].match(/\buid="([^"]*)"/)||[])[1],name:(((m[2]||'').match(/<(?:\w+:)?name>([^<]*)</)||[])[1]||'').trim()})).filter(w=>w.uid);
 const IO=WW.makeIO((...a)=>call(...a));const listWbs=IO.listWbs,readLog=s=>IO.readLog(D.conn.well,s);
 async function listWells(){const j=await call('WMLS_GetFromStore','well',`<wells ${NS}><well uid=""><name/></well></wells>`,'returnElements=id-only');return ids(j.xml,'well')}
 // discover EVERY object in the well: all wellbores -> all logs (time+depth, FE, mud, survey logs), trajectories, mudLogs; then read data; live branch selected
 export async function loadWell(well,note=()=>{}){const C=D.conn;const R=await WW.discoverWell(IO,well,note);C.well=well;// shared with the simulator (wwell.js)
- D.sets=R.sets;D.disc=R.disc;select(R.P,true);C.lastPoll=Date.now();saveCfg();return D.disc}
+ D.wellName=$('wdW')?.selectedOptions?.[0]?.textContent||well;D.wbs=R.wbs;D.sets=R.sets;D.disc=R.disc;select(R.P,true);C.lastPoll=Date.now();saveCfg();return D.disc}
 function wbSets(){return D.sets.filter(s=>s.wb==D.P.wb&&s.rows?.length)}
 function rebuild(){if(!D.P)return;const V=WW.buildViews(D.sets,D.P);D.M=V.M;D.dep=V.dep;D.tim=V.tim}
-function select(P,first){D.P=P;Object.assign(D.conn,{wb:P.wb,log:P.uid,logTime:!!P.time});saveCfg();rebuild();D.src='WITSML';if(first||true)D.mode=P.time?'time':'depth';D.top=null;D.auto=true;D.tracks=cur().ml?.length?defaultTracks(cur().ml):[];D.conn.okAt=Date.now();head();render()}
-async function pollLive(){const C=D.conn,P=D.P;if(!C.connected||!P||P.obj!='log'||C.busy)return;C.busy=true;
+function select(P,first){D.P=P;Object.assign(D.conn,{wb:P.wb,log:P.uid,logTime:!!P.time});D.opSet=null;saveCfg();rebuild();D.src='WITSML';if(first||true)D.mode=P.time?'time':'depth';D.top=null;D.auto=true;D.tracks=cur().ml?.length?defaultTracks(cur().ml):[];D.conn.okAt=Date.now();head();render();dispatchEvent(new CustomEvent('witsml:loaded',{detail:{well:D.conn.well,wellName:D.wellName||D.conn.well,wellbore:P.wb,wellboreName:P.wbName||P.wb,log:P.uid,logName:P.name||P.uid,kind:P.kind||'unknown'}}))}
+async function pollLive(){const C=D.conn,P=D.P;if(!C.connected||!P||P.obj!='log'||C.busy||C.historyBusy)return;C.busy=true;
  try{const n=await readLog(P);if(n){const had=cur().ml?.length;rebuild();if(!had||!D.tracks.length)D.tracks=defaultTracks(cur().ml||[])}
   C.okAt=Date.now();C.err='';C.polls=(C.polls||0)+1}catch(e){C.err=e.message;if(e.auth){disconnect('Login refused — polling stopped. Check user name and password.')}else if(e.guardRefusal){C.connected=false;C.okAt=0;head()}}finally{C.busy=false;render()}}
-function disconnect(msg){CRED=null;Object.assign(D.conn,{connected:false,log:'',okAt:0,err:msg||''});D.sets=[];D.P=null;D.M=null;D.disc=null;$('wdSet')&&($('wdSet').style.display='none');['wdUser','wdPass'].forEach(i=>{if($(i))$(i).value=''});D.src='SIM';simInit();D.tracks=defaultTracks(cur().ml);D.top=null;D.auto=true;head();render()}
+function disconnect(msg){CRED=null;Object.assign(D.conn,{connected:false,log:'',okAt:0,err:msg||'',historyBusy:false,authDead:false});D.sets=[];D.wbs=[];D.P=null;D.M=null;D.disc=null;$('wdSet')&&($('wdSet').style.display='none');['wdUser','wdPass'].forEach(i=>{if($(i))$(i).value=''});D.src='SIM';simInit();D.tracks=defaultTracks(cur().ml);D.top=null;D.auto=true;head();render()}
 // ---------- UI ----------
 const CSS=`body.mob #wdash.msheet,body.mob #wdash.mcol,#wdash.msheet{display:flex!important;top:0!important;bottom:0!important;left:0!important;right:0!important;width:auto!important;max-height:none!important;height:auto!important;overflow:hidden!important;border-radius:0!important;z-index:100002!important}body.mob #wdash.msheet::before{display:none!important}
 #wdash{position:fixed;inset:0;z-index:100002;background:#0b1118;color:#dde7f0;font:13px system-ui,-apple-system,Segoe UI,sans-serif;display:flex;flex-direction:column;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
 #wdash .bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:6px 8px;background:#121c27;border-bottom:1px solid #253445}
 #wdash button,#wdash select,#wdash input{font:inherit;background:#1d2a38;color:#dde7f0;border:1px solid #33475c;border-radius:6px;padding:5px 8px;min-height:32px}
 #wdash button.on{background:#2a6db0;border-color:#4b93d8}#wdash .tag{position:static!important;transform:none!important;display:inline-block;margin:0 6px;font-weight:800;letter-spacing:.08em;border-radius:5px;padding:3px 8px;color:#fff}
-#wdash .tag.SIM{background:#8a8f98}#wdash .tag.LIVE{background:#c62828}#wdash h1{font-size:15px;margin:0 6px 0 0}
+#wdash .tag.SIM{background:#8a8f98}#wdash .tag.LIVE{background:#087f8c}#wdash .tag.HISTORY{background:#385574}#wdash h1{font-size:15px;margin:0 6px 0 0}
 #wdash .body{flex:1;position:relative;overflow-x:auto;overflow-y:hidden;touch-action:none}#wdash canvas{display:block}
 #wdash .note{padding:3px 8px;font-size:12px;color:#9fb3c6;background:#0f1822;border-top:1px solid #1e2b39}
 #wdPick,#wdConn{position:absolute;right:8px;top:48px;z-index:3;background:#121c27;border:1px solid #33475c;border-radius:8px;padding:10px;max-height:78vh;overflow:auto;width:min(420px,94vw);box-shadow:0 8px 30px #000a}
@@ -110,12 +111,17 @@ export function open(){if(D.el)return;const st=document.createElement('style');s
  addEventListener('pointermove',D.pm=e=>{if(!drag)return;const dy=e.clientY-drag.y;B.scrollLeft=drag.sl-(e.clientX-drag.x);if(Math.abs(dy)>3){D.auto=false;D.top=drag.top-dy/pxPer();head();render()}});addEventListener('pointerup',D.pu=()=>drag=null);
  B.addEventListener('wheel',e=>{e.preventDefault();if(e.ctrlKey){zoom(e.deltaY>0?1.2:1/1.2);return}D.auto=false;D.top=viewTop()+e.deltaY/pxPer();head();render()},{passive:false});
  addEventListener('resize',D.rs=()=>render());addEventListener('keydown',D.kd=e=>{if(e.key=='Escape'&&D.el){e.stopPropagation();close()}},true);
- D.timer=setInterval(()=>{window.GX=window.GX||{};if(!GX.wdash)GX.wdash={ST:D,open,close,K,render,setMode,loadWell,discText};if(D.src=='SIM')simTick();else if(D.conn.connected&&Date.now()-(D.conn.lastPoll||0)>=10000){D.conn.lastPoll=Date.now();pollLive()}render()},1000);D.livePoll=0;head();render();window.GX=window.GX||{};GX.wdash={ST:D,open,close,K,render,setMode,loadWell,discText};autoReconnect()}
+ D.timer=setInterval(()=>{installOperationsBridge();if(D.src=='SIM')simTick();else if(D.conn.connected&&Date.now()-(D.conn.lastPoll||0)>=10000){D.conn.lastPoll=Date.now();pollLive()}render()},1000);D.livePoll=0;head();render();installOperationsBridge();autoReconnect()}
 export function close(){if(!D.el)return;clearInterval(D.timer);D.el.remove();$('wdashCss')?.remove();D.el=null;removeEventListener('pointermove',D.pm);removeEventListener('pointerup',D.pu);removeEventListener('resize',D.rs);removeEventListener('keydown',D.kd,true);
- if(D.conn.connected)disconnect();CRED=null}
+ if(D.conn.connected)disconnect();CRED=null;if(window.GX?.witsml?.source==='wdash')window.GX.witsml=priorWitsml;priorWitsml=null}
+function operationData(){const P=D.P;if(!P||!P.time||!P.rows?.length)return null;if(D.opSet!==P||D.opRowsSource!==P.rows||D.opRowsLength!==P.rows.length){D.opSet=P;D.opRowsSource=P.rows;D.opRowsLength=P.rows.length;D.opRows=P.rows.map(x=>({t:x[0],x}))}return {src:'live',ml:P.ml,ul:P.ul||[],ix:0,rows:D.opRows}}
+function operationLog(){const P=D.P;if(!P)return null;return {...P,w:D.conn.well,b:P.wb,uid:P.uid,nameWell:D.wellName||D.conn.well,nameWb:P.wbName||P.wb}}
+const operationWML={get log(){return operationLog()},get simulated(){return D.conn.sim},get connected(){return D.conn.connected},get authDead(){return Boolean(D.conn.authDead)},get transportDead(){return false},get mode(){return 'off'},get hist(){return operationData()?.rows||[]},get lastRowMs(){return this.hist.at(-1)?.t},get storeUrl(){return D.conn.url},healthy(){return D.conn.connected&&!D.conn.sim&&D.P?.kind==='realtime'&&Date.now()-D.conn.okAt<120000}};
+const operationCFG={get url(){return D.conn.url},get map(){return {}},get svWell(){return D.conn.well}};
+function installOperationsBridge(){window.GX=window.GX||{};if(!window.GX.witsml||window.GX.witsml.source==='wdash'||D.el){if(window.GX.witsml?.source!=='wdash')priorWitsml=window.GX.witsml||null;window.GX.witsml={WML:operationWML,CFG:operationCFG,data:operationData,wellData:()=>({well:D.conn.well,wellName:D.wellName||D.conn.well,wellbore:D.P?.wb,wellboreName:D.P?.wbName||D.P?.wb,wbs:D.wbs,sets:D.sets,inventory:D.disc}),callRetry:call,normXml:x=>typeof x==='string'?x:(x?.xml||''),xml:x=>new DOMParser().parseFromString(typeof x==='string'?x:(x?.xml||''),'application/xml'),NS:WW.NS,xa:s=>String(s??'').replace(/[&"<>]/g,c=>({'&':'&amp;','"':'&quot;','<':'&lt;','>':'&gt;'}[c])),listWellbores:IO.listWbs,svSimTest:()=>Boolean(D.conn.sim),setHistoryBusy:v=>{D.conn.historyBusy=Boolean(v)},runInventory:async(well,force=false,onProgress)=>{const I=await WI.inventory(well,{delayMs:1150,force,onRow:(row,inventory)=>onProgress?.({type:row.type,wellbore:row.wbName,state:row.state,completed:inventory.rows.length,total:inventory.wellbores.length*WI.TYPES.length})});window.GX.wmlinv=window.GX.wmlinv||{ST:{}};window.GX.wmlinv.ST.I=I;return I},open,isOpen:()=>Boolean(D.el),close,source:'wdash'}}if(!window.GX.wmlinv)window.GX.wmlinv={ST:{I:null},INV:WI,run:(well,force=false)=>window.GX.witsml.runInventory(well,force)};window.GX.wdash={ST:D,open,close,K,render,setMode,loadWell,discText}}
 function setMode(m){D.mode=m;D.top=null;D.auto=true;D.tracks=defaultTracks(cur().ml||[]);head();render()}
 function zoom(f){D.span[D.mode]=Math.min(D.mode=='depth'?2000:86400,Math.max(D.mode=='depth'?2:30,D.span[D.mode]*f));render()}
-function head(){if(!D.el)return;const t=$('wdTag');t.textContent=badge();t.className='tag '+badge();$('wdModeD').classList.toggle('on',D.mode=='depth');$('wdModeT').classList.toggle('on',D.mode=='time');
+function head(){syncGlobalStatus();if(!D.el)return;const t=$('wdTag');t.textContent=badge();t.className='tag '+badge();$('wdModeD').classList.toggle('on',D.mode=='depth');$('wdModeT').classList.toggle('on',D.mode=='time');
  $('wdAuto').classList.toggle('on',D.auto);$('wdSines').classList.toggle('on',D.sines);$('wdConnB').textContent=D.conn.connected?'Store ✓':'Connect…';const S=$('wdSet');if(S){const L=D.sets.filter(s=>s.rows?.length);S.style.display=L.length?'':'none';const k=L.map(s=>s.wb+'|'+s.uid).join();if(S.dataset.k!=k){S.dataset.k=k;S.innerHTML=L.map(s=>`<option value="${s.wb}|${s.uid}">${(s.kind=='realtime'?'● LIVE branch · ':'')+s.wbName+' · '+(s.name||s.uid)+' · '+s.kind+' · '+(s.time?'time':'depth')}</option>`).join('')}if(D.P)S.value=D.P.wb+'|'+D.P.uid}}
 // ---------- drawing ----------
 const HEAD=58,AXW=46;let LAY=[];
@@ -149,12 +155,13 @@ export function render(){if(!D.el)return;const B=$('wdBody'),cv=$('wdCv'),dpr=Ma
  // newest-data marker
  if(lastRow){const yy=y(lastRow[0]);g.strokeStyle='#ffd54f';g.setLineDash([4,3]);g.beginPath();g.moveTo(AXW,yy);g.lineTo(W,yy);g.stroke();g.setLineDash([])}
  const C=D.conn,n=$('wdNote');const lab=badge();
- n.textContent=(lab=='LIVE'?'LIVE · '+C.url.replace(/^https?:\/\//,'').split('/')[0]+' · '+C.log+' · last poll '+new Date(C.okAt).toLocaleTimeString():D.src=='WITSML'?'SIM label · store '+(C.sim?'is a SIMULATED test store':'not returning data yet')+(C.err?' · '+C.err:''):'SIM · simulated well data, not from a rig · Connect… to read a WITSML store')+
+ n.textContent=(lab=='LIVE'?'LIVE · '+C.url.replace(/^https?:\/\//,'').split('/')[0]+' · '+C.log+' · last poll '+new Date(C.okAt).toLocaleTimeString():lab=='HISTORY'?'HISTORICAL WITSML · '+(D.wellName||C.well)+' · '+(D.P?.wbName||C.wb)+' · '+(D.P?.name||C.log):D.src=='WITSML'?'SIM · '+(C.sim?'simulated test store':'store not returning data yet')+(C.err?' · '+C.err:''):'SIM · simulated well data, not from a rig · Connect… to read a WITSML store')+
   (D.P?' · '+mapNote():'')+' · '+(D.mode=='depth'?'depth':'time')+' window '+(D.mode=='depth'?D.span.depth.toFixed(0)+' m':Math.round(D.span.time/60)+' min')+(D.auto?' · following newest':' · paused (Follow to resume)');head()}
 export const discText=d=>`${d.wellbores} wellbores · ${d.logs} logs (${d.time} time, ${d.depth} depth; ${d.realtime} real-time, ${d.fe} FE, ${d.mudlog} mud, ${d.survey} survey) · ${d.trajectories} trajectories · ${d.mudLogs} mudLogs · ${d.withData} with data`+(d.errors?` · ${d.errors} unreadable`:'');
 function mapNote(){const s=cur(),nat=s.ml?Object.values(s.src||{}):[],mp=nat.filter(x=>x.how=='mapped').length;
  const m=D.M?'index map time↔depth via '+D.M.mn+' ('+D.M.from+')':'no time↔depth mapping (no bit/hole depth channel in a time log)';
  return (D.mode=='depth'?'Depth':'Time')+' view · '+(s.ml?s.ml.length-1:0)+' channels ('+mp+' mapped from '+(D.mode=='depth'?'time':'depth')+')'+(s.missing?.length?' · not available in this mode: '+s.missing.join(', '):'')+' · '+m}
+function syncGlobalStatus(){const status=badge(),sim=$('sim'),label=status==='HISTORY'?'HISTORICAL WITSML':status==='LIVE'?'LIVE WITSML':'SIMULATED - not real rig data';if(sim){sim.textContent=label;sim.dataset.source=status==='LIVE'?'witsml-live':status==='HISTORY'?'witsml-history':'sim'}document.title='Drilling World v3 ('+(status==='SIM'?'SIMULATED':label)+')'}
 function fmtN(v){return Math.abs(v)>=1000?(v/1000).toFixed(1)+'k':Math.abs(v)>=10?v.toFixed(0):(+v).toFixed(1)}
 function niceStep(r){const p=10**Math.floor(Math.log10(r||1)),m=r/p;return (m<1.5?1:m<3.5?2:m<7.5?5:10)*p}
 function drawImage(g,t,x,w,H,vis,y,top,bot){const s=cur();const im=D.imgs.find(i=>i.name==t.image)||null;

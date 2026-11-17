@@ -1,0 +1,12 @@
+{
+  "errors": [],
+  "triangles": 53053,
+  "calls": 224,
+  "geometrySource": "bha-builder/pdc-bit.js",
+  "dimensions": {
+    "odIn": 6.125,
+    "lengthM": 0.3
+  },
+  "originalGeometry": true,
+  "renderer": "Chromium software WebGL; original 3D mesh render, not a photograph"
+}

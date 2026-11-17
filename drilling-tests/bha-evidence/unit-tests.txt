@@ -1,0 +1,16 @@
+✔ every tool profile fits the existing shared BHA validation and is an independent instance (10.003374ms)
+✔ reordering moves row identity and report values with the 3D sequence; cumulative lengths recalculate (1.462181ms)
+✔ dimensions, fractions, blanks and invalid changes keep the entered meaning (1.906551ms)
+✔ saved versions reuse the existing library and retain full report metadata without changing prior versions (8.264912ms)
+✔ JSON, CSV and printable report preserve order, blanks and units and escape entered text (33.882171ms)
+✔ all component meshes have finite geometry, true metre envelopes and three viable detail levels (641.110284ms)
+✔ PDC crown has raised curved wings, raked cutter faces and recessed nozzle throats (177.418832ms)
+✔ a longer PDC body preserves the cutting head and extends the physical tally (74.096983ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1293.139733
