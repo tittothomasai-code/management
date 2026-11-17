@@ -1,0 +1,9 @@
+#onSurveyReceived{position:fixed;right:16px;bottom:calc(18px + env(safe-area-inset-bottom));z-index:120000;width:min(360px,calc(100vw - 32px));box-sizing:border-box;padding:16px;background:#103f2e;color:#effff5;border:2px solid #6be8a2;border-radius:10px;font:14px/1.5 system-ui;box-shadow:0 8px 32px #0007}
+#onSurveyReceived[hidden]{display:none!important}
+#onSurveyReceived strong{display:block;font-size:18px;color:#a0ffc4}
+#onSurveyReceived p{margin:8px 0;overflow-wrap:anywhere}
+#onSurveyReceived small{display:block;font-size:12px;color:#d4f5e1}
+#onSurveyReceived button{display:block;margin-top:12px;min-height:44px;padding:8px 16px;border:1px solid #85e9ad;border-radius:6px;background:#155235;color:#fff;font:inherit;cursor:pointer}
+#onSurveyReceived.on-survey-pulse{animation:on-survey-green 1.2s ease-in-out 3}
+@keyframes on-survey-green{50%{background:#176b42;box-shadow:0 0 0 6px #4ce68a40,0 8px 32px #0007}}
+@media(prefers-reduced-motion:reduce){#onSurveyReceived.on-survey-pulse{animation:none}}

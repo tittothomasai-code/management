@@ -93,3 +93,14 @@ permissions, account state or billing. Saved reports use the existing
 accounts or devices. The static GLB bank is supplied for reuse; the editor builds
 parametric geometry locally rather than fetching all GLBs. Sources and licences
 are listed in the module's `RESOURCES.md`.
+
+## Ops survey receipt alerts
+
+Ops now pulses a green card when a new WITSML survey or geosteering report is
+received through its existing read cycle. It then stays visible until dismissed.
+Initial history, repeated polls, backfill and generated-file-only changes are quiet.
+The card shows well/bore, MD, inclination, azimuth and source. Reduced-motion mode
+keeps a steady green card. Existing polling cadence is unchanged. See
+`drilling-tests/SURVEY-ALERT.md` for validation, screenshots and release details.
+The Ops script version change and notification assets must accompany this feature;
+keep the BHA context-launcher tag when updating the current release entry HTML.
