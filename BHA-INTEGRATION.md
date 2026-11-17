@@ -104,3 +104,15 @@ keeps a steady green card. Existing polling cadence is unchanged. See
 `drilling-tests/SURVEY-ALERT.md` for validation, screenshots and release details.
 The Ops script version change and notification assets must accompany this feature;
 keep the BHA context-launcher tag when updating the current release entry HTML.
+
+## Pump activity and picture gallery
+
+Ops includes an original motor/pump/flow graphic. Green ON and stationary OFF
+are inferred only from fresh advancing time-indexed flow samples. Stale, missing
+or depth-indexed readings show UNKNOWN. Individual motor switches are not
+reported. This is an indicator, not a control. The existing time-log read is reused
+without additional WITSML calls. See `drilling-tests/PUMP-GRAPHIC.md`.
+
+The picture scripts produce 32 BHA component sheets with true proportions and
+connection/cutting-face details, plus a downloadable gallery containing the
+Ops states, survey alert, BHA views and earlier field-asset SIM captures.

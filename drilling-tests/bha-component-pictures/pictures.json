@@ -1,0 +1,264 @@
+{
+  "width": 1400,
+  "height": 1000,
+  "renderer": "Chromium software WebGL; genuine model renders, not photographs",
+  "records": [
+    {
+      "kind": "pdc-bit",
+      "name": "PDC bit",
+      "lengthM": 0.3,
+      "odIn": 6.125,
+      "source": "Original BHA procedural geometry",
+      "simulated": true
+    },
+    {
+      "kind": "roller-bit",
+      "name": "Roller-cone bit",
+      "lengthM": 0.28,
+      "odIn": 6.125,
+      "source": "Original BHA procedural geometry",
+      "simulated": true
+    },
+    {
+      "kind": "core-bit",
+      "name": "Core bit",
+      "lengthM": 0.25,
+      "odIn": 6.125,
+      "source": "Original BHA procedural geometry",
+      "simulated": true
+    },
+    {
+      "kind": "near-bit",
+      "name": "Near-bit sub",
+      "lengthM": 0.89,
+      "odIn": 5,
+      "source": "Original BHA procedural geometry",
+      "simulated": true
+    },
+    {
+      "kind": "motor",
+      "name": "Mud motor",
+      "lengthM": 7.48,
+      "odIn": 4.75,
+      "source": "Original BHA procedural geometry",
+      "simulated": true
+    },
+    {
+      "kind": "rss",
+      "name": "Rotary steerable tool",
+      "lengthM": 4,
+      "odIn": 4.75,
+      "source": "Original BHA procedural geometry",
+      "simulated": true
+    },
+    {
+      "kind": "float-sub",
+      "name": "Float valve sub",
+      "lengthM": 0.6,
+      "odIn": 4.75,
+      "source": "Original BHA procedural geometry",
+      "simulated": true
+    },
+    {
+      "kind": "ubho",
+      "name": "Orienting sub",
+      "lengthM": 0.87,
+      "odIn": 4.67,
+      "source": "Original BHA procedural geometry",
+      "simulated": true
+    },
+    {
+      "kind": "pony",
+      "name": "Pony collar",
+      "lengthM": 1.67,
+      "odIn": 4.5625,
+      "source": "Original BHA procedural geometry",
+      "simulated": true
+    },
+    {
+      "kind": "gap-sub",
+      "name": "Gap sub",
+      "lengthM": 1.04,
+      "odIn": 4.75,
+      "source": "Original BHA procedural geometry",
+      "simulated": true
+    },
+    {
+      "kind": "nmdc",
+      "name": "Nonmagnetic drill collar",
+      "lengthM": 5.97,
+      "odIn": 4.6875,
+      "source": "Original BHA procedural geometry",
+      "simulated": true
+    },
+    {
+      "kind": "mwd",
+      "name": "MWD collar",
+      "lengthM": 9.37,
+      "odIn": 4.75,
+      "source": "Original BHA procedural geometry",
+      "simulated": true
+    },
+    {
+      "kind": "mwd-probe",
+      "name": "MWD probe",
+      "lengthM": 3.2,
+      "odIn": 1.875,
+      "source": "Original BHA procedural geometry",
+      "simulated": true
+    },
+    {
+      "kind": "gamma",
+      "name": "Gamma tool",
+      "lengthM": 2,
+      "odIn": 4.75,
+      "source": "Original BHA procedural geometry",
+      "simulated": true
+    },
+    {
+      "kind": "resistivity",
+      "name": "Resistivity tool",
+      "lengthM": 3,
+      "odIn": 4.75,
+      "source": "Original BHA procedural geometry",
+      "simulated": true
+    },
+    {
+      "kind": "density",
+      "name": "Density tool",
+      "lengthM": 3.5,
+      "odIn": 4.75,
+      "source": "Original BHA procedural geometry",
+      "simulated": true
+    },
+    {
+      "kind": "sonic",
+      "name": "Sonic tool",
+      "lengthM": 3.5,
+      "odIn": 4.75,
+      "source": "Original BHA procedural geometry",
+      "simulated": true
+    },
+    {
+      "kind": "stabilizer",
+      "name": "Spiral stabilizer",
+      "lengthM": 1.2,
+      "odIn": 6.05,
+      "source": "Original BHA procedural geometry",
+      "simulated": true
+    },
+    {
+      "kind": "straight-stabilizer",
+      "name": "Straight stabilizer",
+      "lengthM": 1.2,
+      "odIn": 6.05,
+      "source": "Original BHA procedural geometry",
+      "simulated": true
+    },
+    {
+      "kind": "reamer",
+      "name": "Roller reamer",
+      "lengthM": 1.8,
+      "odIn": 6.05,
+      "source": "Original BHA procedural geometry",
+      "simulated": true
+    },
+    {
+      "kind": "hole-opener",
+      "name": "Hole opener",
+      "lengthM": 1.5,
+      "odIn": 8.5,
+      "source": "Original BHA procedural geometry",
+      "simulated": true
+    },
+    {
+      "kind": "crossover",
+      "name": "Crossover sub",
+      "lengthM": 0.61,
+      "odIn": 4.75,
+      "source": "Original BHA procedural geometry",
+      "simulated": true
+    },
+    {
+      "kind": "safety",
+      "name": "Safety joint",
+      "lengthM": 1.01,
+      "odIn": 4.875,
+      "source": "Original BHA procedural geometry",
+      "simulated": true
+    },
+    {
+      "kind": "jar",
+      "name": "Drilling jar",
+      "lengthM": 5.5,
+      "odIn": 4.75,
+      "source": "Original BHA procedural geometry",
+      "simulated": true
+    },
+    {
+      "kind": "shock",
+      "name": "Shock sub",
+      "lengthM": 2,
+      "odIn": 4.75,
+      "source": "Original BHA procedural geometry",
+      "simulated": true
+    },
+    {
+      "kind": "collar",
+      "name": "Drill collar",
+      "lengthM": 9.1,
+      "odIn": 4.75,
+      "source": "Original BHA procedural geometry",
+      "simulated": true
+    },
+    {
+      "kind": "spiral-collar",
+      "name": "Spiral drill collar",
+      "lengthM": 9.1,
+      "odIn": 4.75,
+      "source": "Original BHA procedural geometry",
+      "simulated": true
+    },
+    {
+      "kind": "hwdp",
+      "name": "Heavyweight drill pipe",
+      "lengthM": 9.72,
+      "odIn": 4,
+      "source": "Original BHA procedural geometry",
+      "simulated": true
+    },
+    {
+      "kind": "drill-pipe",
+      "name": "Drill pipe",
+      "lengthM": 9.5,
+      "odIn": 4,
+      "source": "Original BHA procedural geometry",
+      "simulated": true
+    },
+    {
+      "kind": "core-barrel",
+      "name": "Core barrel",
+      "lengthM": 6,
+      "odIn": 4.75,
+      "source": "Original BHA procedural geometry",
+      "simulated": true
+    },
+    {
+      "kind": "core-ring",
+      "name": "Core catcher ring",
+      "lengthM": 0.16,
+      "odIn": 4.75,
+      "source": "Original BHA procedural geometry",
+      "simulated": true
+    },
+    {
+      "kind": "fishing-sub",
+      "name": "Fishing sub",
+      "lengthM": 0.65,
+      "odIn": 4.75,
+      "source": "Original BHA procedural geometry",
+      "simulated": true
+    }
+  ],
+  "errors": []
+}

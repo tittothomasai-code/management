@@ -1,0 +1,20 @@
+{
+  "mode": "Actual Ops render and existing secondary time-log reader; local SIM transport only.",
+  "widths": [
+    1920,
+    390
+  ],
+  "checks": [
+    "fresh positive flow ON",
+    "fresh zero flow OFF",
+    "stale timestamp UNKNOWN despite restamped metadata",
+    "depth-indexed flow UNKNOWN",
+    "missing flow UNKNOWN",
+    "motion only while ON",
+    "secondary time log uses existing read",
+    "other-well sample rejected",
+    "reduced motion",
+    "fits viewport"
+  ],
+  "errors": []
+}

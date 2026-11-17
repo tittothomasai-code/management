@@ -9,13 +9,14 @@ import * as A from './opsnow_ac.js?v=re1115';
 import * as WP from './opsnow_planview.js?v=re1115';
 import * as JS from './opsnow_jsurvey.js?v=re1115';
 import {createSurveyAlerts, reportSurveyStations} from './opsnow_survey_alert.mjs?v=survey1117';
+import {createPumpGraphic, pumpSample} from './opsnow_pumps.mjs?v=pumps1117';
 const $ = id => document.getElementById(id);
 const PAGE = ['joints', 'wellplan'].includes(document.documentElement.dataset.page) ? document.documentElement.dataset.page : 'ops'; // joints.html / wellplan.html: same data layer, one surface each
 const DEF_WELL = new URLSearchParams(location.search).get('well') || 'DR101L';
 const NOMINAL_JOINT_M = 13; // project rule: 13 m joints. Measured length from block travel is shown alongside.
 const WINDOW_M = 150, WINDOW_MS = 3 * 3600e3, TREND_M = 60, TREND_MS = 2 * 3600e3;
 const S = {well: null, wellbores: [], headers: {}, wb: null, log: null, map: {}, data: {ml: [], ul: [], rows: []},
-  traj: null, trajUid: null, bit: null, timeLog: null, advancedAt: null, message: '', override: {wb: '', log: ''},
+  traj: null, trajUid: null, bit: null, pumpSample: null, timeLog: null, advancedAt: null, message: '', override: {wb: '', log: ''},
   due: {data: 0, header: 0, survey: 0, discover: 0, extra: 0}, pages: 0, started: false,
   // whole-log extras: older depth rows, MWD gamma + image logs, every wellbore's survey (read once, then kept fresh)
   backfill: 'todo', fe: null, image: null, imageRange: null, branchTrajs: null, branchMsg: '', branches: null, ac: null, tally: null, tallyName: '', tallyError: '',
@@ -59,7 +60,7 @@ async function selectWellbore(b) {
   const log = (S.override.log && logs.find(l => l.uid === S.override.log)) || C.pickPrimary(logs);
   if (!log) throw new Error('No drilling log with parameters in wellbore ' + b.name);
   S.timeLog = logs.find(l => l.time && l.curves.some(c => /^(BDE|BITDEP|DBTM|BIT_?DEPTH)/i.test(c.mn))) || null;
-  if (changed || S.log?.uid !== log.uid) { S.log = log; S.data = {ml: [], ul: [], rows: []}; S.map = {}; S.advancedAt = null; S.backfill = log.time ? 'n/a' : 'todo'; S.fe = S.image = null; S.branchTrajs = null; S.branches = null; await readData(true); S.trajUid = null; S.traj = null; }
+  if (changed || S.log?.uid !== log.uid) { S.log = log; S.data = {ml: [], ul: [], rows: []}; S.map = {}; S.advancedAt = null; S.pumpSample = null; S.backfill = log.time ? 'n/a' : 'todo'; S.fe = S.image = null; S.branchTrajs = null; S.branches = null; await readData(true); S.trajUid = null; S.traj = null; }
   if (!S.trajUid) await findTrajectory();
   await readSurvey();
   if (S.timeLog && S.timeLog !== S.log) await readBit();
@@ -118,9 +119,11 @@ async function readSurvey() {
   render();
 }
 async function readBit() {
-  const L = S.timeLog; const end = Date.parse(L.end); if (!Number.isFinite(end)) return;
+  const L = S.timeLog, receiptScope = surveyContext().scope; const end = Date.parse(L.end); if (!Number.isFinite(end)) return;
   const r = await W.get('log', `<logs ${C.NS}><log uidWell="${C.xa(S.well.uid)}" uidWellbore="${C.xa(S.wb.uid)}" uid="${C.xa(L.uid)}"><startDateTimeIndex>${new Date(end - 120000).toISOString()}</startDateTimeIndex><logData><mnemonicList/><unitList/><data/></logData></log></logs>`, 'returnElements=data-only;maxReturnNodes=5000');
+  if (receiptScope !== surveyContext().scope || L !== S.timeLog) return;
   const d = C.parseLogData(r.xml, true), m = C.mapChannels(d.ml, d.ul, L), lv = C.latestValues(d.rows, m);
+  S.pumpSample = {scope: receiptScope, logUid: L.uid, sample: pumpSample({rows: d.rows, channel: m.flowIn, latest: lv.flowIn, time: true, source: L.name})};
   S.bit = lv.bd ? {v: lv.bd.v, at: lv.bd.at, log: L} : null;
 }
 // Whole depth log: page back from the log start up to the first row already held (5,000 rows per call).
@@ -337,7 +340,7 @@ function survPlot(cv, pts, mode, plan) {
   if (mode === 'plan') g.fillText('span ' + fmt(x1 - x0, 0) + ' m', w - 70, h - 4);
   else { g.fillText('TVD ' + fmt(-y1, 1) + '–' + fmt(-y0, 1) + ' m', 6, h - 4); g.fillText('MD ' + fmt(x0, 0) + '–' + fmt(x1, 0), w - 90, h - 4); }
 }
-let built = false;
+let built = false, pumpGraphic = null;
 function buildCommon() {
   $('onUser').value = W.rememberedUser();
   $('onGo').onclick = () => { const u = $('onUser').value.trim(), p = $('onPass').value; if (!u || !p) return setMsg('Enter username and password'); W.signIn(u, p, $('onRem').checked); $('onPass').value = ''; setMsg('Connecting…'); render(); loop(); };
@@ -356,6 +359,7 @@ function build() {
   if (PAGE === 'wellplan') { buildCommon(); WP.init(ctx, $('wpHost'), {xlsxRows: VW.xlsxRows}); $('onConnBtn').onclick = () => { S.showSignin = !S.showSignin; render(); }; document.title = 'Well plan · live WITSML'; return; }
   addEventListener('keydown', e => { if (e.key !== 'p' && e.key !== 'P') return; if (e.ctrlKey || e.metaKey || e.altKey || e.repeat || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName || '') || document.activeElement?.isContentEditable) return; location.href = './wellplan.html' + qs; });
   if (PAGE === 'joints') { buildCommon(); S.wantTl = true; VW.initJointsPage(ctx, $('jtHost')); $('onScanBtn').onclick = () => VW.togglePop(true); document.title = 'Joints · live WITSML'; return; }
+  pumpGraphic = createPumpGraphic({before: $('onTiles')});
   $('onTiles').innerHTML = TILES.map(([k, n]) => `<div class="on-tile" data-k="${k}"><small>${n}</small><b id="onV_${k}">—</b><i id="onU_${k}"></i></div>`).join('');
   $('onTrends').innerHTML = TILES.map(([k, n]) => `<div class="on-trend" data-k="${k}"><span><b>${n}</b> <em id="onT_${k}"></em></span><canvas id="onC_${k}"></canvas></div>`).join('');
   buildCommon();
@@ -403,6 +407,9 @@ function render() {
   $('onWell').textContent = S.well?.name || DEF_WELL; $('onWb').textContent = S.wb ? 'Wellbore ' + S.wb.name + (L ? ' · ' + L.name : '') : '';
   const fresh = C.freshness(L?.changed, now);
   const lv = C.latestValues(rows, S.map);
+  const primaryFlow = pumpSample({rows, channel: S.map.flowIn, latest: lv.flowIn, time: Boolean(L?.time), source: L?.name});
+  const secondaryFlow = S.pumpSample?.scope === surveyContext().scope && S.pumpSample?.logUid === S.timeLog?.uid ? S.pumpSample.sample : null;
+  pumpGraphic?.update({signed, now, sample: L?.time ? primaryFlow : secondaryFlow || primaryFlow});
   const state = !signed ? (W.state.dead ? 'Stopped' : 'Not signed in') : !L ? 'Connecting' : C.rigState({fresh, advancedAt: S.advancedAt, watchFrom: S.watchFrom, now, rpm: lv.rpm?.v, rop: lv.rop?.v, flow: lv.flowIn?.v, timeLog: L?.time});
   const chip = $('onState'); chip.textContent = state; chip.dataset.s = /^Drilling/.test(state) ? 'drill' : /No new|Stopped|Not signed/.test(state) ? 'bad' : 'idle';
   // The store re-stamps dTimLastChange about once a minute even when no row is added, so it proves the

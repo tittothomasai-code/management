@@ -1,0 +1,23 @@
+#onPumps{--pump:#c5a567;display:flex;align-items:center;gap:24px;margin:12px 0 16px;padding:14px 22px;background:#101c26;border:1px solid #345060;border-radius:10px;color:#ebf4fa;font:14px/1.5 system-ui;box-sizing:border-box}
+#onPumps[data-state=on]{--pump:#7ce7b1;border-color:#2c7458;background:linear-gradient(110deg,#102b25,#101c26 65%)}
+#onPumps[data-state=off]{--pump:#afc0cd}
+#onPumps .on-pump-picture{width:280px;max-width:42%;color:var(--pump);flex-shrink:0}
+#onPumps svg{display:block;width:100%;height:auto}
+#onPumps .on-pump-readout{min-width:0}
+#onPumps .on-pump-kicker{display:block;font-size:11px;letter-spacing:.12em;color:#b7cbd7}
+#onPumps [data-pump-state]{display:block;font-size:24px;line-height:1.3;color:var(--pump)}
+#onPumps [data-pump-flow]{display:block;margin-top:4px;color:#edf6fa}
+#onPumps p{margin:4px 0;font-size:12px;color:#c4d6df}
+#onPumps small{display:block;font-size:11px;color:#a6bfce;overflow-wrap:anywhere}
+#onPumps .on-pump-pipe{fill:none;stroke:#446476;stroke-width:12;stroke-linejoin:round}
+#onPumps .on-pump-flow{fill:none;stroke:var(--pump);stroke-width:4;stroke-dasharray:8 10;opacity:.35}
+#onPumps .on-pump-arrow{fill:var(--pump);opacity:.35}
+#onPumps[data-state=on] .on-pump-flow{opacity:1;animation:on-pump-flow 1s linear infinite}
+#onPumps[data-state=on] .on-pump-arrow{opacity:1}
+#onPumps[data-state=on] .on-pump-rotor{transform-origin:66px 94px;animation:on-pump-rotor 1.2s linear infinite}
+#onPumps[data-state=on] .on-pump-piston{animation:on-pump-piston .6s ease-in-out infinite alternate}
+@keyframes on-pump-flow{to{stroke-dashoffset:-18}}
+@keyframes on-pump-rotor{to{transform:rotate(360deg)}}
+@keyframes on-pump-piston{to{transform:translateX(4px)}}
+@media(max-width:600px){#onPumps{gap:8px;padding:12px;align-items:flex-start}#onPumps .on-pump-picture{width:125px;max-width:36%;margin-top:12px}#onPumps [data-pump-state]{font-size:20px}#onPumps p{font-size:12px}}
+@media(prefers-reduced-motion:reduce){#onPumps .on-pump-flow,#onPumps .on-pump-rotor,#onPumps .on-pump-piston{animation:none!important}}
