@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {compareDerivedTally,referenceScope,inventoryRows,comparisonCsv} from '../drilling/opsnow_tally_compare.mjs';
+import {compareDerivedTally,referenceScope,inventoryRows,comparisonCsv,inventoryPosition,inventoryResetLabel} from '../drilling/opsnow_tally_compare.mjs';
 import {derivePipeChecks} from '../drilling/opsnow_joint_metrics.mjs';
 const reference={unit:'m',startMd:822.53,bhaLen:48.53,joints:[{n:63,len:3.1},{n:64,len:9.26},{n:65,len:12.46}]};
 const close=(a,b)=>assert.ok(Math.abs(a-b)<1e-8,`${a} vs ${b}`);
@@ -34,4 +34,14 @@ test('the supplied inventory includes all 189 entries regardless of drilling-det
 test('the raw independent result survives the existing measured-tally discrepancy check',()=>{
  const r=derivePipeChecks({rows:[[100,13],[104,9],[108,5],[112.9,0]],map:{bh:{col:1,unit:'m',nullValue:''}},conns:[{md:100,blockTop:13,blockBottom:0},{md:113,blockTop:13,blockBottom:0}],tally:{bhaLen:100,joints:[{n:1,len:12,cumDepth:112}]}})[0];
  assert.equal(r.estimatedLength,null);assert.equal(r.derivedLength,13);
+});
+test('screenshot MD maps to entry 208, not estimated 223; BHA is not added twice',()=>{
+ const ref=JSON.parse(readFileSync(new URL('../drilling/data/dr101l-wb04-measured-tally.json',import.meta.url),'utf8'));
+ const p=inventoryPosition(ref,2618.9);assert.equal(p.n,208);close(p.startMd,2610.62);close(p.endMd,2623.01);close(p.len,12.39);close(p.advance,8.28);close(p.remaining,4.11);
+ const other=inventoryRows(ref).find(j=>j.n===223);close(other.startMd,2796.74);close(other.endMd,2809.08);
+ assert.equal(inventoryPosition(ref,null),null);assert.equal(inventoryPosition(ref,700),null);
+});
+test('BHE resets get measured joint labels only when the MD start aligns',()=>{
+ const ref=JSON.parse(readFileSync(new URL('../drilling/data/dr101l-wb04-measured-tally.json',import.meta.url),'utf8'));
+ assert.equal(inventoryResetLabel(ref,2609.2),'BHE');assert.equal(inventoryResetLabel(ref,2610.62),'J208 (MD)');
 });

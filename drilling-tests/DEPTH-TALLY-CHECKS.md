@@ -17,3 +17,22 @@ The comparison preserves BHE-only derived lengths before any measured-tally chec
 Starting reference: 48.53 m BHA + 774.00 m carried string reference = 822.53 m MD. The carried value is the remainder of the supplied starting depth, not a reconstructed measurement of all previous joints. The BHA is already included in the starting MD and is never added again to derived cumulative MD. Existing operator-entered BHA values are preserved.
 
 41 unit tests and desktop/phone browser tests cover BHA accounting, independent discrepancies, cumulative drift, missing cycles, grouped initial short entries, exact scope, all 189 entries, the live Tally-tab renderer, aligned numbering, measured current target and CSV download. SIM transport is used only for tests. Actual authenticated WITSML agreement remains a live-data result, not an assertion made from the measured workbook.
+
+## Ops joint-card reference correction
+
+Ops loads the same measured reference directly, without requiring the Tally tab
+to have been opened. At 2,618.90 m MD, the supplied inventory places the depth
+within entry 208 (2,610.62–2,623.01 m, length 12.39 m), rather than estimated
+connection count 223. The card uses the measured start, length and endpoint and
+labels its number as an MD reference. Actual reported bit MD takes precedence;
+when unavailable, hole MD is a depth reference and never claims a bit position.
+The BHA remains included once in the source 822.53 m starting MD.
+
+Reset candidates are not renumbered consecutively from that reference. The
+axis and recent-interval list label a measured entry only when its MD endpoints
+align; otherwise they remain BHE/reset intervals. A reset at 2,609.20 m differs
+from the measured entry start by 1.42 m and stays visibly flagged for review.
+No sensor samples or detector outputs are changed to force the match.
+43 unit checks and desktop/phone Ops tests cover the supplied screenshot depths,
+reference loading before opening Tally, progress 8.28/12.39 m, the 1.42 m
+discrepancy, bit-MD precedence, and other-well reference clearing.

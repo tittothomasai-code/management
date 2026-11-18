@@ -44,7 +44,7 @@ try {
     await page.goto(origin + '/ops');
     if((await readFile(resolve(root,'drilling/ops.html'),'utf8')).includes('bha-builder/context-launcher')){await page.locator('[data-bha-context]').waitFor();assert.equal(await page.locator('[data-bha-context]').count(),1);}
     await page.evaluate(async () => {
-      const m = await import('./opsnow.js?v=tally1118');window.__testOps = m;window.__simSigned = true;
+      const m = await import('./opsnow.js?v=opsref1118');window.__testOps = m;window.__simSigned = true;
       Object.assign(m.testState, {well: {uid: 'sim-well', name: 'SIM FIELD'}, wb: {uid: 'sim-bore', name: 'SIM WB1'}, trajUid: 'sim-survey',
         log: {name: 'SIM depth log', time: false, changed: new Date().toISOString()}, data: {ml: [], ul: [], rows: [[100], [113]]}});
       window.__simStations = [{uid: 'sim-100', md: 100, t: '2026-11-17T01:50:00Z'}];
@@ -200,6 +200,20 @@ try {
     const comparisonDownload=page.waitForEvent('download');await compare.getByRole('button',{name:'Export derived vs measured CSV'}).click();const exported=await comparisonDownload;assert.equal(exported.suggestedFilename(),'derived-vs-measured-tally.csv');assert.match(await readFile(await exported.path(),'utf8'),/derivedLength,measuredLength,difference/);
     await page.screenshot({path:pumpEvidence+`/derived-measured-${width}.png`});
     await page.evaluate(()=>{__testOps.testState.well={uid:'fixture-other',name:'OTHER WELL'};__testOps.testRender();});assert.equal(await compare.isVisible(),false);
+    // Ops itself loads the reference without first opening the Tally tab.
+    await page.goto(origin+'/ops');
+    await page.evaluate(async()=>{
+      const m=await import('./opsnow.js?v=opsref1118'),C=await import('./opsnow_core.js?v=re1115');window.__testOps=m;window.__simSigned=true;const S=m.testState;
+      S.well={uid:'fixture-dr101',name:'DR101L'};S.wb={uid:'fixture-wb04',name:'WB04B01'};S.log={uid:'fixture-depth',name:'SIM depth log',time:false,changed:new Date().toISOString()};S.bit=null;S.tally=null;S.tallyName='';S.advancedAt=null;S.watchFrom=Date.now()-180000;
+      S.data={ml:['MD','BHE'],ul:['m','m'],rows:[[2599.3,0],[2599.4,9.8],[2604.4,4.8],[2609.1,0],[2609.2,9.7],[2614.2,4.7],[2618.9,0]]};S.map=C.mapChannels(S.data.ml,S.data.ul,S.log);m.testRender();
+    });
+    await page.waitForFunction(()=>document.getElementById('onJointNo')?.textContent.includes('#208'));
+    assert.equal(await page.locator('#onJointNo').innerText(),'#208 (MD ref.)');assert.match(await page.locator('#onJointDone').innerText(),/8.28 \/ 12.39 m · inventory MD reference/);
+    assert.match(await page.locator('#onJointRange').innerText(),/2,610.62 m MD · inventory endpoint 2,623.01 m MD/);assert.match(await page.locator('#onJointNote').innerText(),/1.42 m; alignment needs review/);
+    assert.match(await page.locator('#onJoints').innerText(),/BHE interval \(unaligned\)/);assert.doesNotMatch(await page.locator('#onJoints').innerText(),/J207/);
+    await page.locator('.on-side').screenshot({path:pumpEvidence+`/ops-measured-joint-${width}.png`});
+    await page.evaluate(()=>{__testOps.testState.bit={v:2600,at:Date.now(),log:{name:'SIM bit'}};__testOps.testRender();});assert.match(await page.locator('#onJointNo').innerText(),/#207/);
+    await page.evaluate(()=>{__testOps.testState.well={uid:'fixture-other',name:'OTHER WELL'};__testOps.testRender();});assert.equal(await page.evaluate(()=>__testOps.testState.measuredReference),null);
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
     results.push({width, checks: ['first history quiet', 'new WITSML survey pulses green', 'focus preserved', 'dismiss and duplicate suppression', 'new report through existing loader callback', 'generated-file metadata quiet', 'old well response ignored', 'reduced motion', 'fits viewport', 'actual tally board uses BHE-derived lengths', 'CSV exports BHE and MD checks', 'inconsistent BHE cannot promote a pipe length', 'manual lengths persist without overwrite', 'missing/invalid bit stays unconfirmed', 'off-bottom bit remains separate'], errors, external});
     console.log('PASS Ops survey alert', width);await context.close();

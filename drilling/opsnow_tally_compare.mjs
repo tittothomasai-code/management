@@ -6,6 +6,16 @@ export function inventoryRows(reference){
  let end=reference.startMd;const out=[];
  for(const j of reference.joints){if(!finite(j.n)||!finite(j.len)||j.len<=0)return [];const start=end;end+=j.len;out.push({...j,startMd:start,endMd:end});}return out;
 }
+let referencePromise;
+export function loadMeasuredReference(well,branch){
+ if(!referenceScope(well,branch))return Promise.resolve(null);
+ return referencePromise??=fetch('./data/dr101l-wb04-measured-tally.json?v=bha1118').then(r=>{if(!r.ok)throw Error('Measured inventory unavailable');return r.json();}).then(r=>{if(!inventoryRows(r).length)throw Error('Invalid measured inventory');return r;});
+}
+export function inventoryPosition(reference,md){
+ if(!finite(md))return null;const rows=inventoryRows(reference),entry=rows.find(j=>md>=j.startMd-1e-6&&md<=j.endMd+1e-6);
+ return entry?{...entry,advance:Math.max(0,md-entry.startMd),remaining:Math.max(0,entry.endMd-md)}:null;
+}
+export function inventoryResetLabel(reference,md,tolerance=.3){const j=inventoryRows(reference).find(j=>Math.abs(j.startMd-md)<=tolerance);return j?'J'+j.n+' (MD)':'BHE';}
 export function compareDerivedTally(checks,reference,tolerance=.3){
  const inventory=inventoryRows(reference);if(!inventory.length)return {rows:[],inventory:[],error:'Measured reference is invalid'};
  const endpoints=[reference.startMd,...inventory.map(j=>j.endMd)],nearest=md=>{let at=-1,d=Infinity;endpoints.forEach((m,i)=>{if(Math.abs(m-md)<d){d=Math.abs(m-md);at=i;}});return d<=tolerance?at:-1;};

@@ -4,6 +4,7 @@
 import * as WPL from './opsnow_wellplans.js?v=dr1115';
 import * as C from './opsnow_core.js?v=re1115';
 import {connectionRows, jointMetrics, depthMetres, reconcileDepths, derivePipeChecks, renderPipeChecks} from './opsnow_joint_metrics.mjs?v=tally1118';
+import {referenceScope,loadMeasuredReference,inventoryPosition,inventoryResetLabel,compareDerivedTally} from './opsnow_tally_compare.mjs?v=opsref1118';
 import * as W from './opsnow_wire.js?v=re1115';
 import * as VW from './opsnow_views.js?v=re1115';
 import * as A from './opsnow_ac.js?v=re1115';
@@ -67,6 +68,15 @@ async function selectWellbore(b) {
   if (S.timeLog && S.timeLog !== S.log) await readBit();
 }
 function blockConnections(rows,map){const normalized=connectionRows(rows,map);return normalized?C.connectionsFromBlock(normalized.rows,normalized.map):[];}
+function ensureMeasuredReference(){
+ const well=S.well?.name||DEF_WELL,branch=S.wb?.name||'',key=JSON.stringify([well,branch]);if(S.referenceKey===key)return;
+ S.referenceKey=key;S.measuredReference=null;
+ if(referenceScope(well,branch))loadMeasuredReference(well,branch).then(ref=>{if(S.referenceKey!==key)return;S.measuredReference=ref;render();}).catch(()=>{});
+}
+function currentJoint(conns,holeMd){
+ const md=Number.isFinite(S.bitMd)?S.bitMd:holeMd,p=inventoryPosition(S.measuredReference,md);
+ return p?{n:p.n,kind:'inventory reference',reference:p,basis:Number.isFinite(S.bitMd)?'bit MD reference':'hole MD reference'}:C.jointNumber(conns,C.joints(conns,holeMd).median,S.bitMd,S.tally);
+}
 function window0(log) {
   if (log.time) { const end = Date.parse(log.end); return `<startDateTimeIndex>${new Date(end - WINDOW_MS).toISOString()}</startDateTimeIndex>`; }
   return `<startIndex uom="${C.xa(log.indexUom || 'm')}">${Math.max(log.start ?? 0, (log.end ?? 0) - WINDOW_M).toFixed(2)}</startIndex>`;
@@ -325,7 +335,7 @@ function depthAxis(cv, x0, x1, conns, jno) {
   g.strokeStyle = '#4a5d6e'; g.beginPath(); g.moveTo(0, 0.5); g.lineTo(w, 0.5); g.stroke();
   g.fillStyle = '#9fb1c1'; g.font = '10px system-ui'; g.textAlign = 'center';
   for (const t of C.niceTicks(x0, x1, 10)) { const x = X(t); g.beginPath(); g.moveTo(x, 0); g.lineTo(x, 5); g.stroke(); if (Math.round(t) % lab === 0 && x > 12 && x < w - 12) g.fillText(fmt(t, 0), x, 15); }
-  conns.forEach((c, i) => { if (c.md < x0 || c.md > x1) return; const x = X(c.md); g.fillStyle = '#5f7c95'; g.fillRect(x - 0.5, 18, 1, 4); const n = jno?.n != null ? jno.n - (conns.length - 1 - i) : null; if (n != null) g.fillText('J' + n, x, 31); });
+  conns.forEach((c, i) => { if (c.md < x0 || c.md > x1) return; const x = X(c.md); g.fillStyle = '#5f7c95'; g.fillRect(x - 0.5, 18, 1, 4); const n = jno?.n != null ? jno.n - (conns.length - 1 - i) : null; const label=S.measuredReference?inventoryResetLabel(S.measuredReference,c.md):n!=null?(jno.kind==='estimated'?'E':'J')+n:'';if(label)g.fillText(label,x,31); });
   g.textAlign = 'left';
 }
 function survPlot(cv, pts, mode, plan) {
@@ -405,6 +415,7 @@ function currentPlan() {
 }
 function render() {
   build();
+  ensureMeasuredReference();
   const signed = W.hasCred() && !W.state.dead;
   $('onSignin').hidden = signed || (PAGE === 'wellplan' && !S.showSignin); $('onMain').hidden = PAGE !== 'wellplan' && !signed && !S.data.rows.length;
   if (PAGE === 'wellplan' && $('onConnBtn')) $('onConnBtn').hidden = signed;
@@ -466,7 +477,7 @@ function render() {
   S.ac = S.branches && S.bitPos && actB ? C.antiCollision(S.branches, S.wb.name, S.bitPos) : null;
   if (PAGE === 'wellplan') { const lastSv = S.traj?.stations?.at(-1); $('onLastSv').textContent = lastSv ? fmt(lastSv.md, 1) + ' m · ' + C.aest(Date.parse(lastSv.t)).replace(' AEST', '') : '—'; WP.refresh(); renderSettings(); return; }
   if (PAGE === 'joints') { // joints page: header + the Joints dashboard only
-    S.jointNo = C.jointNumber(conns, C.joints(conns, holeMd).median, S.bitMd, S.tally);
+    S.jointNo = currentJoint(conns,holeMd);
     const lastSv = S.traj?.stations.at(-1); $('onLastSv').textContent = lastSv ? fmt(lastSv.md, 1) + ' m · ' + C.aest(Date.parse(lastSv.t)).replace(' AEST', '') : '—';
     VW.drawJoints(); renderPipeChecks(document,S.pipeChecks,S.depthCheck,$('jtHost').parentElement); renderSettings(); return;
   }
@@ -492,29 +503,31 @@ function render() {
   // trends: depth logs vs MD (last 60 m), time logs vs time (last 2 h)
   const xEnd = rows.at(-1)?.[0], x0 = L?.time ? xEnd - TREND_MS : xEnd - TREND_M;
   const win = Number.isFinite(xEnd) ? rows.filter(r => r[0] >= x0) : [];
-  $('onTrendAxis').textContent = Number.isFinite(xEnd) ? (L.time ? 'last 2 h to ' + C.aest(xEnd) : 'last ' + TREND_M + ' m drilled · dashed line = connection (J = joint number)') : '';
+  $('onTrendAxis').textContent = Number.isFinite(xEnd) ? (L.time ? 'last 2 h to ' + C.aest(xEnd) : 'last ' + TREND_M + ' m drilled · dashed = BHE reset · '+(S.measuredReference?'J labels require tally MD alignment':'E = estimated joint')) : '';
   for (const [k, n] of TILES) {
     const box = $('onC_' + k).parentElement, ch = S.map[k]; box.hidden = !ch;
     if (!ch) continue; const s = C.series(win, ch);
     $('onT_' + k).textContent = s.ys.length ? fmt(s.ys.at(-1), 1) + ' ' + ch.unit : '';
     chart($('onC_' + k), s.xs, s.ys, COLORS[k], Math.max(x0, rows[0][0]), xEnd, conns.map(c => c.md).filter(m => m >= x0), S.hoverMd);
   }
-  const J0 = C.joints(conns, holeMd); S.jointNo = C.jointNumber(conns, J0.median, S.bitMd, S.tally);
+  const J0 = C.joints(conns, holeMd); S.jointNo = currentJoint(conns,holeMd);
   if (Number.isFinite(xEnd)) { S.trendX = [Math.max(x0, rows[0][0]), xEnd]; depthAxis($('onAxis'), S.trendX[0], xEnd, conns, S.jointNo); }
   if (S.hoverMd != null && Number.isFinite(xEnd)) {
     const [i0, i1] = C.sliceByIndex(rows, S.hoverMd - 0.05, S.hoverMd + 0.05); const r = rows[Math.min(i1 - 1, i0 + 1)] || rows.at(-1);
     $('onTrendRead').textContent = fmt(r[0], 1) + ' m MD · ' + TILES.filter(([k]) => S.map[k]).map(([k, n]) => { const v = C.value(r[S.map[k].col], S.map[k]); return n + ' ' + (v == null ? '—' : fmt(v, Math.abs(v) < 100 ? 1 : 0)) + ' ' + S.map[k].unit; }).join(' · ');
   } else $('onTrendRead').textContent = 'Hover or touch a chart to read values at a depth.';
   // Target joint length is from the tally or project nominal; MD spacing is separate.
-  const J = J0, JN = S.jointNo, metric = jointMetrics({summary:J,rows,blockChannel:S.map.bh,tally:S.tally,jointNumber:JN,nominal:NOMINAL_JOINT_M});
-  $('onJointNo').textContent = JN?.n != null ? '#' + JN.n + (JN.kind === 'estimated' ? ' (est.)' : ' (tally)') : '';
-  $('onJointNo').title = JN?.kind === 'estimated' ? JN.seen + ' connections seen in this wellbore\'s log + about ' + JN.above + ' joints already in the hole at the first one (first connection MD ÷ observed connection spacing). Load a tally for the exact number.' : JN?.kind === 'tally' ? 'From the loaded tally (' + S.tallyName + ')' : '';
+  const JN = S.jointNo,ref=JN?.reference,J=ref?{...J0,current:{start:ref.startMd,drilled:ref.advance}}:J0,metric = jointMetrics({summary:J0,rows,blockChannel:S.map.bh,tally:S.tally,jointNumber:JN,nominal:NOMINAL_JOINT_M});
+  if(ref){metric.length=ref.len;metric.basis='inventory MD reference';metric.overdue=false;}
+  $('onJointNo').textContent = JN?.n != null ? '#' + JN.n + (JN.kind === 'estimated' ? ' (est.)' : ref?' (MD ref.)':' (tally)') : '';
+  $('onJointNo').title = ref?'Measured inventory at '+JN.basis+'. BHA 48.53 m is already included in the 822.53 m starting reference. This is not an independently verified BHE connection count.':JN?.kind === 'estimated' ? JN.seen + ' connections seen in this wellbore\'s log + about ' + JN.above + ' joints already in the hole at the first one (first connection MD ÷ observed connection spacing). Load a tally for the exact number.' : JN?.kind === 'tally' ? 'From the loaded tally (' + S.tallyName + ')' : '';
   if (J.current) {
     const len = metric.length, pct = Math.min(100, J.current.drilled / len * 100);
-    $('onJointBar').style.width = pct + '%'; $('onJointDone').textContent = fmt(J.current.drilled, 1) + ' / ' + fmt(len, 1) + ' m · ' + metric.basis;
-    $('onJointRange').textContent = 'from ' + fmt(J.current.start, 1) + ' m MD · expected connection ≈ ' + fmt(J.current.start + len, 1) + ' m MD' + (metric.overdue ? ' · connection may be missed' : '');
+    $('onJointBar').style.width = pct + '%'; $('onJointDone').textContent = fmt(J.current.drilled, ref?2:1) + ' / ' + fmt(len, ref?2:1) + ' m · ' + metric.basis;
+    $('onJointRange').textContent = 'from ' + fmt(J.current.start, ref?2:1) + ' m MD · '+(ref?'inventory endpoint ':'expected connection ≈ ') + fmt(J.current.start + len, ref?2:1) + ' m MD' + (metric.overdue ? ' · connection may be missed' : '');
     $('onJointNote').textContent = [metric.spacing!=null?'connection spacing '+fmt(metric.spacing,1)+' m MD':'',metric.travel!=null?'observed BHE travel '+fmt(metric.travel,1)+' m':''].filter(Boolean).join(' · ');
-    $('onJoints').innerHTML = J.list.slice(-4).reverse().map((j, i) => `<li><span>${JN?.n != null ? 'J' + (JN.n - 1 - i) + ' · ' : ''}${fmt(j.start, 1)} → ${fmt(j.end, 1)} m</span><b>${fmt(j.length, 1)} m MD</b></li>`).join('');
+    if(ref&&J0.current&&Math.abs(J0.current.start-ref.startMd)>.3)$('onJointNote').textContent+=' · BHE reset differs from tally start by '+fmt(Math.abs(J0.current.start-ref.startMd),2)+' m; alignment needs review';
+    $('onJoints').innerHTML = J.list.slice(-4).reverse().map((j, i) => {const compared=S.measuredReference?compareDerivedTally([{startMd:j.start,endMd:j.end,derivedLength:null,issues:[]}],S.measuredReference).rows[0]:null;const label=S.measuredReference?(compared?.entries&&compared.entries!=='unaligned'?'Tally MD '+compared.entries:'BHE interval (unaligned)'):JN?.n!=null?(JN.kind==='estimated'?'Est. J':'J')+(JN.n-1-i):'';return `<li><span>${label?label+' · ':''}${fmt(j.start, 1)} → ${fmt(j.end, 1)} m</span><b>${fmt(j.length, 1)} m MD</b></li>`;}).join('');
   } else { $('onJointBar').style.width = '0'; $('onJointDone').textContent = '—'; $('onJointRange').textContent = S.map.bh ? 'no connection in window yet' : 'block height not in source'; $('onJoints').innerHTML = ''; $('onJointNote').textContent = ''; }
   renderPipeChecks(document,S.pipeChecks,S.depthCheck,$('onJointDone').closest('.on-card'));
   // survey

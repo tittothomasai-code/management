@@ -8,7 +8,7 @@ import * as XE from './opsnow_export.js?v=re1115';
 import * as JS from './opsnow_jsurvey.js?v=re1115';
 import * as MVP from './opsnow_mvp.js?v=re1115';
 import {applyPipeChecks} from './opsnow_joint_metrics.mjs?v=tally1118';
-import {referenceScope,inventoryRows,compareDerivedTally,renderTallyComparison} from './opsnow_tally_compare.mjs?v=bha1118';
+import {referenceScope,loadMeasuredReference,inventoryRows,compareDerivedTally,renderTallyComparison} from './opsnow_tally_compare.mjs?v=opsref1118';
 export const NOMINAL_M = 13; // project rule: drill pipe joints are 13 m (nominal until a connection or tally measures them)
 const $ = id => document.getElementById(id);
 const fin = Number.isFinite;
@@ -54,7 +54,7 @@ function drawComparison(x){
  host.hidden=false;
  if(!V.measuredReference){
   host.textContent=V.referenceFailed?'Measured inventory could not be loaded. Derived readings remain separate.':'Loading measured inventory…';
-  if(!V.referenceRequested){V.referenceRequested=true;fetch('./data/dr101l-wb04-measured-tally.json?v=bha1118').then(r=>{if(!r.ok)throw Error('reference unavailable');return r.json();}).then(ref=>{if(!compareDerivedTally([],ref).inventory.length)throw Error('invalid reference');V.measuredReference=ref;draw();}).catch(()=>{V.referenceFailed=true;draw();});}
+  if(!V.referenceRequested){V.referenceRequested=true;loadMeasuredReference(x.well,branchName()).then(ref=>{if(!compareDerivedTally([],ref).inventory.length)throw Error('invalid reference');V.measuredReference=ref;draw();}).catch(()=>{V.referenceFailed=true;draw();});}
   return;
  }
  const ref=measuredReference(),active=branchName()===x.active,result=compareDerivedTally(active?(x.pipeChecks||[]):[],ref);
