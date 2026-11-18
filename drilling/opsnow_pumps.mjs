@@ -56,8 +56,8 @@ export function topDriveActivity({signed, sample, now = Date.now()}) {
 }
 
 export function createPumpGraphic({document: doc = document, host}) {
-  const css = doc.createElement('link');css.rel = 'stylesheet';css.href = new URL('./opsnow_pumps.css?v=compact1117', import.meta.url);doc.head.append(css);
-  const root = doc.createElement('div');root.id = 'onPumps';root.dataset.state = 'unknown';root.setAttribute('aria-label', 'Drilling equipment status');
+  const css = doc.createElement('link');css.rel = 'stylesheet';css.href = new URL('./opsnow_pumps.css?v=depth1118', import.meta.url);doc.head.append(css);
+  const root = doc.createElement('div');root.id = 'onPumps';root.hidden=true;css.addEventListener('load',()=>{root.hidden=false;});root.dataset.state = 'unknown';root.setAttribute('aria-label', 'Drilling equipment status');
   root.innerHTML = `<div class="on-pump-reminder"><span class="on-pump-dot" aria-hidden="true"></span><div><span data-pump-state role="status" aria-live="polite">Pumps —</span><small data-pump-flow></small></div></div>
     <div class="on-drive"><svg viewBox="0 0 60 72" role="img" aria-label="Top-drive position within the observed travel range"><path class="on-drive-rails" d="M10 6v58M26 6v58M8 6h20M8 64h20M18 8v54"/><g data-drive-marker hidden><rect x="11" width="14" height="8" rx="2"/><path d="M18 8v6m-3 0h6"/></g><text x="32" y="10" data-drive-max></text><text x="32" y="66" data-drive-min></text></svg><div><small class="on-drive-label">Top drive</small><span data-drive-value>—</span><small data-drive-motion></small><small data-drive-source></small></div></div>`;
   host.after(root);

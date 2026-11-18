@@ -8,7 +8,7 @@ try{for(const width of [390,1920]){
  const context=await browser.newContext({viewport:{width,height:width===390?844:1080},isMobile:width===390,hasTouch:width===390,ignoreHTTPSErrors:true});
  await context.route('**/*',route=>{const r=route.request(),url=new URL(r.url());if(r.method()!=='GET'||/\/.netlify\/functions\/|\/rest\/v1\//.test(url.pathname))return route.abort();return route.continue();});
  const page=await context.newPage();page.setDefaultTimeout(120000);const errors=[];page.on('pageerror',e=>errors.push(e.message));
- await page.goto(preview+'/ops',{waitUntil:'domcontentloaded'});await page.locator('.on-top #onPumps').waitFor();
+ await page.goto(preview+'/ops',{waitUntil:'domcontentloaded'});await page.locator('.on-top #onPumps').waitFor();await page.waitForFunction(()=>[...document.styleSheets].some(s=>s.href?.includes('opsnow_pumps.css')));
  assert.equal(await page.locator('.on-pump-picture').count(),0);assert.equal(await page.locator('[data-drive-value]').innerText(),'—');assert.equal(await page.locator('#onPumps').getAttribute('data-state'),'unknown');
  assert.ok((await page.locator('#onPumps').boundingBox()).height<=80);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
  await page.locator('[data-bha-context]').click();const frame=page.frameLocator('#bha-context-panel iframe');await frame.locator('[data-action="example"]').click();assert.equal(await frame.locator('tbody tr').count(),12);await frame.locator('[data-action="exit"]').click();await page.waitForFunction(()=>document.querySelector('#bha-context-panel').hidden);

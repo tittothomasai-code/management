@@ -16,3 +16,5 @@
 @media(max-width:900px){#onPumps{border-left:0;border-top:1px solid #233541;padding:6px 0 0;gap:22px;width:100%;justify-content:space-between}#onPumps .on-drive{margin-right:0}#onPumps .on-drive svg{height:54px;width:45px}#onPumps [data-drive-source]{max-width:200px;font-size:10px}}
 
 #onPumps .on-drive-label{display:inline;margin-right:6px}
+
+#onPumps[hidden]{display:none!important}
