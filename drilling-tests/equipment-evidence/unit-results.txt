@@ -2,30 +2,33 @@
 > test
 > node --test install-bha.test.mjs survey-alert.test.mjs pumps.test.mjs
 
-✔ additive installer preserves current game and Field markup, and orders guards before handlers (2.273492ms)
-✔ Ops and Well Plan integration is additive and repeatable (0.249472ms)
-✔ candidate entry files preserve the published source bytes around the added tags (2.8892ms)
-✔ fresh, advancing flow gives aggregate ON or OFF without a unit-specific threshold (1.280811ms)
-✔ stale flow is UNKNOWN at the two-minute boundary, even when its last value was zero (1.240721ms)
-✔ depth samples and carried-forward blanks cannot claim a current pump state (0.216503ms)
-✔ missing, invalid, future and nonadvancing samples stay UNKNOWN; signed-out state is quiet (0.265356ms)
-✔ sample extraction retains source time, reported units and blank-latest provenance (0.271515ms)
-✔ top-drive marker follows observed height and indicates rising, lowering and holding (0.429311ms)
-✔ position hides the marker for stale, missing, depth-only, future or unscaled readings (0.255832ms)
-✔ direct top-drive channels take priority over block height; metres and feet retain physical scale (0.778642ms)
-✔ height range excludes missing/null sentinel readings and does not infer mast dimensions (0.546194ms)
-✔ initial history and unchanged polls are quiet; a new batch produces one receipt (1.631113ms)
-✔ backfill, corrections, projections and invalid readings do not announce new surveys (0.311085ms)
-✔ measurement timestamps permit a new survey at the same or shallower depth; old timed data stays quiet (1.1734ms)
-✔ first survey after an empty baseline alerts; failed reads neither reset nor consume the baseline (0.216714ms)
-✔ well, wellbore and feed scopes do not leak receipt state into each other (0.217194ms)
-✔ report provenance suppresses repeated generated files and interpolated joints from the same reports (0.419896ms)
-✔ missing and mismatched report data cannot produce a receipt (0.870228ms)
-ℹ tests 19
+✔ additive installer preserves current game and Field markup, and orders guards before handlers (2.053384ms)
+✔ Ops and Well Plan integration is additive and repeatable (0.325074ms)
+✔ candidate entry files preserve the published source bytes around the added tags (3.110046ms)
+✔ fresh, advancing flow gives aggregate ON or OFF without a unit-specific threshold (2.484776ms)
+✔ stale flow is UNKNOWN at the two-minute boundary, even when its last value was zero (0.214689ms)
+✔ depth-log flow is displayed as reported; blanks cannot claim a pump state (0.24144ms)
+✔ missing, invalid, future and nonadvancing samples stay UNKNOWN; signed-out state is quiet (0.275119ms)
+✔ sample extraction retains source time, reported units and blank-latest provenance (0.244203ms)
+✔ top-drive marker follows observed height and indicates rising, lowering and holding (0.405603ms)
+✔ position hides the marker for stale, missing, future or unscaled readings (0.262881ms)
+✔ direct top-drive channels take priority over block height; metres and feet retain physical scale (0.96777ms)
+✔ height range excludes missing/null sentinel readings and does not infer mast dimensions (0.510119ms)
+✔ BHE negative reading remains available in the depth log (0.304663ms)
+✔ SPP fallback is explicitly inferred and never fabricates a numeric flow rate (0.229411ms)
+✔ tail updates at the same MD refresh Flow/SPP/BHE without inventing drilled depth (1.225332ms)
+✔ initial history and unchanged polls are quiet; a new batch produces one receipt (1.420162ms)
+✔ backfill, corrections, projections and invalid readings do not announce new surveys (0.26873ms)
+✔ measurement timestamps permit a new survey at the same or shallower depth; old timed data stays quiet (1.188998ms)
+✔ first survey after an empty baseline alerts; failed reads neither reset nor consume the baseline (0.238144ms)
+✔ well, wellbore and feed scopes do not leak receipt state into each other (0.206417ms)
+✔ report provenance suppresses repeated generated files and interpolated joints from the same reports (0.427706ms)
+✔ missing and mismatched report data cannot produce a receipt (0.739149ms)
+ℹ tests 22
 ℹ suites 0
-ℹ pass 19
+ℹ pass 22
 ℹ fail 0
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 261.759079
+ℹ duration_ms 270.31476

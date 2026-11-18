@@ -1,15 +1,19 @@
 const finite = Number.isFinite;
-export function pumpActivity({signed, sample, now = Date.now()}) {
-  const result = (state, note) => ({state, note, sample});
-  if (!signed) return result('unknown', 'Sign in to receive pump readings');
-  if (!sample || !finite(sample.value)) return result('unknown', 'Flow-in reading not reported');
-  if (sample.value < 0) return result('unknown', 'Flow-in reading is invalid');
-  if (sample.blankLatest) return result('unknown', 'Latest flow-in sample is missing');
-  if (sample.indexType !== 'time') return result('unknown', 'Depth-log reading only; current pump state is unknown');
-  if (!finite(sample.at) || sample.at > now) return result('unknown', 'Flow-in sample time is unavailable or ahead of the clock');
-  if (now - sample.at >= 120000) return result('unknown', 'Flow-in reading is stale');
-  if (!finite(sample.previousAt) || sample.previousAt >= sample.at) return result('unknown', 'Waiting for advancing flow sample times');
-  return result(sample.value > 0 ? 'on' : 'off', 'Inferred from flow in; individual pump switches are not reported');
+export function pumpActivity({signed, sample, pressureSample, now = Date.now()}) {
+  const usable = s => s && finite(s.value) && s.value >= 0 && !s.blankLatest &&
+    (s.indexType === 'depth' || (finite(s.at) && s.at <= now && now-s.at < 120000 && finite(s.previousAt) && s.previousAt < s.at));
+  if (!signed) return {state:'unknown',note:'Sign in to receive readings',sample:null};
+  const flow=usable(sample), pressure=!flow && usable(pressureSample), selected=flow?sample:pressure?pressureSample:null;
+  if (!selected) return {state:'unknown',note:'No usable flow or SPP reading',sample:null};
+  return {state:selected.value>0?'on':'off',sample:selected,inferred:pressure,basis:pressure?'spp':'flow',reported:selected.indexType==='depth',
+    note:pressure?'Pump activity inferred from SPP; trapped pressure is possible. Numeric flow requires calibration.':'Reported flow-in reading'};
+}
+
+export function refreshDepthTail(store, data) {
+  const last=store.rows.at(-1);if(!last || store.ml.join(',')!==data.ml.join(','))return false;
+  const update=data.rows.find(row=>Math.abs(row[0]-last[0])<1e-9);
+  if(!update || JSON.stringify(update)===JSON.stringify(last))return false;
+  store.rows[store.rows.length-1]=update.slice();return true;
 }
 
 export function pumpSample({rows, channel, latest, time, source}) {
@@ -42,11 +46,11 @@ export function topDriveActivity({signed, sample, now = Date.now()}) {
   if (!signed || !sample) return result('Position not reported');
   if (!sample.unitKnown) return result('Position units not reported');
   if (!finite(sample.value) || sample.blankLatest) return result('Latest position missing');
-  if (sample.indexType !== 'time') return result('Last depth-log reading');
-  if (!finite(sample.at) || sample.at > now || now - sample.at >= 120000) return result('Position stale');
-  if (!finite(sample.previousAt) || sample.previousAt >= sample.at) return result('Waiting for advancing samples');
+  const reported = sample.indexType !== 'time';
+  if (!reported && (!finite(sample.at) || sample.at > now || now - sample.at >= 120000)) return result('Position stale');
+  if (!reported && (!finite(sample.previousAt) || sample.previousAt >= sample.at)) return result('Waiting for advancing samples');
   const delta = finite(sample.previousValue) ? sample.value - sample.previousValue : null;
-  return {state: 'current', sample, note: sample.kind === 'direct' ? 'Reported top-drive position' : 'Block-height proxy',
+  return {state: reported ? 'reported' : 'current', sample, note: sample.kind === 'direct' ? 'Reported top-drive position' : 'Block-height proxy',
     ratio: finite(sample.min) && finite(sample.max) && sample.max - sample.min >= .1 ? Math.max(0, Math.min(1, (sample.value - sample.min) / (sample.max - sample.min))) : null,
     direction: delta === null ? null : delta > .02 ? 'Rising' : delta < -.02 ? 'Lowering' : 'Holding'};
 }
@@ -60,14 +64,14 @@ export function createPumpGraphic({document: doc = document, host}) {
   const set = (selector, value) => { const el = root.querySelector(selector);if (el.textContent !== value) el.textContent = value; };
   return {root, update(input) {
     const pump = pumpActivity(input), sample = pump.sample;root.dataset.state = pump.state;
-    set('[data-pump-state]', pump.state === 'on' ? 'Pumps on' : pump.state === 'off' ? 'Pumps off' : 'Pumps —');
-    set('[data-pump-flow]', pump.state !== 'unknown' ? sample.value.toLocaleString('en-AU', {maximumFractionDigits: 1}) + ' ' + (sample.unit || '') : sample ? 'Reading unavailable' : 'No flow reading');
+    set('[data-pump-state]', pump.state === 'on' ? (pump.inferred ? 'Pumps likely on' : 'Pumps on') : pump.state === 'off' ? (pump.inferred ? 'Pumps likely off' : 'Pumps off') : 'Pumps —');
+    set('[data-pump-flow]', pump.state !== 'unknown' ? sample.value.toLocaleString('en-AU', {maximumFractionDigits: 1}) + ' ' + (sample.unit || '') + (pump.inferred ? ' · SPP' : '') + (pump.reported ? ' · depth log' : '') : 'No flow / SPP reading');
     root.querySelector('.on-pump-reminder').title = pump.note;
     const drive = topDriveActivity({...input, sample: input.driveSample});root.dataset.drive = drive.state;
-    const ds = drive.sample, current = drive.state === 'current';
+    const ds = drive.sample, current = drive.state === 'current' || drive.state === 'reported';
     set('[data-drive-value]', ds && finite(ds.value) ? (current ? '' : 'Last ') + ds.value.toFixed(1) + ' m' : '—');
     set('[data-drive-motion]', current ? (drive.direction === 'Rising' ? '↑ Rising' : drive.direction === 'Lowering' ? '↓ Lowering' : drive.direction || 'Movement —') : drive.note);
-    set('[data-drive-source]', current ? (ds.kind === 'direct' ? 'Reported' : 'Block proxy') + (drive.ratio === null ? ' · range pending' : ' · observed') : '');
+    set('[data-drive-source]', current ? (ds.kind === 'direct' ? 'Reported' : ds.mnemonic || 'BHE') + (drive.state === 'reported' ? ' · depth log' : '') + (drive.ratio === null ? ' · range pending' : '') : '');
     const marker = root.querySelector('[data-drive-marker]');marker.toggleAttribute('hidden', !current || drive.ratio === null);
     if (current && drive.ratio !== null) marker.setAttribute('transform', 'translate(0,' + (6 + (1 - drive.ratio) * 44).toFixed(2) + ')');
     set('[data-drive-max]', current && drive.ratio !== null ? ds.max.toFixed(1) : '');set('[data-drive-min]', current && drive.ratio !== null ? ds.min.toFixed(1) : '');

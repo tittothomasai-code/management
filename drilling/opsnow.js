@@ -9,14 +9,14 @@ import * as A from './opsnow_ac.js?v=re1115';
 import * as WP from './opsnow_planview.js?v=re1115';
 import * as JS from './opsnow_jsurvey.js?v=re1115';
 import {createSurveyAlerts, reportSurveyStations} from './opsnow_survey_alert.mjs?v=survey1117';
-import {createPumpGraphic, pumpSample, driveChannel, driveSample} from './opsnow_pumps.mjs?v=compact1117';
+import {createPumpGraphic, pumpSample, driveChannel, driveSample, refreshDepthTail} from './opsnow_pumps.mjs?v=depth1118';
 const $ = id => document.getElementById(id);
 const PAGE = ['joints', 'wellplan'].includes(document.documentElement.dataset.page) ? document.documentElement.dataset.page : 'ops'; // joints.html / wellplan.html: same data layer, one surface each
 const DEF_WELL = new URLSearchParams(location.search).get('well') || 'DR101L';
 const NOMINAL_JOINT_M = 13; // project rule: 13 m joints. Measured length from block travel is shown alongside.
 const WINDOW_M = 150, WINDOW_MS = 3 * 3600e3, TREND_M = 60, TREND_MS = 2 * 3600e3;
 const S = {well: null, wellbores: [], headers: {}, wb: null, log: null, map: {}, data: {ml: [], ul: [], rows: []},
-  traj: null, trajUid: null, bit: null, pumpSample: null, timeLog: null, advancedAt: null, message: '', override: {wb: '', log: ''},
+  traj: null, trajUid: null, bit: null, pumpSample: null, previousDepthRow: null, timeLog: null, advancedAt: null, message: '', override: {wb: '', log: ''},
   due: {data: 0, header: 0, survey: 0, discover: 0, extra: 0}, pages: 0, started: false,
   // whole-log extras: older depth rows, MWD gamma + image logs, every wellbore's survey (read once, then kept fresh)
   backfill: 'todo', fe: null, image: null, imageRange: null, branchTrajs: null, branchMsg: '', branches: null, ac: null, tally: null, tallyName: '', tallyError: '',
@@ -60,7 +60,7 @@ async function selectWellbore(b) {
   const log = (S.override.log && logs.find(l => l.uid === S.override.log)) || C.pickPrimary(logs);
   if (!log) throw new Error('No drilling log with parameters in wellbore ' + b.name);
   S.timeLog = logs.find(l => l.time && l.curves.some(c => /^(BDE|BITDEP|DBTM|BIT_?DEPTH)/i.test(c.mn))) || null;
-  if (changed || S.log?.uid !== log.uid) { S.log = log; S.data = {ml: [], ul: [], rows: []}; S.map = {}; S.advancedAt = null; S.pumpSample = null; S.backfill = log.time ? 'n/a' : 'todo'; S.fe = S.image = null; S.branchTrajs = null; S.branches = null; await readData(true); S.trajUid = null; S.traj = null; }
+  if (changed || S.log?.uid !== log.uid) { S.log = log; S.data = {ml: [], ul: [], rows: []}; S.map = {}; S.advancedAt = null; S.pumpSample = null; S.previousDepthRow = null; S.backfill = log.time ? 'n/a' : 'todo'; S.fe = S.image = null; S.branchTrajs = null; S.branches = null; await readData(true); S.trajUid = null; S.traj = null; }
   if (!S.trajUid) await findTrajectory();
   await readSurvey();
   if (S.timeLog && S.timeLog !== S.log) await readBit();
@@ -72,7 +72,7 @@ function window0(log) {
 function fromLast(log) {
   const last = S.data.rows.at(-1)?.[0];
   if (last == null) return window0(log);
-  return log.time ? `<startDateTimeIndex>${new Date(last + 1000).toISOString()}</startDateTimeIndex>` : `<startIndex uom="${C.xa(log.indexUom || 'm')}">${(last + 0.01).toFixed(2)}</startIndex>`;
+  return log.time ? `<startDateTimeIndex>${new Date(last + 1000).toISOString()}</startDateTimeIndex>` : `<startIndex uom="${C.xa(log.indexUom || 'm')}">${(last - 0.000001).toFixed(6)}</startIndex>`;
 }
 async function readData(initial) {
   const log = S.log; let pages = 0, added = 0;
@@ -83,7 +83,8 @@ async function readData(initial) {
     const d = C.parseLogData(r.xml, log.time); pages++;
     if (!d.rows.length) break;
     if (!S.data.ml.length) S.map = C.mapChannels(d.ml, d.ul, log);
-    const n = C.appendRows(S.data, d, 60000); added += n;
+    if (!log.time) { S.previousDepthRow=S.data.rows.at(-1)?.slice() || null; refreshDepthTail(S.data, d); }
+    const n = C.appendRows(S.data, d, 60000); added += n; if(n)S.previousDepthRow=null;
     if ((r.result !== 2 && d.rows.length < 4990) || !n) break; // 2 = partial; the Adaga store also returns 1 on a full 5,000-row page
   } while (pages < 6);
   if (added && !initial) S.advancedAt = Date.now();
@@ -125,7 +126,7 @@ async function readBit() {
   const d = C.parseLogData(r.xml, true), m = C.mapChannels(d.ml, d.ul, L), lv = C.latestValues(d.rows, m);
   const dc = driveChannel({ml: d.ml, ul: d.ul, header: L, blockChannel: m.bh});
   const dh = dc ? C.latestValues(d.rows, {drive: dc}).drive : null;
-  S.pumpSample = {scope: receiptScope, logUid: L.uid, sample: pumpSample({rows: d.rows, channel: m.flowIn, latest: lv.flowIn, time: true, source: L.name}), drive: driveSample({rows: d.rows, channel: dc, latest: dh, time: true, source: L.name})};
+  S.pumpSample = {scope: receiptScope, logUid: L.uid, sample: pumpSample({rows: d.rows, channel: m.flowIn, latest: lv.flowIn, time: true, source: L.name}), pressure: pumpSample({rows:d.rows,channel:m.spp,latest:lv.spp,time:true,source:L.name}), drive: driveSample({rows: d.rows, channel: dc, latest: dh, time: true, source: L.name})};
   S.bit = lv.bd ? {v: lv.bd.v, at: lv.bd.at, log: L} : null;
 }
 // Whole depth log: page back from the log start up to the first row already held (5,000 rows per call).
@@ -414,8 +415,11 @@ function render() {
   const dc = driveChannel({ml: S.data.ml, ul: S.data.ul, header: L, blockChannel: S.map.bh});
   const dh = dc ? C.latestValues(rows, {drive: dc}).drive : null;
   const primaryDrive = driveSample({rows, channel: dc, latest: dh, time: Boolean(L?.time), source: L?.name});
+  if(primaryDrive && !L?.time && S.previousDepthRow?.[0]===rows.at(-1)?.[0]){const change=driveSample({rows:[S.previousDepthRow,rows.at(-1)],channel:dc,latest:dh,time:false,source:L?.name});primaryDrive.previousValue=change.previousValue;if(Number.isFinite(change.previousValue)){primaryDrive.min=Math.min(primaryDrive.min,change.previousValue);primaryDrive.max=Math.max(primaryDrive.max,change.previousValue);}}
   const secondaryDrive = S.pumpSample?.scope === surveyContext().scope && S.pumpSample?.logUid === S.timeLog?.uid ? S.pumpSample.drive : null;
-  pumpGraphic?.update({signed, now, sample: L?.time ? primaryFlow : secondaryFlow || primaryFlow, driveSample: L?.time ? primaryDrive : secondaryDrive || primaryDrive});
+  const primaryPressure=pumpSample({rows,channel:S.map.spp,latest:lv.spp,time:Boolean(L?.time),source:L?.name});
+  const secondaryPressure=S.pumpSample?.scope===surveyContext().scope && S.pumpSample?.logUid===S.timeLog?.uid ? S.pumpSample.pressure : null;
+  pumpGraphic?.update({signed, now, pressureSample:L?.time ? primaryPressure : primaryPressure || secondaryPressure, sample: L?.time ? primaryFlow : primaryFlow || secondaryFlow, driveSample: L?.time ? primaryDrive : primaryDrive || secondaryDrive});
   const state = !signed ? (W.state.dead ? 'Stopped' : 'Not signed in') : !L ? 'Connecting' : C.rigState({fresh, advancedAt: S.advancedAt, watchFrom: S.watchFrom, now, rpm: lv.rpm?.v, rop: lv.rop?.v, flow: lv.flowIn?.v, timeLog: L?.time});
   const chip = $('onState'); chip.textContent = state; chip.dataset.s = /^Drilling/.test(state) ? 'drill' : /No new|Stopped|Not signed/.test(state) ? 'bad' : 'idle';
   // The store re-stamps dTimLastChange about once a minute even when no row is added, so it proves the
