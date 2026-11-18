@@ -144,3 +144,24 @@ the measured start and remains flagged; sensors are not adjusted to force it.
 History and axis labels no longer decrement a joint number across unaligned
 BHE resets. 43 unit tests and desktop/phone local and real-preview checks passed.
 All four changed entry/runtime assets independently matched production hashes.
+
+## Measured hardpoints and reference uploads
+
+Deploy `6afd784d2f3c9d52c9fa2293`; rollback `6afd7022f8fc82b187ad2d1b`.
+Runtime head `7ed8fcbc7c24916c0aeaaf15e59f746809cda7fd`.
+Workflow https://github.com/tittothomasai-code/management/actions/runs/44281938330
+
+Measured AEST hardpoints are available in Ops and Tally. Explicit midnight
+confirmation is due each day; no unattended measurement is invented. Joint-end
+or partial-joint points carry MD, BHA, source and recorder, with an append-only
+local revision/retraction history and exact well/bore/run-scoped export/import.
+Anchors adjust subsequent reference numbering and can resume corrected BHE
+cumulative totals at a matching complete anchor; raw values and pre-anchor
+history remain separate. Data stays on this device, without server sharing.
+
+CSV/XLSX measured uploads are now separate references, with multi-sheet
+selection, starting MD/BHA/run review, retained upload revisions, and visible
+length/cumulative/BHA/gap inconsistencies. The derived data is not overwritten
+by uploads. Arithmetic consistency is no longer shown as independent agreement.
+52 unit tests and desktop/phone browser tests passed before real-preview checks
+and publication. Five changed runtime modules matched independent live hashes.

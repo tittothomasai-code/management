@@ -7,13 +7,13 @@
     },
     {
       "path": "opsnow.js",
-      "sha256": "24fa8502003c98b388d51ba29e373f829cb03a4c591761613dcf43d1c390ddc0"
+      "sha256": "e9d4b550db860ee49f6b3448553b06fd7ca44b9822751f0626fbaef6ac8beb34"
     },
     {
       "path": "opsnow_tallyview.js",
-      "sha256": "d95c8d4542a70fd46f18a04e9fca486752cde5c78961bd7c223e7a72b1ea21c6"
+      "sha256": "501d430394f45663f0a5ab8bcbfbf934419403822292bbb81279cbdf0d7d70be"
     }
   ],
-  "verifiedDeployId": "6afd7022f8fc82b187ad2d1b",
+  "verifiedDeployId": "6afd784d2f3c9d52c9fa2293",
   "verifiedAt": "2026-11-18"
 }
