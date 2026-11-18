@@ -53,3 +53,12 @@ SPP provides a labelled pump-activity inference only when flow is unusable; no
 uncalibrated numeric flow is fabricated. 22 unit checks and desktop/phone preview
 checks pass. Production hashes for the Ops entry, module and widget assets were
 independently verified after publication.
+
+## SPP threshold rule
+
+Published deploy `6afd52cd70be04cf2d2b309f`; rollback `6afd4de498f4c455b6422591`.
+Workflow https://github.com/tittothomasai-code/management/actions/runs/44258682463
+SPP above 100 psi now indicates pumps on when Flow is unusable, labelled inferred.
+At or below 100 psi is unconfirmed. Unit conversion and direct-flow precedence
+are tested. 23 unit tests and desktop/phone preview suites passed. Production
+entry and module hashes independently verified. Survey popup remains enabled.
