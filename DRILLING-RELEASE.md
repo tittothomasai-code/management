@@ -41,3 +41,15 @@ production Ops SHA before publishing. The source guard refuses to overwrite
 concurrent unreviewed Ops changes. Keep the additive entry patches and the old
 inventory-preservation checks. Release evidence and screenshots are attached to
 the successful Actions run for seven days.
+
+## BHE/Flow and SPP follow-up, 18 November
+
+Published deploy: `6afd4de498f4c455b6422591`. Rollback: `6afd11726f5e4201ff542b17`.
+Workflow: https://github.com/tittothomasai-code/management/actions/runs/44255970608
+
+The active depth log now supplies reported BHE/Flow instead of hiding those
+readings. Updates at the same MD refresh the tail without inventing drilled depth.
+SPP provides a labelled pump-activity inference only when flow is unusable; no
+uncalibrated numeric flow is fabricated. 22 unit checks and desktop/phone preview
+checks pass. Production hashes for the Ops entry, module and widget assets were
+independently verified after publication.
