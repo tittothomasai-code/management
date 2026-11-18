@@ -1,0 +1,31 @@
+name: Drilling release
+on:
+  push:
+    branches: [release/drilling-20261118]
+    paths: ['.github/workflows/drilling-release.yml', '.github/scripts/drilling-release.mjs']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: drilling-production-release
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Inspect current production safely
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        run: node .github/scripts/drilling-release.mjs preflight
+      - name: Save release evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: drilling-release-evidence
+          path: release-evidence/
+          if-no-files-found: ignore
+          retention-days: 7
