@@ -127,3 +127,20 @@ matched production hashes, and every published inventory entry plus BHA/start
 values matched the original workbook. Full agreement with authenticated live
 WITSML history is not asserted: the tab reports match/review/missing coverage
 from whatever real BHE data the signed-in operator receives.
+
+## Ops estimated joint 223 correction
+
+Deploy `6afd7022f8fc82b187ad2d1b`; rollback `6afd6d9f1ddb5a68fafa1e5d`.
+Runtime head `f93b9fe815481a6874695ae561e75f60e6380ac2`.
+Workflow https://github.com/tittothomasai-code/management/actions/runs/44276474420
+
+Ops now loads the measured reference without opening Tally first. The supplied
+screenshot depth 2,618.90 m maps to inventory entry 208 at 2,610.62–2,623.01 m,
+with 8.28/12.39 m advance. Entry 223 instead spans 2,796.74–2,809.08 m.
+The card labels the number as an MD reference, retains the single BHA inclusion
+in the starting depth, prefers valid bit MD, and keeps hole MD as a reference
+when bit depth is unavailable. The latest reset at 2,609.20 m is 1.42 m before
+the measured start and remains flagged; sensors are not adjusted to force it.
+History and axis labels no longer decrement a joint number across unaligned
+BHE resets. 43 unit tests and desktop/phone local and real-preview checks passed.
+All four changed entry/runtime assets independently matched production hashes.
