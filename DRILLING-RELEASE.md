@@ -62,3 +62,13 @@ SPP above 100 psi now indicates pumps on when Flow is unusable, labelled inferre
 At or below 100 psi is unconfirmed. Unit conversion and direct-flow precedence
 are tested. 23 unit tests and desktop/phone preview suites passed. Production
 entry and module hashes independently verified. Survey popup remains enabled.
+
+## Joint/BHE comparison correction
+
+Deploy `6afd571131294b26ddb556f2`; rollback `6afd52cd70be04cf2d2b309f`.
+Workflow https://github.com/tittothomasai-code/management/actions/runs/44261048953
+Joint target now uses known tally length or explicit 13 m nominal. MD connection
+spacing is no longer called measured block travel or used to overwrite that target.
+Observed current-cycle BHE travel is shown separately. BHE units are normalized
+for detection/comparison. 28 unit checks and desktop/phone tests passed; deployed
+Ops entry, module and joint helper hashes independently verified.
