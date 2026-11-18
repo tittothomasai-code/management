@@ -12,7 +12,13 @@
         "generated-file metadata quiet",
         "old well response ignored",
         "reduced motion",
-        "fits viewport"
+        "fits viewport",
+        "actual tally board uses BHE-derived lengths",
+        "CSV exports BHE and MD checks",
+        "inconsistent BHE cannot promote a pipe length",
+        "manual lengths persist without overwrite",
+        "missing/invalid bit stays unconfirmed",
+        "off-bottom bit remains separate"
       ],
       "errors": [],
       "external": []
@@ -28,7 +34,13 @@
         "generated-file metadata quiet",
         "old well response ignored",
         "reduced motion",
-        "fits viewport"
+        "fits viewport",
+        "actual tally board uses BHE-derived lengths",
+        "CSV exports BHE and MD checks",
+        "inconsistent BHE cannot promote a pipe length",
+        "manual lengths persist without overwrite",
+        "missing/invalid bit stays unconfirmed",
+        "off-bottom bit remains separate"
       ],
       "errors": [],
       "external": []

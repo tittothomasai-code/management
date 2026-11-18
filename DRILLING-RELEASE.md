@@ -72,3 +72,30 @@ spacing is no longer called measured block travel or used to overwrite that targ
 Observed current-cycle BHE travel is shown separately. BHE units are normalized
 for detection/comparison. 28 unit checks and desktop/phone tests passed; deployed
 Ops entry, module and joint helper hashes independently verified.
+
+## Correlated BHE lengths and depth/tally integrity
+
+Deploy `6afd630b57c057fcba87b222`; rollback `6afd571131294b26ddb556f2`.
+Runtime head `eaf4478171a09aff5400f208e2c837af9aa880fa`.
+Workflow https://github.com/tittothomasai-code/management/actions/runs/44268106235
+
+Completed, correlated BHE strokes now supply labelled derived lengths in the
+existing Tally board. MD advance, BHE travel, bit depth and imported cumulative
+tally endpoints are checked separately. Pickups, incomplete samples, off-bottom
+readings and disagreements remain provisional. Invalid intervals cannot silently
+promote a physical pipe length into the shared tally. Imported/entered lengths
+are preserved. Ops and Joints show expandable checks with a CSV export.
+
+Missing bit depth no longer inherits hole MD internally. Fresh off-bottom bit
+depths remain separate, impossible source bit depths are flagged and excluded
+from tally counts, and reported length units are converted. Fixed re-entrant
+refresh during tally-cell editing. Source changes are guarded for both Ops and
+Tally; all previous production file paths were preserved.
+
+35 unit tests and desktop/phone browser tests passed, including the actual
+Tally board, derived lengths, review blocking, CSV export, edits, missing/invalid
+bit depth and existing pump/survey alerts. Actual unpublished-site Ops, Tally,
+game and DD checks passed before promotion. All four changed entry/runtime
+files independently matched production SHA-256 after publishing. Detailed
+assumptions and test scope: drilling-tests/DEPTH-TALLY-CHECKS.md. These are
+derived estimates; a depth log cannot prove off-bottom timing between samples.

@@ -3,17 +3,17 @@
   "files": [
     {
       "path": "ops.html",
-      "sha256": "59889b3c6d90585cc81d316fbce5241c327088b18f9172ef3f040ebc0c6f365b"
+      "sha256": "93b04ee7cf8fc2f39585be480298632e88d99a054ca4a232a3b3f0df3ddf604b"
     },
     {
       "path": "opsnow.js",
-      "sha256": "57b741f7bf4bec5853a3c266ba249f84477ff1fe465b763343c7b2550d15d1e2"
+      "sha256": "366137f63da29caea00f4004b345f41a0293398e5be947e056766c2352bed163"
     },
     {
       "path": "opsnow_tallyview.js",
-      "sha256": "bc0578f35149f045425a47029b7a731fad86d0cb0ca1dbe525226bb6a6ae6457"
+      "sha256": "4992347fa71d95052ffb137217c42faf51ee726f03fdb66a05a048453e037708"
     }
   ],
-  "verifiedDeployId": "6afd571131294b26ddb556f2",
+  "verifiedDeployId": "6afd630b57c057fcba87b222",
   "verifiedAt": "2026-11-18"
 }
