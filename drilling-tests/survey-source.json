@@ -12,6 +12,14 @@
     {
       "path": "opsnow_tallyview.js",
       "sha256": "501d430394f45663f0a5ab8bcbfbf934419403822292bbb81279cbdf0d7d70be"
+    },
+    {
+      "path": "edmmap.js",
+      "sha256": "2acc5595b24fb08e3d35597ad5451e09a2f2f4d4095f84a1bfd9a7835fd435e3"
+    },
+    {
+      "path": "edmui.js",
+      "sha256": "3c7771efd46231e3956680ef5306915452baf05f865729720ce74a67a0d84157"
     }
   ],
   "verifiedDeployId": "6afd784d2f3c9d52c9fa2293",

@@ -5,6 +5,7 @@
 // was v5.9.4.1: every imported EDM site and well at its real position in 3D (local metres about the data centroid, from lat/long).
 // Tap/click any wellhead or well path for all its details; decluttered labels (sites when zoomed out, wells when zoomed in); hover card on desktop.
 // Data stays on this device. Tagged IMPORT, never LIVE. Metric.
+import {attachFieldCheck} from './edm_field_check.mjs?v=fieldcheck1118';
 import * as THREE from 'three';import {OrbitControls} from './vendor/OrbitControls.js';import {matrix} from './ac.js?v=fp-ops-r2-20261108';import * as ES from './edmstats.js?v=5942';import * as G from './edmgeo.js?v=2';
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fm=v=>v==null||!Number.isFinite(+v)?'n/a':(+v).toLocaleString('en-AU',{minimumFractionDigits:1,maximumFractionDigits:1});
@@ -242,7 +243,7 @@ export function open(W,{onClose,saved,fkey}={}){close();css();const el=document.
  const api={open:true,W,st,select:(k,i,f=true)=>select(k,i,f),fit:(all)=>fit(all?W.boundsAll:W.bounds),close,
   settled:()=>!anim&&!st.dirty&&!st.fpend,screen:(k,i)=>{const x=k=='site'?W.sites[i]:W.wells[i];return proj(X(x.E),yOf(k,i),Zc(x.N))},pick:(x,y,r=20)=>nearest(x,y,r),idx:(k,id)=>k=='site'?siteBy.get(id):k=='well'?wellBy.get(id):wbBy.get(id),
   pathScreen:(i,j)=>{const p=W.wbs[i].path[j];return proj(X(p.E),dy(-p.Z,wy0[wellBy.get(W.wbs[i].well)]??0),Zc(p.N))},surf:()=>({ve:st.ve,see:MAP.see,src:SRC,wy0:Array.from(wy0.slice(0,50)),glAt:(E,N)=>glAt(E,N),meshY:MAP.mesh?MAP.mesh.geometry.attributes.position.array[1]:null,pathTop:nv?[pp[1],ps[0]]:null}),labels:()=>st.labels,mode:()=>st.mode,cam,ctl,filter:(f)=>{if(f)st.F={...ES.emptyFilter(),...f,has:{...ES.emptyFilter().has,...(f.has||{})}};applyF();if(fp.style.display=='flex')fForm();return {n:st.nVis,active:ES.active(st.F)}},getF:()=>JSON.parse(JSON.stringify(st.F)),fstats:()=>ES.fieldStats(W,fon()?st.m:null,wbOf),wstats:i=>ES.wellStats(W,W.wells[i],wbOf),visible:i=>!hidW(i),openFilters:openF,setMap,map:()=>({mode:MAP.mode,crs:W.crs,place:PL.ok?PL.kind:null,placeLabel:PL.label||null,missing:PL.missing||null,z:MAP.z,req:MAP.req,ok:MAP.ok,err:MAP.err,key:MAP.key,mesh:!!MAP.mesh,glWells:glI.length,meshY:MAP.mesh?Array.from(MAP.mesh.geometry.attributes.position.array.filter((v,j)=>j%3==1).slice(0,5)):null}),td:()=>({n:TD.length,shown:st.tdl||[],list:TD.slice(0,50)}),tdScreen:j=>proj(TD[j].x,TD[j].y*st.ve,TD[j].z),glAt,ll,wellXY:i=>[wp[i*3],wp[i*3+1],wp[i*3+2]]};
- window.GX=window.GX||{};window.GX.edmmap=api;return api}
+ window.GX=window.GX||{};window.GX.edmmap=api;api.fieldCheck=attachFieldCheck(api);return api}
 
 // v5.12.15 Place on map: pick the projected zone of the file's map E/N, or type one site's lat/long. Saved on this device per import.
 function placeUI(W,PL,fkey,done){document.getElementById('emplc')?.remove();const S=W.sites||[],cur=getPlace(fkey)||{};const d=document.createElement('div');d.id='emplc';

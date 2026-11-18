@@ -1,0 +1,2 @@
+import {assessField} from './edm_field_check_core.mjs?v=fieldcheck1118';
+self.onmessage=e=>{try{self.postMessage({report:assessField(e.data.models,e.data.options)});}catch(error){self.postMessage({error:error.message});}};

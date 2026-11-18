@@ -1,0 +1,35 @@
+{
+  "mode": "Actual EDM UI/source with read-only production baseline assets; known DR101L import only; no real offset data invented.",
+  "results": [
+    {
+      "width": 1920,
+      "placedE": 805279.555996779,
+      "placedN": 7255911.811970977,
+      "datum": {
+        "zone": 55,
+        "south": true,
+        "datum": "GDA2020",
+        "vertical": "MSL"
+      },
+      "status": "INCOMPLETE",
+      "pairs": 0,
+      "savedImportsPreserved": true,
+      "errors": []
+    },
+    {
+      "width": 390,
+      "placedE": 805279.555996779,
+      "placedN": 7255911.811970977,
+      "datum": {
+        "zone": 55,
+        "south": true,
+        "datum": "GDA2020",
+        "vertical": "MSL"
+      },
+      "status": "INCOMPLETE",
+      "pairs": 0,
+      "savedImportsPreserved": true,
+      "errors": []
+    }
+  ]
+}
