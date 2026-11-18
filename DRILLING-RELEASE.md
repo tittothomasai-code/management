@@ -165,3 +165,33 @@ length/cumulative/BHA/gap inconsistencies. The derived data is not overwritten
 by uploads. Arithmetic consistency is no longer shown as independent agreement.
 52 unit tests and desktop/phone browser tests passed before real-preview checks
 and publication. Five changed runtime modules matched independent live hashes.
+
+## DR101L EDM location and 10 km field screening
+
+Deploy `6afd89b9f29dfb8aa3bf1226`; rollback `6afd784d2f3c9d52c9fa2293`.
+Release head `27fedf7879e6e360e151d2a2e4427086b0d35347` (runtime change
+`9e2c50b32c24569f47edffe663333f5864c88941`).
+Workflow https://github.com/tittothomasai-code/management/actions/runs/44293565043
+
+Plan → Import EDM → Open DR101L field · 10 km check opens the existing
+additive well-folder importer and the EDM map. The original EDM's precise site
+location is E 805279.555996779 / N 7255911.811970977, GDA2020 / MGA zone 55
+south, agreeing with the existing planning package. Workbook coordinates are
+zero, with conflicting datum labels, and were not used. Existing saved imports
+and the importer's backup/preservation behavior remain intact.
+
+The worker screens all compatible saved offset trajectories intersecting a
+10 km horizontal radius, without the old 40-path cap. It reports piecewise-linear
+3D closest approach and conservative simplified-cone SF bounds, explicit datum
+skips and display-decimation limits. It exports every result. This is not
+operational clearance or a complete regional-inventory search. The actual
+provided model has four planned branches and no surrounding offsets: **INCOMPLETE,
+zero offset trajectories and zero assessed pairs**. Each device's own saved EDM
+library is searched when opened there; no remote library access is implied.
+
+59 unit tests and desktop/phone source-fixture browser tests passed. The actual
+unpublished deploy passed Ops/Tally, BHA, directional workspace, menu and EDM
+location/incomplete-report checks on both screen sizes before promotion. The
+acceptance test explicitly closes the DD overlay before navigating to EDM. Five
+changed EDM runtime files independently matched live SHA-256 hashes. See
+`drilling-tests/EDM-FIELD-CHECK.md` for provenance, limits and reproducible tests.

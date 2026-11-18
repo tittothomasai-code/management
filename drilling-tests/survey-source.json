@@ -15,13 +15,25 @@
     },
     {
       "path": "edmmap.js",
-      "sha256": "2acc5595b24fb08e3d35597ad5451e09a2f2f4d4095f84a1bfd9a7835fd435e3"
+      "sha256": "295828b74b1ecd7ebe947f7c542cfbf4b78b48e745dec189366d887f953cc74d"
     },
     {
       "path": "edmui.js",
-      "sha256": "3c7771efd46231e3956680ef5306915452baf05f865729720ce74a67a0d84157"
+      "sha256": "73066ce4b675a20ea9aab3759f4d4200d4d48935016357682ada4b1cf3500df3"
+    },
+    {
+      "path": "edm_field_check.mjs",
+      "sha256": "1968db90eb4cf389dcde9be22a55fa918b7e17b23bbb8a84af2cd5055651a5d5"
+    },
+    {
+      "path": "edm_field_check_core.mjs",
+      "sha256": "7d485ab64a2fb831e10ae138c8108ff6b8e2a0de2e731fb4a5bf6dcf8ce7885d"
+    },
+    {
+      "path": "edm_field_check_worker.mjs",
+      "sha256": "ef76870ad788c84d34375f6a8a3b6da9113da3086f9d3741ad43ec4c0cf3dfd3"
     }
   ],
-  "verifiedDeployId": "6afd784d2f3c9d52c9fa2293",
+  "verifiedDeployId": "6afd89b9f29dfb8aa3bf1226",
   "verifiedAt": "2026-11-18"
 }
