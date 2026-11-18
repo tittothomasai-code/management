@@ -61,3 +61,9 @@ test('tail updates at the same MD refresh Flow/SPP/BHE without inventing drilled
  assert.equal(refreshDepthTail(store,{ml:store.ml,rows:[[113,0,0,8]]}),true);assert.equal(store.rows.length,2);assert.deepEqual(store.rows.at(-1),[113,0,0,8]);
  assert.equal(refreshDepthTail(store,{ml:store.ml,rows:[[113,0,0,8]]}),false);
 });
+
+test('SPP site rule is strictly above 100 psi, with pressure unit conversion',()=>{
+ const infer=(value,unit='psi')=>pumpActivity({signed:true,now,pressureSample:sample({value,unit})});
+ assert.equal(infer(100.01).state,'on');assert.equal(infer(100).state,'unknown');assert.equal(infer(99).state,'unknown');assert.equal(infer(0).state,'unknown');
+ assert.equal(infer(6.9,'bar').state,'on');assert.equal(infer(6.8,'bar').state,'unknown');assert.equal(infer(700,'kPa').state,'on');assert.equal(infer(.7,'MPa').state,'on');assert.equal(infer(1000,'').state,'unknown');
+});

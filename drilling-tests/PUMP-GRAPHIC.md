@@ -55,3 +55,11 @@ without marking the hole as advancing. Missing flow falls back to a clearly
 labelled SPP inference (`Pumps likely on/off`). No numeric flow is invented from
 pressure; that requires a calibrated hydraulic relationship and residual/trapped
 pressure remains possible. Direct flow always takes precedence, including zero.
+
+## SPP site rule
+
+When usable Flow is absent, SPP strictly above 100 psi indicates pumps on and
+is labelled `SPP inferred`. Exactly 100 psi or lower does not establish pumps off;
+the state remains unconfirmed. Reported Flow, including zero, has precedence.
+Supported pressure units are normalized to psi before applying the rule.
+No numeric flow rate is fabricated from pressure.

@@ -1,12 +1,19 @@
 const finite = Number.isFinite;
+export function pressurePsi(sample) {
+  const unit=(sample?.unit||'').toLowerCase().replace(/\s+/g,'');
+  const factor={psi:1,psig:1,'lbf/in2':1,'lbf/in^2':1,bar:14.503773773,kpa:.14503773773,mpa:145.03773773,pa:.00014503773773}[unit];
+  return factor && finite(sample?.value) ? sample.value*factor : null;
+}
 export function pumpActivity({signed, sample, pressureSample, now = Date.now()}) {
   const usable = s => s && finite(s.value) && s.value >= 0 && !s.blankLatest &&
     (s.indexType === 'depth' || (finite(s.at) && s.at <= now && now-s.at < 120000 && finite(s.previousAt) && s.previousAt < s.at));
   if (!signed) return {state:'unknown',note:'Sign in to receive readings',sample:null};
   const flow=usable(sample), pressure=!flow && usable(pressureSample), selected=flow?sample:pressure?pressureSample:null;
   if (!selected) return {state:'unknown',note:'No usable flow or SPP reading',sample:null};
-  return {state:selected.value>0?'on':'off',sample:selected,inferred:pressure,basis:pressure?'spp':'flow',reported:selected.indexType==='depth',
-    note:pressure?'Pump activity inferred from SPP; trapped pressure is possible. Numeric flow requires calibration.':'Reported flow-in reading'};
+  const psi=pressure?pressurePsi(selected):null;
+  if(pressure && (psi===null || psi<=100))return {state:'unknown',sample:selected,inferred:true,basis:'spp',note:psi===null?'SPP units unavailable':'SPP is not above 100 psi; pump state is unconfirmed'};
+  return {state:pressure?'on':selected.value>0?'on':'off',sample:selected,inferred:pressure,basis:pressure?'spp':'flow',reported:selected.indexType==='depth',
+    note:pressure?'Pumps on inferred from SPP above 100 psi (site rule); numeric flow is not estimated.':'Reported flow-in reading'};
 }
 
 export function refreshDepthTail(store, data) {
@@ -64,8 +71,8 @@ export function createPumpGraphic({document: doc = document, host}) {
   const set = (selector, value) => { const el = root.querySelector(selector);if (el.textContent !== value) el.textContent = value; };
   return {root, update(input) {
     const pump = pumpActivity(input), sample = pump.sample;root.dataset.state = pump.state;
-    set('[data-pump-state]', pump.state === 'on' ? (pump.inferred ? 'Pumps likely on' : 'Pumps on') : pump.state === 'off' ? (pump.inferred ? 'Pumps likely off' : 'Pumps off') : 'Pumps —');
-    set('[data-pump-flow]', pump.state !== 'unknown' ? sample.value.toLocaleString('en-AU', {maximumFractionDigits: 1}) + ' ' + (sample.unit || '') + (pump.inferred ? ' · SPP' : '') + (pump.reported ? ' · depth log' : '') : 'No flow / SPP reading');
+    set('[data-pump-state]', pump.state === 'on' ? 'Pumps on' : pump.state === 'off' ? (pump.inferred ? 'Pumps likely off' : 'Pumps off') : 'Pumps —');
+    set('[data-pump-flow]', pump.state !== 'unknown' ? sample.value.toLocaleString('en-AU', {maximumFractionDigits: 1}) + ' ' + (sample.unit || '') + (pump.inferred ? ' · SPP inferred' : '') + (pump.reported ? ' · depth log' : '') : pump.basis==='spp' ? sample.value.toLocaleString('en-AU',{maximumFractionDigits:1})+' '+(sample.unit||'')+' · SPP unconfirmed' : 'No flow / SPP reading');
     root.querySelector('.on-pump-reminder').title = pump.note;
     const drive = topDriveActivity({...input, sample: input.driveSample});root.dataset.drive = drive.state;
     const ds = drive.sample, current = drive.state === 'current' || drive.state === 'reported';

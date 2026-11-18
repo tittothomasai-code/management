@@ -9,7 +9,7 @@ import * as A from './opsnow_ac.js?v=re1115';
 import * as WP from './opsnow_planview.js?v=re1115';
 import * as JS from './opsnow_jsurvey.js?v=re1115';
 import {createSurveyAlerts, reportSurveyStations} from './opsnow_survey_alert.mjs?v=survey1117';
-import {createPumpGraphic, pumpSample, driveChannel, driveSample, refreshDepthTail} from './opsnow_pumps.mjs?v=depth1118';
+import {createPumpGraphic, pumpSample, driveChannel, driveSample, refreshDepthTail} from './opsnow_pumps.mjs?v=spp100';
 const $ = id => document.getElementById(id);
 const PAGE = ['joints', 'wellplan'].includes(document.documentElement.dataset.page) ? document.documentElement.dataset.page : 'ops'; // joints.html / wellplan.html: same data layer, one surface each
 const DEF_WELL = new URLSearchParams(location.search).get('well') || 'DR101L';

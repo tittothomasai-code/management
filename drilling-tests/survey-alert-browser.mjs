@@ -43,7 +43,7 @@ try {
     await page.goto(origin + '/ops');
     if((await readFile(resolve(root,'drilling/ops.html'),'utf8')).includes('bha-builder/context-launcher')){await page.locator('[data-bha-context]').waitFor();assert.equal(await page.locator('[data-bha-context]').count(),1);}
     await page.evaluate(async () => {
-      const m = await import('./opsnow.js?v=depth1118');window.__testOps = m;window.__simSigned = true;
+      const m = await import('./opsnow.js?v=spp100');window.__testOps = m;window.__simSigned = true;
       Object.assign(m.testState, {well: {uid: 'sim-well', name: 'SIM FIELD'}, wb: {uid: 'sim-bore', name: 'SIM WB1'}, trajUid: 'sim-survey',
         log: {name: 'SIM depth log', time: false, changed: new Date().toISOString()}, data: {ml: [], ul: [], rows: [[100], [113]]}});
       window.__simStations = [{uid: 'sim-100', md: 100, t: '2026-11-17T01:50:00Z'}];
