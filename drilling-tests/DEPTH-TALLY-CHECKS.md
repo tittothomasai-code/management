@@ -36,3 +36,30 @@ No sensor samples or detector outputs are changed to force the match.
 43 unit checks and desktop/phone Ops tests cover the supplied screenshot depths,
 reference loading before opening Tally, progress 8.28/12.39 m, the 1.42 m
 discrepancy, bit-MD precedence, and other-well reference clearing.
+
+## Measured hardpoints and uploaded references
+
+Ops and Tally now accept measured hardpoints with an AEST timestamp, exact
+well/bore/run scope, measured joint, cumulative MD, BHA, recorder and source.
+A point can be at a joint end or within a joint with an explicitly measured
+advance. Midnight is 00:00 AEST (UTC+10); an unconfirmed midnight is due, never
+filled with an estimate. The anchor corrects subsequent reference numbering
+and can resume anchored cumulative BHE at a complete matching joint-end
+checkpoint. Raw BHE lengths, source rows and pre-anchor history remain intact.
+BHA is included once; any datum correction is shown separately.
+
+History is appended on this device. Revisions and retractions keep previous
+records; reload and exact-scope JSON export/import are supported. There is no
+team-wide server persistence or unattended collection of midnight measurements.
+All hardpoint fields require explicit measured values and a source. Forms
+survive polling refreshes. Other well/bore/run records cannot be applied.
+
+Upload measured tally reads CSV/XLSX as a separate reference. Multi-sheet XLSX
+files use the tally/slide worksheet, with a worksheet selector and a review of
+starting MD, BHA and run ID before applying. Uploads stay on the device and
+retain earlier revisions. Joint/cumulative mismatches, gaps, BHA differences
+and sparse BHE remain flagged. A green arithmetic total is no longer presented
+as independent verification. The source sheet and sensor data are not changed.
+52 unit checks plus desktop/phone browser checks cover midnight boundaries,
+anchor accounting, history/retraction/reload/export/import, scope denial, sparse
+prefixes, mixed length units, multi-sheet uploads and inconsistent cumulative MD.

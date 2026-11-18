@@ -8,7 +8,7 @@ await mkdir(evidence, {recursive: true});
 const pumpEvidence = resolve(root, 'drilling-tests/equipment-evidence');await mkdir(pumpEvidence, {recursive: true});
 const stubs = {
   'opsnow_wire.js': `export const cfg={url:'SIM fixture',proxy:'offline'};export const state={dead:false,calls:0,errors:0};export const hasCred=()=>!!window.__simSigned;export const rememberedUser=()=>'';export const signIn=()=>{};export const signOut=()=>{window.__simSigned=false};export async function get(...args){state.calls++;return window.__simRead(...args);}`,
-  'opsnow_views.js': `import * as TV from './opsnow_tallyview.js?v=tally1118';export let testCtx;export const init=x=>{testCtx=x},draw=()=>{},getPlan=()=>null,getKb=()=>null;export const initJointsPage=(x,host)=>{testCtx=x;TV.init(x,{host})};export const drawJoints=()=>TV.draw();`,
+  'opsnow_views.js': `import {xlsxRows} from './opsnow_xlsx_rows.js';export {xlsxRows};import * as TV from './opsnow_tallyview.js?v=tally1118';export let testCtx;export const init=x=>{testCtx=x},draw=()=>{},getPlan=()=>null,getKb=()=>null;export const initJointsPage=(x,host)=>{testCtx=x;TV.init(x,{host,xlsxRows})};export const drawJoints=()=>TV.draw();`,
   'opsnow_wellplans.js': `export const load=()=>Promise.resolve(),planFor=()=>null,tieAt=()=>null;`,
   'opsnow_runsheet.js': `export const parse=()=>null;`,
   'opsnow_planview.js': `export const init=()=>{},refresh=()=>{};`,
@@ -19,7 +19,7 @@ const server = createServer(async (req, res) => {
     const name = new URL(req.url, 'http://local').pathname.slice(1) || 'ops.html';
     if (name in stubs) return res.writeHead(200, {'Content-Type': 'text/javascript'}).end(stubs[name]);
     if (name === 'data/per-joint-surveys.json') return res.writeHead(200, {'Content-Type': 'application/json'}).end(JSON.stringify(report));
-    const path = resolve(root, ['joints.html','opsnow_tallyboard.js','opsnow_joints.js','opsnow_mvp.js','opsnow_export.js','opsnow_core.js', 'opsnow_jsurvey.js', 'opsnow.css'].includes(name) ? 'drilling-tests/fixtures/survey-alert/' + name : 'drilling/' + (name === 'ops' ? 'ops.html' : name));
+    const path = resolve(root, ['opsnow_xlsx_rows.js','joints.html','opsnow_tallyboard.js','opsnow_joints.js','opsnow_mvp.js','opsnow_export.js','opsnow_core.js', 'opsnow_jsurvey.js', 'opsnow.css'].includes(name) ? 'drilling-tests/fixtures/survey-alert/' + name : 'drilling/' + (name === 'ops' ? 'ops.html' : name));
     if (!path.startsWith(root + '/')) return res.writeHead(403).end();
     let body = await readFile(path);
     // Test-only access to the actual Ops read/render functions. Production has no test hooks.
@@ -214,6 +214,30 @@ try {
     await page.locator('.on-side').screenshot({path:pumpEvidence+`/ops-measured-joint-${width}.png`});
     await page.evaluate(()=>{__testOps.testState.bit={v:2600,at:Date.now(),log:{name:'SIM bit'}};__testOps.testRender();});assert.match(await page.locator('#onJointNo').innerText(),/#207/);
     await page.evaluate(()=>{__testOps.testState.well={uid:'fixture-other',name:'OTHER WELL'};__testOps.testRender();});assert.equal(await page.evaluate(()=>__testOps.testState.measuredReference),null);
+    // Measured midnight hardpoint, reload, portable history and reference-only XLSX upload.
+    const setupHardpoints=()=>page.evaluate(async()=>{
+      const m=await import('./opsnow.js?v=dr1115'),C=await import('./opsnow_core.js?v=re1115');window.__testOps=m;window.__simSigned=true;const S=m.testState;
+      S.well={uid:'fixture-dr101',name:'DR101L'};S.wb={uid:'fixture-wb04',name:'WB04B01'};S.log={uid:'fixture-hardpoints',name:'SIM depth log',time:false,changed:new Date().toISOString()};S.bit=null;S.tally=null;S.tallyName='';S.advancedAt=null;S.watchFrom=Date.now()-180000;
+      S.data={ml:['MD','BHE'],ul:['m','m'],rows:[[834.79,0],[834.89,12.46],[839.89,7.46],[843.89,3.46],[847.25,0],[847.35,12.46],[851.35,8.46]]};S.map=C.mapChannels(S.data.ml,S.data.ul,S.log);m.testRender();
+    });
+    await page.goto(origin+'/joints.html#tally');await setupHardpoints();
+    const hp=page.locator('#tbHardpoints');await hp.waitFor();assert.match(await hp.innerText(),/Midnight measured checkpoint due/);
+    await hp.locator('summary').first().click();
+    const fillHardpoint=async()=>{await hp.getByLabel('Measured joint number',{exact:true}).fill('65');await hp.getByLabel('Measured cumulative MD m · RKB',{exact:true}).fill('847.35');await hp.getByLabel('Measured / confirmed by',{exact:true}).fill('SIM DD');await hp.getByLabel('Measured source / reason',{exact:true}).fill('SIM measured midnight tally');};
+    const rawBefore=await page.evaluate(()=>JSON.stringify(__testOps.testState.data.rows));await fillHardpoint();await hp.getByRole('button',{name:'Confirm measured hardpoint',exact:true}).click();
+    assert.match(await hp.innerText(),/Midnight measured checkpoint confirmed/);assert.equal(await page.evaluate(()=>JSON.stringify(__testOps.testState.data.rows)),rawBefore);assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('opsnow-hardpoints:v1')).length),1);
+    await page.reload();await setupHardpoints();await hp.waitFor();assert.match(await hp.innerText(),/Midnight measured checkpoint confirmed/);await hp.locator('summary').first().click();
+    const historyDownload=page.waitForEvent('download');await hp.getByRole('button',{name:'Export hardpoint history',exact:true}).click();const exportedHistory=await historyDownload,historyPath=await exportedHistory.path();const history=JSON.parse(await readFile(historyPath,'utf8'));assert.equal(history.events.length,1);assert.equal(history.events[0].joint,65);
+    await hp.getByLabel(/Import hardpoints/).setInputFiles(historyPath);await page.waitForFunction(()=>document.querySelector('#tbHardpoints [role="alert"]')?.textContent.includes('imported'));assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('opsnow-hardpoints:v1')).length),1);
+    await hp.getByLabel('Measured / confirmed by',{exact:true}).fill('SIM DD');await hp.getByText('Retract this hardpoint',{exact:true}).click();await hp.getByLabel('Retraction reason',{exact:true}).fill('SIM check of incorrect report');await hp.getByRole('button',{name:'Record retraction',exact:true}).click();assert.match(await hp.innerText(),/Midnight measured checkpoint due/);assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('opsnow-hardpoints:v1')).length),2);
+    await fillHardpoint();await hp.getByRole('button',{name:'Confirm measured hardpoint',exact:true}).click();
+    const tomorrow=await page.evaluate(()=>{const d=new Date(Date.now()+36000000);return Date.parse(d.toISOString().slice(0,10)+'T00:01:00+10:00')+86400000;});await page.clock.setSystemTime(tomorrow);await page.evaluate(()=>__testOps.testRender());assert.match(await hp.innerText(),/Midnight measured checkpoint due/);assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('opsnow-hardpoints:v1')).length),3);
+    await page.locator('#tbImp').setInputFiles(resolve(root,'drilling-tests/fixtures/survey-alert/sim-tally-upload.xlsx'));
+    const upload=page.locator('#tbUpload');await page.waitForFunction(()=>document.getElementById('tbUpload')?.textContent.includes('189 inventory entries'));
+    assert.equal(await upload.getByLabel('Measured tally worksheet',{exact:true}).inputValue(),'4.2.1 SS');await upload.getByRole('button',{name:'Track against this measured tally',exact:true}).click();
+    await page.waitForFunction(()=>document.getElementById('tbCompare')?.textContent.includes('Measured reference inconsistent'));
+    assert.match(await page.locator('#tbCompare').innerText(),/sheet cumulative differs by 10.00 m/);assert.equal(await page.evaluate(()=>JSON.stringify(__testOps.testState.data.rows)),rawBefore);assert.equal(await page.evaluate(()=>__testOps.testState.tally),null);
+    await page.screenshot({path:pumpEvidence+`/hardpoints-upload-${width}.png`});
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
     results.push({width, checks: ['first history quiet', 'new WITSML survey pulses green', 'focus preserved', 'dismiss and duplicate suppression', 'new report through existing loader callback', 'generated-file metadata quiet', 'old well response ignored', 'reduced motion', 'fits viewport', 'actual tally board uses BHE-derived lengths', 'CSV exports BHE and MD checks', 'inconsistent BHE cannot promote a pipe length', 'manual lengths persist without overwrite', 'missing/invalid bit stays unconfirmed', 'off-bottom bit remains separate'], errors, external});
     console.log('PASS Ops survey alert', width);await context.close();
