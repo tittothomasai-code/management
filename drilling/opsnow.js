@@ -3,6 +3,7 @@
 // reading with bounded calls (one at a time). Settings and diagnostics stay behind the gear button.
 import * as WPL from './opsnow_wellplans.js?v=dr1115';
 import * as C from './opsnow_core.js?v=re1115';
+import {connectionRows, jointMetrics} from './opsnow_joint_metrics.mjs?v=joints1118';
 import * as W from './opsnow_wire.js?v=re1115';
 import * as VW from './opsnow_views.js?v=re1115';
 import * as A from './opsnow_ac.js?v=re1115';
@@ -65,6 +66,7 @@ async function selectWellbore(b) {
   await readSurvey();
   if (S.timeLog && S.timeLog !== S.log) await readBit();
 }
+function blockConnections(rows,map){const normalized=connectionRows(rows,map);return normalized?C.connectionsFromBlock(normalized.rows,normalized.map):[];}
 function window0(log) {
   if (log.time) { const end = Date.parse(log.end); return `<startDateTimeIndex>${new Date(end - WINDOW_MS).toISOString()}</startDateTimeIndex>`; }
   return `<startIndex uom="${C.xa(log.indexUom || 'm')}">${Math.max(log.start ?? 0, (log.end ?? 0) - WINDOW_M).toFixed(2)}</startIndex>`;
@@ -457,7 +459,7 @@ function render() {
   S.ac = S.branches && S.bitPos && actB ? C.antiCollision(S.branches, S.wb.name, S.bitPos) : null;
   if (PAGE === 'wellplan') { const lastSv = S.traj?.stations?.at(-1); $('onLastSv').textContent = lastSv ? fmt(lastSv.md, 1) + ' m · ' + C.aest(Date.parse(lastSv.t)).replace(' AEST', '') : '—'; WP.refresh(); renderSettings(); return; }
   if (PAGE === 'joints') { // joints page: header + the Joints dashboard only
-    const conns = L && !L.time ? C.connectionsFromBlock(rows, S.map) : []; S.conns = conns; S.jointNo = C.jointNumber(conns, C.joints(conns, holeMd).median, S.bitMd, S.tally);
+    const conns = L && !L.time ? blockConnections(rows, S.map) : []; S.conns = conns; S.jointNo = C.jointNumber(conns, C.joints(conns, holeMd).median, S.bitMd, S.tally);
     const lastSv = S.traj?.stations.at(-1); $('onLastSv').textContent = lastSv ? fmt(lastSv.md, 1) + ' m · ' + C.aest(Date.parse(lastSv.t)).replace(' AEST', '') : '—';
     VW.drawJoints(); renderSettings(); return;
   }
@@ -483,7 +485,7 @@ function render() {
   // trends: depth logs vs MD (last 60 m), time logs vs time (last 2 h)
   const xEnd = rows.at(-1)?.[0], x0 = L?.time ? xEnd - TREND_MS : xEnd - TREND_M;
   const win = Number.isFinite(xEnd) ? rows.filter(r => r[0] >= x0) : [];
-  const conns = L && !L.time ? C.connectionsFromBlock(rows, S.map) : []; S.conns = conns;
+  const conns = L && !L.time ? blockConnections(rows, S.map) : []; S.conns = conns;
   $('onTrendAxis').textContent = Number.isFinite(xEnd) ? (L.time ? 'last 2 h to ' + C.aest(xEnd) : 'last ' + TREND_M + ' m drilled · dashed line = connection (J = joint number)') : '';
   for (const [k, n] of TILES) {
     const box = $('onC_' + k).parentElement, ch = S.map[k]; box.hidden = !ch;
@@ -497,16 +499,16 @@ function render() {
     const [i0, i1] = C.sliceByIndex(rows, S.hoverMd - 0.05, S.hoverMd + 0.05); const r = rows[Math.min(i1 - 1, i0 + 1)] || rows.at(-1);
     $('onTrendRead').textContent = fmt(r[0], 1) + ' m MD · ' + TILES.filter(([k]) => S.map[k]).map(([k, n]) => { const v = C.value(r[S.map[k].col], S.map[k]); return n + ' ' + (v == null ? '—' : fmt(v, Math.abs(v) < 100 ? 1 : 0)) + ' ' + S.map[k].unit; }).join(' · ');
   } else $('onTrendRead').textContent = 'Hover or touch a chart to read values at a depth.';
-  // joint progress: drill-down per joint measured from block travel (median of the last connections); 13 m nominal when too few
-  const J = J0, JN = S.jointNo;
+  // Target joint length is from the tally or project nominal; MD spacing is separate.
+  const J = J0, JN = S.jointNo, metric = jointMetrics({summary:J,rows,blockChannel:S.map.bh,tally:S.tally,jointNumber:JN,nominal:NOMINAL_JOINT_M});
   $('onJointNo').textContent = JN?.n != null ? '#' + JN.n + (JN.kind === 'estimated' ? ' (est.)' : ' (tally)') : '';
-  $('onJointNo').title = JN?.kind === 'estimated' ? JN.seen + ' connections seen in this wellbore\'s log + about ' + JN.above + ' joints already in the hole at the first one (first connection MD ÷ measured joint). Load a tally for the exact number.' : JN?.kind === 'tally' ? 'From the loaded tally (' + S.tallyName + ')' : '';
+  $('onJointNo').title = JN?.kind === 'estimated' ? JN.seen + ' connections seen in this wellbore\'s log + about ' + JN.above + ' joints already in the hole at the first one (first connection MD ÷ observed connection spacing). Load a tally for the exact number.' : JN?.kind === 'tally' ? 'From the loaded tally (' + S.tallyName + ')' : '';
   if (J.current) {
-    const len = J.median && J.list.length >= 5 ? J.median : NOMINAL_JOINT_M, pct = Math.min(100, J.current.drilled / len * 100);
-    $('onJointBar').style.width = pct + '%'; $('onJointDone').textContent = fmt(J.current.drilled, 1) + ' / ' + fmt(len, 1) + ' m';
-    $('onJointRange').textContent = 'from ' + fmt(J.current.start, 1) + ' m · next connection ≈ ' + fmt(J.current.start + len, 1) + ' m';
-    $('onJointNote').textContent = J.median ? 'measured ' + fmt(J.median, 1) + ' m per joint (block travel) · nominal ' + NOMINAL_JOINT_M + ' m' : '';
-    $('onJoints').innerHTML = J.list.slice(-4).reverse().map((j, i) => `<li><span>${JN?.n != null ? 'J' + (JN.n - 1 - i) + ' · ' : ''}${fmt(j.start, 1)} → ${fmt(j.end, 1)} m</span><b>${fmt(j.length, 1)} m</b></li>`).join('');
+    const len = metric.length, pct = Math.min(100, J.current.drilled / len * 100);
+    $('onJointBar').style.width = pct + '%'; $('onJointDone').textContent = fmt(J.current.drilled, 1) + ' / ' + fmt(len, 1) + ' m · ' + metric.basis;
+    $('onJointRange').textContent = 'from ' + fmt(J.current.start, 1) + ' m MD · expected connection ≈ ' + fmt(J.current.start + len, 1) + ' m MD' + (metric.overdue ? ' · connection may be missed' : '');
+    $('onJointNote').textContent = [metric.spacing!=null?'connection spacing '+fmt(metric.spacing,1)+' m MD':'',metric.travel!=null?'observed BHE travel '+fmt(metric.travel,1)+' m':''].filter(Boolean).join(' · ');
+    $('onJoints').innerHTML = J.list.slice(-4).reverse().map((j, i) => `<li><span>${JN?.n != null ? 'J' + (JN.n - 1 - i) + ' · ' : ''}${fmt(j.start, 1)} → ${fmt(j.end, 1)} m</span><b>${fmt(j.length, 1)} m MD</b></li>`).join('');
   } else { $('onJointBar').style.width = '0'; $('onJointDone').textContent = '—'; $('onJointRange').textContent = S.map.bh ? 'no connection in window yet' : 'block height not in source'; $('onJoints').innerHTML = ''; $('onJointNote').textContent = ''; }
   // survey
   const calc = S.traj?.calc || [];

@@ -32,7 +32,7 @@ if(mode==='preview'){
  overlay.set('/index.html',Buffer.from(patchGameHtml(entries['index.html'])));
  let ops=patchWorkspaceHtml(entries['ops.html']);if(!ops.includes('./opsnow.js'))throw Error('Ops entry has no known script.');const opsScript=(await readFile('drilling/ops.html','utf8')).match(/\.\/opsnow\.js(?:\?[^"']*)?/)?.[0];if(!opsScript)throw Error('Reviewed Ops entry has no known script.');ops=ops.replace(/\.\/opsnow\.js(?:\?[^"']*)?/g,()=>opsScript);overlay.set('/ops.html',Buffer.from(ops));
  overlay.set('/wellplan.html',Buffer.from(patchWorkspaceHtml(entries['wellplan.html'])));
- for(const name of ['opsnow.js','opsnow_survey_alert.mjs','opsnow_survey_alert.css','opsnow_pumps.mjs','opsnow_pumps.css'])overlay.set('/'+name,await readFile('drilling/'+name));
+ for(const name of ['opsnow.js','opsnow_joint_metrics.mjs','opsnow_survey_alert.mjs','opsnow_survey_alert.css','opsnow_pumps.mjs','opsnow_pumps.css'])overlay.set('/'+name,await readFile('drilling/'+name));
  async function addModule(dir,prefix){for(const entry of await readdir(dir,{withFileTypes:true})){if(entry.isDirectory())await addModule(dir+'/'+entry.name,prefix+'/'+entry.name);else overlay.set(prefix+'/'+entry.name,await readFile(dir+'/'+entry.name));}}
  await addModule('drilling/bha-builder','/bha-builder');
  const candidate={...manifest};for(const [path,body]of overlay)candidate[path]=digest(body);

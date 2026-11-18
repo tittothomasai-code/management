@@ -2,7 +2,7 @@ name: Drilling release
 on:
   push:
     branches: [release/drilling-live]
-    paths: ['drilling/bha-builder/**', 'drilling/ops.html', 'drilling/opsnow.js', 'drilling/opsnow_pumps.mjs', 'drilling/opsnow_pumps.css', 'drilling/opsnow_survey_alert.mjs', 'drilling/opsnow_survey_alert.css']
+    paths: ['drilling/bha-builder/**', 'drilling/ops.html', 'drilling/opsnow.js', 'drilling/opsnow_joint_metrics.mjs', 'drilling/opsnow_pumps.mjs', 'drilling/opsnow_pumps.css', 'drilling/opsnow_survey_alert.mjs', 'drilling/opsnow_survey_alert.css']
   workflow_dispatch:
 permissions:
   contents: read

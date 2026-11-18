@@ -43,7 +43,7 @@ try {
     await page.goto(origin + '/ops');
     if((await readFile(resolve(root,'drilling/ops.html'),'utf8')).includes('bha-builder/context-launcher')){await page.locator('[data-bha-context]').waitFor();assert.equal(await page.locator('[data-bha-context]').count(),1);}
     await page.evaluate(async () => {
-      const m = await import('./opsnow.js?v=spp100');window.__testOps = m;window.__simSigned = true;
+      const m = await import('./opsnow.js?v=joints1118');window.__testOps = m;window.__simSigned = true;
       Object.assign(m.testState, {well: {uid: 'sim-well', name: 'SIM FIELD'}, wb: {uid: 'sim-bore', name: 'SIM WB1'}, trajUid: 'sim-survey',
         log: {name: 'SIM depth log', time: false, changed: new Date().toISOString()}, data: {ml: [], ul: [], rows: [[100], [113]]}});
       window.__simStations = [{uid: 'sim-100', md: 100, t: '2026-11-17T01:50:00Z'}];
@@ -111,6 +111,17 @@ try {
     await setPump('on');await page.emulateMedia({reducedMotion:'reduce'});
     assert.equal(await page.locator('#onPumps').evaluate(el=>getComputedStyle(el).animationName),'none');
     await page.emulateMedia({reducedMotion:'no-preference'});
+    // Repeated 12.3 m MD spacing is not a measured 13 m joint or absolute BHE.
+    await page.evaluate(async()=>{
+      const C=await import('./opsnow_core.js?v=re1115'),S=__testOps.testState;
+      S.log={uid:'joint-check',name:'SIM depth log',time:false,changed:new Date().toISOString()};
+      const rows=[];for(let i=0;i<7;i++){const md=100+i*12.3;rows.push([md-.1,959,1372,-.1],[md,959,1372,12.9]);}rows.push([100+6*12.3+4,959,1372,8.9]);
+      S.data={ml:['MD','Flow','SPP','BHE'],ul:['m','lpm','psi','m'],rows};S.map=C.mapChannels(S.data.ml,S.data.ul,S.log);S.timeLog=null;S.pumpSample=null;S.previousDepthRow=null;__testOps.testRender();
+    });
+    assert.match(await page.locator('#onJointDone').innerText(),/4.0 \/ 13.0 m · nominal/);
+    assert.match(await page.locator('#onJointNote').innerText(),/connection spacing 12.3 m MD/);
+    assert.match(await page.locator('#onJointNote').innerText(),/observed BHE travel 4.0 m/);
+    await page.locator('.on-side').screenshot({path:pumpEvidence+`/joint-comparison-${width}.png`});
     await page.locator('#onGear').click();await page.locator('#onSelWb').focus();
     await page.evaluate(async () => { __simStations.push({uid: 'sim-113', md: 113, t: '2026-11-17T02:01:00Z'});await __testOps.testReadSurvey(); });
     const alert = page.locator('#onSurveyReceived');await alert.waitFor();
