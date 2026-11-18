@@ -11,6 +11,7 @@ import {applyPipeChecks} from './opsnow_joint_metrics.mjs?v=tally1118';
 import {referenceScope,loadMeasuredReference,inventoryRows,inventoryPosition,compareDerivedTally,renderTallyComparison} from './opsnow_tally_compare.mjs?v=opsref1118';
 import {renderHardpoints} from './opsnow_hardpoints.mjs?v=hardpoint1118';
 import {renderMeasuredUpload} from './opsnow_measured_upload.mjs?v=hardpoint1118';
+import {reportedOperation,drillingReferenceMd,renderOperationReport} from './opsnow_operation_report.mjs?v=eow1118';
 export const NOMINAL_M = 13; // project rule: drill pipe joints are 13 m (nominal until a connection or tally measures them)
 const $ = id => document.getElementById(id);
 const fin = Number.isFinite;
@@ -36,6 +37,7 @@ export function init(getCtx, opts = {}) {
     <section id="tbUpload" hidden></section>
     <p id="tbNote" class="on-muted tb-note"></p>
     <div id="tbHead" class="tb-head"></div>
+    <section id="tbOperationReport" hidden aria-label="Reported well operation"></section>
     <section id="tbCompare" hidden></section>
     <section id="tbHardpoints" hidden></section>
     <div id="tbRuns"></div>`;
@@ -52,6 +54,7 @@ function fileBase() { const x = X(); return (x.well || 'well') + '-' + (V.branch
 function lastN(runs) { return runs.flatMap(r => r.joints).at(-1)?.n || 0; }
 function wellName() { return X().well || 'DR101L'; }
 function branchName() { return V.branch || X().active || ''; }
+function branchOperation(){return reportedOperation(wellName(),branchName());}
 function measuredReference(){const x=X();return branchName()===x.active&&x.measuredReference?x.measuredReference:referenceScope(x.well,branchName())?V.measuredReference:null;}
 function referenceAt(md){const r=measuredReference();return r?.checkpoint&&md<r.checkpoint.md?r.uncorrectedReference:r;}
 function drawComparison(x){
@@ -100,7 +103,7 @@ export function board() {
   const isActive = !branch || branch === x.active;
   const conns = isActive ? (x.conns || []) : [];
   const holeMd = isActive ? x.holeMd : null;
-  const act = isActive && x.tl?.rows?.length ? J.timeActivity(x.tl.rows, x.tl.map) : null;
+  const act = !branchOperation() && isActive && x.tl?.rows?.length ? J.timeActivity(x.tl.rows, x.tl.map) : null;
   const firstN = firstNOf(conns, holeMd, x);
   let runs = T.buildBoard(conns, holeMd, {saved, timeAct: act, depthRows: isActive ? x.data?.rows : null, firstN, bha: T.savedRuns(saved)[0]?.bha, startMd: conns[0]?.md});
   const measured=measuredReference();
@@ -175,6 +178,7 @@ function tallyRows(runs, rec) {
       rows.push([r.name, fin(j.n) ? Math.round(j.n) : j.n, r2(j.len), c.lenSrc, r2(j.cum), r2(c.top), r2(c.bottom), j.current ? r2(ctx.bitMd) : '', j.current ? (fin(ctx.bitMd) ? ctx.bitKind : 'not reported (' + (ctx.bitKind || 'missing') + ')') : '', r2(ctx.holeMd), c.inHole,
         r2(c.sv.md), r2(c.sv.inc), r2(c.sv.azi), r2(c.sv.tvd), c.sv.label, ...MVP.cols(c.mvp, ctx.plan), r2(r.bhaLen), r2(rec?.runTotal)]); }
   }
+  if(branchOperation())rows.push([],['Reported operation', 'TD 2618.90 m MD; liner running reported 18 Nov 2026 AEST. Historical drilling tally; liner depth, liner count and exact TD time not supplied.']);
   rows.push([], ['Notes', 'Length source: derived BHE = completed stroke cross-checked against MD; review = unverified MD interval; measured tally = imported; estimated = drilling or nominal ' + NOMINAL_M + ' m; edited = typed on this device.'],
     ['', 'Survey: geosteering-report value interpolated by minimum curvature (' + (x.reportSurveys?.note || 'pending') + '), else a WITSML station inside the joint, else no survey. Never carried down.'],
     ['', MVP.planNote(ctx.plan)], ['', 'Bit MD is never shown deeper than hole MD.']);
@@ -192,12 +196,13 @@ function rowCtx() {
   const x = X(), branch = branchName(), isActive = !branch || branch === x.active;
   const path = isActive ? x.branches?.find(b => b.name === x.active)?.path : x.branches?.find(b => b.name === branch)?.path;
   const svs = isActive ? (x.surveys || []) : [];
-  const holeMd = isActive ? x.holeMd : null, bitOk = x.bitKind === 'reported' || x.bitKind === 'derived', bitMd = isActive && bitOk && fin(x.bitMd) ? (fin(holeMd) ? Math.min(x.bitMd, holeMd) : x.bitMd) : null; // stale/missing bit is not shown as a number
-  return {x, isActive, path, svs, holeMd, bitMd, bitKind: x.bitKind || '', plan: MVP.planOf(x), rep: isActive ? x.reportSurveys?.rep : null, winAt: (() => { try { return winFnOpt?.() || null; } catch { return null; } })()};
+  const holeMd = isActive ? x.holeMd : null, bitOk = !branchOperation()&&(x.bitKind === 'reported' || x.bitKind === 'derived'), bitMd = isActive && bitOk && fin(x.bitMd) ? (fin(holeMd) ? Math.min(x.bitMd, holeMd) : x.bitMd) : null; // A liner/tool position cannot establish the historical drilling string's in-hole count.
+  return {x, isActive, path, svs, holeMd, bitMd, bitKind: branchOperation()?'historical drilling string':x.bitKind || '', plan: MVP.planOf(x), rep: isActive ? x.reportSurveys?.rep : null, winAt: (() => { try { return winFnOpt?.() || null; } catch { return null; } })()};
 }
 function lenSource(j) {
   if (j.overridden) return j.source === 'tally' ? 'measured · tally' : /nominal/.test(j.source || '') ? 'estimated · nominal ' + NOMINAL_M + ' m' : 'edited';
-  const live=X(),at=inventoryPosition(measuredReference(),fin(live.bitMd)?live.bitMd:live.holeMd),target=j.current&&(at?.n===j.n?at:inventoryRows(referenceAt(j.start)).find(m=>Math.abs(m.startMd-j.start)<=.3));
+  const live=X(),operation=branchOperation(),at=inventoryPosition(measuredReference(),drillingReferenceMd(operation,live.bitMd,live.holeMd)),target=j.current&&(at?.n===j.n?at:inventoryRows(referenceAt(j.start)).find(m=>Math.abs(m.startMd-j.start)<=.3));
+  if(operation&&j.current)return 'historical final interval · '+(target?'inventory pipe '+fmt(target.len,2)+' m; full length not derived':'pipe length unverified');
   if(target)return 'partial depth advance · measured target '+fmt(target.len,2)+' m';
   return j.current ? 'estimated · drilling (nominal ' + NOMINAL_M + ' m)' : fin(j.pipeCheck?.estimatedLength)?'derived · BHE / MD cross-check':'review · MD interval; '+(j.pipeCheck?.issues.join('; ')||'complete BHE stroke unavailable');
 }
@@ -220,6 +225,7 @@ export function draw() {
   const x = X(), {runs, rec, conns, holeMd, isActive, branch} = board();
   const names = [...new Set([x.active, ...(x.branches || []).map(b => b.name)].filter(Boolean))];
   if (!V.branch && x.active) V.branch = x.active;
+  const operation=branchOperation();renderOperationReport($('tbOperationReport'),operation,isActive?x.holeMd:null);
   $('tbBranch').innerHTML = names.map(n => `<option value="${esc(n)}"${n === (V.branch || x.active) ? ' selected' : ''}>${esc(n)}</option>`).join('') || '<option>—</option>';
   const recEl = $('tbRec'),reference=measuredReference(),comparison=reference?compareDerivedTally(isActive?(x.pipeChecks||[]):[],reference):null;
   recEl.textContent=comparison?(comparison.referenceIssues.length?'CHECK · '+comparison.referenceIssues.length+' measured-reference inconsistencies':comparison.review?'CHECK · '+comparison.review+' BHE/tally cycles need review':comparison.rows.length?comparison.matched+' completed cycles match · '+(comparison.fullStart?'current interval remains separate':'partial coverage; earlier lengths unverified'):'Awaiting independent BHE cycles'):'Arithmetic only · '+rec.text;
@@ -229,8 +235,10 @@ export function draw() {
     ? (conns.length ? (runs.length + ' run' + (runs.length === 1 ? '' : 's') + ' · ' + runs.reduce((a, r) => a + r.joints.length, 0) + ' joints from connection depth steps, labelled derived until edited or imported. Every cell is editable. Edits stay on this device for ' + wellName() + ' / ' + (branch || x.active) + ' and feed the joint tracker and the run sheet.')
       : 'No connections in feed for this wellbore. Import a tally or add a run and enter joints by hand. Nothing is invented from surveys.')
     : 'No connections in feed for this branch (only the active wellbore\'s depth log is read). Import a tally or enter joints by hand. Nothing is invented from surveys.';
+  if(operation)$('tbNote').textContent='Drilling ended at reported TD 2,618.90 m MD. Available history is retained; its coverage may be partial. The final interval is not ongoing drilling or a measured full pipe. Liner movements and liner counts are not inferred from this drilling tally. BHA and measured drilling references are retained.';
   { const c = rowCtx(); $('tbHead').innerHTML = (c.isActive && fin(c.holeMd) ? `<span>Hole MD <b>${fmt(c.holeMd, 1)} m</b></span><span>Bit MD <b>${fin(c.bitMd) ? fmt(c.bitMd, 1) + ' m' : 'not reported'}</b>${fin(c.bitMd) && c.bitKind !== 'reported' ? ' (' + esc(c.bitKind) + ')' : !fin(c.bitMd) && c.bitKind ? ' (source ' + esc(c.bitKind) + ')' : ''} · never deeper than hole</span>` : '<span>No live hole MD for this branch</span>')
     + `<span>${measuredReference()?'Measured inventory lengths loaded':'Nominal joint '+NOMINAL_M+' m'} · MD connection-spacing median ${fin(c.x.conns?.length > 2 ? C.joints(c.x.conns, c.holeMd).median : null) ? fmt(C.joints(c.x.conns, c.holeMd).median, 2) + ' m' : '—'}</span><span>${esc(c.x.reportSurveys?.note || '')}</span><span>${esc(MVP.planNote(c.plan))}</span>`; }
+  if(operation&&isActive&&fin(x.holeMd))$('tbHead').children[1].textContent='Historical drilling string · current tool position cannot establish its in-hole count.';
   $('tbRuns').innerHTML = runs.map((r, ri) => runHtml(r, ri, runs, rec, holeMd)).join('') || '<p class="on-muted">No runs yet.</p>';
   wireRuns(runs);
   drawComparison(x);

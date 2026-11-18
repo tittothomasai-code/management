@@ -109,8 +109,8 @@ export function renderHardpoints(host,getContext,onChange){
  const v=host._hardpoint;v.getContext=getContext;v.onChange=onChange;
  const key=scopeKey(state.scope);if(v.key!==key){v.key=key;v.form.reset();v.controls.position.onchange();v.controls.aest.value=midnightInput();v.controls.joint.value='';v.controls.md.value='';v.controls.advance.value='';v.controls.bhaLen.value=x.baseMeasuredReference.bhaLen;v.controls.operator.value=x.operator||'';v.controls.source.value='';v.error.textContent='';v.signature=null;v.dirty=false;}
  const midnight=midnightInput();if(v.midnight!==midnight&&!v.dirty)v.controls.aest.value=midnight;v.midnight=midnight;
- v.status.textContent=state.error||((state.daily.due?'Midnight measured checkpoint due · ':'Midnight measured checkpoint confirmed · ')+state.daily.midnight.slice(0,10)+' 00:00 AEST'+(state.point?' · active anchor #'+state.point.joint+' at '+state.point.md.toFixed(2)+' m · '+aestInput(Date.parse(state.point.effectiveAt)).replace('T',' '):' · no measured anchor recorded.'));
- v.status.style.color=state.daily.due?'#e6bd70':'#8dd5b0';
+ v.status.textContent=state.error||(x.historicalRun?'Historical drilling run · midnight reminders paused. Hardpoints here apply to the drilling string, not the liner.':(state.daily.due?'Midnight measured checkpoint due · ':'Midnight measured checkpoint confirmed · ')+state.daily.midnight.slice(0,10)+' 00:00 AEST')+(state.point?' · active anchor #'+state.point.joint+' at '+state.point.md.toFixed(2)+' m · '+aestInput(Date.parse(state.point.effectiveAt)).replace('T',' '):' · no measured anchor recorded.');
+ v.status.style.color=x.historicalRun?'#a9c3cf':state.daily.due?'#e6bd70':'#8dd5b0';
  const signature=JSON.stringify(state.events.filter(e=>scopeKey(e.scope)===key));if(v.signature===signature)return;v.signature=signature;v.history.replaceChildren();
  const active=new Set(state.points.map(p=>p.id)),events=state.events.filter(e=>scopeKey(e.scope)===key);
  for(const e of events.slice().reverse()){

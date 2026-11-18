@@ -231,15 +231,40 @@ try {
     await hp.getByLabel(/Import hardpoints/).setInputFiles(historyPath);await page.waitForFunction(()=>document.querySelector('#tbHardpoints [role="alert"]')?.textContent.includes('imported'));assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('opsnow-hardpoints:v1')).length),1);
     await hp.getByLabel('Measured / confirmed by',{exact:true}).fill('SIM DD');await hp.getByText('Retract this hardpoint',{exact:true}).click();await hp.getByLabel('Retraction reason',{exact:true}).fill('SIM check of incorrect report');await hp.getByRole('button',{name:'Record retraction',exact:true}).click();assert.match(await hp.innerText(),/Midnight measured checkpoint due/);assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('opsnow-hardpoints:v1')).length),2);
     await fillHardpoint();await hp.getByRole('button',{name:'Confirm measured hardpoint',exact:true}).click();
-    const tomorrow=await page.evaluate(()=>{const d=new Date(Date.now()+36000000);return Date.parse(d.toISOString().slice(0,10)+'T00:01:00+10:00')+86400000;});await page.clock.setSystemTime(tomorrow);await page.evaluate(()=>__testOps.testRender());assert.match(await hp.innerText(),/Midnight measured checkpoint due/);assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('opsnow-hardpoints:v1')).length),3);
+    const tomorrow=await page.evaluate(()=>{const d=new Date(Date.now()+36000000);return Date.parse(d.toISOString().slice(0,10)+'T00:01:00+10:00')+86400000;});await page.clock.setSystemTime(tomorrow);await page.evaluate(()=>__testOps.testRender());assert.match(await hp.innerText(),/Historical drilling run/);assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('opsnow-hardpoints:v1')).length),3);
     await page.locator('#tbImp').setInputFiles(resolve(root,'drilling-tests/fixtures/survey-alert/sim-tally-upload.xlsx'));
     const upload=page.locator('#tbUpload');await page.waitForFunction(()=>document.getElementById('tbUpload')?.textContent.includes('189 inventory entries'));
     assert.equal(await upload.getByLabel('Measured tally worksheet',{exact:true}).inputValue(),'4.2.1 SS');await upload.getByRole('button',{name:'Track against this measured tally',exact:true}).click();
     await page.waitForFunction(()=>document.getElementById('tbCompare')?.textContent.includes('Measured reference inconsistent'));
     assert.match(await page.locator('#tbCompare').innerText(),/sheet cumulative differs by 10.00 m/);assert.equal(await page.evaluate(()=>JSON.stringify(__testOps.testState.data.rows)),rawBefore);assert.equal(await page.evaluate(()=>__testOps.testState.tally),null);
     await page.screenshot({path:pumpEvidence+`/hardpoints-upload-${width}.png`});
+    // End-of-well human report stays separate from depth-log rates and live tool positions.
+    await page.clock.setSystemTime(new Date('2026-11-18T02:00:00Z'));
+    const setupReportedTd=()=>page.evaluate(async()=>{
+      const m=await import('./opsnow.js?v=opsref1118'),C=await import('./opsnow_core.js?v=re1115');window.__testOps=m;window.__simSigned=true;const S=m.testState;
+      S.well={uid:'fixture-eow-well',name:'DR101L'};S.wb={uid:'fixture-eow-bore',name:'WB04B01'};S.log={uid:'fixture-eow-depth',name:'SIM end-of-well depth log',time:false,changed:new Date().toISOString()};S.bit=null;S.timeLog=null;S.tally=null;S.tallyName='';S.advancedAt=Date.now();S.watchFrom=Date.now()-180000;
+      S.data={ml:['MD','BHE','RPM','ROP'],ul:['m','m','rpm','m/h'],rows:[[2599.3,0,60,80],[2599.4,9.8,60,80],[2604.4,4.8,60,80],[2609.1,0,60,80],[2609.2,9.7,60,80],[2614.2,4.7,60,80],[2618.9,0,60,80]]};S.map=C.mapChannels(S.data.ml,S.data.ul,S.log);m.testRender();
+    });
+    await page.goto(origin+'/ops');await setupReportedTd();await page.waitForFunction(()=>document.getElementById('onJointNo')?.textContent.includes('#208'));
+    assert.match(await page.locator('#onOperationReport').innerText(),/TD reached · liner running \(reported 18 Nov 2026 AEST\)/);
+    assert.match(await page.locator('#onState').innerText(),/Liner running · reported/);assert.doesNotMatch(await page.locator('#onState').innerText(),/Drilling|Checking|not advancing/);
+    assert.equal(await page.evaluate(()=>__testOps.testState.bitMd),null);assert.notEqual(await page.evaluate(()=>__testOps.testState.bitKind),'derived');
+    assert.equal(await page.locator('#onJointNo').innerText(),'#208 (TD MD ref.)');assert.match(await page.locator('#onJointDone').innerText(),/TD 2,618.90 m MD · drilling complete/);
+    assert.equal(await page.locator('#onJointBar').evaluate(e=>e.parentElement.hidden),true);assert.match(await page.locator('#onHardpoints').innerText(),/midnight reminders paused/);
+    await page.evaluate(()=>{__testOps.testState.bit={v:900,at:Date.now(),log:{name:'SIM tool position'}};__testOps.testRender();});
+    assert.equal(await page.evaluate(()=>__testOps.testState.bitMd),900);assert.equal(await page.locator('#onJointNo').innerText(),'#208 (TD MD ref.)');
+    const tdRows=await page.evaluate(()=>JSON.stringify(__testOps.testState.data.rows));await page.locator('#onOperationReport summary').click();await page.evaluate(()=>__testOps.testRender());assert.equal(await page.locator('#onOperationReport details').getAttribute('open'),'');
+    await page.screenshot({path:pumpEvidence+`/reported-td-ops-${width}.png`});
+    await page.evaluate(()=>{__testOps.testState.data.rows.at(-1)[0]=2700;__testOps.testRender();});assert.match(await page.locator('#onOperationReport').innerText(),/exceeds reported TD/);assert.match(await page.locator('#onHole').innerText(),/2,700/);
+    await page.evaluate(rows=>{__testOps.testState.data.rows=JSON.parse(rows);__testOps.testRender();},tdRows);
+    await page.evaluate(()=>{__testOps.testState.wb={uid:'fixture-other-bore',name:'WB03'};__testOps.testRender();});assert.equal(await page.locator('#onOperationReport').isVisible(),false);
+    await page.goto(origin+'/joints.html#tally');await setupReportedTd();await page.waitForFunction(()=>document.getElementById('tbNote')?.textContent.includes('Drilling ended at reported TD'));
+    assert.match(await page.locator('#tbOperationReport').innerText(),/Liner depth and joint count not supplied/);assert.match(await page.locator('#tbHardpoints').innerText(),/Historical drilling run/);
+    await page.evaluate(()=>{__testOps.testState.bit={v:900,at:Date.now(),log:{name:'SIM tool position'}};__testOps.testRender();});
+    assert.doesNotMatch(await page.locator('#tbRuns').innerText(),/estimated · drilling|bit 900/);assert.match(await page.locator('#tbRuns').innerText(),/historical final interval/);
+    await page.screenshot({path:pumpEvidence+`/reported-td-tally-${width}.png`});
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
-    results.push({width, checks: ['first history quiet', 'new WITSML survey pulses green', 'focus preserved', 'dismiss and duplicate suppression', 'new report through existing loader callback', 'generated-file metadata quiet', 'old well response ignored', 'reduced motion', 'fits viewport', 'actual tally board uses BHE-derived lengths', 'CSV exports BHE and MD checks', 'inconsistent BHE cannot promote a pipe length', 'manual lengths persist without overwrite', 'missing/invalid bit stays unconfirmed', 'off-bottom bit remains separate'], errors, external});
+    results.push({width, checks: ['first history quiet', 'new WITSML survey pulses green', 'focus preserved', 'dismiss and duplicate suppression', 'new report through existing loader callback', 'generated-file metadata quiet', 'old well response ignored', 'reduced motion', 'fits viewport', 'actual tally board uses BHE-derived lengths', 'CSV exports BHE and MD checks', 'inconsistent BHE cannot promote a pipe length', 'manual lengths persist without overwrite', 'missing/invalid bit stays unconfirmed', 'off-bottom bit remains separate', 'dated TD/liner report', 'historical rates cannot imply current drilling', 'tool movement cannot renumber TD inventory', 'depth conflict preserves source value', 'wrong-bore report excluded', 'historical tally and paused drilling reminders'], errors, external});
     console.log('PASS Ops survey alert', width);await context.close();
   }
   await writeFile(evidence + '/browser-results.json', JSON.stringify({mode: 'Actual Ops source and parsers, local SIM transport and static fixtures only. No external network or real credentials.', results}, null, 2) + '\n');

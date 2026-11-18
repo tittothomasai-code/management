@@ -7,6 +7,7 @@ import {connectionRows, jointMetrics, depthMetres, reconcileDepths, derivePipeCh
 import {referenceScope,loadMeasuredReference,inventoryPosition,inventoryResetLabel,compareDerivedTally} from './opsnow_tally_compare.mjs?v=opsref1118';
 import {checkpointState,renderHardpoints,STORAGE_KEY} from './opsnow_hardpoints.mjs?v=hardpoint1118';
 import {uploadedReference} from './opsnow_measured_upload.mjs?v=hardpoint1118';
+import {reportedOperation,reportDepthIssue,drillingReferenceMd,renderOperationReport} from './opsnow_operation_report.mjs?v=eow1118';
 import * as W from './opsnow_wire.js?v=re1115';
 import * as VW from './opsnow_views.js?v=re1115';
 import * as A from './opsnow_ac.js?v=re1115';
@@ -76,8 +77,8 @@ function ensureMeasuredReference(){
  if(referenceScope(well,branch))loadMeasuredReference(well,branch).then(ref=>{if(S.referenceKey!==key)return;S.measuredReference=ref;render();}).catch(()=>{});
 }
 function currentJoint(conns,holeMd){
- const md=Number.isFinite(S.bitMd)?S.bitMd:holeMd,p=inventoryPosition(S.effectiveReference,md);
- return p?{n:p.n,kind:'inventory reference',reference:p,checkpoint:S.effectiveReference?.checkpoint,basis:Number.isFinite(S.bitMd)?'bit MD reference':'hole MD reference'}:C.jointNumber(conns,C.joints(conns,holeMd).median,S.bitMd,S.tally);
+ const md=drillingReferenceMd(S.operationReport,S.bitMd,holeMd),p=inventoryPosition(S.effectiveReference,md);
+ return p?{n:p.n,kind:'inventory reference',reference:p,checkpoint:S.effectiveReference?.checkpoint,basis:S.operationReport?'reported final TD reference':Number.isFinite(S.bitMd)?'bit MD reference':'hole MD reference'}:S.operationReport?null:C.jointNumber(conns,C.joints(conns,holeMd).median,S.bitMd,S.tally);
 }
 function referenceContext(){
  const uploadScope=S.well?.uid&&S.wb?.uid?{well:S.well.uid,wellbore:S.wb.uid}:null;
@@ -277,6 +278,7 @@ const MARKUP = `
 <header class="on-top">
   <div class="on-id"><b id="onWell">WITSML</b><span id="onWb"></span> <a class="on-world" href="./world.html" title="Field map: world to well">Field map</a></div>
   <div class="on-state"><span id="onState" class="on-chip">Connecting</span><span id="onFresh" class="on-fresh"></span></div>
+  <section id="onOperationReport" hidden aria-label="Reported well operation"></section>
   <div class="on-depths"><div><small>Hole MD</small><b id="onHole">—</b></div><div><small id="onBitLbl">Bit MD</small><b id="onBit">—</b></div><div><small>Last survey</small><b id="onLastSv">—</b></div></div>
   <button id="onGear" class="on-gear" type="button" aria-label="Settings" aria-expanded="false">⚙</button>
   <nav class="on-views" aria-label="Views"><button type="button" data-v="log">Live log</button><button type="button" data-v="3d">3D wells</button><button type="button" data-v="ac" id="onAcBtn">Anti-collision</button><button type="button" data-v="tally">Tally</button><button type="button" data-v="geo">Geosteer</button><a class="on-linkbtn" id="onJointsLink" href="./joints.html">Joints ↗</a><a class="on-linkbtn" id="onPlanLink" href="./wellplan.html" title="Well planning (key P)">Well plan ↗</a></nav>
@@ -299,7 +301,7 @@ const MARKUP = `
     <div class="on-card on-trends"><div class="on-h"><h2>Drilling parameters</h2><span id="onTrendAxis" class="on-muted"></span></div><div id="onTrends"></div>
       <div class="on-trend on-axisrow"><span><b>Hole depth (m MD)</b></span><canvas id="onAxis"></canvas></div><p id="onTrendRead" class="on-muted on-read">Hover or touch a chart to read values at a depth.</p></div>
     <div class="on-side">
-      <div class="on-card"><div class="on-h"><h2>Joint <b id="onJointNo" class="on-jno"></b></h2><span id="onJointNote" class="on-muted"></span></div>
+      <div class="on-card"><div class="on-h"><h2><span id="onJointLabel">Joint</span> <b id="onJointNo" class="on-jno"></b></h2><span id="onJointNote" class="on-muted"></span></div>
         <div class="on-bar"><span id="onJointBar"></span></div><div class="on-flex"><b id="onJointDone">—</b><span id="onJointRange" class="on-muted"></span></div>
         <ul id="onJoints" class="on-list"></ul></div>
       <div class="on-card"><div class="on-h"><h2>Survey</h2><span id="onSvNote" class="on-muted"></span></div>
@@ -399,7 +401,7 @@ function build() {
 // What the pop-up views need, computed from the same state as the main screen.
 function ctx() {
   const holeMd = S.log && !S.log.time ? S.data.rows.at(-1)?.[0] : null;
-  return {...referenceContext(),data: S.data, fe: S.fe, image: S.imageRows, imageRange: S.imageRange, conns: S.conns, jointNo: S.jointNo, bitMd: S.bitMd ?? null, holeMd: S.holeMd ?? holeMd, bitKind: S.bitKind, depthCheck:S.depthCheck, pipeChecks:S.pipeChecks||[],
+  return {...referenceContext(),operationReport:S.operationReport,historicalRun:!!S.operationReport,data: S.data, fe: S.fe, image: S.imageRows, imageRange: S.imageRange, conns: S.conns, jointNo: S.jointNo, bitMd: S.bitMd ?? null, holeMd: S.holeMd ?? holeMd, bitKind: S.bitKind, depthCheck:S.depthCheck, pipeChecks:S.pipeChecks||[],
     branches: S.branches, branchMsg: S.branchMsg, active: S.wb?.name, bitPos: S.bitPos, ac: S.ac, backfilling: S.backfill === 'reading' || S.backfill === 'todo',
     tally: S.tally, tallyName: S.tallyName, tallyError: S.tallyError, tallyCmp: S.tally ? C.compareTally(S.tally, S.conns || [], S.bitMd) : null,
     refresh: () => render(), map: S.map, tl: S.tl, timeLogName: S.timeLog?.name || '',
@@ -425,6 +427,7 @@ function currentPlan() {
 }
 function render() {
   build();
+  S.operationReport=reportedOperation(S.well?.name,S.wb?.name);
   ensureMeasuredReference();
   S.effectiveReference=referenceContext().measuredReference;
   const signed = W.hasCred() && !W.state.dead;
@@ -444,7 +447,9 @@ function render() {
   const primaryPressure=pumpSample({rows,channel:S.map.spp,latest:lv.spp,time:Boolean(L?.time),source:L?.name});
   const secondaryPressure=S.pumpSample?.scope===surveyContext().scope && S.pumpSample?.logUid===S.timeLog?.uid ? S.pumpSample.pressure : null;
   pumpGraphic?.update({signed, now, pressureSample:L?.time ? primaryPressure : primaryPressure || secondaryPressure, sample: L?.time ? primaryFlow : primaryFlow || secondaryFlow, driveSample: L?.time ? primaryDrive : primaryDrive || secondaryDrive});
-  const state = !signed ? (W.state.dead ? 'Stopped' : 'Not signed in') : !L ? 'Connecting' : C.rigState({fresh, advancedAt: S.advancedAt, watchFrom: S.watchFrom, now, rpm: lv.rpm?.v, rop: lv.rop?.v, flow: lv.flowIn?.v, timeLog: L?.time});
+  const sourceHoleMd=L&&!L.time?rows.at(-1)?.[0]:depthMetres(lv.hd?.v,S.map.hd),report=S.operationReport;
+  renderOperationReport($('onOperationReport'),report,sourceHoleMd);
+  const state = !signed ? (W.state.dead ? 'Stopped' : 'Not signed in') : report ? (reportDepthIssue(report,sourceHoleMd)?'Reported TD · depth conflict':'Liner running · reported 18 Nov') : !L ? 'Connecting' : C.rigState({fresh, advancedAt: S.advancedAt, watchFrom: S.watchFrom, now, rpm: lv.rpm?.v, rop: lv.rop?.v, flow: lv.flowIn?.v, timeLog: L?.time});
   const chip = $('onState'); chip.textContent = state; chip.dataset.s = /^Drilling/.test(state) ? 'drill' : /No new|Stopped|Not signed/.test(state) ? 'bad' : 'idle';
   // The store re-stamps dTimLastChange about once a minute even when no row is added, so it proves the
   // feed is connected, not that data is new. New data = rows added between our own reads.
@@ -529,6 +534,7 @@ function render() {
   } else $('onTrendRead').textContent = 'Hover or touch a chart to read values at a depth.';
   // Target joint length is from the tally or project nominal; MD spacing is separate.
   const JN = S.jointNo,ref=JN?.reference,J=ref?{...J0,current:{start:ref.startMd,drilled:ref.advance}}:J0,metric = jointMetrics({summary:J0,rows,blockChannel:S.map.bh,tally:S.tally,jointNumber:JN,nominal:NOMINAL_JOINT_M});
+  $('onJointLabel').textContent=report?'Inventory at TD':'Joint';$('onJointBar').parentElement.hidden=!!report;
   if(ref){metric.length=ref.len;metric.basis='inventory MD reference';metric.overdue=false;}
   $('onJointNo').textContent = JN?.n != null ? '#' + JN.n + (JN.kind === 'estimated' ? ' (est.)' : JN.checkpoint?' (anchor)':ref?' (MD ref.)':' (tally)') : '';
   $('onJointNo').title = ref?'Measured inventory at '+JN.basis+'. BHA '+fmt(S.effectiveReference.bhaLen,2)+' m is already included in the '+fmt(S.effectiveReference.startMd,2)+' m starting reference. This is not an independently verified BHE connection count.':JN?.kind === 'estimated' ? JN.seen + ' connections seen in this wellbore\'s log + about ' + JN.above + ' joints already in the hole at the first one (first connection MD ÷ observed connection spacing). Load a tally for the exact number.' : JN?.kind === 'tally' ? 'From the loaded tally (' + S.tallyName + ')' : '';
@@ -540,6 +546,12 @@ function render() {
     if(ref&&J0.current&&Math.abs(J0.current.start-ref.startMd)>.3)$('onJointNote').textContent+=' · BHE reset differs from tally start by '+fmt(Math.abs(J0.current.start-ref.startMd),2)+' m; alignment needs review';
     $('onJoints').innerHTML = J.list.slice(-4).reverse().map((j, i) => {const compared=S.effectiveReference?compareDerivedTally([{startMd:j.start,endMd:j.end,derivedLength:null,issues:[]}],S.effectiveReference).rows[0]:null;const label=S.effectiveReference?(compared?.entries&&compared.entries!=='unaligned'?'Tally MD '+compared.entries:'BHE interval (unaligned)'):JN?.n!=null?(JN.kind==='estimated'?'Est. J':'J')+(JN.n-1-i):'';return `<li><span>${label?label+' · ':''}${fmt(j.start, 1)} → ${fmt(j.end, 1)} m</span><b>${fmt(j.length, 1)} m MD</b></li>`;}).join('');
   } else { $('onJointBar').style.width = '0'; $('onJointDone').textContent = '—'; $('onJointRange').textContent = S.map.bh ? 'no connection in window yet' : 'block height not in source'; $('onJoints').innerHTML = ''; $('onJointNote').textContent = ''; }
+  if(report){
+    $('onJointNo').textContent=ref?'#'+ref.n+' (TD MD ref.)':'';
+    $('onJointDone').textContent='TD '+fmt(report.tdMd,2)+' m MD · drilling complete';
+    $('onJointRange').textContent=ref?'TD advance within inventory entry '+fmt(ref.advance,2)+' / '+fmt(ref.len,2)+' m; not a measured pipe length.':'Final drilling joint count unconfirmed.';
+    $('onJointNote').textContent='Historical drilling reference · liner tally not supplied';
+  }
   renderPipeChecks(document,S.pipeChecks,S.depthCheck,$('onJointDone').closest('.on-card'));
   let hp=$('onHardpoints');if(!hp){hp=document.createElement('section');hp.id='onHardpoints';$('onJointDone').closest('.on-card').append(hp);}renderHardpoints(hp,()=>({...ctx(),well:S.well?.name,active:S.wb?.name}),render);
   // survey

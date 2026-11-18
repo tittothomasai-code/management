@@ -32,6 +32,10 @@
     {
       "path": "edm_field_check_worker.mjs",
       "sha256": "ef76870ad788c84d34375f6a8a3b6da9113da3086f9d3741ad43ec4c0cf3dfd3"
+    },
+    {
+      "path": "opsnow_hardpoints.mjs",
+      "sha256": "36c18104d0e9de11e7123ed2bc14e8eb320bc065721f92abc8c1ec42df12424c"
     }
   ],
   "verifiedDeployId": "6afd89b9f29dfb8aa3bf1226",

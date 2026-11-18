@@ -2,7 +2,7 @@ name: Drilling release
 on:
   push:
     branches: [release/drilling-live]
-    paths: ['drilling/bha-builder/**', 'drilling/ops.html', 'drilling/opsnow.js', 'drilling/edmmap.js', 'drilling/edmui.js', 'drilling/edm_field_check.mjs', 'drilling/edm_field_check_core.mjs', 'drilling/edm_field_check_worker.mjs', 'drilling/opsnow_hardpoints.mjs', 'drilling/opsnow_measured_upload.mjs', 'drilling/opsnow_joint_metrics.mjs', 'drilling/opsnow_tallyview.js', 'drilling/opsnow_tally_compare.mjs', 'drilling/data/dr101l-wb04-measured-tally.json', 'drilling/opsnow_pumps.mjs', 'drilling/opsnow_pumps.css', 'drilling/opsnow_survey_alert.mjs', 'drilling/opsnow_survey_alert.css']
+    paths: ['drilling/bha-builder/**', 'drilling/ops.html', 'drilling/opsnow.js', 'drilling/edmmap.js', 'drilling/edmui.js', 'drilling/edm_field_check.mjs', 'drilling/edm_field_check_core.mjs', 'drilling/edm_field_check_worker.mjs', 'drilling/opsnow_hardpoints.mjs', 'drilling/opsnow_operation_report.mjs', 'drilling/opsnow_measured_upload.mjs', 'drilling/opsnow_joint_metrics.mjs', 'drilling/opsnow_tallyview.js', 'drilling/opsnow_tally_compare.mjs', 'drilling/data/dr101l-wb04-measured-tally.json', 'drilling/opsnow_pumps.mjs', 'drilling/opsnow_pumps.css', 'drilling/opsnow_survey_alert.mjs', 'drilling/opsnow_survey_alert.css']
   workflow_dispatch:
 permissions:
   contents: read
