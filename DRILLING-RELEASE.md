@@ -195,3 +195,36 @@ location/incomplete-report checks on both screen sizes before promotion. The
 acceptance test explicitly closes the DD overlay before navigating to EDM. Five
 changed EDM runtime files independently matched live SHA-256 hashes. See
 `drilling-tests/EDM-FIELD-CHECK.md` for provenance, limits and reproducible tests.
+
+## Reported end of drilling and liner phase
+
+Deploy `6afd8f11cc56bb7fc226a53d`; rollback `6afd89b9f29dfb8aa3bf1226`.
+Runtime head `6041e5d5f522ea8d2e0865c362c5eb41d6236eda`.
+Workflow https://github.com/tittothomasai-code/management/actions/runs/44297037073
+
+The user supplied the DR101L WB04B01 entire-lateral summary and reported liner
+running on 18 November 2026 AEST. The dated report records KOP 822.53 m MD,
+TD 2618.90 m MD, lateral 1796.37 m, in-seam 1774.37 m (98.78%), faulted exits
+1826–1832 and 2223–2239 m MD (22 m total), no stratigraphic exits, and the
+reported TD reason. Exact operational times, liner depths/counts and the
+measured final drilling joint count were not supplied and remain unknown.
+
+Ops displays the dated human phase separately from telemetry. Historical
+positive depth-log rates cannot imply ongoing drilling or derive missing
+bit depth. Raw source readings remain visible; depths beyond reported TD
+are flagged. The final inventory reference is fixed at reported TD, not
+subsequent tool depth, and remains an MD reference rather than a confirmed
+pipe count. The active progress bar/next-connection expectation is replaced
+with a completed-drilling label. Tally identifies historical/partial drilling
+coverage; later time-log activity cannot create liner counts or establish
+that the old drilling string remains in the hole. Midnight reminders pause
+for this historical drilling run; retrospective measured anchors, uploads,
+BHA, revisions and raw history remain available. EDM plans are unchanged.
+
+64 unit tests and desktop/phone browser tests passed, including fresh-looking
+old drilling rates, missing bit, current tool position, wrong-bore exclusion,
+report-date gating, TD reference preservation, conflict without clamping,
+paused reminders and historical tally labels. The actual unpublished deploy
+passed existing Ops/Tally, BHA, DD, menu and EDM checks and scoped report module
+checks before promotion. All four changed runtime files independently matched
+live SHA-256 hashes. See `drilling-tests/END-OF-WELL-REPORT.md`.

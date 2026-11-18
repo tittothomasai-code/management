@@ -7,11 +7,11 @@
     },
     {
       "path": "opsnow.js",
-      "sha256": "e9d4b550db860ee49f6b3448553b06fd7ca44b9822751f0626fbaef6ac8beb34"
+      "sha256": "c2970f6150fb4c59ff56ca34bb690a5c1b46d62d53d13d08e866a4b2a6d30396"
     },
     {
       "path": "opsnow_tallyview.js",
-      "sha256": "501d430394f45663f0a5ab8bcbfbf934419403822292bbb81279cbdf0d7d70be"
+      "sha256": "24dbec6924e3086aa0f770aec1397e523ae7e7b851f54891133893c7726e6a0a"
     },
     {
       "path": "edmmap.js",
@@ -35,9 +35,13 @@
     },
     {
       "path": "opsnow_hardpoints.mjs",
-      "sha256": "36c18104d0e9de11e7123ed2bc14e8eb320bc065721f92abc8c1ec42df12424c"
+      "sha256": "d490ec484339dc70c8bdb1fee52d0d6fe718e7fecb4f2270f94c2327e5dc29f4"
+    },
+    {
+      "path": "opsnow_operation_report.mjs",
+      "sha256": "d14a167ad0c387c4c8dc7a6b90ff11a1a1dc9a893a3a00bfac56fed1fb0a2767"
     }
   ],
-  "verifiedDeployId": "6afd89b9f29dfb8aa3bf1226",
+  "verifiedDeployId": "6afd8f11cc56bb7fc226a53d",
   "verifiedAt": "2026-11-18"
 }
