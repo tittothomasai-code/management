@@ -17,10 +17,24 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false
-      - name: Inspect current production safely
+      - name: Build preview while preserving production inventory
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-        run: node .github/scripts/drilling-release.mjs preflight
+        run: node .github/scripts/drilling-release.mjs preview
+      - name: Install browser test runner
+        run: npm ci --prefix drilling-tests
+      - name: Unit and SIM regression checks
+        env:
+          PLAYWRIGHT_MODULE: playwright
+        run: |
+          npm test --prefix drilling-tests
+          ROBOTYX_CHROMIUM_PATH=$(command -v google-chrome || command -v chromium) node drilling-tests/survey-alert-browser.mjs
+      - name: Test actual unpublished deploy
+        run: ROBOTYX_CHROMIUM_PATH=$(command -v google-chrome || command -v chromium) node .github/scripts/drilling-acceptance.mjs
+      - name: Publish verified preview and check production
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        run: node .github/scripts/drilling-release.mjs publish
       - name: Save release evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

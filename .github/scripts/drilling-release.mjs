@@ -1,13 +1,63 @@
-import {mkdir, writeFile} from 'node:fs/promises';
-const host='drilling.robotyx.systems',token=process.env.NETLIFY_AUTH_TOKEN;
+import {mkdir,writeFile,readFile,readdir} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+import {patchGameHtml,patchWorkspaceHtml} from '../../drilling-tests/install-bha.mjs';
+const host='drilling.robotyx.systems',token=process.env.NETLIFY_AUTH_TOKEN,mode=process.argv[2]||'preview';
 if(!token)throw Error('NETLIFY_AUTH_TOKEN repository secret is missing or empty.');
-async function api(path){const response=await fetch('https://api.netlify.com/api/v1'+path,{headers:{Authorization:'Bearer '+token,Accept:'application/json'}});if(!response.ok)throw Error('Netlify API '+path.split('?')[0]+' returned HTTP '+response.status);return response.json();}
-const matches=[];
-for(let page=1;page<=20;page++){const sites=await api('/sites?per_page=100&page='+page);for(const site of sites){if(site.custom_domain===host||(site.domain_aliases||[]).includes(host)||[site.url,site.ssl_url].some(url=>{try{return new URL(url).hostname===host;}catch{return false;}}))matches.push(site);}if(sites.length<100)break;}
-if(matches.length!==1)throw Error('Expected exactly one Netlify site matching '+host+'; found '+matches.length);
-const site=await api('/sites/'+matches[0].id),id=site.published_deploy?.id;if(!id)throw Error('No published deploy found for the target site.');
-const deploy=await api('/deploys/'+id),files=await api('/sites/'+site.id+'/files'),functions=await api('/sites/'+site.id+'/functions');
-const report={site:{id:site.id,name:site.name,domain:host},rollbackDeploy:{id:deploy.id,state:deploy.state,branch:deploy.branch},files:files.map(f=>({path:f.path,sha:f.sha,size:f.size})),functionInventory: {kind:Array.isArray(functions)?'array':typeof functions,keys:Object.keys(functions),groups:(Array.isArray(functions)?functions:Array.isArray(functions.functions)?functions.functions:[functions]).map(f=>({keys:Object.keys(f),names:Array.isArray(f.functions)?f.functions.map(x=>typeof x==='string'?x:x.name):[],name:f.name,sha:f.sha}))},deployRuntimeFields:Object.fromEntries(['functions','functions_config','edge_functions','server','function_schedules'].filter(k=>deploy[k]!=null).map(k=>[k,{type:typeof deploy[k],count:typeof deploy[k]==='object'?Object.keys(deploy[k]).length:0}]))};
-await mkdir('release-evidence',{recursive:true});await writeFile('release-evidence/preflight.json',JSON.stringify(report,null,2)+'\n');
-console.log(JSON.stringify({site:report.site,rollbackDeploy:report.rollbackDeploy,fileCount:report.files.length,functionGroups:report.functionInventory,deployRuntimeFields:report.deployRuntimeFields}));
-if(process.env.GITHUB_STEP_SUMMARY)await writeFile(process.env.GITHUB_STEP_SUMMARY,'## Drilling release preflight\nTarget: '+host+'\n\nRollback deploy: `'+id+'`\n\nPublished files: '+files.length+'\n\nNo production changes performed during preflight.\n',{flag:'a'});
+const digest=(body,algorithm='sha1')=>createHash(algorithm).update(body).digest('hex');
+async function api(path,options={}){const response=await fetch('https://api.netlify.com/api/v1'+path,{...options,headers:{Authorization:'Bearer '+token,Accept:'application/json',...(options.headers||{})}});if(!response.ok)throw Error('Netlify API '+path.split('?')[0]+' returned HTTP '+response.status);return response.json();}
+const save=async(name,value)=>{await mkdir('release-evidence',{recursive:true});await writeFile('release-evidence/'+name,JSON.stringify(value,null,2)+'\n');};
+const summary=async text=>{if(process.env.GITHUB_STEP_SUMMARY)await writeFile(process.env.GITHUB_STEP_SUMMARY,text+'\n',{flag:'a'});};
+const output=async(key,value)=>{if(process.env.GITHUB_OUTPUT)await writeFile(process.env.GITHUB_OUTPUT,key+'='+value+'\n',{flag:'a'});};
+async function inspect(){
+ const matches=[];for(let page=1;page<=20;page++){const sites=await api('/sites?per_page=100&page='+page);for(const site of sites)if(site.custom_domain===host||(site.domain_aliases||[]).includes(host)||[site.url,site.ssl_url].some(url=>{try{return new URL(url).hostname===host;}catch{return false;}}))matches.push(site);if(sites.length<100)break;}
+ if(matches.length!==1)throw Error('Expected exactly one Netlify site matching '+host+'; found '+matches.length);
+ const site=await api('/sites/'+matches[0].id),id=site.published_deploy?.id;if(!id)throw Error('No published deploy found.');
+ const deploy=await api('/deploys/'+id),files=await api('/sites/'+site.id+'/files'),functions=await api('/sites/'+site.id+'/functions');
+ if(deploy.state!=='ready'||!Array.isArray(files)||files.length<375)throw Error('Current published deploy is not a complete ready baseline.');
+ // A file-only update must not discard a runtime. This site is static; fail if that changes.
+ if(Object.keys(functions||{}).length||['functions','functions_config','edge_functions','server','function_schedules'].some(k=>deploy[k]&&Object.keys(deploy[k]).length))throw Error('A server/function runtime needs an explicit preservation plan; no deploy created.');
+ const manifest={};for(const file of files){if(!/^\/?[^\\]*$/.test(file.path)||file.path.split('/').includes('..')||!file.sha?.match(/^[0-9a-f]{40}$/i))throw Error('Unexpected published file descriptor.');manifest['/'+file.path.replace(/^\//,'')]=file.sha;}
+ if(Object.keys(manifest).length!==files.length)throw Error('Duplicate source inventory paths.');
+ const report={site:{id:site.id,name:site.name,domain:host},rollbackDeploy:{id:deploy.id,state:deploy.state,branch:deploy.branch},files:files.map(f=>({path:f.path,sha:f.sha,size:f.size})),configPaths:files.filter(f=>/netlify|redirect|header/i.test(f.path)).map(f=>f.path)};
+ await save('preflight.json',report);return {site,deploy,manifest,report};
+}
+async function staticFile(origin,path){const response=await fetch(origin+path,{headers:{'Cache-Control':'no-cache'}});if(!response.ok)throw Error('Static file '+path+' returned HTTP '+response.status);return Buffer.from(await response.arrayBuffer());}
+async function waitReady(id){for(let attempt=0;attempt<100;attempt++){const deploy=await api('/deploys/'+id);if(deploy.state==='ready')return deploy;if(['error','failed'].includes(deploy.state))throw Error('Netlify deploy entered '+deploy.state);await new Promise(r=>setTimeout(r,3000));}throw Error('Netlify deploy did not become ready in time.');}
+if(mode==='preview'){
+ const {site,deploy,manifest,report}=await inspect();const overlay=new Map(),oldKeys=Object.keys(manifest),origin='https://'+host;
+ // Read only the current live entry files; preserve the full 515+ file inventory by hash.
+ const entries={};for(const name of ['index.html','ops.html','wellplan.html','opsnow.js']){const bytes=await staticFile(origin,'/'+name);if(digest(bytes)!==manifest['/'+name])throw Error('Served '+name+' does not match the captured production inventory.');entries[name]=bytes.toString();}
+ const source=JSON.parse(await readFile('drilling-tests/survey-source.json','utf8'));const expected=source.files.find(f=>f.path==='opsnow.js').sha256;
+ if(digest(Buffer.from(entries['opsnow.js']),'sha256')!==expected)throw Error('Production Ops source changed since the reviewed patch; rebase before publishing.');
+ overlay.set('/index.html',Buffer.from(patchGameHtml(entries['index.html'])));
+ let ops=patchWorkspaceHtml(entries['ops.html']);if(!ops.includes('./opsnow.js'))throw Error('Ops entry has no known script.');ops=ops.replace(/\.\/opsnow\.js(?:\?[^"']*)?/g,'./opsnow.js?v=compact1117');overlay.set('/ops.html',Buffer.from(ops));
+ overlay.set('/wellplan.html',Buffer.from(patchWorkspaceHtml(entries['wellplan.html'])));
+ for(const name of ['opsnow.js','opsnow_survey_alert.mjs','opsnow_survey_alert.css','opsnow_pumps.mjs','opsnow_pumps.css'])overlay.set('/'+name,await readFile('drilling/'+name));
+ async function addModule(dir,prefix){for(const entry of await readdir(dir,{withFileTypes:true})){if(entry.isDirectory())await addModule(dir+'/'+entry.name,prefix+'/'+entry.name);else overlay.set(prefix+'/'+entry.name,await readFile(dir+'/'+entry.name));}}
+ await addModule('drilling/bha-builder','/bha-builder');
+ const candidate={...manifest};for(const [path,body]of overlay)candidate[path]=digest(body);
+ for(const path of oldKeys)if(!overlay.has(path)&&candidate[path]!==manifest[path])throw Error('An unrelated production file changed.');
+ if(oldKeys.some(path=>!(path in candidate)))throw Error('A production file was removed.');
+ const latestSite=await api('/sites/'+site.id);if(latestSite.published_deploy?.id!==deploy.id)throw Error('Production moved during preflight; retry from the new baseline.');
+ const created=await api('/sites/'+site.id+'/deploys?title='+encodeURIComponent('Reviewed BHA and live Ops indicators '+process.env.GITHUB_SHA?.slice(0,12)),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({files:candidate,draft:true})});
+ if(created.required_functions?.length||created.required_edge_functions?.length||created.required_server?.length)throw Error('Unexpected runtime upload requested; refusing file-only release.');
+ for(const sha of created.required||[]){const item=[...overlay].find(([,body])=>digest(body)===sha);if(!item)throw Error('Netlify requested an unchanged file that should already exist; production not touched.');await api('/deploys/'+created.id+'/files/'+item[0].slice(1).split('/').map(encodeURIComponent).join('/'),{method:'PUT',headers:{'Content-Type':'application/octet-stream'},body:item[1]});}
+ const ready=await waitReady(created.id),preview=ready.deploy_ssl_url||ready.deploy_url;
+ if(!preview||new URL(preview).hostname!==ready.id+'--'+site.name+'.netlify.app')throw Error('Unexpected deploy preview origin.');
+ // Verify every added/changed payload on the preview before any browser test or publish.
+ for(const [path,body]of overlay){const served=await staticFile(preview,path);if(digest(served)!==digest(body))throw Error('Preview payload verification failed for '+path);}
+ const plan={siteId:site.id,rollbackDeploy:deploy.id,previewDeploy:ready.id,previewUrl:preview,sourceHead:process.env.GITHUB_SHA,oldFileCount:oldKeys.length,newFileCount:Object.keys(candidate).length,changedFiles:[...overlay.keys()].filter(p=>manifest[p]&&manifest[p]!==candidate[p]),addedFiles:[...overlay.keys()].filter(p=>!manifest[p]),preservedFileCount:oldKeys.filter(p=>!overlay.has(p)).length,expectedHashes:Object.fromEntries([...overlay].map(([p,b])=>[p,digest(b)]))};
+ await save('release-plan.json',plan);await save('candidate-inventory.json',candidate);
+ console.log(JSON.stringify({phase:'preview-ready',site:report.site,rollbackDeploy:deploy.id,previewUrl:preview,oldFileCount:plan.oldFileCount,newFileCount:plan.newFileCount,preservedFileCount:plan.preservedFileCount,changedFiles:plan.changedFiles}));
+ await output('preview_url',preview);await summary('## Ready for browser acceptance\nPreview: '+preview+'\n\nRollback: `'+deploy.id+'`\n\nOriginal inventory: '+plan.oldFileCount+' files. Unchanged preserved: '+plan.preservedFileCount+'. No original path removed.\n');
+}else if(mode==='publish'){
+ const plan=JSON.parse(await readFile('release-evidence/release-plan.json','utf8')),site=await api('/sites/'+plan.siteId);
+ if(plan.sourceHead!==process.env.GITHUB_SHA||site.published_deploy?.id!==plan.rollbackDeploy)throw Error('Source or production changed since preview; refusing promotion.');
+ const evidence=JSON.parse(await readFile('release-evidence/browser-results.json','utf8'));if(!evidence.passed||evidence.preview!==plan.previewUrl)throw Error('Preview browser checks did not pass.');
+ const released=await api('/sites/'+plan.siteId+'/deploys/'+plan.previewDeploy+'/restore',{method:'POST'});
+ try{
+  const fresh=await api('/sites/'+plan.siteId);if(fresh.published_deploy?.id!==plan.previewDeploy)throw Error('Published deploy ID mismatch.');
+  for(const path of ['/index.html','/ops.html','/wellplan.html','/opsnow.js','/opsnow_pumps.mjs','/opsnow_survey_alert.mjs','/bha-builder/boot.js']){const bytes=await staticFile('https://'+host,path);if(digest(bytes)!==plan.expectedHashes[path])throw Error('Production verification failed for '+path);}
+  await save('published.json',{...plan,published:true,publishedDeploy:released.id});console.log(JSON.stringify({phase:'published',url:'https://'+host+'/ops',deployId:plan.previewDeploy,rollbackDeploy:plan.rollbackDeploy}));await summary('## Published and verified\nhttps://'+host+'/ops\n\nDeploy: `'+plan.previewDeploy+'`\n\nRollback: `'+plan.rollbackDeploy+'`\n');
+ }catch(error){await api('/sites/'+plan.siteId+'/deploys/'+plan.rollbackDeploy+'/restore',{method:'POST'});await save('rollback.json',{rolledBack:true,deployId:plan.rollbackDeploy,reason:error.message});throw Error(error.message+'; previous production deploy restored.');}
+}else throw Error('Unsupported release mode.');
