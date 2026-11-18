@@ -20,9 +20,9 @@ test exports are included in production; SIM fixtures remain test-only.
 
 ## Automatic GitHub releases
 
-The publishing branch is `release/drilling-live`. Push reviewed changes under
-`drilling/` to that branch to start the GitHub Actions release pipeline. Feature
-branches and the corporate main/root page are not automatically published.
+The publishing branch is `release/drilling-live`. Push reviewed Ops/BHA runtime changes to that branch to start the GitHub Actions release pipeline. Feature branches and the corporate main/root page are not automatically published.
+Changes to other native game modules require an explicitly reviewed overlay; the
+workflow deliberately does not deploy the partial legacy checkout.
 
 The pipeline reads the current Netlify file inventory, preserves unrelated files
 by their existing content hashes and prepares an unpublished draft with the
