@@ -99,3 +99,31 @@ game and DD checks passed before promotion. All four changed entry/runtime
 files independently matched production SHA-256 after publishing. Detailed
 assumptions and test scope: drilling-tests/DEPTH-TALLY-CHECKS.md. These are
 derived estimates; a depth log cannot prove off-bottom timing between samples.
+
+## Independent derived vs measured Tally comparison
+
+Published deploy `6afd6d9f1ddb5a68fafa1e5d`; rollback `6afd630b57c057fcba87b222`.
+Runtime head `7777aa64d06d873ee5f92d481d5d39efb35e9e9d`.
+Workflow https://github.com/tittothomasai-code/management/actions/runs/44274798931
+
+The Tally tab now loads all 189 numerical inventory entries from the supplied
+DR101L WB04 DD EOWR workbook for DR101L/WB04B01 only. The measured reference
+is separate from independent BHE results, with per-cycle length and cumulative
+differences, aligned entry numbers, missing-coverage notices, inventory expansion
+and CSV export. Existing CSV/XLSX exports include the comparison. A measured
+discrepancy no longer erases the independent BHE result. Blank drilling details
+never classify inventory as unused. The original workbook is unchanged.
+
+BHA reference: 48.53 m + carried string reference 774.00 m = 822.53 m starting MD.
+The carried value is inferred from the supplied starting reference, not measured
+prior-pipe detail. BHA is already included in MD and is never added twice.
+Operator-entered BHA values remain intact. Partial log windows do not claim a
+full run reconciliation. The measured target replaces the nominal label on
+aligned current partial entries without copying its length into derived data.
+
+41 unit tests and desktop/phone browser suites passed, followed by actual
+unpublished-site acceptance. All six entry/runtime/reference files independently
+matched production hashes, and every published inventory entry plus BHA/start
+values matched the original workbook. Full agreement with authenticated live
+WITSML history is not asserted: the tab reports match/review/missing coverage
+from whatever real BHE data the signed-in operator receives.

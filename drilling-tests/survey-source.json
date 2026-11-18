@@ -11,9 +11,9 @@
     },
     {
       "path": "opsnow_tallyview.js",
-      "sha256": "4992347fa71d95052ffb137217c42faf51ee726f03fdb66a05a048453e037708"
+      "sha256": "6544a6c39975e428879de923c4c646c6960e61d9c73a139842cdedd31c1a1749"
     }
   ],
-  "verifiedDeployId": "6afd630b57c057fcba87b222",
+  "verifiedDeployId": "6afd6d9f1ddb5a68fafa1e5d",
   "verifiedAt": "2026-11-18"
 }
