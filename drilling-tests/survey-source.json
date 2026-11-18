@@ -8,6 +8,10 @@
     {
       "path": "opsnow.js",
       "sha256": "57b741f7bf4bec5853a3c266ba249f84477ff1fe465b763343c7b2550d15d1e2"
+    },
+    {
+      "path": "opsnow_tallyview.js",
+      "sha256": "bc0578f35149f045425a47029b7a731fad86d0cb0ca1dbe525226bb6a6ae6457"
     }
   ],
   "verifiedDeployId": "6afd571131294b26ddb556f2",

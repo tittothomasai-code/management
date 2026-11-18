@@ -3,7 +3,7 @@
 // reading with bounded calls (one at a time). Settings and diagnostics stay behind the gear button.
 import * as WPL from './opsnow_wellplans.js?v=dr1115';
 import * as C from './opsnow_core.js?v=re1115';
-import {connectionRows, jointMetrics} from './opsnow_joint_metrics.mjs?v=joints1118';
+import {connectionRows, jointMetrics, depthMetres, reconcileDepths, derivePipeChecks, renderPipeChecks} from './opsnow_joint_metrics.mjs?v=tally1118';
 import * as W from './opsnow_wire.js?v=re1115';
 import * as VW from './opsnow_views.js?v=re1115';
 import * as A from './opsnow_ac.js?v=re1115';
@@ -14,7 +14,7 @@ import {createPumpGraphic, pumpSample, driveChannel, driveSample, refreshDepthTa
 const $ = id => document.getElementById(id);
 const PAGE = ['joints', 'wellplan'].includes(document.documentElement.dataset.page) ? document.documentElement.dataset.page : 'ops'; // joints.html / wellplan.html: same data layer, one surface each
 const DEF_WELL = new URLSearchParams(location.search).get('well') || 'DR101L';
-const NOMINAL_JOINT_M = 13; // project rule: 13 m joints. Measured length from block travel is shown alongside.
+const NOMINAL_JOINT_M = 13; // fallback only; complete BHE strokes supply labelled derived lengths.
 const WINDOW_M = 150, WINDOW_MS = 3 * 3600e3, TREND_M = 60, TREND_MS = 2 * 3600e3;
 const S = {well: null, wellbores: [], headers: {}, wb: null, log: null, map: {}, data: {ml: [], ul: [], rows: []},
   traj: null, trajUid: null, bit: null, pumpSample: null, previousDepthRow: null, timeLog: null, advancedAt: null, message: '', override: {wb: '', log: ''},
@@ -61,7 +61,7 @@ async function selectWellbore(b) {
   const log = (S.override.log && logs.find(l => l.uid === S.override.log)) || C.pickPrimary(logs);
   if (!log) throw new Error('No drilling log with parameters in wellbore ' + b.name);
   S.timeLog = logs.find(l => l.time && l.curves.some(c => /^(BDE|BITDEP|DBTM|BIT_?DEPTH)/i.test(c.mn))) || null;
-  if (changed || S.log?.uid !== log.uid) { S.log = log; S.data = {ml: [], ul: [], rows: []}; S.map = {}; S.advancedAt = null; S.pumpSample = null; S.previousDepthRow = null; S.backfill = log.time ? 'n/a' : 'todo'; S.fe = S.image = null; S.branchTrajs = null; S.branches = null; await readData(true); S.trajUid = null; S.traj = null; }
+  if (changed || S.log?.uid !== log.uid) { S.log = log; S.bit = null; S.data = {ml: [], ul: [], rows: []}; S.map = {}; S.advancedAt = null; S.pumpSample = null; S.previousDepthRow = null; S.backfill = log.time ? 'n/a' : 'todo'; S.fe = S.image = null; S.branchTrajs = null; S.branches = null; await readData(true); S.trajUid = null; S.traj = null; }
   if (!S.trajUid) await findTrajectory();
   await readSurvey();
   if (S.timeLog && S.timeLog !== S.log) await readBit();
@@ -129,7 +129,7 @@ async function readBit() {
   const dc = driveChannel({ml: d.ml, ul: d.ul, header: L, blockChannel: m.bh});
   const dh = dc ? C.latestValues(d.rows, {drive: dc}).drive : null;
   S.pumpSample = {scope: receiptScope, logUid: L.uid, sample: pumpSample({rows: d.rows, channel: m.flowIn, latest: lv.flowIn, time: true, source: L.name}), pressure: pumpSample({rows:d.rows,channel:m.spp,latest:lv.spp,time:true,source:L.name}), drive: driveSample({rows: d.rows, channel: dc, latest: dh, time: true, source: L.name})};
-  S.bit = lv.bd ? {v: lv.bd.v, at: lv.bd.at, log: L} : null;
+  S.bit = lv.bd ? {v: depthMetres(lv.bd.v,m.bd), at: lv.bd.at, log: L} : null;
 }
 // Whole depth log: page back from the log start up to the first row already held (5,000 rows per call).
 async function backfill() {
@@ -379,9 +379,9 @@ function build() {
 // What the pop-up views need, computed from the same state as the main screen.
 function ctx() {
   const holeMd = S.log && !S.log.time ? S.data.rows.at(-1)?.[0] : null;
-  return {data: S.data, fe: S.fe, image: S.imageRows, imageRange: S.imageRange, conns: S.conns, jointNo: S.jointNo, bitMd: S.bitMd ?? holeMd, holeMd: S.holeMd ?? holeMd, bitKind: S.bitKind,
+  return {data: S.data, fe: S.fe, image: S.imageRows, imageRange: S.imageRange, conns: S.conns, jointNo: S.jointNo, bitMd: S.bitMd ?? null, holeMd: S.holeMd ?? holeMd, bitKind: S.bitKind, depthCheck:S.depthCheck, pipeChecks:S.pipeChecks||[],
     branches: S.branches, branchMsg: S.branchMsg, active: S.wb?.name, bitPos: S.bitPos, ac: S.ac, backfilling: S.backfill === 'reading' || S.backfill === 'todo',
-    tally: S.tally, tallyName: S.tallyName, tallyError: S.tallyError, tallyCmp: S.tally ? C.compareTally(S.tally, S.conns || [], S.bitMd ?? holeMd) : null,
+    tally: S.tally, tallyName: S.tallyName, tallyError: S.tallyError, tallyCmp: S.tally ? C.compareTally(S.tally, S.conns || [], S.bitMd) : null,
     refresh: () => render(), map: S.map, tl: S.tl, timeLogName: S.timeLog?.name || '',
     readTimeBack: () => { S.tlBack = true; S.due.tl = 0; },
     well: S.well?.name || DEF_WELL, rig: S.rigName, kb: (VW.getKb?.() ?? S.surveyHeader?.kb?.v ?? null),
@@ -431,20 +431,21 @@ function render() {
   $('onFresh').textContent = !L ? '' : fresh.state === 'stopped' || fresh.state === 'unknown' ? 'NO NEW DATA · store last changed ' + C.aestDay(fresh.t) :
     adv ? 'LIVE · new rows ' + C.ago(now - S.advancedAt) : (L.time ? 'Last row ' + C.aest(rows.at(-1)?.[0]) : 'Feed connected (store sync ' + C.aest(fresh.t) + ') · ' + (S.advancedAt != null ? 'no new rows since ' + C.aest(S.advancedAt) : 'no new rows since this screen opened ' + C.aest(since)));
   $('onFresh').dataset.s = adv ? 'live' : fresh.state === 'stopped' ? 'stopped' : 'delayed';
-  const holeMd = L && !L.time ? rows.at(-1)?.[0] : lv.hd?.v;
+  const holeMd = L && !L.time ? rows.at(-1)?.[0] : depthMetres(lv.hd?.v,S.map.hd);
   $('onHole').textContent = Number.isFinite(holeMd) ? fmt(holeMd, 1) + ' m' : '—';
-  const reported = L?.time ? (lv.bd ? {v: lv.bd.v, at: lv.bd.at, source: L.name} : null) : (S.bit ? {v: S.bit.v, at: S.bit.at, source: S.bit.log?.name || S.timeLog?.name || 'time log'} : null);
-  // a reported bit that has fallen behind the deepening hole (time log lagging the depth log by > 2 min while drilling) is treated as stale → derived = hole MD
-  const lagging = reported && /^Drilling/.test(state || '') && Number.isFinite(holeMd) && holeMd - reported.v > 1 && S.advancedAt != null && S.advancedAt - reported.at > 120000;
-  const bit = C.resolveBit({reported: lagging ? {...reported, at: -Infinity} : reported, holeMd, state, now}); S.bitLagNote = lagging ? 'Time-log bit ' + fmt(reported.v, 1) + ' m at ' + C.aest(reported.at) + ' is behind the drilling hole; bit shown = hole MD (derived).' : '';
+  const reported = L?.time ? (lv.bd ? {v: depthMetres(lv.bd.v,S.map.bd), at: lv.bd.at, source: L.name} : null) : (S.bit ? {v: S.bit.v, at: S.bit.at, source: S.bit.log?.name || S.timeLog?.name || 'time log'} : null);
+  // A fresh off-bottom bit is legitimate. Never replace it just to agree with hole MD.
+  const rowBit = !L?.time&&S.map.bd ? depthMetres(C.value(rows.at(-1)?.[S.map.bd.col],S.map.bd),S.map.bd) : null;
+  const bit = Number.isFinite(rowBit) ? {...C.clampBit(rowBit,holeMd),kind:'reported',source:L.name,depthIndexed:true} : C.resolveBit({reported, holeMd, state, now});
+  S.depthCheck=reconcileDepths({holeMd,bit});
   $('onBitLbl').textContent = bit.kind === 'derived' ? 'Bit MD · derived' : 'Bit MD';
   $('onBit').dataset.kind = bit.kind; $('onBit').dataset.stale = String(bit.kind === 'stale' || bit.kind === 'missing');
   if (bit.kind === 'reported') {
-    $('onBit').textContent = fmt(bit.v, 1) + ' m';
-    $('onBit').title = 'Reported by source (' + bit.source + ') at ' + C.aestDay(bit.at) + (bit.clamped ? '. Source said ' + fmt(bit.was, 1) + ' m, deeper than hole MD ' + fmt(holeMd, 1) + ' m, so it is shown at hole MD (the bit cannot be below the hole).' : '');
+    $('onBit').textContent = bit.clamped ? 'check source' : fmt(bit.v, 1) + ' m';
+    $('onBit').title = 'Reported by source (' + bit.source + ') '+(bit.depthIndexed?'at '+fmt(holeMd,1)+' m MD (depth log)': 'at '+C.aestDay(bit.at)) + (bit.clamped ? '. Source said ' + fmt(bit.was, 1) + ' m, deeper than hole MD ' + fmt(holeMd, 1) + ' m. Excluded from tally counts until resolved.' : '');
   } else if (bit.kind === 'derived') {
     $('onBit').textContent = fmt(bit.v, 1) + ' m';
-    $('onBit').title = 'Derived, not reported: equals hole MD while the rig is on bottom and the hole is deepening. ' + (S.bitLagNote || 'No live bit-depth channel is in the store.');
+    $('onBit').title = 'Derived, not reported: assumes on-bottom drilling while hole MD is advancing. No current bit-depth channel is available.';
   } else if (bit.kind === 'stale') {
     $('onBit').textContent = 'not reported';
     $('onBit').title = 'No live bit-depth channel. "' + (bit.source || S.timeLog?.name || 'time log') + '" stopped at ' + C.aestDay(bit.at) + (bit.last != null ? ' (' + fmt(bit.last, 1) + ' m then)' : '') + '. Bit MD is shown as derived from hole MD only while drilling on bottom.';
@@ -452,16 +453,22 @@ function render() {
     $('onBit').textContent = 'not in source';
     $('onBit').title = 'No bit depth channel is reported. Bit MD is shown as derived from hole MD only while drilling on bottom.';
   }
-  S.bitMd = C.clampBit(bit.v ?? holeMd, holeMd).v; S.holeMd = Number.isFinite(holeMd) ? holeMd : null; S.bitKind = bit.kind;
+  S.bitMd = S.depthCheck.bitMd; S.holeMd = S.depthCheck.holeMd; S.bitKind = bit.clamped?'invalid':bit.kind;
+  const conns = L && !L.time ? blockConnections(rows,S.map) : [];S.conns=conns;
+  const cache=S.pipeCache,lastRow=rows.at(-1)?.join(',');
+  if(!cache||cache.rows!==rows||cache.count!==rows.length||cache.tail!==lastRow||cache.map!==S.map||cache.tally!==S.tally){
+    S.pipeChecks=derivePipeChecks({rows,map:S.map,conns,tally:/^tally board/i.test(S.tallyName)?null:S.tally,nominal:NOMINAL_JOINT_M});
+    S.pipeCache={rows,count:rows.length,tail:lastRow,map:S.map,tally:S.tally};
+  }
   // bit position: projected from the last survey (constant build/turn); absolute N/E once branches are tied on
   const actB = S.branches?.find(b => b.name === S.wb?.name), base = actB?.path || S.traj?.calc;
   S.bitPos = base?.length && Number.isFinite(S.bitMd) ? C.projectToBit(base, S.bitMd, holeMd) : null;
   S.ac = S.branches && S.bitPos && actB ? C.antiCollision(S.branches, S.wb.name, S.bitPos) : null;
   if (PAGE === 'wellplan') { const lastSv = S.traj?.stations?.at(-1); $('onLastSv').textContent = lastSv ? fmt(lastSv.md, 1) + ' m · ' + C.aest(Date.parse(lastSv.t)).replace(' AEST', '') : '—'; WP.refresh(); renderSettings(); return; }
   if (PAGE === 'joints') { // joints page: header + the Joints dashboard only
-    const conns = L && !L.time ? blockConnections(rows, S.map) : []; S.conns = conns; S.jointNo = C.jointNumber(conns, C.joints(conns, holeMd).median, S.bitMd, S.tally);
+    S.jointNo = C.jointNumber(conns, C.joints(conns, holeMd).median, S.bitMd, S.tally);
     const lastSv = S.traj?.stations.at(-1); $('onLastSv').textContent = lastSv ? fmt(lastSv.md, 1) + ' m · ' + C.aest(Date.parse(lastSv.t)).replace(' AEST', '') : '—';
-    VW.drawJoints(); renderSettings(); return;
+    VW.drawJoints(); renderPipeChecks(document,S.pipeChecks,S.depthCheck,$('jtHost').parentElement); renderSettings(); return;
   }
   // Badge: proximity (DIST, actual C-C) and separation factor (SF, estimated) shown apart, plus a flag when the hold projection reaches a limit.
   const acT = S.ac ? A.acTotals(S.ac) : null, acF = S.ac ? VW.forward() : null, acBtn = $('onAcBtn');
@@ -485,7 +492,6 @@ function render() {
   // trends: depth logs vs MD (last 60 m), time logs vs time (last 2 h)
   const xEnd = rows.at(-1)?.[0], x0 = L?.time ? xEnd - TREND_MS : xEnd - TREND_M;
   const win = Number.isFinite(xEnd) ? rows.filter(r => r[0] >= x0) : [];
-  const conns = L && !L.time ? blockConnections(rows, S.map) : []; S.conns = conns;
   $('onTrendAxis').textContent = Number.isFinite(xEnd) ? (L.time ? 'last 2 h to ' + C.aest(xEnd) : 'last ' + TREND_M + ' m drilled · dashed line = connection (J = joint number)') : '';
   for (const [k, n] of TILES) {
     const box = $('onC_' + k).parentElement, ch = S.map[k]; box.hidden = !ch;
@@ -510,6 +516,7 @@ function render() {
     $('onJointNote').textContent = [metric.spacing!=null?'connection spacing '+fmt(metric.spacing,1)+' m MD':'',metric.travel!=null?'observed BHE travel '+fmt(metric.travel,1)+' m':''].filter(Boolean).join(' · ');
     $('onJoints').innerHTML = J.list.slice(-4).reverse().map((j, i) => `<li><span>${JN?.n != null ? 'J' + (JN.n - 1 - i) + ' · ' : ''}${fmt(j.start, 1)} → ${fmt(j.end, 1)} m</span><b>${fmt(j.length, 1)} m MD</b></li>`).join('');
   } else { $('onJointBar').style.width = '0'; $('onJointDone').textContent = '—'; $('onJointRange').textContent = S.map.bh ? 'no connection in window yet' : 'block height not in source'; $('onJoints').innerHTML = ''; $('onJointNote').textContent = ''; }
+  renderPipeChecks(document,S.pipeChecks,S.depthCheck,$('onJointDone').closest('.on-card'));
   // survey
   const calc = S.traj?.calc || [];
   $('onSvNote').textContent = S.traj ? S.traj.name + ' · ' + calc.length + ' stations' : S.trajUid === '' ? 'no trajectory in this wellbore' : '';

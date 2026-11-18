@@ -8,8 +8,9 @@ await mkdir(evidence, {recursive: true});
 const pumpEvidence = resolve(root, 'drilling-tests/equipment-evidence');await mkdir(pumpEvidence, {recursive: true});
 const stubs = {
   'opsnow_wire.js': `export const cfg={url:'SIM fixture',proxy:'offline'};export const state={dead:false,calls:0,errors:0};export const hasCred=()=>!!window.__simSigned;export const rememberedUser=()=>'';export const signIn=()=>{};export const signOut=()=>{window.__simSigned=false};export async function get(...args){state.calls++;return window.__simRead(...args);}`,
-  'opsnow_views.js': `export const init=()=>{},draw=()=>{},getPlan=()=>null,getKb=()=>null;`,
-  'opsnow_wellplans.js': `export const load=()=>Promise.resolve(),planFor=()=>null;`,
+  'opsnow_views.js': `import * as TV from './opsnow_tallyview.js?v=tally1118';export let testCtx;export const init=x=>{testCtx=x},draw=()=>{},getPlan=()=>null,getKb=()=>null;export const initJointsPage=(x,host)=>{testCtx=x;TV.init(x,{host})};export const drawJoints=()=>TV.draw();`,
+  'opsnow_wellplans.js': `export const load=()=>Promise.resolve(),planFor=()=>null,tieAt=()=>null;`,
+  'opsnow_runsheet.js': `export const parse=()=>null;`,
   'opsnow_planview.js': `export const init=()=>{},refresh=()=>{};`,
   'opsnow_ac.js': `export const RANK={},acTotals=()=>({}),summaryLine=()=>'',worse=()=>null;`,
 };
@@ -18,7 +19,7 @@ const server = createServer(async (req, res) => {
     const name = new URL(req.url, 'http://local').pathname.slice(1) || 'ops.html';
     if (name in stubs) return res.writeHead(200, {'Content-Type': 'text/javascript'}).end(stubs[name]);
     if (name === 'data/per-joint-surveys.json') return res.writeHead(200, {'Content-Type': 'application/json'}).end(JSON.stringify(report));
-    const path = resolve(root, ['opsnow_core.js', 'opsnow_jsurvey.js', 'opsnow.css'].includes(name) ? 'drilling-tests/fixtures/survey-alert/' + name : 'drilling/' + (name === 'ops' ? 'ops.html' : name));
+    const path = resolve(root, ['joints.html','opsnow_tallyboard.js','opsnow_joints.js','opsnow_mvp.js','opsnow_export.js','opsnow_core.js', 'opsnow_jsurvey.js', 'opsnow.css'].includes(name) ? 'drilling-tests/fixtures/survey-alert/' + name : 'drilling/' + (name === 'ops' ? 'ops.html' : name));
     if (!path.startsWith(root + '/')) return res.writeHead(403).end();
     let body = await readFile(path);
     // Test-only access to the actual Ops read/render functions. Production has no test hooks.
@@ -43,7 +44,7 @@ try {
     await page.goto(origin + '/ops');
     if((await readFile(resolve(root,'drilling/ops.html'),'utf8')).includes('bha-builder/context-launcher')){await page.locator('[data-bha-context]').waitFor();assert.equal(await page.locator('[data-bha-context]').count(),1);}
     await page.evaluate(async () => {
-      const m = await import('./opsnow.js?v=joints1118');window.__testOps = m;window.__simSigned = true;
+      const m = await import('./opsnow.js?v=tally1118');window.__testOps = m;window.__simSigned = true;
       Object.assign(m.testState, {well: {uid: 'sim-well', name: 'SIM FIELD'}, wb: {uid: 'sim-bore', name: 'SIM WB1'}, trajUid: 'sim-survey',
         log: {name: 'SIM depth log', time: false, changed: new Date().toISOString()}, data: {ml: [], ul: [], rows: [[100], [113]]}});
       window.__simStations = [{uid: 'sim-100', md: 100, t: '2026-11-17T01:50:00Z'}];
@@ -121,6 +122,9 @@ try {
     assert.match(await page.locator('#onJointDone').innerText(),/4.0 \/ 13.0 m · nominal/);
     assert.match(await page.locator('#onJointNote').innerText(),/connection spacing 12.3 m MD/);
     assert.match(await page.locator('#onJointNote').innerText(),/observed BHE travel 4.0 m/);
+    assert.equal(await page.evaluate(()=>__testOps.testState.bitMd),null);
+    assert.ok(await page.evaluate(()=>__testOps.testState.pipeChecks.every(c=>c.status==='review'&&c.estimatedLength===null)));
+    await page.locator('#onPipeChecks summary').click();assert.match(await page.locator('#onPipeChecks').innerText(),/MD\/BHE disagreement/);
     await page.locator('.on-side').screenshot({path:pumpEvidence+`/joint-comparison-${width}.png`});
     await page.locator('#onGear').click();await page.locator('#onSelWb').focus();
     await page.evaluate(async () => { __simStations.push({uid: 'sim-113', md: 113, t: '2026-11-17T02:01:00Z'});await __testOps.testReadSurvey(); });
@@ -151,7 +155,36 @@ try {
     await alert.waitFor();assert.equal(await alert.evaluate(el => getComputedStyle(el).animationName), 'none');
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     assert.deepEqual(errors, []);assert.deepEqual(external, []);
-    results.push({width, checks: ['first history quiet', 'new WITSML survey pulses green', 'focus preserved', 'dismiss and duplicate suppression', 'new report through existing loader callback', 'generated-file metadata quiet', 'old well response ignored', 'reduced motion', 'fits viewport'], errors, external});
+    // Actual Joints-page render + tally board, with only transport/navigation stubbed.
+    await page.goto(origin+'/joints.html');
+    await page.evaluate(async()=>{
+      const m=await import('./opsnow.js?v=dr1115');window.__testOps=m;window.__simSigned=true;
+      const C=await import('./opsnow_core.js?v=re1115'),S=m.testState,rows=[[99.9,0],[100,13],[104,9],[108,5],[112.9,0],[113,13],[117,9]];
+      S.well={uid:'sim-well',name:'SIM FIELD'};S.wb={uid:'sim-bore',name:'SIM WB1'};S.log={uid:'sim-tally',name:'SIM depth log',time:false,changed:new Date().toISOString()};
+      S.data={ml:['MD','BHE'],ul:['m','m'],rows};S.map=C.mapChannels(S.data.ml,S.data.ul,S.log);S.bit=null;S.timeLog=null;S.advancedAt=null;S.watchFrom=Date.now()-180000;m.testRender();
+    });
+    const completed=page.locator('#tbRuns tbody tr').last();
+    assert.equal(await completed.locator('[data-f="len"]').inputValue(),'13.00');assert.match(await completed.innerText(),/derived · BHE \/ MD cross-check/);assert.match(await completed.innerText(),/unconfirmed/);
+    assert.match(await page.locator('#tbHead').innerText(),/Bit MD not reported/);
+    await page.locator('#onPipeChecks summary').click();assert.match(await page.locator('#onPipeChecks').innerText(),/13.00 m/);
+    const downloadWait=page.waitForEvent('download');await page.getByRole('button',{name:'Export pipe-length checks',exact:true}).click();const download=await downloadWait;assert.equal(download.suggestedFilename(),'pipe-length-checks.csv');
+    const csv=await readFile(await download.path(),'utf8');assert.match(csv,/"13","13","13"/);
+    // A contradictory BHE graph stays provisional and cannot silently feed the tracker.
+    await page.evaluate(()=>{const S=__testOps.testState;S.data.rows=S.data.rows.map(r=>r.slice());S.data.rows[3][1]=11;__testOps.testRender();});
+    assert.match(await completed.innerText(),/review · MD interval/);
+    await page.locator('.tb-name').fill('Reviewed run');await page.locator('.tb-name').dispatchEvent('change');
+    assert.equal(await page.evaluate(()=>localStorage.getItem('opsnow-tally')),null);assert.match(await page.locator('#tbWarn').innerText(),/Resolve the pipe-length checks/);
+    await page.evaluate(()=>{const S=__testOps.testState;S.data.rows=S.data.rows.map(r=>r.slice());S.data.rows[3][1]=5;__testOps.testRender();});
+    // Edits remain local and replace only the edited physical measurement.
+    await completed.locator('[data-f="len"]').fill('13.20');await completed.locator('[data-f="len"]').dispatchEvent('change');
+    assert.equal(await completed.locator('[data-f="len"]').inputValue(),'13.20');assert.match(await completed.innerText(),/edited/);
+    assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('opsnow-tally')).t.joints[0].len),13.2);
+    // Reported off-bottom bit remains separate; impossible bit below hole is rejected.
+    await page.evaluate(()=>{const S=__testOps.testState;S.bit={v:110,at:Date.now(),log:{name:'SIM time'}};__testOps.testRender();});assert.match(await page.locator('#tbHead').innerText(),/110.0 m/);
+    await page.evaluate(()=>{const S=__testOps.testState;S.bit={v:125,at:Date.now(),log:{name:'SIM time'}};__testOps.testRender();});assert.equal(await page.locator('#onBit').innerText(),'check source');assert.equal(await page.evaluate(()=>__testOps.testState.bitMd),null);
+    await page.screenshot({path:pumpEvidence+`/tally-correlation-${width}.png`});
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
+    results.push({width, checks: ['first history quiet', 'new WITSML survey pulses green', 'focus preserved', 'dismiss and duplicate suppression', 'new report through existing loader callback', 'generated-file metadata quiet', 'old well response ignored', 'reduced motion', 'fits viewport', 'actual tally board uses BHE-derived lengths', 'CSV exports BHE and MD checks', 'inconsistent BHE cannot promote a pipe length', 'manual lengths persist without overwrite', 'missing/invalid bit stays unconfirmed', 'off-bottom bit remains separate'], errors, external});
     console.log('PASS Ops survey alert', width);await context.close();
   }
   await writeFile(evidence + '/browser-results.json', JSON.stringify({mode: 'Actual Ops source and parsers, local SIM transport and static fixtures only. No external network or real credentials.', results}, null, 2) + '\n');
