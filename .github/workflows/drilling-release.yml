@@ -1,8 +1,8 @@
 name: Drilling release
 on:
   push:
-    branches: [release/drilling-20261118]
-    paths: ['.github/workflows/drilling-release.yml', '.github/scripts/drilling-release.mjs']
+    branches: [release/drilling-live]
+    paths: ['drilling/**']
   workflow_dispatch:
 permissions:
   contents: read

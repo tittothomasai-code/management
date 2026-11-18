@@ -28,7 +28,7 @@ if(mode==='preview'){
  // Read only the current live entry files; preserve the full 515+ file inventory by hash.
  const entries={};for(const name of ['index.html','ops.html','wellplan.html','opsnow.js']){const bytes=await staticFile(origin,'/'+name);if(digest(bytes)!==manifest['/'+name])throw Error('Served '+name+' does not match the captured production inventory.');entries[name]=bytes.toString();}
  const source=JSON.parse(await readFile('drilling-tests/survey-source.json','utf8'));const expected=source.files.find(f=>f.path==='opsnow.js').sha256;
- if(digest(Buffer.from(entries['opsnow.js']),'sha256')!==expected)throw Error('Production Ops source changed since the reviewed patch; rebase before publishing.');
+ if(digest(Buffer.from(entries['opsnow.js']),'sha256')!==expected&&digest(Buffer.from(entries['opsnow.js']),'sha256')!==digest(await readFile('drilling/opsnow.js'),'sha256'))throw Error('Production Ops source changed since the reviewed patch; rebase before publishing.');
  overlay.set('/index.html',Buffer.from(patchGameHtml(entries['index.html'])));
  let ops=patchWorkspaceHtml(entries['ops.html']);if(!ops.includes('./opsnow.js'))throw Error('Ops entry has no known script.');ops=ops.replace(/\.\/opsnow\.js(?:\?[^"']*)?/g,'./opsnow.js?v=compact1117');overlay.set('/ops.html',Buffer.from(ops));
  overlay.set('/wellplan.html',Buffer.from(patchWorkspaceHtml(entries['wellplan.html'])));

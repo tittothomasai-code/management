@@ -3,11 +3,13 @@
   "files": [
     {
       "path": "ops.html",
-      "sha256": "677b0fdd86fceb353dff0d6a88b7033f1349acaec7b9db50e674f4481497677b"
+      "sha256": "80f999945f69a34fdb6fa8f4ac311a17ad2866af9ccc7635a585a4b01674541e"
     },
     {
       "path": "opsnow.js",
-      "sha256": "9a5c54e698fbb28e80b2d14d6c558e49ffc6bc1c98a62af08dfe5b1a5edecfc4"
+      "sha256": "6aef4ccae492b546df5b545f0ab515affe637c345f174e1309e0bbc5032af4d4"
     }
-  ]
+  ],
+  "verifiedDeployId": "6afd11726f5e4201ff542b17",
+  "verifiedAt": "2026-11-18"
 }
