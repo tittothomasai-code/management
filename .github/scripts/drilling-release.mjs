@@ -32,7 +32,7 @@ if(mode==='preview'){
  overlay.set('/index.html',Buffer.from(patchGameHtml(entries['index.html'])));
  let ops=patchWorkspaceHtml(entries['ops.html']);if(!ops.includes('./opsnow.js'))throw Error('Ops entry has no known script.');const opsScript=(await readFile('drilling/ops.html','utf8')).match(/\.\/opsnow\.js(?:\?[^"']*)?/)?.[0];if(!opsScript)throw Error('Reviewed Ops entry has no known script.');ops=ops.replace(/\.\/opsnow\.js(?:\?[^"']*)?/g,()=>opsScript);overlay.set('/ops.html',Buffer.from(ops));
  overlay.set('/wellplan.html',Buffer.from(patchWorkspaceHtml(entries['wellplan.html'])));
- for(const name of ['opsnow.js','opsnow_joint_metrics.mjs','opsnow_tallyview.js','opsnow_survey_alert.mjs','opsnow_survey_alert.css','opsnow_pumps.mjs','opsnow_pumps.css'])overlay.set('/'+name,await readFile('drilling/'+name));
+ for(const name of ['opsnow.js','opsnow_joint_metrics.mjs','opsnow_tally_compare.mjs','data/dr101l-wb04-measured-tally.json','opsnow_tallyview.js','opsnow_survey_alert.mjs','opsnow_survey_alert.css','opsnow_pumps.mjs','opsnow_pumps.css'])overlay.set('/'+name,await readFile('drilling/'+name));
  async function addModule(dir,prefix){for(const entry of await readdir(dir,{withFileTypes:true})){if(entry.isDirectory())await addModule(dir+'/'+entry.name,prefix+'/'+entry.name);else overlay.set(prefix+'/'+entry.name,await readFile(dir+'/'+entry.name));}}
  await addModule('drilling/bha-builder','/bha-builder');
  const candidate={...manifest};for(const [path,body]of overlay)candidate[path]=digest(body);
@@ -57,7 +57,7 @@ if(mode==='preview'){
  const released=await api('/sites/'+plan.siteId+'/deploys/'+plan.previewDeploy+'/restore',{method:'POST'});
  try{
   const fresh=await api('/sites/'+plan.siteId);if(fresh.published_deploy?.id!==plan.previewDeploy)throw Error('Published deploy ID mismatch.');
-  for(const path of ['/index.html','/ops.html','/wellplan.html','/opsnow.js','/opsnow_joint_metrics.mjs','/opsnow_tallyview.js','/opsnow_pumps.mjs','/opsnow_survey_alert.mjs','/bha-builder/boot.js']){const bytes=await staticFile('https://'+host,path);if(digest(bytes)!==plan.expectedHashes[path])throw Error('Production verification failed for '+path);}
+  for(const path of ['/index.html','/ops.html','/wellplan.html','/opsnow.js','/opsnow_joint_metrics.mjs','/opsnow_tally_compare.mjs','/data/dr101l-wb04-measured-tally.json','/opsnow_tallyview.js','/opsnow_pumps.mjs','/opsnow_survey_alert.mjs','/bha-builder/boot.js']){const bytes=await staticFile('https://'+host,path);if(digest(bytes)!==plan.expectedHashes[path])throw Error('Production verification failed for '+path);}
   await save('published.json',{...plan,published:true,publishedDeploy:released.id});console.log(JSON.stringify({phase:'published',url:'https://'+host+'/ops',deployId:plan.previewDeploy,rollbackDeploy:plan.rollbackDeploy}));await summary('## Published and verified\nhttps://'+host+'/ops\n\nDeploy: `'+plan.previewDeploy+'`\n\nRollback: `'+plan.rollbackDeploy+'`\n');
  }catch(error){await api('/sites/'+plan.siteId+'/deploys/'+plan.rollbackDeploy+'/restore',{method:'POST'});await save('rollback.json',{rolledBack:true,deployId:plan.rollbackDeploy,reason:error.message});throw Error(error.message+'; previous production deploy restored.');}
 }else throw Error('Unsupported release mode.');

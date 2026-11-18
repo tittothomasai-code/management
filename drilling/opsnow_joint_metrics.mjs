@@ -50,11 +50,14 @@ export function derivePipeChecks({rows,map,conns,tally,tolerance=.3,nominal=13})
   if(badPairs)issues.push('Pickup, reaming or inconsistent movement');
   if(offBottom)issues.push('Bit not on bottom or depth readings disagree');
   if(advance>nominal*1.6||travel>nominal*1.6)issues.push('Possible multiple joints or missed connection');
+  // Retain the independent result before checking any measured-tally values.
+  // A disagreement must not erase it or turn the measured value into the derivation.
+  const derivedLength=issues.length?null:travel;
   const next=tally?.joints?.find((j,k)=>Math.abs((k?tally.joints[k-1].cumDepth:(tally.startMd??tally.bhaLen))-a.md)<=tolerance);
   if(next&&finite(travel)&&Math.abs(next.len-travel)>tolerance)issues.push('Tally length disagrees with BHE stroke');
   if(next&&Math.abs(next.cumDepth-b.md)>tolerance)issues.push('Tally cumulative depth disagrees with connection');
   const estimate=issues.length?null:travel;
-  out.push({key:a.md.toFixed(3)+':'+b.md.toFixed(3),startMd:a.md,endMd:b.md,mdAdvance:advance,bheTravel:travel,estimatedLength:estimate,
+  out.push({key:a.md.toFixed(3)+':'+b.md.toFixed(3),startMd:a.md,endMd:b.md,mdAdvance:advance,bheTravel:travel,derivedLength,estimatedLength:estimate,
    joint:next?.n??null,tallyLength:next?.len??null,status:issues.length?'review':next?'tally match':'derived estimate',bitBasis:bitCount?'reported':'not reported',issues});
  }
  return out;

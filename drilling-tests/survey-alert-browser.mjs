@@ -183,6 +183,23 @@ try {
     await page.evaluate(()=>{const S=__testOps.testState;S.bit={v:110,at:Date.now(),log:{name:'SIM time'}};__testOps.testRender();});assert.match(await page.locator('#tbHead').innerText(),/110.0 m/);
     await page.evaluate(()=>{const S=__testOps.testState;S.bit={v:125,at:Date.now(),log:{name:'SIM time'}};__testOps.testRender();});assert.equal(await page.locator('#onBit').innerText(),'check source');assert.equal(await page.evaluate(()=>__testOps.testState.bitMd),null);
     await page.screenshot({path:pumpEvidence+`/tally-correlation-${width}.png`});
+    // The supplied inventory loads only for its actual well/branch. BHE stays independent.
+    await page.evaluate(async()=>{
+      const C=await import('./opsnow_core.js?v=re1115'),S=__testOps.testState;
+      S.well={uid:'fixture-dr101',name:'DR101L'};S.wb={uid:'fixture-wb04',name:'WB04B01'};S.bit=null;S.tally=null;S.tallyName='';
+      S.data={ml:['MD','BHE'],ul:['m','m'],rows:[[834.79,0],[834.89,12.46],[839.89,7.46],[843.89,3.46],[847.25,0],[847.35,12.46],[851.35,8.46]]};S.map=C.mapChannels(S.data.ml,S.data.ul,S.log);__testOps.testRender();
+    });
+    // Branch selection is explicit; a reference never follows a different selected branch.
+    await page.locator('#tbBranch').selectOption('WB04B01');
+    await page.waitForFunction(()=>document.getElementById('tbCompare')?.textContent.includes('189 inventory entries'));
+    const compare=page.locator('#tbCompare');assert.match(await compare.innerText(),/BHA 48.53 m \+ carried string reference 774.00 m = starting MD 822.53 m/);
+    const compared=compare.locator('table').first().locator('tbody tr');assert.equal(await compared.count(),1);assert.equal(await compared.locator('td').first().innerText(),'65');assert.match(await compared.innerText(),/match/);
+    assert.equal(await compare.locator('details tbody tr').count(),189);assert.equal(await page.evaluate(()=>__testOps.testState.tally),null);
+    assert.equal(await page.locator('.tb-bha').first().inputValue(),'48.53');
+    assert.equal(await page.locator('#tbRuns tr[data-n="65"]').count(),1);assert.match(await page.locator('#tbRuns tr[data-n="66"]').innerText(),/measured target 12.42 m/);
+    const comparisonDownload=page.waitForEvent('download');await compare.getByRole('button',{name:'Export derived vs measured CSV'}).click();const exported=await comparisonDownload;assert.equal(exported.suggestedFilename(),'derived-vs-measured-tally.csv');assert.match(await readFile(await exported.path(),'utf8'),/derivedLength,measuredLength,difference/);
+    await page.screenshot({path:pumpEvidence+`/derived-measured-${width}.png`});
+    await page.evaluate(()=>{__testOps.testState.well={uid:'fixture-other',name:'OTHER WELL'};__testOps.testRender();});assert.equal(await compare.isVisible(),false);
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
     results.push({width, checks: ['first history quiet', 'new WITSML survey pulses green', 'focus preserved', 'dismiss and duplicate suppression', 'new report through existing loader callback', 'generated-file metadata quiet', 'old well response ignored', 'reduced motion', 'fits viewport', 'actual tally board uses BHE-derived lengths', 'CSV exports BHE and MD checks', 'inconsistent BHE cannot promote a pipe length', 'manual lengths persist without overwrite', 'missing/invalid bit stays unconfirmed', 'off-bottom bit remains separate'], errors, external});
     console.log('PASS Ops survey alert', width);await context.close();

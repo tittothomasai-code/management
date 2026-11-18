@@ -8,6 +8,7 @@ import * as XE from './opsnow_export.js?v=re1115';
 import * as JS from './opsnow_jsurvey.js?v=re1115';
 import * as MVP from './opsnow_mvp.js?v=re1115';
 import {applyPipeChecks} from './opsnow_joint_metrics.mjs?v=tally1118';
+import {referenceScope,inventoryRows,compareDerivedTally,renderTallyComparison} from './opsnow_tally_compare.mjs?v=bha1118';
 export const NOMINAL_M = 13; // project rule: drill pipe joints are 13 m (nominal until a connection or tally measures them)
 const $ = id => document.getElementById(id);
 const fin = Number.isFinite;
@@ -32,6 +33,7 @@ export function init(getCtx, opts = {}) {
     <p id="tbWarn" class="tb-warn" hidden></p>
     <p id="tbNote" class="on-muted tb-note"></p>
     <div id="tbHead" class="tb-head"></div>
+    <section id="tbCompare" hidden></section>
     <div id="tbRuns"></div>`;
   (opts.host || document.body).appendChild(body);
   $('tbBranch').onchange = e => { V.branch = e.target.value; draw(); };
@@ -45,6 +47,19 @@ function fileBase() { const x = X(); return (x.well || 'well') + '-' + (V.branch
 function lastN(runs) { return runs.flatMap(r => r.joints).at(-1)?.n || 0; }
 function wellName() { return X().well || 'DR101L'; }
 function branchName() { return V.branch || X().active || ''; }
+function measuredReference(){return referenceScope(X().well,branchName())?V.measuredReference:null;}
+function drawComparison(x){
+ const host=$('tbCompare');if(!host)return;
+ if(!referenceScope(x.well,branchName())){host.hidden=true;host.replaceChildren();return;}
+ host.hidden=false;
+ if(!V.measuredReference){
+  host.textContent=V.referenceFailed?'Measured inventory could not be loaded. Derived readings remain separate.':'Loading measured inventory…';
+  if(!V.referenceRequested){V.referenceRequested=true;fetch('./data/dr101l-wb04-measured-tally.json?v=bha1118').then(r=>{if(!r.ok)throw Error('reference unavailable');return r.json();}).then(ref=>{if(!compareDerivedTally([],ref).inventory.length)throw Error('invalid reference');V.measuredReference=ref;draw();}).catch(()=>{V.referenceFailed=true;draw();});}
+  return;
+ }
+ const ref=measuredReference(),active=branchName()===x.active,result=compareDerivedTally(active?(x.pipeChecks||[]):[],ref);
+ renderTallyComparison(document,host,result,ref,active?x:{bitMd:null,holeMd:null});
+}
 function sourceTally(x) {
   const t = x.tally; if (!t?.joints?.length) return null;
   if (/^tally board/i.test(x.tallyName || t.source || '')) return null;
@@ -52,13 +67,17 @@ function sourceTally(x) {
 }
 function firstNOf(conns, holeMd, x) {
   if (!conns?.length) return 1;
+  const measured=!sourceTally(x)&&inventoryRows(measuredReference()).find(j=>Math.abs(j.startMd-conns[0].md)<=.3);
+  if(measured)return measured.n;
   const med = C.joints(conns, holeMd).median;
   const nums = J.numbering(conns, med, sourceTally(x));
   return nums[0]?.n ?? 1;
 }
 function applyCanonicalNumbers(runs, conns, holeMd, x) {
   if (!conns?.length || !runs?.length) return runs;
-  const nums = J.numbering(conns, C.joints(conns, holeMd).median, sourceTally(x));
+  const numbered = J.numbering(conns, C.joints(conns, holeMd).median, sourceTally(x));
+  const measured=sourceTally(x)?[]:inventoryRows(measuredReference());
+  const nums=numbered.map((n,i)=>{const j=measured.find(j=>Math.abs(j.startMd-conns[i].md)<=.3);return j?{n:j.n,kind:'measured reference'}:n;});
   let k = 0;
   for (const r of runs) {
     if (k < nums.length) r.firstN = nums[k].n;
@@ -79,6 +98,10 @@ export function board() {
   const act = isActive && x.tl?.rows?.length ? J.timeActivity(x.tl.rows, x.tl.map) : null;
   const firstN = firstNOf(conns, holeMd, x);
   let runs = T.buildBoard(conns, holeMd, {saved, timeAct: act, depthRows: isActive ? x.data?.rows : null, firstN, bha: T.savedRuns(saved)[0]?.bha, startMd: conns[0]?.md});
+  const measured=measuredReference();
+  // The recorded run's BHA is a starting assembly reference, never another MD offset.
+  // Preserve any operator-entered BHA and do not assign it to earlier parent-hole runs.
+  if(measured&&!saved?.manual&&runs[0]?.startMd>=measured.startMd-.3&&!runs[0].bha?.length)runs[0]={...runs[0],bha:[{desc:'BHA at run start',len:measured.bhaLen}],bhaLen:measured.bhaLen};
   runs = applyCanonicalNumbers(runs, conns, holeMd, x);
   runs = applyPipeChecks(runs,isActive?(x.pipeChecks||[]):[]);
   const savedFirst = T.savedRuns(saved)[0]?.firstN;
@@ -151,6 +174,10 @@ function tallyRows(runs, rec) {
     ['', 'Survey: geosteering-report value interpolated by minimum curvature (' + (x.reportSurveys?.note || 'pending') + '), else a WITSML station inside the joint, else no survey. Never carried down.'],
     ['', MVP.planNote(ctx.plan)], ['', 'Bit MD is never shown deeper than hole MD.']);
   if (rec) rows.push(['Reconcile', rec.text]);
+  const measured=measuredReference();if(measured){const c=compareDerivedTally(branchName()===x.active?(x.pipeChecks||[]):[],measured);
+    rows.push([],['Independent derived vs measured tally'],['BHA m',c.bhaLen,'Carried string reference m',c.carriedReference,'Starting MD m (BHA already included)',c.startMd],['Measured entries','Start MD m','End MD m','Derived BHE length m','Measured length m','Difference m','Derived end MD m','Measured end MD m','Cumulative difference m','Result']);
+    c.rows.forEach(r=>rows.push([r.entries,r.startMd,r.endMd,r.derivedLength??'',r.measuredLength??'',r.difference??'',r.derivedEndMd??'',r.measuredEndMd??'',r.cumulativeDifference??'',r.status]));
+  }
   return rows;
 }
 // ---------- per-row derived values (shared by screen and export) ----------
@@ -163,6 +190,8 @@ function rowCtx() {
 }
 function lenSource(j) {
   if (j.overridden) return j.source === 'tally' ? 'measured · tally' : /nominal/.test(j.source || '') ? 'estimated · nominal ' + NOMINAL_M + ' m' : 'edited';
+  const target=j.current&&inventoryRows(measuredReference()).find(m=>Math.abs(m.startMd-j.start)<=.3);
+  if(target)return 'partial depth advance · measured target '+fmt(target.len,2)+' m';
   return j.current ? 'estimated · drilling (nominal ' + NOMINAL_M + ' m)' : fin(j.pipeCheck?.estimatedLength)?'derived · BHE / MD cross-check':'review · MD interval; '+(j.pipeCheck?.issues.join('; ')||'complete BHE stroke unavailable');
 }
 function rowCalc(j, r, c) {
@@ -192,9 +221,10 @@ export function draw() {
       : 'No connections in feed for this wellbore. Import a tally or add a run and enter joints by hand. Nothing is invented from surveys.')
     : 'No connections in feed for this branch (only the active wellbore\'s depth log is read). Import a tally or enter joints by hand. Nothing is invented from surveys.';
   { const c = rowCtx(); $('tbHead').innerHTML = (c.isActive && fin(c.holeMd) ? `<span>Hole MD <b>${fmt(c.holeMd, 1)} m</b></span><span>Bit MD <b>${fin(c.bitMd) ? fmt(c.bitMd, 1) + ' m' : 'not reported'}</b>${fin(c.bitMd) && c.bitKind !== 'reported' ? ' (' + esc(c.bitKind) + ')' : !fin(c.bitMd) && c.bitKind ? ' (source ' + esc(c.bitKind) + ')' : ''} · never deeper than hole</span>` : '<span>No live hole MD for this branch</span>')
-    + `<span>Nominal joint ${NOMINAL_M} m · MD connection-spacing median ${fin(c.x.conns?.length > 2 ? C.joints(c.x.conns, c.holeMd).median : null) ? fmt(C.joints(c.x.conns, c.holeMd).median, 2) + ' m' : '—'}</span><span>${esc(c.x.reportSurveys?.note || '')}</span><span>${esc(MVP.planNote(c.plan))}</span>`; }
+    + `<span>${measuredReference()?'Measured inventory lengths loaded':'Nominal joint '+NOMINAL_M+' m'} · MD connection-spacing median ${fin(c.x.conns?.length > 2 ? C.joints(c.x.conns, c.holeMd).median : null) ? fmt(C.joints(c.x.conns, c.holeMd).median, 2) + ' m' : '—'}</span><span>${esc(c.x.reportSurveys?.note || '')}</span><span>${esc(MVP.planNote(c.plan))}</span>`; }
   $('tbRuns').innerHTML = runs.map((r, ri) => runHtml(r, ri, runs, rec, holeMd)).join('') || '<p class="on-muted">No runs yet.</p>';
   wireRuns(runs);
+  drawComparison(x);
   } finally {V.drawing=false;if(V.redraw){V.redraw=false;queueMicrotask(draw);}}
 }
 function runHtml(r, ri, runs, rec, holeMd) {
