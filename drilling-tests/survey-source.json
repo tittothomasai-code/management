@@ -75,13 +75,13 @@
     },
     {
       "path": "opsnow_landing_windows.mjs",
-      "sha256": "de5f4c2dec5503378135b6f27c3ce9f546c8a840ec38d0a31d35e2b585133bcb"
+      "sha256": "0adacf14c3024f95ef009be2a6e3846352c799634722dbd8f25a60162ecca10e"
     },
     {
       "path": "opsnow_landing_space.mjs",
       "sha256": "5211a31f97ce7a84906a98ef178cf5c100de4dd38de48f364183a9d95852edf6"
     }
   ],
-  "verifiedDeployId": "6afeac78eee8c7fc5e7744d5",
+  "verifiedDeployId": "6afeae219bde381fbbfb6c77",
   "verifiedAt": "2026-11-19"
 }

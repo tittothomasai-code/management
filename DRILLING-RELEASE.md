@@ -357,3 +357,46 @@ history/export/replay, non-retained inspections, budget continuation, the full
 survey/pump/tally regressions. The actual unpublished deploy passed desktop/phone Q/how-to/ledger checks and
 all protected Ops/Tally/BHA/DD/EDM/menu checks before promotion. All seven changed
 runtime files independently matched live SHA-256 hashes after publication.
+
+## Rectangular spatial targets and animated bit crossings in the landing tutorial
+
+Deploy `6afeae219bde381fbbfb6c77`; immediate rollback `6afeac78eee8c7fc5e7744d5`.
+Runtime head `10858c765ab053157e3f0a33a8861ef54ade7ec1`.
+Workflow https://github.com/tittothomasai-code/management/actions/runs/44484862528
+
+How to now has a rotatable 3D view of the bit/BHA marker, the drilled prefix and
+rectangular target planes. The bit advances on the same per-joint arcs as the
+instructions. Amber targets turn green on an actual in-bounds forward crossing;
+missed or planned-to-miss windows appear red. The opening camera keeps all target
+faces visible. Drag, arrows, rotate, top, side and reset views work on desktop and
+phone. The BHA marker is schematic and checks the bit centre, not body clearance.
+
+The initial SIM reference path supplies three illustrative 24 × 24 m rectangles
+near MD 120, 240 and 500 m. They remain fixed across replanning. Only the preset
+landing window follows a declared reservoir TVD change. The editor supports up
+to 12 required windows with local N/E/TVD centre, normal inclination/azimuth,
+width and height, plus add/remove and target ordering. Applying edits explicitly
+restarts the SIM; custom windows remain fixed and survive joint-length changes.
+Editing pauses execution until application. No live data or form is changed.
+
+All candidates are checked against the remaining ordered targets. Misses make
+paths infeasible and contribute to refinement priority; execution refuses them.
+The exact plane-distance equation along each minimum-curvature arc is split at
+its analytic extrema before root finding, so crossings between endpoints are not
+lost. Both in-plane dimensions and positive forward crossing speed are checked; tangent
+touches, coplanar travel and reverse passages cannot count as a pass. Completed
+targets remain visible in actual and historical views. Replay inputs copy target
+geometry, preserving original evaluated outcomes across later edits. Exports
+include all target definitions, crossing positions/MD/offsets and rejections.
+
+95 unit tests passed, including six spatial-window tests: metre dimensions at
+multiple orientations, validation, inclusive edges, reverse/order rejection,
+same-side-endpoint curved crossings, tangent-touch rejection, lateral misses and exact reconstruction,
+full 500 m gated execution and successful adaptive steering to an offset window.
+Desktop and phone browser checks passed every green crossing, 3D rotation,
+add/remove/edit, invalid dimensions, an unreachable target blocking play, existing
+reservoir cases, joint instructions, full audit replay and unchanged live state.
+A separate animated desktop/phone pass captured the bit just after the first
+rectangle at MD 130 m. The actual unpublished deploy passed desktop/phone target-window and protected
+Ops/Tally/BHA/DD/EDM/menu checks before promotion. All nine runtime modules
+independently matched live SHA-256 hashes after publication.
