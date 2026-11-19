@@ -7,7 +7,7 @@
     },
     {
       "path": "opsnow.js",
-      "sha256": "a2af4d699179e06c8ccc6321a11fc44de87ea55f5ec88b8c433db7bd2eb9b793"
+      "sha256": "1a3a8f904673f62d919af014a54b898c590a3f3edd18697f4678b4b5967bf93c"
     },
     {
       "path": "opsnow_tallyview.js",
@@ -43,21 +43,33 @@
     },
     {
       "path": "opsnow_landing.mjs",
-      "sha256": "3765b32441ac7416a21c53861000d39e86e92458dce487c6c0b7b37f23181952"
+      "sha256": "de7fb868c5b360905cf62e479e81eb7fde990ce2cabceb1cae7aadcb9b351c23"
     },
     {
       "path": "opsnow_landing_core.mjs",
-      "sha256": "739584e77e79f096a6b86368f499af91bf6ea8afd1e7c7bf3e622530165ad4a4"
+      "sha256": "2e6cfc12dfda439b2ceffbfe1fb81e93342a54af227921df40c984a99239e258"
     },
     {
       "path": "opsnow_landing_worker.mjs",
-      "sha256": "60bf9a3470e047d23d2e54cdf0a7115c6fb052d2d19f1a361aaae272cc325c82"
+      "sha256": "4e70f211cc1d0b51d207e3ee13de71aad3fdf3f739e2b811cecd5151a4492697"
     },
     {
       "path": "opsnow_landing_demo.mjs",
-      "sha256": "82863f44a508e433bb49d77515c5e01cdccfe76df2845086e5f72adcee93858e"
+      "sha256": "669d300f5ce667a3ffa35b35e43e8a082d1fcd4d8dcf77e4b31a59dc5c9b76b4"
+    },
+    {
+      "path": "opsnow_landing_joints.mjs",
+      "sha256": "032cac2f774936aea4bed5df78a6fc73d6ae2599619c57ddb0df959b6ff34cee"
+    },
+    {
+      "path": "opsnow_landing_schedule.mjs",
+      "sha256": "6a1da9ec5f4b6ac0bbf31c9c4398d0d3a8d9b55832aa28206d1e8ecd81e40a0d"
+    },
+    {
+      "path": "opsnow_landing_sim.mjs",
+      "sha256": "d5f14c0c1842cdfa4645374dd84d7329336cf4cc1f1dbf55010a7a7f87229061"
     }
   ],
-  "verifiedDeployId": "6afe6caf49670fd2f5cea816",
+  "verifiedDeployId": "6afe95540df588e5cef0730c",
   "verifiedAt": "2026-11-19"
 }

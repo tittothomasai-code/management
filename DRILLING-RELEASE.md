@@ -271,3 +271,49 @@ The existing survey/pump/tally regression also passed. The actual unpublished
 deploy passed Q/how-to/hard-warning checks plus all existing protected workspace
 checks before promotion. All five changed runtime files independently matched
 live SHA-256 hashes. Details: `drilling-tests/LANDING-PLANNER.md`.
+
+## Joint-resolved landing instructions and progressive reservoir simulations
+
+Deploy `6afe95540df588e5cef0730c`; rollback `6afe6caf49670fd2f5cea816`.
+Runtime head `f7cbaf1617a8a084dbc9a508fa91bafe7070848a`.
+Workflow https://github.com/tittothomasai-code/management/actions/runs/44471475691
+
+Q now generates the actual trajectory at 6 m, 9 m, chosen nominal or measured
+pipe boundaries. Each row specifies start/end MD, planned advance, dogleg over
+the row, required DLS, start/end inclination/azimuth, required changes and full
+pipe/partial-landing details. An anchored grid remains aligned as surveys move
+forward. The explicit active-tally action reuses measured MD boundaries with
+BHA included once; measured gaps are never filled by nominal values. Joint CSV
+exports preserve full precision and flag feasibility. Selected rows mark their
+point on the plots. DLS and dogleg are placed first for phone readers.
+
+The paths use one constant-curvature minimum-curvature arc per instruction.
+Interior endpoint tangents are fitted to the target while holding the MD grid
+and final tangent fixed. Reconstructing rows reaches the requested N/E/TVD
+within tolerance; it is not merely a table sampled from a high-level curve. A
+same-scope prior continuation is re-aligned and revalidated as the tenth seed,
+so rolling replanning can retain its own feasible remaining route. Source
+surveys, already-drilled history and well plans remain unchanged. Required
+geometry is not a promise of actual BHA response or an equipment command.
+
+How to now has a nominal 500 m program with expected, early/shallower and
+lower/deeper reservoir cases. Each executed joint creates a SIM survey and
+triggers a new search with the drilled prefix fixed. The reservoir interpretation
+changes at/after MD 260 m from TVD 300 to 280 or 320 m. A red **TARGET TVD IS NOW
+LOWER** sign explains that a deeper reservoir has larger numeric TVD; the target
+marker and reservoir line move. The early case lands at 500 m. The deeper case
+stops when 500 m cannot meet the fixed target/ceiling; an explicit SIM-only
+510 m program-change button can resume it. No ceiling or real program changes
+automatically. Play, next-joint, pause, varied measured examples, acknowledgements
+and reduced-motion updates are available. The tutorial reads/writes no live data
+or saved settings.
+
+85 unit tests passed, including instruction replay, exact per-joint dogleg/DLS,
+partial joints, measured coverage, BHA/MD alignment, all four interval modes,
+prefix immutability, both reservoir changes and the explicit deeper-program
+revision. Desktop and phone browser tests passed the joint UI/CSV, active measured
+tally, all progressive cases and red sign; the existing dashboard regression
+also passed. Actual unpublished-site tests executed the 500 m replay, joint table
+and warning, plus protected Ops/Tally/BHA/DD/EDM/menu checks before publication.
+All eight changed runtime modules independently matched live SHA-256 hashes.
+Details: `drilling-tests/LANDING-PLANNER.md`.
