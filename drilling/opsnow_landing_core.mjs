@@ -1,6 +1,7 @@
 // Landing geometry only. Reuses the game's minimum-curvature implementation.
 import {minCurve,validatePoint,atMD} from './bha-builder/shared/wp-autotrack-core.js';
-import {buildJointPlan,validateJointConfig,jointDogleg} from './opsnow_landing_joints.mjs?v=landing-search2';
+import {buildJointPlan,validateJointConfig,jointDogleg} from './opsnow_landing_joints.mjs?v=landing-windows1';
+import {validateWindows,checkWindows} from './opsnow_landing_windows.mjs?v=landing-windows1';
 const R=Math.PI/180,D=1/R,finite=Number.isFinite,clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 export const wrap=a=>(a%360+360)%360;
 export const signedAngle=a=>((a+540)%360+360)%360-180;
@@ -16,7 +17,7 @@ const PROFILES=[
  ['Front loaded',0,1,'front'],['Back loaded',0,1,'back'],['Build before turn',0,1,'split']
 ];
 export function validateInput(input){
- const {tie,target,limits}=input||{};validatePoint(tie);
+ const {tie,target,limits}=input||{};validatePoint(tie);validateWindows(input.windows||[]);
  const joints=validateJointConfig(input.joints||{mode:'6'});if(finite(joints.anchorMd)&&joints.anchorMd>tie.md+.000001)throw Error('Joint-length anchor MD must not be after the tie-on.');
  if(!target||!['md','position'].includes(target.mode)||!finite(target.inc)||target.inc<0||target.inc>180||!finite(target.azi)||target.azi<0||target.azi>=360)throw Error('Enter landing inclination 0–180° and azimuth 0–<360°.');
  if(!limits||!finite(limits.maxDls)||limits.maxDls<=0||limits.maxDls>30||!finite(limits.positionTol)||limits.positionTol<=0||!finite(limits.angleTol)||limits.angleTol<=0||limits.angleTol>10)throw Error('Enter a positive DLS ceiling (up to 30°/30 m), position tolerance and angle tolerance.');
@@ -159,7 +160,7 @@ function continuation(input){
  return [{...input.tie},...previous.path.filter(p=>p.md>input.tie.md+1e-7)];
 }
 const halton=(i,b)=>{let f=1,r=0;while(i>0){f/=b;r+=f*(i%b);i=Math.floor(i/b);}return r;};
-function replayInput(input){return {tie:input.tie,target:input.target,limits:input.limits,joints:input.joints||{mode:'6'},componentLimit:input.componentLimit??null,componentSource:input.componentSource??null,scope:input.scope||null,tieSource:input.tieSource||'User entered',previous:input.previous||null};}
+function replayInput(input){return {tie:input.tie,target:input.target,windows:(input.windows||[]).map(w=>({...w})),limits:input.limits,joints:input.joints||{mode:'6'},componentLimit:input.componentLimit??null,componentSource:input.componentSource??null,scope:input.scope||null,tieSource:input.tieSource||'User entered',previous:input.previous||null};}
 function perturbed(path,recipe){const a=path[0].md,L=path.at(-1).md-a;return path.map((p,k)=>{if(!k||k===path.length-1)return {...p};const u=(p.md-a)/L,bump=Math.exp(-(((u-recipe.center)/(recipe.width||.2))**2))*Math.sin(Math.PI*u),v=direction(p),axis=recipe.axis==='build'?[Math.cos(p.inc*R)*Math.cos(p.azi*R),Math.cos(p.inc*R)*Math.sin(p.azi*R),-Math.sin(p.inc*R)]:[-Math.sin(p.azi*R),Math.cos(p.azi*R),0],w=v.map((x,i)=>x+axis[i]*recipe.delta*R*bump);return {...p,...angles(w)};});}
 // Compact duplicate key covers every joint boundary, rather than a handful of samples.
 // Two independent 32-bit accumulators are for numerical deduplication, not integrity hashes.
@@ -180,6 +181,7 @@ function context(input,response,records=[]){
    if(finite(input.target.md)){const ratio=(input.target.md-input.tie.md)/(design.at(-1).md-input.tie.md);design=design.map(p=>({...p,md:input.tie.md+(p.md-input.tie.md)*ratio}));design.at(-1).md=input.target.md;}
    const joint=buildJointPlan(design,input.target,input.joints||{mode:'6'},{positionTol:input.limits.positionTol}),path=joint.path,summary=summarize(path,input,{jointSchedule:joint.schedule,converged:joint.schedule.converged,integrationError:0,cumulativeIntegrationError:0});
    if(!joint.schedule.converged){summary.issues.push('Joint-end angles could not fit the target at the selected joint lengths.');summary.feasible=false;}
+   const windowChecks=checkWindows(path,input.windows||[]);summary.windowChecks=windowChecks;summary.windowViolation=windowChecks.reduce((sum,w)=>sum+w.missM,0);for(const w of windowChecks)if(w.status!=='passed'){summary.issues.push('Target window '+w.id+': '+w.reason);summary.feasible=false;}
    const observed=response.count>=3&&finite(response.medianDls)?response.medianDls:null,score=summary.peakDls+.05*summary.totalDogleg+.0005*summary.mdLength+(observed===null?0:.1*Math.abs(summary.peakDls-observed));
    candidate={id:record.id,name:record.name,ordinal:record.ordinal,recipe,path,jointSchedule:joint.schedule,carryForward:recipe.type==='carry',...summary,score,aboveObserved:observed===null?null:summary.peakDls>observed,duplicateOf:record.duplicateOf||null};
    cacheLimit=Math.max(2,Math.min(16,Math.floor(6000/path.length)));
@@ -188,10 +190,10 @@ function context(input,response,records=[]){
  }
  return {byId,evaluate};
 }
-function compact(c,stage){return {id:c.id,ordinal:c.ordinal,name:c.name,stage,recipe:c.recipe,feasible:c.feasible,peakDls:c.peakDls,positionMiss:c.positionMiss??null,orientationMiss:c.orientationMiss??null,mdMiss:c.mdMiss??null,score:c.score,issues:c.issues,errorCode:c.errorCode||null,duplicateOf:c.duplicateOf||null,geometryKey:c.path.length?geometryKey(c.path):null,hasGeometry:!!c.path.length,rankCost:!c.path.length?1e12:(c.feasible?0:1000)+c.score+Math.max(0,c.peakDls-c.limit)*20+Math.min(1e6,(c.positionMiss||0)/.005)};}
-export function createLandingInspector(replay,trace){if(replay.modelVersion&&replay.modelVersion!=='joint-adaptive-search-2')throw Error('Unsupported search model version.');validateInput(replay.input);const ctx=context(replay.input,replay.response,trace);return id=>{const record=ctx.byId.get(id);if(!record)throw Error('Candidate is not in this search ledger.');const c=ctx.evaluate(record);return {...c,sensitivity:c.path.length?[replay.input.limits.responseLow??.8,replay.input.limits.responseHigh??1.2].map(g=>responseSensitivity(c.path,g,replay.input.target)):[]};};}
+function compact(c,stage){return {id:c.id,ordinal:c.ordinal,name:c.name,stage,recipe:c.recipe,feasible:c.feasible,peakDls:c.peakDls,positionMiss:c.positionMiss??null,orientationMiss:c.orientationMiss??null,mdMiss:c.mdMiss??null,score:c.score,issues:c.issues,errorCode:c.errorCode||null,duplicateOf:c.duplicateOf||null,geometryKey:c.path.length?geometryKey(c.path):null,hasGeometry:!!c.path.length,windowChecks:c.windowChecks||[],windowViolation:c.windowViolation||0,rankCost:!c.path.length?1e12:(c.feasible?0:1000)+c.score+Math.max(0,c.peakDls-c.limit)*20+Math.min(1e6,(c.positionMiss||0)/.005)+(c.windowViolation||0)*20};}
+export function createLandingInspector(replay,trace){if(replay.modelVersion&&replay.modelVersion!=='joint-adaptive-search-3')throw Error('Unsupported search model version.');validateInput(replay.input);const ctx=context(replay.input,replay.response,trace);return id=>{const record=ctx.byId.get(id);if(!record)throw Error('Candidate is not in this search ledger.');const c=ctx.evaluate(record);return {...c,sensitivity:c.path.length?[replay.input.limits.responseLow??.8,replay.input.limits.responseHigh??1.2].map(g=>responseSensitivity(c.path,g,replay.input.target)):[]};};}
 export function planLanding(input,{resume=null,onProgress=null}={}){
- validateInput(input);const response=surveyResponse(input.surveys||[],input.response||{}),steering=fitSteeringResponse(response.intervals,input.exposures||[],input.response?.bhaId),source=replayInput(input),fingerprint=JSON.stringify({source,response}),replay={modelVersion:'joint-adaptive-search-2',input:source,response};
+ validateInput(input);const response=surveyResponse(input.surveys||[],input.response||{}),steering=fitSteeringResponse(response.intervals,input.exposures||[],input.response?.bhaId),source=replayInput(input),fingerprint=JSON.stringify({source,response}),replay={modelVersion:'joint-adaptive-search-3',input:source,response};
  if(resume&&resume.fingerprint!==fingerprint)throw Error('Search continuation belongs to different inputs or source data.');
  const started=Date.now(),budgetMs=clamp(input.searchOptions?.budgetMs??1200,1,20000),batchLimit=clamp(input.searchOptions?.batchEvaluations??1024,1,10000),trace=resume?resume.trace.map(x=>({...x})):[],bestHistory=resume?[...resume.bestHistory]:[];
  const state=resume?JSON.parse(JSON.stringify(resume.checkpoint)):{phase:'seed',seed:0,explore:1,step:1.5,round:0,queue:[],stableLevels:0,roundBest:null,status:null};

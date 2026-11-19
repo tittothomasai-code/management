@@ -8,7 +8,7 @@ import {referenceScope,loadMeasuredReference,inventoryPosition,inventoryResetLab
 import {checkpointState,renderHardpoints,STORAGE_KEY} from './opsnow_hardpoints.mjs?v=hardpoint1118';
 import {uploadedReference} from './opsnow_measured_upload.mjs?v=hardpoint1118';
 import {reportedOperation,reportDepthIssue,drillingReferenceMd,renderOperationReport} from './opsnow_operation_report.mjs?v=eow1118';
-import {initLandingPlanner} from './opsnow_landing.mjs?v=landing-search2';
+import {initLandingPlanner} from './opsnow_landing.mjs?v=landing-windows1';
 import * as W from './opsnow_wire.js?v=re1115';
 import * as VW from './opsnow_views.js?v=re1115';
 import * as A from './opsnow_ac.js?v=re1115';

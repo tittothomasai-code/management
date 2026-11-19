@@ -9,6 +9,9 @@
         "phone advanced-tools entry",
         "MD/angle lower-bound proof",
         "adaptive position/angle search",
+        "budget pause and exact-frontier continuation",
+        "non-retained case reconstruction",
+        "all drilling-step ledgers and every-case replay",
         "JSON/CSV export",
         "no feasible recommendation when DLS too low",
         "stale export disabled",
@@ -28,10 +31,12 @@
         "active measured tally includes BHA once",
         "full 500 m normal and shallower wells",
         "deeper target red sign and explicit 510 m program change",
-        "no transport calls or external requests",
-        "budget pause and exact-frontier continuation",
-        "non-retained case reconstruction",
-        "all drilling-step ledgers and every-case replay"
+        "3D rectangular targets crossed and green",
+        "rotate target-space view",
+        "add/remove/edit windows and restart SIM",
+        "missed target blocks execution and appears red",
+        "window validation",
+        "no transport calls or external requests"
       ],
       "errors": []
     },
@@ -43,6 +48,9 @@
         "phone advanced-tools entry",
         "MD/angle lower-bound proof",
         "adaptive position/angle search",
+        "budget pause and exact-frontier continuation",
+        "non-retained case reconstruction",
+        "all drilling-step ledgers and every-case replay",
         "JSON/CSV export",
         "no feasible recommendation when DLS too low",
         "stale export disabled",
@@ -62,10 +70,12 @@
         "active measured tally includes BHA once",
         "full 500 m normal and shallower wells",
         "deeper target red sign and explicit 510 m program change",
-        "no transport calls or external requests",
-        "budget pause and exact-frontier continuation",
-        "non-retained case reconstruction",
-        "all drilling-step ledgers and every-case replay"
+        "3D rectangular targets crossed and green",
+        "rotate target-space view",
+        "add/remove/edit windows and restart SIM",
+        "missed target blocks execution and appears red",
+        "window validation",
+        "no transport calls or external requests"
       ],
       "errors": []
     }

@@ -155,7 +155,7 @@ a cancellable worker; stale results are discarded across edits and scope changes
 
 ## Verification
 
-`npm test --prefix drilling-tests`: 89 passing tests, including 25 landing tests
+`npm test --prefix drilling-tests`: 95 passing tests, including 31 landing tests
 for analytic geometry, wrap-around, duplicate holds, target/MD constraints,
 infeasible DLS, sensitivity, scoped BHA intervals, recorded steering fits and
 warning thresholds. Browser evidence is under `landing-evidence/`.
@@ -207,3 +207,56 @@ immutability. Desktop/phone browser checks execute the full normal and shallower
 wells, the deeper preview, its red sign and its explicit 510 m continuation. They
 also exercise measured CSV, active-tally/BHA alignment, partial rows, markers and
 joint CSV exports. Tutorial execution still leaves the live form/storage unchanged.
+
+
+## Rectangular spatial targets in the tutorial
+
+Open **How to · simulation**. The rotatable **3D rectangular targets** view shows
+the bit/BHA marker, the fixed drilled prefix and the selected remaining path.
+Drag on the view or use Rotate, Top and Side buttons; focused arrow keys also
+rotate it. Amber windows are ahead, green windows have actually been crossed
+inside, and red outlines show missed or planned-to-miss windows. The moving bit
+uses the same minimum-curvature arc and MD as the joint instructions.
+
+Three illustrative 24 × 24 m windows are seeded from the initial validated SIM
+reference path at approximately MD 120 m, MD 240 m and landing. They are then
+frozen across replanning; candidate paths must pass them. This deliberately makes
+the first demonstration achievable, rather than inventing surveyed geology. Only
+the preset landing window follows the explicitly changed reservoir target TVD.
+Custom windows stay fixed through reservoir interpretation changes.
+
+Expand **Edit / add target rectangles** to enter local N/E/TVD centre coordinates,
+width, height and normal inclination/azimuth. Width is lateral in the target plane;
+height is the in-plane up/down dimension. These are true 3D planes, not axis-aligned
+screen boxes. Add/remove windows and move their rows up/down to set crossing order.
+Up to 12 required windows are supported; dimensions are 0.1–1,000 m. **Apply windows
+· restart SIM** explicitly restarts the tutorial with those fixed targets. Editing
+pauses execution until application; it cannot move an already-drilled prefix.
+Custom windows survive joint-length changes. SIM edits never alter the live form,
+feed, saved BHA or well plan.
+
+Every candidate is checked against every remaining window. A forward crossing
+must lie within both rectangle dimensions and follow the preceding target in MD.
+The plane-distance equation on each constant-curvature joint arc is split at its
+analytic extrema, then roots are bracketed: crossings between station endpoints
+are detected even when both endpoints lie on the same side. Lateral misses cannot
+pass solely because a side-view projection appears aligned. Edge crossings are
+inclusive at 1 micrometre numerical tolerance. A coplanar arc or reverse passage
+is not a forward crossing. Window violation contributes to refinement priority,
+and any missed required window makes that candidate infeasible. Execution refuses
+it. The search still makes no global feasibility guarantee.
+
+The panel reports planned and actual crossing MD, with the full crossing position,
+in-plane offsets and rejection in exported evaluated-case records. Completed
+windows leave the remaining constraints but remain green in the 3D view and in
+each historical search snapshot. All tutorial histories export their windows too.
+The marker represents the bit centre and a schematic BHA tail: this feature does
+not certify clearance of the full BHA body or account for positional uncertainty.
+
+Six new unit tests cover oriented dimensions, validation, forward/reverse/edge and
+out-of-order crossings, hidden curved-arc crossings, lateral misses, full gated
+500 m execution, exact ledger reconstruction and solver adjustment for an offset
+window. Desktop/phone browser checks verify all three green crossings at MD 500,
+3D rotation, add/remove/edit and validation, an unreachable target blocking play,
+and unchanged live settings. Unpublished-host acceptance checks the real 3D files
+and window outcomes before release.

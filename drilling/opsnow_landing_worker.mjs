@@ -1,3 +1,3 @@
-import {planLanding,createLandingInspector} from './opsnow_landing_core.mjs?v=landing-search2';
+import {planLanding,createLandingInspector} from './opsnow_landing_core.mjs?v=landing-windows1';
 let inspect=null;
 self.onmessage=e=>{try{const m=e.data;if(m.action==='audit-load'){inspect=createLandingInspector(m.replay,m.trace);self.postMessage({type:'audit-ready'});return;}if(m.action==='inspect'){if(!inspect)throw Error('Load a search ledger first.');self.postMessage({type:'inspection',requestId:m.requestId,candidate:inspect(m.id)});return;}const report=planLanding(m.action==='plan'?m.input:m,{resume:m.resume||null,onProgress:p=>self.postMessage({type:'progress',...p})});self.postMessage({report});}catch(error){self.postMessage({error:error.message,requestId:e.data?.requestId});}};
