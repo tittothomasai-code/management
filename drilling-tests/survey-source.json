@@ -7,7 +7,7 @@
     },
     {
       "path": "opsnow.js",
-      "sha256": "c2970f6150fb4c59ff56ca34bb690a5c1b46d62d53d13d08e866a4b2a6d30396"
+      "sha256": "a2af4d699179e06c8ccc6321a11fc44de87ea55f5ec88b8c433db7bd2eb9b793"
     },
     {
       "path": "opsnow_tallyview.js",
@@ -40,8 +40,24 @@
     {
       "path": "opsnow_operation_report.mjs",
       "sha256": "d14a167ad0c387c4c8dc7a6b90ff11a1a1dc9a893a3a00bfac56fed1fb0a2767"
+    },
+    {
+      "path": "opsnow_landing.mjs",
+      "sha256": "3765b32441ac7416a21c53861000d39e86e92458dce487c6c0b7b37f23181952"
+    },
+    {
+      "path": "opsnow_landing_core.mjs",
+      "sha256": "739584e77e79f096a6b86368f499af91bf6ea8afd1e7c7bf3e622530165ad4a4"
+    },
+    {
+      "path": "opsnow_landing_worker.mjs",
+      "sha256": "60bf9a3470e047d23d2e54cdf0a7115c6fb052d2d19f1a361aaae272cc325c82"
+    },
+    {
+      "path": "opsnow_landing_demo.mjs",
+      "sha256": "82863f44a508e433bb49d77515c5e01cdccfe76df2845086e5f72adcee93858e"
     }
   ],
-  "verifiedDeployId": "6afd8f11cc56bb7fc226a53d",
-  "verifiedAt": "2026-11-18"
+  "verifiedDeployId": "6afe6caf49670fd2f5cea816",
+  "verifiedAt": "2026-11-19"
 }

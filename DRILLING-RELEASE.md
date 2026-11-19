@@ -228,3 +228,46 @@ paused reminders and historical tally labels. The actual unpublished deploy
 passed existing Ops/Tally, BHA, DD, menu and EDM checks and scoped report module
 checks before promotion. All four changed runtime files independently matched
 live SHA-256 hashes. See `drilling-tests/END-OF-WELL-REPORT.md`.
+
+## Hidden landing planner, response analysis and how-to simulation
+
+Deploy `6afe6caf49670fd2f5cea816`; rollback `6afd8f11cc56bb7fc226a53d`.
+Runtime head `2994c1ed3c992c5b3bc3ff24022fe0f30c876576`.
+Workflow https://github.com/tittothomasai-code/management/actions/runs/44451560929
+
+Q opens the landing popup; phones use Settings → Advanced tools → Landing
+planner · Q, or `/ops?landing=1`. It supports MD/angles and local N/E/TVD/angles
+targets, ten scenarios, peak DLS/margins, geometry plots, explicit assumptions,
+JSON/CSV exports and the best feasible candidate in the generated family.
+Existing minimum-curvature geometry and the saved BHA design library are reused.
+The planner never replaces the active well plan or writes to WITSML.
+
+New complete surveys and confirmed projected hole-depth changes recalculate
+without overwriting dirty inputs. An unsurveyed interval requires explicit
+last-tangent projection confirmation or a reviewed manual tie-on. Such a
+projection is never added to measured BHA-response statistics. Completed bore
+data cannot become live next-well observations. Well/bore/operator changes
+clear results and isolate saved targets. The current reported bit is not used
+as an invented spatial tie-on.
+
+Observed build/turn/DLS statistics are scoped to entered BHA run start/end MD.
+Optional recorded steering exposures support associative slide-fraction fits
+and comparisons across run IDs; motor yield and maximum capability are not
+inferred from surveys alone. Curvature-gain sensitivity remains an assumption.
+Sampled geometric convergence and cumulative integration error are checked.
+No global optimum, collision clearance or mechanical execution approval is claimed.
+
+How to opens an isolated, clearly SIM-labelled animation of the actual ten-template
+search. A late-start case retains the same target and 4°/30 m ceiling. No live
+form, survey, BHA library or saved settings are changed. A slow red pulse marks
+no feasible evaluated solution or at least 90% use of the effective DLS ceiling;
+reduced-motion users get static red. Missing inputs are not labelled impossible.
+
+77 unit tests passed, including 13 landing tests. Desktop/phone browser tests
+covered hidden entry, typing/focus, both target types, exports, updated survey
+response, explicit projection, dirty edits, scope/operator changes, completed
+bore exclusion, animated tutorial isolation, red warnings and reduced motion.
+The existing survey/pump/tally regression also passed. The actual unpublished
+deploy passed Q/how-to/hard-warning checks plus all existing protected workspace
+checks before promotion. All five changed runtime files independently matched
+live SHA-256 hashes. Details: `drilling-tests/LANDING-PLANNER.md`.
