@@ -39,7 +39,7 @@ Escape closes the popup and returns focus. Q in an input does not toggle it.
    cannot silently borrow an active bore's tally. Missing lengths are never filled
    with nominal values. Export the joint-instruction CSV for the selected path.
 
-   Compare ten scenarios, inspect the two plots and select a row. Required peak
+   Search landing solutions, inspect the two plots and select a row. Required peak
    DLS, build/turn curvature, landing MD/angles, position miss and DLS margin are
    displayed. Duplicate geometries and unsuccessful templates are identified.
    Only a feasible, distinct evaluated candidate can be suggested.
@@ -61,7 +61,7 @@ Escape closes the popup and returns focus. Q in an input does not toggle it.
 
 ## Red warning
 
-The popup pulses red at a slow 1.4-second cycle when no evaluated candidate meets
+The popup pulses red at a slow 1.4-second cycle when a completed search finds no evaluated candidate meeting
 the constraints, or when the best candidate requires at least 90% of the effective
 DLS ceiling. The effective ceiling is the lower of the planning ceiling and the
 explicitly selected design profile's declared component limit. The reason is
@@ -70,12 +70,49 @@ are input errors, not declarations that landing is impossible. An old warning is
 cleared when inputs/scope change. Failure of these templates does not prove that
 every conceivable trajectory is impossible.
 
+## Adaptive search and the complete evaluated-case record
+
+There is no ten-scenario quota. Initial shape seeds and 24 space-filling starts
+feed adaptive joint-tangent refinement. Smooth build/turn perturbations at four
+locations are refitted to the target on the actual joint grid. The next round
+refines the best distinct feasible/least-violating geometry. Improvement uses the
+exposed score, a 0.001 threshold, halved angular steps starting at 1.5°, and
+convergence at two stable refinement levels below 0.1° or the 0.025° resolution
+floor. An exact tangent-curvature or straight-line bound can stop earlier; a proof
+case is recorded rather than inventing alternatives. This is convergence within
+the explored model and resolution, never exhaustive enumeration of continuous
+physical possibilities or a guaranteed global optimum.
+
+Each compute pass has a visible time budget (default 1.2 seconds in Q, 3 seconds
+in the tutorial). A 1,024-evaluation batch safeguard also pauses a pass. **Search
+paused** is separate from convergence. **Continue search** retains every prior
+result and resumes its exact queue and refinement state; increasing the budget
+does not restart the search. Slow devices may need further passes. Unresolved
+model geometry or missing measured joints is not a claim of impossibility.
+
+The ledger includes **every actually evaluated candidate**, including rejected
+and duplicate cases, its generating parameters, peak DLS, target miss and decision
+reason. Paging/filtering changes only the display. **Inspect** reconstructs any
+case's original joint schedule and plots in a separate worker, including cases
+outside the retained comparison shortlist. Cases with no resolvable geometry show
+their rejection instead of fictitious joint instructions. **Replay every
+evaluation** steps through the whole ledger in evaluation order. Pause stops the
+replay. Retained full paths and reconstruction caches are bounded; compact recipes
+retain the rest. JSON exports include the complete ledger and replay inputs.
+
+The how-to retains a separate search record at **every drilling joint**. Review
+any earlier drilling-step search, inspect every alternative with that step's fixed
+drilled prefix and target, or export all searches and executed rows. The moving
+path review shows each actual case; progress counts come from the real planner.
+Inspection does not substitute a rejected path for the validated execution choice.
+Normal, early and deeper cases all use this same search and audit implementation.
+
 ## Geometry, response and limits
 
 The implementation reuses the game's `minCurve`, `atMD` and point validation from
 `bha-builder/shared/wp-autotrack-core.js`, and the existing BHA library reader.
-MD/angle mode evaluates ten timing/curvature shapes using short-arc tangent
-interpolation (plus a build-before-turn profile). The constant-rate case is
+MD/angle mode starts with timing/curvature shapes using short-arc tangent
+interpolation (plus a build-before-turn profile), then explores and refines them. The constant-rate case is
 checked against the analytical circular arc and minimum orientation DLS bound.
 
 Position mode uses cubic endpoint-tangent templates only as initial guesses.
@@ -89,7 +126,7 @@ field measurement or achievable steering accuracy. Total MD is exactly the enter
 landing MD when supplied. Dogleg and DLS are computed from each actual joint arc,
 not averaged from a high-level curve. Row MD/inc/azi reconstruct the landing.
 
-A same-scope prior continuation can replace the tenth seed. It is re-aligned and
+A same-scope prior continuation is an additional seed. It is re-aligned and
 revalidated against the latest actual tie-on and revised target, never assumed
 safe. This prevents a perfect execution losing its own valid remaining path at
 the final joints. A different scope cannot supply this continuation. All consumed
@@ -101,7 +138,7 @@ impossibility claim.
 The candidate score is peak DLS + 0.05×total dogleg + 0.0005×MD length, plus
 0.1×absolute difference from observed median DLS when at least three intervals
 exist. Lower is preferred among feasible distinct candidates. This is an exposed
-heuristic over the generated set, not a global optimiser or a motor controller.
+heuristic refined over the generated set, not a global optimum guarantee or a motor controller.
 
 Build, inclination-weighted turn and total DLS come from at most the latest 12
 suitable measured survey intervals in the selected run. Intervals over 90 m and
@@ -118,14 +155,15 @@ a cancellable worker; stale results are discarded across edits and scope changes
 
 ## Verification
 
-`npm test --prefix drilling-tests`: 85 passing tests, including 21 landing tests
+`npm test --prefix drilling-tests`: 89 passing tests, including 25 landing tests
 for analytic geometry, wrap-around, duplicate holds, target/MD constraints,
 infeasible DLS, sensitivity, scoped BHA intervals, recorded steering fits and
 warning thresholds. Browser evidence is under `landing-evidence/`.
 
 `PLAYWRIGHT_MODULE=playwright node drilling-tests/landing-browser.mjs` checks actual
 Ops/landing source at 1920×1080 and 390×844 with local SIM transport only: hidden
-entry, typing/focus, phone entry, ten paths, target modes, exports, stale-result
+entry, typing/focus, phone entry, adaptive search, budget pause/continuation, non-retained-case reconstruction,
+all-step tutorial history/export/replay, target modes, exports, stale-result
 protection, animated and isolated tutorial, hard case, red pulse/reduced motion,
 survey/depth adaptation, explicit unsurveyed projection, dirty edits and scope
 changes. It asserts no external requests or WITSML calls.

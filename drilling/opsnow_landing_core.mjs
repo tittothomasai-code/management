@@ -1,6 +1,6 @@
 // Landing geometry only. Reuses the game's minimum-curvature implementation.
 import {minCurve,validatePoint,atMD} from './bha-builder/shared/wp-autotrack-core.js';
-import {buildJointPlan,validateJointConfig,jointDogleg} from './opsnow_landing_joints.mjs?v=landing-joints1';
+import {buildJointPlan,validateJointConfig,jointDogleg} from './opsnow_landing_joints.mjs?v=landing-search2';
 const R=Math.PI/180,D=1/R,finite=Number.isFinite,clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 export const wrap=a=>(a%360+360)%360;
 export const signedAngle=a=>((a+540)%360+360)%360-180;
@@ -27,6 +27,7 @@ export function validateInput(input){
  if(input.componentLimit!==null&&input.componentLimit!==undefined&&(!finite(input.componentLimit)||input.componentLimit<=0||input.componentLimit>30))throw Error('The selected design profile has an invalid declared component DLS limit.');
  for(const gain of [limits.responseLow??.8,limits.responseHigh??1.2])if(!finite(gain)||gain<=0||gain>2)throw Error('Response sensitivity multipliers must be greater than zero and at most 2.');
  if((limits.responseLow??.8)>(limits.responseHigh??1.2))throw Error('The low response multiplier must not exceed the high multiplier.');
+ if(input.searchOptions?.budgetMs!==undefined&&(!finite(input.searchOptions.budgetMs)||input.searchOptions.budgetMs<1||input.searchOptions.budgetMs>20000))throw Error('Search budget must be 1–20,000 ms per pass.');
  return input;
 }
 function fraction(t,start,finish,kind){const u=clamp((t-start)/(finish-start),0,1);return kind==='smooth'?smooth(u):kind==='smoother'?smoother(u):kind==='front'?1-(1-u)**1.7:kind==='back'?u**1.7:u;}
@@ -50,8 +51,8 @@ function arc(c,a,b){const m=(a+b)/2,h=(b-a)/2;return h*GLX.reduce((s,x,i)=>s+GLW
 function fullLength(c){let n=0;for(let k=0;k<32;k++)n+=arc(c,k/32,(k+1)/32);return n;}
 function controlPoints(tie,target,a,b){const p=[tie.n,tie.e,tie.tvd],q=[target.n,target.e,target.tvd],v=direction(tie),w=direction(target);return [p,p.map((x,i)=>x+a*v[i]),q.map((x,i)=>x-b*w[i]),q];}
 const SCALES=[[.35,.35],[.2,.45],[.45,.2],[.2,.2],[.5,.5],[.15,.6],[.6,.15],[.3,.55],[.55,.3],[.65,.65]];
-function positionPath(tie,target,index,positionTol){
- const chord=mag([target.n-tie.n,target.e-tie.e,target.tvd-tie.tvd]),[a,b]=SCALES[index],wanted=finite(target.md)?target.md-tie.md:null;
+function positionPath(tie,target,index,positionTol,chosenScales=null){
+ const chord=mag([target.n-tie.n,target.e-tie.e,target.tvd-tie.tvd]),[a,b]=chosenScales||SCALES[index],wanted=finite(target.md)?target.md-tie.md:null;
  let scale=1,mdFit=true;
  if(wanted!==null){
   // Search all sampled brackets rather than assuming arc length is monotonic.
@@ -157,27 +158,81 @@ function continuation(input){
  const last=previous.path.at(-1);if(last.md<=input.tie.md+.1||input.tie.md<previous.path[0].md-.001||finite(input.target.md)&&Math.abs(last.md-input.target.md)>.01)return null;
  return [{...input.tie},...previous.path.filter(p=>p.md>input.tie.md+1e-7)];
 }
-export function planLanding(input){
- validateInput(input);const response=surveyResponse(input.surveys||[],input.response||{}),steering=fitSteeringResponse(response.intervals,input.exposures||[],input.response?.bhaId),candidates=[],carried=continuation(input);
- for(let i=0;i<10;i++){
-  try{if(input.target.mode==='position'&&finite(input.target.md)&&mag([input.target.n-input.tie.n,input.target.e-input.tie.e,input.target.tvd-input.tie.tvd])>input.target.md-input.tie.md+input.limits.positionTol)throw Error('Landing MD is shorter than the straight-line distance to the target, including position tolerance.');
-   const carry=i===9&&carried,original=!carry&&input.target.mode==='position'?positionPath(input.tie,input.target,i,input.limits.positionTol):{};let designPath=carry||original.path||anglePath(input.tie,input.target,PROFILES[i]);
-   if(finite(input.target.md)){const ratio=(input.target.md-input.tie.md)/(designPath.at(-1).md-input.tie.md);designPath=designPath.map(p=>({...p,md:input.tie.md+(p.md-input.tie.md)*ratio}));designPath.at(-1).md=input.target.md;}
-   const joint=buildJointPlan(designPath,input.target,input.joints||{mode:'6'},{positionTol:input.limits.positionTol}),path=joint.path,extra={jointSchedule:joint.schedule,converged:joint.schedule.converged,integrationError:0,cumulativeIntegrationError:0},summary=summarize(path,input,extra),observed=response.count>=3&&finite(response.medianDls)?response.medianDls:null;
+const halton=(i,b)=>{let f=1,r=0;while(i>0){f/=b;r+=f*(i%b);i=Math.floor(i/b);}return r;};
+function replayInput(input){return {tie:input.tie,target:input.target,limits:input.limits,joints:input.joints||{mode:'6'},componentLimit:input.componentLimit??null,componentSource:input.componentSource??null,scope:input.scope||null,tieSource:input.tieSource||'User entered',previous:input.previous||null};}
+function perturbed(path,recipe){const a=path[0].md,L=path.at(-1).md-a;return path.map((p,k)=>{if(!k||k===path.length-1)return {...p};const u=(p.md-a)/L,bump=Math.exp(-(((u-recipe.center)/(recipe.width||.2))**2))*Math.sin(Math.PI*u),v=direction(p),axis=recipe.axis==='build'?[Math.cos(p.inc*R)*Math.cos(p.azi*R),Math.cos(p.inc*R)*Math.sin(p.azi*R),-Math.sin(p.inc*R)]:[-Math.sin(p.azi*R),Math.cos(p.azi*R),0],w=v.map((x,i)=>x+axis[i]*recipe.delta*R*bump);return {...p,...angles(w)};});}
+// Compact duplicate key covers every joint boundary, rather than a handful of samples.
+// Two independent 32-bit accumulators are for numerical deduplication, not integrity hashes.
+function geometryKey(path){let a=2166136261,b=5381;for(const p of path){const text=[p.md,p.n,p.e,p.tvd,p.inc,p.azi].map(x=>x.toFixed(8)).join(',')+';';for(let i=0;i<text.length;i++){const code=text.charCodeAt(i);a=Math.imul(a^code,16777619);b=Math.imul(b,33)^code;}}return path.length+':'+(a>>>0).toString(16)+':'+(b>>>0).toString(16);}
+
+function context(input,response,records=[]){
+ const byId=new Map(records.map(x=>[x.id,x])),cache=new Map();let cacheLimit=16;
+ function evaluate(record,depth=0){
+  if(depth>100)throw Error('Search ancestry exceeds its supported depth.');if(cache.has(record.id)){const c=cache.get(record.id);cache.delete(record.id);cache.set(record.id,c);return c;}
+  const recipe=record.recipe;let candidate;
+  try{
+   if(recipe.type==='bound')throw Error(recipe.reason);
+   let design;
+   if(recipe.type==='carry'){design=continuation(input);if(!design)throw Error('Prior continuation is unavailable or belongs to another scope.');}
+   else if(recipe.type==='perturb'){const parent=byId.get(recipe.parentId);if(!parent||parent.ordinal>=record.ordinal)throw Error('Invalid search parent.');const c=evaluate(parent,depth+1);if(!c.path.length)throw Error('Search parent has no valid geometry.');design=perturbed(c.path,recipe);}
+   else if(input.target.mode==='position')design=positionPath(input.tie,input.target,recipe.seedIndex||0,input.limits.positionTol,recipe.scales||null).path;
+   else design=anglePath(input.tie,input.target,recipe.profile||PROFILES[recipe.seedIndex||0]);
+   if(finite(input.target.md)){const ratio=(input.target.md-input.tie.md)/(design.at(-1).md-input.tie.md);design=design.map(p=>({...p,md:input.tie.md+(p.md-input.tie.md)*ratio}));design.at(-1).md=input.target.md;}
+   const joint=buildJointPlan(design,input.target,input.joints||{mode:'6'},{positionTol:input.limits.positionTol}),path=joint.path,summary=summarize(path,input,{jointSchedule:joint.schedule,converged:joint.schedule.converged,integrationError:0,cumulativeIntegrationError:0});
    if(!joint.schedule.converged){summary.issues.push('Joint-end angles could not fit the target at the selected joint lengths.');summary.feasible=false;}
-   const sensitivity=[input.limits.responseLow??.8,input.limits.responseHigh??1.2].map(g=>responseSensitivity(path,g,input.target));
-   const score=summary.peakDls+.05*summary.totalDogleg+.0005*summary.mdLength+(observed===null?0:.1*Math.abs(summary.peakDls-observed));
-   candidates.push({id:'landing-'+(i+1),name:carry?'Previous plan re-aligned':input.target.mode==='position'?'Position template '+(i+1):PROFILES[i][0],path,jointSchedule:joint.schedule,carryForward:!!carry,...summary,score,sensitivity,aboveObserved:observed===null?null:summary.peakDls>observed,duplicateOf:null});
-  }catch(e){candidates.push({id:'landing-'+(i+1),name:'Template '+(i+1),path:[],feasible:false,issues:[e.message],errorCode:e.code||null,score:null,peakDls:null,duplicateOf:null});}
+   const observed=response.count>=3&&finite(response.medianDls)?response.medianDls:null,score=summary.peakDls+.05*summary.totalDogleg+.0005*summary.mdLength+(observed===null?0:.1*Math.abs(summary.peakDls-observed));
+   candidate={id:record.id,name:record.name,ordinal:record.ordinal,recipe,path,jointSchedule:joint.schedule,carryForward:recipe.type==='carry',...summary,score,aboveObserved:observed===null?null:summary.peakDls>observed,duplicateOf:record.duplicateOf||null};
+   cacheLimit=Math.max(2,Math.min(16,Math.floor(6000/path.length)));
+  }catch(e){candidate={id:record.id,name:record.name,ordinal:record.ordinal,recipe,path:[],feasible:false,issues:[e.message],errorCode:e.code||null,score:null,peakDls:null,duplicateOf:null};}
+  cache.set(record.id,candidate);while(cache.size>cacheLimit)cache.delete(cache.keys().next().value);return candidate;
  }
- // Degenerate holds are explicitly identified rather than inventing ten unique paths.
- const signatures=new Map();for(const c of candidates){if(!c.path.length)continue;const p=c.path,signature=[.25,.5,.75,1].flatMap(t=>{const x=atMD(p,p[0].md+(p.at(-1).md-p[0].md)*t);return [x.n,x.e,x.tvd,x.md].map(v=>v.toFixed(2));}).join('|');if(signatures.has(signature))c.duplicateOf=signatures.get(signature);else signatures.set(signature,c.id);}
- const ranked=candidates.filter(c=>c.feasible&&!c.duplicateOf).sort((a,b)=>a.score-b.score),recommendation=ranked[0]||null,coverageMissing=candidates.some(c=>c.errorCode==='JOINT_COVERAGE');
- return {schema:'robotyx.landing-plan.v1',generatedAt:input.generatedAt||new Date().toISOString(),scope:input.scope||null,tie:input.tie,tieSource:input.tieSource||'User entered',target:input.target,limits:input.limits,componentLimit:input.componentLimit||null,componentSource:input.componentSource||null,
-  response,steering,bhaComparisons:compareBhaRuns(input.surveys||[],input.exposures||[]),recordedSteering:input.exposures||[],surveySnapshot:(input.surveys||[]).slice(-50),trend:projectResponseTrend(input.tie,finite(input.target.md)?input.target.md:recommendation?.end.md,response),candidates,uniqueCount:signatures.size,recommendation:recommendation?.id||null,
-  jointConfig:{...input.joints||{mode:'6'},anchorMd:input.joints?.anchorMd??input.tie.md},coverageMissing,
-  difficulty:{hard:!recommendation?!coverageMissing:recommendation.peakDls/recommendation.limit>=.9,thresholdFraction:.9,reason:!recommendation?(coverageMissing?'Measured lengths do not cover landing; supply remaining joints before evaluating difficulty.':'No evaluated candidate meets all entered limits.'):recommendation.peakDls/recommendation.limit>=.9?'Best candidate requires at least 90% of the effective DLS ceiling; little curvature margin remains.':'Best candidate retains more than 10% DLS margin.'},
-  rationale:recommendation?'Lowest score among generated feasible, distinct candidates: peak DLS + 0.05 × total dogleg + 0.0005 × drilled length + 0.1 × difference from observed median DLS when available. This is not a global optimum.':'No generated candidate meets all entered geometry/DLS constraints. No path is recommended.',
-  minimumAverageDls:input.target.mode==='md'?dogleg(input.tie,input.target)*30/(input.target.md-input.tie.md):null,
-  notes:['Planning geometry, not live equipment control. No collision clearance is included.','Landing MD/angle mode does not constrain terminal N/E/TVD. Position mode uses the stated survey coordinate frame.','Each instruction is a constant-curvature joint arc. Its MD/inc/azi endpoints reconstruct the fitted landing position; original smooth curves are design templates only.','Observed survey response is not a proven BHA capability envelope or motor yield.',...(Math.min(input.target.inc,180-input.target.inc)<5?['Near vertical, azimuth is poorly constrained; angular miss is the 3-D tangent difference.']:[])]};
+ return {byId,evaluate};
+}
+function compact(c,stage){return {id:c.id,ordinal:c.ordinal,name:c.name,stage,recipe:c.recipe,feasible:c.feasible,peakDls:c.peakDls,positionMiss:c.positionMiss??null,orientationMiss:c.orientationMiss??null,mdMiss:c.mdMiss??null,score:c.score,issues:c.issues,errorCode:c.errorCode||null,duplicateOf:c.duplicateOf||null,geometryKey:c.path.length?geometryKey(c.path):null,hasGeometry:!!c.path.length,rankCost:!c.path.length?1e12:(c.feasible?0:1000)+c.score+Math.max(0,c.peakDls-c.limit)*20+Math.min(1e6,(c.positionMiss||0)/.005)};}
+export function createLandingInspector(replay,trace){if(replay.modelVersion&&replay.modelVersion!=='joint-adaptive-search-2')throw Error('Unsupported search model version.');validateInput(replay.input);const ctx=context(replay.input,replay.response,trace);return id=>{const record=ctx.byId.get(id);if(!record)throw Error('Candidate is not in this search ledger.');const c=ctx.evaluate(record);return {...c,sensitivity:c.path.length?[replay.input.limits.responseLow??.8,replay.input.limits.responseHigh??1.2].map(g=>responseSensitivity(c.path,g,replay.input.target)):[]};};}
+export function planLanding(input,{resume=null,onProgress=null}={}){
+ validateInput(input);const response=surveyResponse(input.surveys||[],input.response||{}),steering=fitSteeringResponse(response.intervals,input.exposures||[],input.response?.bhaId),source=replayInput(input),fingerprint=JSON.stringify({source,response}),replay={modelVersion:'joint-adaptive-search-2',input:source,response};
+ if(resume&&resume.fingerprint!==fingerprint)throw Error('Search continuation belongs to different inputs or source data.');
+ const started=Date.now(),budgetMs=clamp(input.searchOptions?.budgetMs??1200,1,20000),batchLimit=clamp(input.searchOptions?.batchEvaluations??1024,1,10000),trace=resume?resume.trace.map(x=>({...x})):[],bestHistory=resume?[...resume.bestHistory]:[];
+ const state=resume?JSON.parse(JSON.stringify(resume.checkpoint)):{phase:'seed',seed:0,explore:1,step:1.5,round:0,queue:[],stableLevels:0,roundBest:null,status:null};
+ if(!state)throw Error('This search has no resumable checkpoint.');const ctx=context(source,response,trace),keys=new Map(trace.filter(x=>x.geometryKey).map(x=>[x.geometryKey,x.id]));let status=null,batch=0;
+ const elite=()=>trace.filter(x=>x.hasGeometry&&!x.duplicateOf).sort((a,b)=>a.rankCost-b.rankCost)[0]||null;
+ function proposal(){
+  if(state.queue.length)return state.queue.shift();
+  if(state.phase==='seed'){
+   if(state.seed<PROFILES.length){const k=state.seed++;return {stage:'initial geometry',name:input.target.mode==='position'?'Endpoint-tangent seed '+(k+1):PROFILES[k][0],recipe:input.target.mode==='position'?{type:'seed',seedIndex:k,scales:SCALES[k]}:{type:'seed',seedIndex:k,profile:PROFILES[k]}};}
+   state.phase='explore';if(continuation(input))return {stage:'prior continuation',name:'Previous plan re-aligned',recipe:{type:'carry'}};
+  }
+  if(state.phase==='explore'){
+   if(state.explore<=24){const k=state.explore++;return {stage:'space exploration',name:'Exploration '+k,recipe:input.target.mode==='position'?{type:'seed',scales:[.08+1.02*halton(k,2),.08+1.02*halton(k,3)]}:{type:'seed',profile:['Exploration '+k,.4*halton(k,2),.65+.35*halton(k,3),k%2?'smooth':'smoother']}};}
+   state.phase='refine';
+  }
+  if(state.phase==='refine'){
+   const parent=elite();if(!parent){state.status='model-unresolved';return null;}
+   if(state.roundBest!==null){const improved=parent.rankCost<state.roundBest-.001;if(improved&&state.round<5){state.round++;}else{state.step/=2;state.round=0;state.stableLevels=improved?0:state.stableLevels+1;}}
+   if(state.step<.1&&state.stableLevels>=2){state.status='converged';return null;}
+   if(state.step<.025){state.status='converged';return null;}
+   state.roundBest=parent.rankCost;
+   for(const center of [.2,.4,.6,.8])for(const axis of ['build','turn'])for(const sign of [-1,1])state.queue.push({stage:'joint-tangent refinement',name:'Refine '+parent.id+' '+axis+' '+(sign*state.step).toFixed(5)+'° at '+Math.round(center*100)+'%',recipe:{type:'perturb',parentId:parent.id,center,width:.2,axis,delta:sign*state.step}});
+   return state.queue.shift();
+  }return null;
+ }
+ const mdLength=finite(input.target.md)?input.target.md-input.tie.md:null,lowerDls=mdLength?dogleg(input.tie,input.target)*30/mdLength:null;
+ if(!trace.length&&input.target.mode==='position'&&mdLength&&mag([input.target.n-input.tie.n,input.target.e-input.tie.e,input.target.tvd-input.tie.tvd])>mdLength+input.limits.positionTol){state.queue=[{stage:'geometric bound',name:'Straight-line reachability bound',recipe:{type:'bound',reason:'Landing MD is shorter than straight-line target distance, including position tolerance. No curvature search can overcome this distance bound.'}}];state.phase='bound';}
+ while(batch<batchLimit&&Date.now()-started<budgetMs){
+  const p=proposal();if(!p){status=state.status||'converged';break;}const record={id:'landing-'+(trace.length+1),ordinal:trace.length+1,...p};ctx.byId.set(record.id,record);const candidate=ctx.evaluate(record),row=compact(candidate,p.stage);
+  if(row.geometryKey){if(keys.has(row.geometryKey))row.duplicateOf=keys.get(row.geometryKey);else keys.set(row.geometryKey,row.id);}trace.push(row);ctx.byId.set(row.id,row);batch++;
+  const best=elite();if(best&&(!bestHistory.length||bestHistory.at(-1).id!==best.id))bestHistory.push({evaluated:trace.length,id:best.id,score:best.score,peakDls:best.peakDls,feasible:best.feasible});onProgress?.({evaluated:trace.length,candidate:row,best:best?{id:best.id,score:best.score,feasible:best.feasible}:null});
+  if(p.recipe.type==='bound'){status='bound-infeasible';break;}
+  if(candidate.errorCode==='JOINT_COVERAGE'&&input.target.mode==='md'){status='data-limited';break;}
+  if(input.target.mode==='position'&&candidate.feasible&&candidate.peakDls<1e-8&&Math.abs(candidate.mdLength-mag([input.target.n-input.tie.n,input.target.e-input.tie.e,input.target.tvd-input.tie.tvd]))<1e-5){status='straight-bound-attained';break;}
+  if(mdLength&&lowerDls>Math.min(input.limits.maxDls,input.componentLimit||Infinity)+1e-6){status='exact-tangent-bound-infeasible';break;}
+  if(mdLength&&candidate.feasible&&Math.abs(candidate.peakDls-lowerDls)<1e-5&&Math.abs(candidate.totalDogleg-dogleg(input.tie,input.target))<1e-4){status='exact-tangent-bound-attained';break;}
+ }
+ status||='budget-paused';
+ const ranked=trace.filter(x=>x.hasGeometry&&!x.duplicateOf).sort((a,b)=>a.rankCost-b.rankCost),retained=ranked.slice(0,Math.max(2,Math.min(12,Math.floor(6000/Math.max(1,ranked[0]?ctx.evaluate(ranked[0]).path.length:1))))),candidates=retained.map(row=>{const c=ctx.evaluate(row);return {...c,duplicateOf:row.duplicateOf,sensitivity:[input.limits.responseLow??.8,input.limits.responseHigh??1.2].map(g=>responseSensitivity(c.path,g,input.target))};}),best=candidates.find(c=>c.feasible)||null,coverageMissing=trace.some(c=>c.errorCode==='JOINT_COVERAGE'),paused=status==='budget-paused',converged=status==='converged'||status==='exact-tangent-bound-attained'||status==='straight-bound-attained';
+ const noSolutionKnown=!best&&!coverageMissing&&!paused&&status!=='model-unresolved',difficultyReason=!best?(coverageMissing?'Measured lengths do not cover landing; supply remaining joints.':paused?'Search paused before convergence; no feasible candidate found yet. Continue searching.':status==='model-unresolved'?'Search could not resolve a valid joint geometry; this does not prove infeasibility.':'No evaluated candidate meets the entered limits; inspect the search ledger and its stopping reason.'):best.peakDls/best.limit>=.9?'Best found path requires at least 90% of the effective DLS ceiling.':'Best found path retains more than 10% DLS margin.';
+ return {schema:'robotyx.landing-plan.v2',generatedAt:input.generatedAt||new Date().toISOString(),scope:input.scope||null,tie:input.tie,tieSource:input.tieSource||'User entered',target:input.target,limits:input.limits,componentLimit:input.componentLimit||null,componentSource:input.componentSource||null,response,steering,bhaComparisons:compareBhaRuns(input.surveys||[],input.exposures||[]),recordedSteering:input.exposures||[],surveySnapshot:(input.surveys||[]).slice(-50),trend:projectResponseTrend(input.tie,finite(input.target.md)?input.target.md:best?.end.md,response),candidates,uniqueCount:keys.size,recommendation:best?.id||null,jointConfig:{...input.joints||{mode:'6'},anchorMd:input.joints?.anchorMd??input.tie.md},coverageMissing,
+  search:{status,converged,resumable:paused,evaluated:trace.length,unique:keys.size,feasible:trace.filter(x=>x.feasible&&!x.duplicateOf).length,rejected:trace.filter(x=>!x.feasible&&!x.duplicateOf).length,duplicates:trace.filter(x=>x.duplicateOf).length,elapsedMs:(resume?.elapsedMs||0)+Date.now()-started,budgetMs,lowerDls,refinementStepDeg:state.step,trace,bestHistory,replay,fingerprint,checkpoint:paused?state:null,stopReason:status==='straight-bound-attained'?'A zero-curvature path attains the straight-line length and curvature lower bounds.':status==='converged'?'No score improvement at two successive joint-tangent refinement levels, or the 0.025° refinement floor reached.':status==='exact-tangent-bound-attained'?'A feasible constant-DLS joint path attains the exact endpoint-tangent DLS lower bound.':status==='exact-tangent-bound-infeasible'?'Even the exact endpoint-tangent DLS lower bound exceeds the effective ceiling.':status==='bound-infeasible'?'Straight-line reachability bound proves the fixed MD cannot reach the target tolerance.':status==='budget-paused'?'Time/evaluation budget reached before convergence; continue from this exact frontier.':status==='data-limited'?'Measured joint lengths end before landing.':'No valid geometry resolved in the explored model.',domain:'Multistart endpoint-tangent/temporal shapes followed by joint-level tangent-neighbourhood refinement. Convergence is within this model and resolution; it is not exhaustive over continuous physical possibilities.'},
+  difficulty:{hard:!best?noSolutionKnown:best.peakDls/best.limit>=.9,thresholdFraction:.9,reason:difficultyReason},rationale:best?'Lowest score found: peak DLS + 0.05 × total dogleg + 0.0005 × MD length + 0.1 × observed-median DLS difference when available. Search status and full evaluation ledger are included.':'No feasible candidate found; inspect the ledger and stopping reason.',minimumAverageDls:lowerDls,notes:['Joint-by-joint minimum-curvature requirements; no live equipment control or collision clearance.','Every evaluated candidate is retained in the audit ledger and can be reconstructed joint by joint; only ranked paths are kept in the immediate comparison.','A compute pause is not convergence. Continuous trajectory space cannot be exhaustively enumerated.','Survey response is observational, not a proven BHA yield envelope.']};
 }

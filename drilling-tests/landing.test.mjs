@@ -7,22 +7,20 @@ test('uniform 90-degree build matches the analytic circular arc and lower DLS bo
  const r=planLanding(mdInput()),c=r.candidates[0],radius=900/(Math.PI/2);
  close(c.peakDls,3);close(c.end.n,radius);close(c.end.e,0);close(c.end.tvd,radius);close(r.minimumAverageDls,3);assert.equal(r.recommendation,'landing-1');
 });
-test('ten independent timing scenarios meet terminal MD and tangent without silently fixing terminal position',()=>{
- const r=planLanding(mdInput());assert.equal(r.candidates.length,10);assert.equal(r.uniqueCount,10);
- for(const c of r.candidates){close(c.end.md,900);close(c.end.inc,90);close(c.end.azi,0);assert.equal(c.positionMiss,null);assert.ok(c.peakDls>=r.minimumAverageDls-1e-5);}
- assert.notEqual(r.candidates[0].end.tvd.toFixed(2),r.candidates[1].end.tvd.toFixed(2));
+test('MD/angle search stops on a proven curvature lower bound rather than filling a scenario quota',()=>{
+ const r=planLanding(mdInput());assert.equal(r.search.evaluated,1);assert.equal(r.search.status,'exact-tangent-bound-attained');assert.equal(r.uniqueCount,1);const c=r.candidates[0];close(c.end.md,900);close(c.end.inc,90);assert.equal(c.positionMiss,null);close(c.peakDls,r.minimumAverageDls);
 });
 test('azimuth wraps by the short turn and near-vertical landing does not invent directional curvature',()=>{
  const r=planLanding(mdInput({tie:{...tie,inc:90,azi:359},target:{mode:'md',md:300,inc:90,azi:1}}));close(r.candidates[0].peakDls,.2,1e-5);close(r.candidates[0].end.azi,1);
  const h=planLanding(mdInput({target:{mode:'md',md:300,inc:0,azi:123}}));close(h.candidates[0].peakDls,0);assert.equal(h.uniqueCount,1);
 });
 test('straight hold duplicates are labelled; an impossible DLS ceiling produces no recommendation',()=>{
- const h=planLanding(mdInput({tie:{...tie,inc:40,azi:60},target:{mode:'md',md:300,inc:40,azi:60}}));assert.equal(h.candidates.length,10);assert.equal(h.uniqueCount,1);assert.equal(h.candidates.filter(c=>c.duplicateOf).length,9);
+ const h=planLanding(mdInput({tie:{...tie,inc:40,azi:60},target:{mode:'md',md:300,inc:40,azi:60}}));assert.equal(h.search.evaluated,1);assert.equal(h.uniqueCount,1);assert.equal(h.search.status,'exact-tangent-bound-attained');
  const blocked=planLanding(mdInput({limits:{...limits,maxDls:1}}));assert.equal(blocked.recommendation,null);assert.ok(blocked.candidates.every(c=>!c.feasible));
 });
 test('position templates meet the actual N/E/TVD target and endpoint angles; sampled geometry converges',()=>{
  const target={mode:'position',n:300,e:100,tvd:500,inc:85,azi:20,md:null},r=planLanding(mdInput({target,limits:{...limits,maxDls:30}}));
- assert.equal(r.candidates.length,10);assert.ok(r.recommendation);
+ assert.ok(r.search.evaluated>10);assert.ok(r.candidates.length>0);assert.ok(r.recommendation);
  for(const c of r.candidates){close(c.end.n,300,.005);close(c.end.e,100,.005);close(c.end.tvd,500,.005);close(c.end.inc,85);close(c.end.azi,20);assert.ok(c.mdLength>=Math.hypot(300,100,500));assert.equal(c.resolution,'Joint-by-joint minimum curvature');assert.ok(c.cumulativeIntegrationError<=.05);}
 });
 test('position-mode MD constraint is solved; MD shorter than straight distance is never marked feasible',()=>{

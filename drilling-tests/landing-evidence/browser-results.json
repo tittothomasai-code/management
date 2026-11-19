@@ -7,8 +7,8 @@
         "Q hidden entry",
         "typing Q stays in inputs",
         "phone advanced-tools entry",
-        "manual MD/angles ten paths",
-        "position/angles ten paths",
+        "MD/angle lower-bound proof",
+        "adaptive position/angle search",
         "JSON/CSV export",
         "no feasible recommendation when DLS too low",
         "stale export disabled",
@@ -22,13 +22,13 @@
         "red pulse and reduced-motion static warning",
         "explicit unsurveyed projection",
         "depth update never becomes a measured response station",
-        "no transport calls or external requests",
         "6 m / nominal / measured joint schedules",
         "partial first and final joints preserve full lengths",
         "joint CSV and plot markers",
         "active measured tally includes BHA once",
         "full 500 m normal and shallower wells",
-        "deeper target red sign and explicit 510 m program change"
+        "deeper target red sign and explicit 510 m program change",
+        "no transport calls or external requests"
       ],
       "errors": []
     },
@@ -38,8 +38,8 @@
         "Q hidden entry",
         "typing Q stays in inputs",
         "phone advanced-tools entry",
-        "manual MD/angles ten paths",
-        "position/angles ten paths",
+        "MD/angle lower-bound proof",
+        "adaptive position/angle search",
         "JSON/CSV export",
         "no feasible recommendation when DLS too low",
         "stale export disabled",
@@ -53,13 +53,13 @@
         "red pulse and reduced-motion static warning",
         "explicit unsurveyed projection",
         "depth update never becomes a measured response station",
-        "no transport calls or external requests",
         "6 m / nominal / measured joint schedules",
         "partial first and final joints preserve full lengths",
         "joint CSV and plot markers",
         "active measured tally includes BHA once",
         "full 500 m normal and shallower wells",
-        "deeper target red sign and explicit 510 m program change"
+        "deeper target red sign and explicit 510 m program change",
+        "no transport calls or external requests"
       ],
       "errors": []
     }
