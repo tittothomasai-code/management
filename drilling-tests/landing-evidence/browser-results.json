@@ -28,7 +28,10 @@
         "active measured tally includes BHA once",
         "full 500 m normal and shallower wells",
         "deeper target red sign and explicit 510 m program change",
-        "no transport calls or external requests"
+        "no transport calls or external requests",
+        "budget pause and exact-frontier continuation",
+        "non-retained case reconstruction",
+        "all drilling-step ledgers and every-case replay"
       ],
       "errors": []
     },
@@ -59,7 +62,10 @@
         "active measured tally includes BHA once",
         "full 500 m normal and shallower wells",
         "deeper target red sign and explicit 510 m program change",
-        "no transport calls or external requests"
+        "no transport calls or external requests",
+        "budget pause and exact-frontier continuation",
+        "non-retained case reconstruction",
+        "all drilling-step ledgers and every-case replay"
       ],
       "errors": []
     }

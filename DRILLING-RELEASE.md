@@ -317,3 +317,43 @@ also passed. Actual unpublished-site tests executed the 500 m replay, joint tabl
 and warning, plus protected Ops/Tally/BHA/DD/EDM/menu checks before publication.
 All eight changed runtime modules independently matched live SHA-256 hashes.
 Details: `drilling-tests/LANDING-PLANNER.md`.
+
+## Adaptive landing search with every evaluated joint schedule
+
+Deploy `6afea4a0c85f6f7af5607edc`; rollback `6afe95540df588e5cef0730c`.
+Runtime head `ab538477801adf3a60a3e3b17112beebd7780ce3`.
+Workflow https://github.com/tittothomasai-code/management/actions/runs/44479600033
+
+Q no longer highlights or stops at ten scenarios. Multistart exploration feeds
+adaptive build/turn refinement of the actual joint-boundary tangents, fitting
+each candidate to the landing target and angles. Analytical bounds can end a
+simple case early; other searches refine until the documented model convergence
+criteria or resolution floor. A time/evaluation budget pauses computation with
+an exact resumable frontier, visibly distinct from convergence. Continue does
+not restart the search or discard prior evaluations. This is a bounded numerical
+search, not a claim that all continuous physical paths have been enumerated.
+
+The full evaluated-case ledger includes every actual candidate, its generating
+parameters, peak DLS, target miss, rejection reason and duplicate attribution.
+Any case can reconstruct its original per-joint MD, advance, dogleg, DLS and
+endpoint angles in a worker, even outside the retained comparison shortlist.
+Replay steps through every evaluation. Cases without resolved geometry retain
+their rejection rather than inventing instructions. Compact recipes retain the
+ledger while full-path caches and the comparison shortlist remain bounded.
+
+The isolated 500 m tutorial stores the search at every executed joint. Select
+any prior drilling step, replay or inspect every evaluated alternative against
+that step's fixed prefix/target, and export all search histories. Inspection
+never substitutes an arbitrary alternative for the validated execution choice.
+Normal, shallower and deeper cases share this implementation. Existing measured
+pipe support, partial joints, scoped live surveys and read-only feed behaviour
+remain intact.
+
+89 unit tests passed. New tests check refinement beyond seed shapes, exact
+pause/resume, complete outcome accounting, replay of every ledger case and
+reachability proofs. Desktop and phone browser checks passed every-step tutorial
+history/export/replay, non-retained inspections, budget continuation, the full
+500 m normal/shallower programs and explicit deeper-program change, plus existing
+survey/pump/tally regressions. The actual unpublished deploy passed desktop/phone Q/how-to/ledger checks and
+all protected Ops/Tally/BHA/DD/EDM/menu checks before promotion. All seven changed
+runtime files independently matched live SHA-256 hashes after publication.
