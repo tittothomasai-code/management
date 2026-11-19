@@ -450,3 +450,44 @@ The actual unpublished deploy passed the protected workspaces and the complete
 new desktop/phone game checks, including real pointer/touch corner resizing and
 two-finger surface deformation, before promotion. All 13 changed/new runtime
 files independently matched live SHA-256 hashes after publication.
+
+## Directional Drilling Simulation — editable contours and XYZ inspection
+
+Deploy `6afee62ead136e1316f3f5c0`; immediate rollback `6afed111e9720ca5174624f4`.
+Page https://drilling.robotyx.systems/directional-drilling/index.html
+Runtime head `93cc50ea680ce46df7648041d2ea8fddc16b6921`.
+Workflow https://github.com/tittothomasai-code/management/actions/runs/44520723281
+
+The page, help, menus and canonical folder are now named Directional Drilling
+Simulation. The old `/landing-game/index.html` entry redirects to the canonical
+page. Its fallback link uses the host's canonical URL so automatic pretty-URL
+rewriting does not change the verified static payload.
+
+Reservoir controls offer rolling beds, a flat/tilted plane, dome, basin, saddle
+and folded beds. Relief controls amplitude; N/E feature scales change contour
+spacing. Roof/floor meshes, contour lines, analytic gradients, landing alignment
+and floor guards share the same surface function. Two-finger depth/thickness/dip
+controls remain available. Surface edits retain flown history and bit continuity.
+
+The XYZ tool ray-picks the actual roof, floor, bit display, route or rings. Values
+use local metres: X East, Y North, Z TVD, positive down. A cross marker identifies
+the chosen point. Roof/floor picking refines mesh hits onto the analytic surface;
+changing layer keeps the same East/North. Focus reservoir eases phone picking.
+Empty sky never invents a coordinate. Numeric precision is not surveyed accuracy.
+The labelled fallback keeps numeric target editing; surface probing requires 3D.
+
+120 unit tests passed, including 25 focused simulation tests. Eight new cases
+check all six surface gradients/thicknesses, genuinely different geometry,
+validation/atomic rollback, fixed flown history, world-to-drilling conversion,
+vertical/angled roof/floor rays and unresolved/out-of-bounds rays. Desktop
+1920×1080 and phone 390×844 browser runs passed contour changes/scales, real XYZ
+roof/floor taps, mouse/touch target and corner dragging, two-finger deformation,
+tally coverage, fixed history, full landing, floor stopping, the old-link redirect
+and fallback. The existing landing-planner desktop/phone regression passed.
+Screenshots/results are in `drilling-tests/directional-evidence/`.
+
+The actual unpublished deploy passed the protected workspaces and complete new
+simulation browser checks before promotion. All 16 changed/new runtime files
+independently matched live SHA-256 hashes after publication. The original site
+inventory was preserved. The page stays a synthetic geometry simulation; the
+joint-resolved engineering planner remains separate and available through Q.
