@@ -241,7 +241,7 @@ The plane-distance equation on each constant-curvature joint arc is split at its
 analytic extrema, then roots are bracketed: crossings between station endpoints
 are detected even when both endpoints lie on the same side. Lateral misses cannot
 pass solely because a side-view projection appears aligned. Edge crossings are
-inclusive at 1 micrometre numerical tolerance. A coplanar arc or reverse passage
+inclusive at 1 micrometre numerical tolerance. A tangential touch, coplanar arc or reverse passage
 is not a forward crossing. Window violation contributes to refinement priority,
 and any missed required window makes that candidate infeasible. Execution refuses
 it. The search still makes no global feasibility guarantee.

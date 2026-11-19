@@ -7,7 +7,7 @@
     },
     {
       "path": "opsnow.js",
-      "sha256": "3d87d59c5d8e7394dc29a7d5b42bbd2f38d3147c43467bec6d2c6e8e8cc97d39"
+      "sha256": "1d248ccfebffb60807bec7e356e3a08a9899637787f8b7790c8d616b357fb2ae"
     },
     {
       "path": "opsnow_tallyview.js",
@@ -43,19 +43,19 @@
     },
     {
       "path": "opsnow_landing.mjs",
-      "sha256": "8a440f5145402d34dea9cb5e1ffa0d440640b3556b1a8f6f9534bc73f158e513"
+      "sha256": "f59f56d90f56f67a3d822bb1db1e84cbe3e13b65792d2e40f81d8baf9cff2dbf"
     },
     {
       "path": "opsnow_landing_core.mjs",
-      "sha256": "1e80841dc64d2178d6e562696e1e43e45492fc690e40326e3e3c73fa384f685d"
+      "sha256": "328a9102297eaa7c8c5761071169fd3de899cc9906399bc7e6253f08a9f48466"
     },
     {
       "path": "opsnow_landing_worker.mjs",
-      "sha256": "de313e0ff5cad5bf145065a41fd55ec5878b146a44f6c196b0f54508861066ad"
+      "sha256": "796daa3716023252550a9221a2efc8d269267192867a3c7764c345e1f5bdcb80"
     },
     {
       "path": "opsnow_landing_demo.mjs",
-      "sha256": "b106f9a0873a5d0930a157797f66c7e9a0d8dcf3f7abb422fe1ac51133c1b328"
+      "sha256": "359217c3e5c8c4bab658ab70c6b8102a3fe3d7d0065b4820065297e07c69a2ab"
     },
     {
       "path": "opsnow_landing_joints.mjs",
@@ -67,13 +67,21 @@
     },
     {
       "path": "opsnow_landing_sim.mjs",
-      "sha256": "8d81a931d5a5056009488eae70dd305ba0cb582f7e598c36ef503a3648cfb9ac"
+      "sha256": "11da5a725a30609c95eb620a9211be61f842e52f5c4547c7163b3b70ec5cc2c2"
     },
     {
       "path": "opsnow_landing_audit.mjs",
-      "sha256": "9ed494feab222b3b0688be3431a430c8cb20694b48d5574d5baf20a1bd07e6aa"
+      "sha256": "9885fe02deb978c4c81a06b4268807652b38df1b38d9550c971d62470df10df3"
+    },
+    {
+      "path": "opsnow_landing_windows.mjs",
+      "sha256": "de5f4c2dec5503378135b6f27c3ce9f546c8a840ec38d0a31d35e2b585133bcb"
+    },
+    {
+      "path": "opsnow_landing_space.mjs",
+      "sha256": "5211a31f97ce7a84906a98ef178cf5c100de4dd38de48f364183a9d95852edf6"
     }
   ],
-  "verifiedDeployId": "6afea4a0c85f6f7af5607edc",
+  "verifiedDeployId": "6afeac78eee8c7fc5e7744d5",
   "verifiedAt": "2026-11-19"
 }
