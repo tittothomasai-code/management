@@ -8,6 +8,7 @@ import {referenceScope,loadMeasuredReference,inventoryPosition,inventoryResetLab
 import {checkpointState,renderHardpoints,STORAGE_KEY} from './opsnow_hardpoints.mjs?v=hardpoint1118';
 import {uploadedReference} from './opsnow_measured_upload.mjs?v=hardpoint1118';
 import {reportedOperation,reportDepthIssue,drillingReferenceMd,renderOperationReport} from './opsnow_operation_report.mjs?v=eow1118';
+import {wellWorkspaceUrl} from './opsnow_landing_status.mjs?v=ops-landing1';
 import {initLandingDock} from './opsnow_landing_dock.mjs?v=ops-landing1';
 import {initLandingPlanner} from './opsnow_landing.mjs?v=ops-landing1';
 import * as W from './opsnow_wire.js?v=re1115';
@@ -317,7 +318,7 @@ const MARKUP = `
 </main>
 <aside id="onSettings" class="on-settings" hidden>
   <div class="on-h"><h2>Settings</h2><button id="onClose" type="button" aria-label="Close settings">✕</button></div>
-  <label>Wellbore <select id="onSelWb"></select></label>
+  <label>Well name or UID <input id="onWellTarget" type="text" maxlength="256" autocapitalize="off" spellcheck="false"></label><button id="onOpenWell" type="button">Open well</button><p class="on-muted">Opening another well refreshes Ops. Reconnect if prompted.</p><label>Wellbore <select id="onSelWb"></select></label>
   <label>Drilling log <select id="onSelLog"></select></label>
   <div id="onDiag" class="on-diag"></div>
   <p><button id="onReload" type="button">Re-read now</button> <button id="onOut" type="button">Sign out</button></p>
@@ -374,6 +375,9 @@ function survPlot(cv, pts, mode, plan) {
 let built = false, pumpGraphic = null;
 function buildCommon() {
   $('onUser').value = W.rememberedUser();
+  $('onWellTarget').value=DEF_WELL;
+  $('onOpenWell').onclick=()=>{try{location.assign(wellWorkspaceUrl(location.href,$('onWellTarget').value));}catch(error){setMsg(error.message);$('onWellTarget').focus();}};
+  $('onWellTarget').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();$('onOpenWell').click();}};
   $('onGo').onclick = () => { const u = $('onUser').value.trim(), p = $('onPass').value; if (!u || !p) return setMsg('Enter username and password'); W.signIn(u, p, $('onRem').checked); $('onPass').value = ''; setMsg('Connecting…'); render(); loop(); };
   $('onGear').onclick = () => { const s = $('onSettings'); s.hidden = !s.hidden; $('onGear').setAttribute('aria-expanded', String(!s.hidden)); render(); };
   $('onClose').onclick = () => { $('onSettings').hidden = true; $('onGear').setAttribute('aria-expanded', 'false'); };

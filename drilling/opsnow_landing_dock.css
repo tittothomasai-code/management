@@ -3,3 +3,5 @@
 @media(max-width:600px){#ops-landing nav{flex-wrap:wrap}#ops-landing nav [data-recalculate]{margin-left:0}#ops-landing nav [data-settings]{margin-left:auto}}
 
 #ops-landing .ld-header-actions{display:flex;gap:6px}#ops-landing header small{letter-spacing:.07em}@media(max-width:600px){#ops-landing header{gap:6px}#ops-landing header h2{font-size:17px}#ops-landing .ld-header-actions button{padding:8px}#ops-landing header small{font-size:9px}}
+
+#onSettings #onWellTarget{display:block;width:100%;box-sizing:border-box;min-height:42px;margin:6px 0 10px;border:1px solid #3c5c6d;border-radius:8px;padding:9px;background:#0a1822;color:#e4f1f6;font:inherit}

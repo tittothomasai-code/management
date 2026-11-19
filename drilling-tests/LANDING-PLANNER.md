@@ -320,7 +320,8 @@ its rendering work; returning to Guidance preserves the active plan.
 
 To prepare the next well:
 
-1. Choose its wellbore in Ops Settings and confirm the feed/survey scope.
+1. In Ops Settings enter its well name or UID and choose Open well. Reconnect
+   if prompted, choose its wellbore and confirm the feed/survey scope.
 2. Open Landing & drilling, then Settings.
 3. Enter the landing target and reviewed limits; choose 6 m, 9 m, nominal or
    measured tally lengths and the correct BHA run.
@@ -328,7 +329,7 @@ To prepare the next well:
 5. Follow the advisory joint requirements and review recalculations with each
    survey. No rig command, live well-plan update or automatic steering is issued.
 
-Verification adds nine status-gating unit tests and desktop/phone browser checks
+Verification adds ten status/next-well unit tests and desktop/phone browser checks
 for the main entry, Settings return, exact next joint, 3D rotation, recalculation
 with closed dialogs, isolated lazy simulation, delayed/off-bottom/hard suppression,
 scope changes, responsive fit and zero transport calls. Screenshots are in
