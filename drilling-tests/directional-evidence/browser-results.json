@@ -1,0 +1,73 @@
+{
+  "origin": "http://127.0.0.1:35057",
+  "results": [
+    {
+      "width": 1920,
+      "passed": true,
+      "rings": 29,
+      "renderer": "webgl",
+      "checks": [
+        "3D scene",
+        "10/30 spacing",
+        "real pointer drag",
+        "N/E/TVD edit",
+        "fixed flown prefix",
+        "moving bit",
+        "chase camera",
+        "restart preserves course",
+        "measured tally and partial first pipe",
+        "coverage pause",
+        "full landing",
+        "curved roof/floor and TVD grid",
+        "landing follows edited surface",
+        "two-finger depth/thickness/dip on phone",
+        "floor collision stops bit",
+        "sweet-zone dimensions and heading",
+        "real 3D corner resizing by mouse/touch",
+        "entry tangent follows bed and target orientation",
+        "named Directional Drilling Simulation",
+        "legacy link redirects",
+        "different contour shapes and scales",
+        "XYZ roof/floor picking in East North TVD",
+        "no external calls"
+      ],
+      "errors": []
+    },
+    {
+      "width": 390,
+      "passed": true,
+      "rings": 32,
+      "renderer": "webgl",
+      "checks": [
+        "3D scene",
+        "10/30 spacing",
+        "real pointer drag",
+        "N/E/TVD edit",
+        "fixed flown prefix",
+        "moving bit",
+        "chase camera",
+        "restart preserves course",
+        "measured tally and partial first pipe",
+        "coverage pause",
+        "full landing",
+        "curved roof/floor and TVD grid",
+        "landing follows edited surface",
+        "two-finger depth/thickness/dip on phone",
+        "floor collision stops bit",
+        "sweet-zone dimensions and heading",
+        "real 3D corner resizing by mouse/touch",
+        "entry tangent follows bed and target orientation",
+        "named Directional Drilling Simulation",
+        "legacy link redirects",
+        "different contour shapes and scales",
+        "XYZ roof/floor picking in East North TVD",
+        "no external calls"
+      ],
+      "errors": []
+    },
+    {
+      "fallback": true,
+      "passed": true
+    }
+  ]
+}

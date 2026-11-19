@@ -262,10 +262,10 @@ and unchanged live settings. Unpublished-host acceptance checks the real 3D file
 and window outcomes before release.
 
 
-## Separate 3D Sky Run game
+## Separate 3D Directional Drilling Simulation
 
-Use **Sky Run · 3D game** in Q (or **3D game** in How to) to open
-`/landing-game/index.html`. This is a separate game page; the joint-by-joint planner
+Use **Directional drilling · 3D** in Q or its How to screen to open
+`/directional-drilling/index.html`. This is a separate simulation page; the joint-by-joint planner
 and existing tutorial remain available. It has animated ring guides at 10 m,
 30 m or uploaded tally intervals, pinned 3D targets, orbit/chase cameras, faint
 absolute-TVD grids and a contoured reservoir roof/floor. Mouse/touch dragging,
@@ -277,5 +277,11 @@ surface-following inclination comes from local bed dip; a manual inclination can
 also be entered. Corner fitting, entry/approach containment and a 60 m game runout
 are checked. Conflicting paths cannot count as a good landing and stop before
 floor penetration. These are game centreline checks, not full BHA clearance,
-calibrated response, or live well-plan changes. See `drilling/landing-game/README.md`
+calibrated response, or live well-plan changes. See `drilling/directional-drilling/README.md`
 for controls, measurement semantics, limits and resources.
+
+Reservoir shapes include rolling, flat/tilted, dome, basin, saddle and folded beds.
+Relief and N/E feature scales change the real mesh and the shared analytic bed
+gradient. XYZ picks geometry in local metres (X East, Y North, Z TVD down); choose
+roof or floor at the same East/North and focus the reservoir for easier phone
+picking. Empty sky has no invented coordinates. The old simulation URL redirects.

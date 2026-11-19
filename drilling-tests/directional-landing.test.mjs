@@ -1,5 +1,5 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';
-import {createGame,moveRing,editReservoir,advance} from '../drilling/landing-game/core.mjs';
+import {createGame,moveRing,editReservoir,advance} from '../drilling/directional-drilling/core.mjs';
 const near=(a,b,t=1e-6)=>assert.ok(Math.abs(a-b)<t,`${a} != ${b}`);
 test('entry heading maps approach gates and final tangent to the local bed dip',()=>{for(const azi of [15,70,135]){const g=createGame(),end=g.targets.at(-1);moveRing(g,end.id,end,{landing:{azi}});const p=g.path.at(-1),pose=g.landingStatus.pose;near(p.azi,azi);near(p.inc,pose.inc);near(g.targets.find(t=>t.role==='entry').n,end.n-g.landing.entryDistance*Math.cos(azi*Math.PI/180));assert.ok(g.landingStatus.angleErrorDeg<.001);}});
 test('a sweet-zone rectangle is measured in metres and must fit all four corners between roof and floor',()=>{const g=createGame(),end=g.targets.at(-1);editReservoir(g,{thickness:6,warp:0,tiltN:0,tiltE:.3});moveRing(g,end.id,end,{landing:{widthM:60,heightM:4,azi:0}});assert.equal(g.landingStatus.fits,false);assert.ok(!g.landingStatus.good);moveRing(g,end.id,end,{landing:{widthM:2,heightM:1}});assert.equal(g.landingStatus.fits,true);near(g.landing.widthM,2);near(g.landing.heightM,1);});

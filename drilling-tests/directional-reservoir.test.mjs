@@ -1,6 +1,6 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';
-import {createGame,editReservoir,advance,atDistance,moveRing} from '../drilling/landing-game/core.mjs';
-import {surfaceAt,floorConflict} from '../drilling/landing-game/reservoir.mjs';
+import {createGame,editReservoir,advance,atDistance,moveRing} from '../drilling/directional-drilling/core.mjs';
+import {surfaceAt,floorConflict} from '../drilling/directional-drilling/reservoir.mjs';
 const near=(a,b,t=1e-6)=>assert.ok(Math.abs(a-b)<t,`${a} != ${b}`);
 test('curved roof and floor retain thickness, and edited landing follows the middle of the bed',()=>{for(const centerTvd of [260,300,340]){const g=createGame();editReservoir(g,{centerTvd,thickness:12,tiltN:.06,tiltE:-.03,warp:8});for(const t of g.targets.filter(t=>t.role)){const s=surfaceAt(g.reservoir,t.n,t.e,{outside:true});near(s.floor-s.roof,12);near(t.tvd,s.mid);}assert.equal(g.floorConflict,null);advance(g,10000);assert.ok(g.finished);const p=atDistance(g.path,g.md),s=surfaceAt(g.reservoir,p.n,p.e);assert.ok(p.tvd>s.roof&&p.tvd<s.floor);}});
 test('surface deformation during a run preserves flown history and bit position',()=>{const g=createGame();advance(g,180);const before=JSON.stringify(g.path.filter(p=>p.md<g.md-1e-7)),p=atDistance(g.path,g.md);editReservoir(g,{centerTvd:315,thickness:30,tiltN:.1,warp:12});assert.equal(JSON.stringify(g.path.filter(p=>p.md<g.md-1e-7)),before);const after=atDistance(g.path,g.md);for(const k of ['n','e','tvd'])near(p[k],after[k]);near(g.targets.at(-1).tvd,315);});

@@ -1,4 +1,4 @@
-// A game spline, not a drilling instruction or a physical BHA response model.
+// A simulation spline, not a drilling instruction or a physical BHA response model.
 import {parseJointLengths,validateJointConfig,jointBoundaries} from '../opsnow_landing_joints.mjs';
 import {createReservoir,alignReservoirTargets,surfaceAt,floorConflict,validateReservoir} from './reservoir.mjs';
 import {validateLanding,entryPose,landingStatus} from './landing.mjs';
@@ -10,8 +10,8 @@ function point(p){if(!p||!keys.every(k=>F(p[k])&&Math.abs(p[k])<=5000))throw Err
 export const demoTally=()=>Array.from({length:80},(_,i)=>({id:'SIM '+(i+1),lengthM:[12.42,12.31,12.66,12.18,12.57][i%5]}));
 export function createGame(kickoff={md:0,n:0,e:0,tvd:0,inc:0,azi:15}){
  if(!F(kickoff.md)||kickoff.md<0||!F(kickoff.inc)||kickoff.inc<0||kickoff.inc>180||!F(kickoff.azi)||kickoff.azi<0||kickoff.azi>=360)throw Error('Kickoff needs a non-negative MD and valid inclination/azimuth.');point(kickoff);
- const targets=[{id:'target-1',name:'First build',n:55,e:-32,tvd:100},{id:'target-2',name:'Sky bend',n:165,e:52,tvd:205},{id:'target-3',name:'Reservoir entry',role:'entry',n:340,e:30,tvd:295},{id:'target-4',name:'Landing',role:'landing',n:420,e:38,tvd:300}].map(t=>({...t,n:t.n+kickoff.n,e:t.e+kickoff.e,tvd:t.tvd+kickoff.tvd,passed:false}));
- const g={schema:'robotyx.sky-run.v1',kickoff:{...kickoff},md:kickoff.md,targets,reservoir:createReservoir(kickoff),landing:{mode:'surface',azi:15,inc:90,widthM:12,heightM:6,entryDistance:80},nextId:5,mode:'10',tally:demoTally(),tallySource:'SIMULATED varied joint lengths',firstRemainingM:null,path:[],rings:[],finished:false,version:0};rebuild(g);return g;
+ const targets=[{id:'target-1',name:'First build',n:55,e:-32,tvd:100},{id:'target-2',name:'Turn section',n:165,e:52,tvd:205},{id:'target-3',name:'Reservoir entry',role:'entry',n:340,e:30,tvd:295},{id:'target-4',name:'Landing',role:'landing',n:420,e:38,tvd:300}].map(t=>({...t,n:t.n+kickoff.n,e:t.e+kickoff.e,tvd:t.tvd+kickoff.tvd,passed:false}));
+ const g={schema:'robotyx.directional-simulation.v1',kickoff:{...kickoff},md:kickoff.md,targets,reservoir:createReservoir(kickoff),landing:{mode:'surface',azi:15,inc:90,widthM:12,heightM:6,entryDistance:80},nextId:5,mode:'10',tally:demoTally(),tallySource:'SIMULATED varied joint lengths',firstRemainingM:null,path:[],rings:[],finished:false,version:0};rebuild(g);return g;
 }
 function spline(start,targets,reservoir){
  const knots=[start,...targets],path=[{...start,tangent:unit(direction(start))}],startDir=unit(direction(start));let md=start.md;
@@ -24,7 +24,7 @@ function spline(start,targets,reservoir){
  return path;
 }
 export function atDistance(path,md){
- if(!path.length)throw Error('No game path.');if(md<=path[0].md)return {...path[0]};if(md>=path.at(-1).md)return {...path.at(-1)};let lo=1,hi=path.length-1;while(lo<hi){const m=(lo+hi)>>1;if(path[m].md<md)lo=m+1;else hi=m;}const a=path[lo-1],b=path[lo],u=(md-a.md)/(b.md-a.md),tangent=unit(a.tangent.map((x,i)=>x+(b.tangent[i]-x)*u));return {...Object.fromEntries(keys.map(k=>[k,a[k]+(b[k]-a[k])*u])),md,tangent,...angles(tangent)};
+ if(!path.length)throw Error('No simulation path.');if(md<=path[0].md)return {...path[0]};if(md>=path.at(-1).md)return {...path.at(-1)};let lo=1,hi=path.length-1;while(lo<hi){const m=(lo+hi)>>1;if(path[m].md<md)lo=m+1;else hi=m;}const a=path[lo-1],b=path[lo],u=(md-a.md)/(b.md-a.md),tangent=unit(a.tangent.map((x,i)=>x+(b.tangent[i]-x)*u));return {...Object.fromEntries(keys.map(k=>[k,a[k]+(b[k]-a[k])*u])),md,tangent,...angles(tangent)};
 }
 export function rebuild(g){
  validateLanding(g.landing);alignReservoirTargets(g);g.targets.at(-1).entryTangent=entryPose(g).tangent;const start=g.path.length?atDistance(g.path,g.md):{...g.kickoff,tangent:direction(g.kickoff)},remaining=g.targets.filter(t=>!t.passed);if(!remaining.length){g.finished=true;return;}
