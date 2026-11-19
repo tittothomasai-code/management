@@ -8,6 +8,7 @@ import {referenceScope,loadMeasuredReference,inventoryPosition,inventoryResetLab
 import {checkpointState,renderHardpoints,STORAGE_KEY} from './opsnow_hardpoints.mjs?v=hardpoint1118';
 import {uploadedReference} from './opsnow_measured_upload.mjs?v=hardpoint1118';
 import {reportedOperation,reportDepthIssue,drillingReferenceMd,renderOperationReport} from './opsnow_operation_report.mjs?v=eow1118';
+import {initLandingPlanner} from './opsnow_landing.mjs?v=landing1119';
 import * as W from './opsnow_wire.js?v=re1115';
 import * as VW from './opsnow_views.js?v=re1115';
 import * as A from './opsnow_ac.js?v=re1115';
@@ -16,6 +17,7 @@ import * as JS from './opsnow_jsurvey.js?v=re1115';
 import {createSurveyAlerts, reportSurveyStations} from './opsnow_survey_alert.mjs?v=survey1117';
 import {createPumpGraphic, pumpSample, driveChannel, driveSample, refreshDepthTail} from './opsnow_pumps.mjs?v=spp100';
 const $ = id => document.getElementById(id);
+let landingPlanner=null;
 const PAGE = ['joints', 'wellplan'].includes(document.documentElement.dataset.page) ? document.documentElement.dataset.page : 'ops'; // joints.html / wellplan.html: same data layer, one surface each
 const DEF_WELL = new URLSearchParams(location.search).get('well') || 'DR101L';
 const NOMINAL_JOINT_M = 13; // fallback only; complete BHE strokes supply labelled derived lengths.
@@ -318,6 +320,7 @@ const MARKUP = `
   <label>Drilling log <select id="onSelLog"></select></label>
   <div id="onDiag" class="on-diag"></div>
   <p><button id="onReload" type="button">Re-read now</button> <button id="onOut" type="button">Sign out</button></p>
+  <details><summary>Advanced tools</summary><button id="onLanding" type="button">Landing planner · Q</button></details>
   <p><a href="./?operations">Engineering dashboard</a> · <a href="./">Simulator</a></p>
 </aside>`;
 const MARKUP_J = MARKUP.replace(/<nav class="on-views"[\s\S]*?<\/nav>/, '<nav class="on-views" aria-label="Pages"><a class="on-linkbtn" id="onOpsLink" href="./ops.html">← Operations screen</a><span class="on-pagetag">Joints dashboard</span><button type="button" id="onScanBtn" title="3D anti-collision scanner (key A)">AC scanner <kbd>A</kbd></button><a class="on-linkbtn" id="onPlanLink" href="./wellplan.html">Well plan ↗</a></nav>')
@@ -383,6 +386,7 @@ function build() {
   if (built) return; built = true;
   document.body.innerHTML = '<div id="onRoot" class="on-root' + (PAGE === 'joints' ? ' on-jpage' : PAGE === 'wellplan' ? ' on-jpage on-wppage' : '') + '">' + (PAGE === 'joints' ? MARKUP_J : PAGE === 'wellplan' ? MARKUP_P : MARKUP) + '</div>';
   const qs = location.search; for (const a of document.querySelectorAll('#onJointsLink,#onOpsLink,#onPlanLink')) a.href += qs;
+  landingPlanner=initLandingPlanner(ctx);
   if (PAGE === 'wellplan') { buildCommon(); WP.init(ctx, $('wpHost'), {xlsxRows: VW.xlsxRows}); $('onConnBtn').onclick = () => { S.showSignin = !S.showSignin; render(); }; document.title = 'Well plan · live WITSML'; return; }
   addEventListener('keydown', e => { if (e.key !== 'p' && e.key !== 'P') return; if (e.ctrlKey || e.metaKey || e.altKey || e.repeat || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName || '') || document.activeElement?.isContentEditable) return; location.href = './wellplan.html' + qs; });
   if (PAGE === 'joints') { buildCommon(); S.wantTl = true; VW.initJointsPage(ctx, $('jtHost')); $('onScanBtn').onclick = () => VW.togglePop(true); document.title = 'Joints · live WITSML'; return; }
@@ -408,7 +412,7 @@ function ctx() {
     readTimeBack: () => { S.tlBack = true; S.due.tl = 0; },
     well: S.well?.name || DEF_WELL, rig: S.rigName, kb: (VW.getKb?.() ?? S.surveyHeader?.kb?.v ?? null),
     plan: currentPlan()?.path || null, planName: currentPlan()?.name || '', planSource: currentPlan()?.source || 'no plan in store',
-    offsets: S.offsets, surveyHeader: S.surveyHeader, reportSurveys: JS.state(),
+    offsets: S.offsets, surveyHeader: S.surveyHeader, reportSurveys: JS.state(),surveySource:S.surveyOverride?'Uploaded survey override':S.traj?.name||'Active WITSML survey',
     surveys: (S.surveyOverride ? S.surveyOverride.map(s => ({...s, tvd: s.tvd ?? s.tvdc})) : (S.traj?.calc || [])),
     setTally: (t, name, err) => { S.tally = t; S.tallyName = name; S.tallyError = err || ''; try { t ? localStorage.setItem(TKEY, JSON.stringify({t, name})) : localStorage.removeItem(TKEY); } catch {} render(); },
     setOffsets: (o, src) => { S.offsets = {...(o || {}), source: src || o?.source || 'uploaded'}; try { localStorage.setItem(OKEY(S.well?.name || DEF_WELL), JSON.stringify(S.offsets)); } catch {} render(); },
@@ -481,6 +485,7 @@ function render() {
     $('onBit').title = 'No bit depth channel is reported. Bit MD is shown as derived from hole MD only while drilling on bottom.';
   }
   S.bitMd = S.depthCheck.bitMd; S.holeMd = S.depthCheck.holeMd; S.bitKind = bit.clamped?'invalid':bit.kind;
+  landingPlanner?.refresh();
   const conns = L && !L.time ? blockConnections(rows,S.map) : [];S.conns=conns;
   const cache=S.pipeCache,lastRow=rows.at(-1)?.join(',');
   if(!cache||cache.rows!==rows||cache.count!==rows.length||cache.tail!==lastRow||cache.map!==S.map||cache.tally!==S.tally){

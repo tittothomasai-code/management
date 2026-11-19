@@ -1,0 +1,55 @@
+{
+  "mode": "Actual Ops and landing modules; local SIM data/transport only; no live equipment or credentials.",
+  "results": [
+    {
+      "width": 1920,
+      "checks": [
+        "Q hidden entry",
+        "typing Q stays in inputs",
+        "phone advanced-tools entry",
+        "manual MD/angles ten paths",
+        "position/angles ten paths",
+        "JSON/CSV export",
+        "no feasible recommendation when DLS too low",
+        "stale export disabled",
+        "live survey recalculation",
+        "BHA run-scoped response",
+        "dirty input retained",
+        "well/bore scope clears results",
+        "Escape preserves raw state",
+        "isolated animated how-to",
+        "hard-case tutorial",
+        "red pulse and reduced-motion static warning",
+        "explicit unsurveyed projection",
+        "depth update never becomes a measured response station",
+        "no transport calls or external requests"
+      ],
+      "errors": []
+    },
+    {
+      "width": 390,
+      "checks": [
+        "Q hidden entry",
+        "typing Q stays in inputs",
+        "phone advanced-tools entry",
+        "manual MD/angles ten paths",
+        "position/angles ten paths",
+        "JSON/CSV export",
+        "no feasible recommendation when DLS too low",
+        "stale export disabled",
+        "live survey recalculation",
+        "BHA run-scoped response",
+        "dirty input retained",
+        "well/bore scope clears results",
+        "Escape preserves raw state",
+        "isolated animated how-to",
+        "hard-case tutorial",
+        "red pulse and reduced-motion static warning",
+        "explicit unsurveyed projection",
+        "depth update never becomes a measured response station",
+        "no transport calls or external requests"
+      ],
+      "errors": []
+    }
+  ]
+}
