@@ -7,7 +7,7 @@
     },
     {
       "path": "opsnow.js",
-      "sha256": "7999506bc17f2318250292f6b17994d13760bf1a4c23af96e7a7e17ac3cb984b"
+      "sha256": "6663722b026dd92818189609a2e2b7b91a6489c129746e38310ceb240be08a61"
     },
     {
       "path": "opsnow_tallyview.js",
@@ -43,7 +43,7 @@
     },
     {
       "path": "opsnow_landing.mjs",
-      "sha256": "42c2a2a69409e4ac90df7f5b5d6c2c0df7992a28f6f4b0a402c58f223c530008"
+      "sha256": "f7b8276b8c040af57a78f12c93a24a25d9181cc0af14ec1aba8a808abe84ae69"
     },
     {
       "path": "opsnow_landing_core.mjs",
@@ -79,7 +79,7 @@
     },
     {
       "path": "opsnow_landing_space.mjs",
-      "sha256": "5211a31f97ce7a84906a98ef178cf5c100de4dd38de48f364183a9d95852edf6"
+      "sha256": "c37be0c14703bcec551f6a7a83caf040abb1b8d6bf56c710480d14c700291d71"
     },
     {
       "path": "landing-game/index.html",
@@ -168,8 +168,20 @@
     {
       "path": "directional-drilling/probe-view.mjs",
       "sha256": "37c4ee374be5410bb6768882ea159e0e9f8ad85e60d2da5cf3aa1481c0e1b36e"
+    },
+    {
+      "path": "opsnow_landing_dock.mjs",
+      "sha256": "c28f292ef876713aab29adcb056cba339af816617ad031a8c64f95def8ac1722"
+    },
+    {
+      "path": "opsnow_landing_status.mjs",
+      "sha256": "40d887b158492fe84a217e4653f5db71c8e22c26107e4f915912fd65a0d549a4"
+    },
+    {
+      "path": "opsnow_landing_dock.css",
+      "sha256": "6bd4fa5d4c2bd7decdd0bda4d7a594f7c8c9c4c1b878774468c21cb005f98f7f"
     }
   ],
-  "verifiedDeployId": "6afee62ead136e1316f3f5c0",
+  "verifiedDeployId": "6aff8149ef3a1cd4e10fc01f",
   "verifiedAt": "2026-11-19"
 }

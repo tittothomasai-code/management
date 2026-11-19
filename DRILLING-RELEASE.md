@@ -491,3 +491,52 @@ simulation browser checks before promotion. All 16 changed/new runtime files
 independently matched live SHA-256 hashes after publication. The original site
 inventory was preserved. The page stays a synthetic geometry simulation; the
 joint-resolved engineering planner remains separate and available through Q.
+
+## Main Ops — landing and drilling workspace, Settings and next-well selection
+
+Deploy `6aff8149ef3a1cd4e10fc01f`; immediate rollback `6afee62ead136e1316f3f5c0`.
+Dashboard https://drilling.robotyx.systems/ops
+Runtime head `c4e9588279c22c9b6ae04805c10fd76b72f3cd1a`.
+Workflow https://github.com/tittothomasai-code/management/actions/runs/44634915176
+
+Main Ops now exposes Landing & drilling in navigation and a compact status card.
+The clean workspace shows survey/target Inc/Azi, exact next-joint DLS/dogleg and
+ending angles, a rotatable projection of the evaluated 3D survey/landing path,
+and a collapsed complete joint schedule. Settings opens the existing planner for
+target/tie-on, BHA response, measured/nominal joint lengths, limits, exports and
+full search review. Closing Settings returns to the workspace. Q remains a
+shortcut to the detailed planner. No solver or audit-ledger rebuild was needed.
+
+Opening the workspace enables the existing survey/depth recalculation while its
+dialog and Settings are closed. The status presentation suppresses obsolete
+instructions on changed inputs, scope changes, an unfinished/failed search,
+missing complete surveys, delayed/unsigned feed, unreported/invalid/derived or
+off-bottom bit depth, completed bore, or hard/infeasible selected geometry.
+Manual previews remain labelled drafts. Active survey guidance needs advancing
+feed under 120 seconds old and reported bit depth within 0.5 m of hole depth.
+The last-survey marker never pretends to be a measured current bit position.
+The landing rectangle is a position tolerance or calculated pose, not geology.
+
+Simulation lazily embeds the existing Directional Drilling Simulation, including
+its synthetic contours and XYZ tools, without passing live data or settings.
+Changing tabs removes the iframe and its rendering work. The active plan remains
+unchanged. Detailed forms are absent from the default workspace.
+
+Ops Settings now accepts a well name or UID with an Open well button. It refreshes
+into the encoded well URL and a new app/data scope, preventing in-flight or stored
+previous-well data from being relabelled as the next well. Existing credentials
+are not persisted or added to the URL; the page asks for reconnection if needed.
+No equipment command, WITSML write or automatic live well-plan update is issued.
+
+130 unit tests passed, including ten new status/scope/next-well tests. New desktop
+1920×1080 and phone 390×844 browser checks passed main entry, clean Settings return,
+exact next joint, 3D rotation, closed-dialog recalculation, lazy isolated practice,
+delayed/off-bottom/hard suppression, scope changes, next-well navigation, responsive
+fit with both a populated plan and expanded joint table, and zero transport calls. The existing full planner/tutorial regression also
+passed on desktop and phone. Screenshots and results are stored under
+`drilling-tests/ops-landing-evidence/`; user steps are in LANDING-PLANNER.md.
+
+The actual unpublished host passed the protected workspaces, the new Ops workspace,
+Settings, embedded practice and Open well flow on desktop and phone before
+promotion. All six changed/new runtime files independently matched live SHA-256
+hashes after publication. Original site inventory was preserved.
