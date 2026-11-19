@@ -8,7 +8,8 @@ import {referenceScope,loadMeasuredReference,inventoryPosition,inventoryResetLab
 import {checkpointState,renderHardpoints,STORAGE_KEY} from './opsnow_hardpoints.mjs?v=hardpoint1118';
 import {uploadedReference} from './opsnow_measured_upload.mjs?v=hardpoint1118';
 import {reportedOperation,reportDepthIssue,drillingReferenceMd,renderOperationReport} from './opsnow_operation_report.mjs?v=eow1118';
-import {initLandingPlanner} from './opsnow_landing.mjs?v=landing-dds2';
+import {initLandingDock} from './opsnow_landing_dock.mjs?v=ops-landing1';
+import {initLandingPlanner} from './opsnow_landing.mjs?v=ops-landing1';
 import * as W from './opsnow_wire.js?v=re1115';
 import * as VW from './opsnow_views.js?v=re1115';
 import * as A from './opsnow_ac.js?v=re1115';
@@ -17,7 +18,7 @@ import * as JS from './opsnow_jsurvey.js?v=re1115';
 import {createSurveyAlerts, reportSurveyStations} from './opsnow_survey_alert.mjs?v=survey1117';
 import {createPumpGraphic, pumpSample, driveChannel, driveSample, refreshDepthTail} from './opsnow_pumps.mjs?v=spp100';
 const $ = id => document.getElementById(id);
-let landingPlanner=null;
+let landingPlanner=null,landingDock=null;
 const PAGE = ['joints', 'wellplan'].includes(document.documentElement.dataset.page) ? document.documentElement.dataset.page : 'ops'; // joints.html / wellplan.html: same data layer, one surface each
 const DEF_WELL = new URLSearchParams(location.search).get('well') || 'DR101L';
 const NOMINAL_JOINT_M = 13; // fallback only; complete BHE strokes supply labelled derived lengths.
@@ -283,7 +284,7 @@ const MARKUP = `
   <section id="onOperationReport" hidden aria-label="Reported well operation"></section>
   <div class="on-depths"><div><small>Hole MD</small><b id="onHole">—</b></div><div><small id="onBitLbl">Bit MD</small><b id="onBit">—</b></div><div><small>Last survey</small><b id="onLastSv">—</b></div></div>
   <button id="onGear" class="on-gear" type="button" aria-label="Settings" aria-expanded="false">⚙</button>
-  <nav class="on-views" aria-label="Views"><button type="button" data-v="log">Live log</button><button type="button" data-v="3d">3D wells</button><button type="button" data-v="ac" id="onAcBtn">Anti-collision</button><button type="button" data-v="tally">Tally</button><button type="button" data-v="geo">Geosteer</button><a class="on-linkbtn" id="onJointsLink" href="./joints.html">Joints ↗</a><a class="on-linkbtn" id="onPlanLink" href="./wellplan.html" title="Well planning (key P)">Well plan ↗</a></nav>
+  <nav class="on-views" aria-label="Views"><button type="button" id="onLandingWorkspace">Landing & drilling</button><button type="button" data-v="log">Live log</button><button type="button" data-v="3d">3D wells</button><button type="button" data-v="ac" id="onAcBtn">Anti-collision</button><button type="button" data-v="tally">Tally</button><button type="button" data-v="geo">Geosteer</button><a class="on-linkbtn" id="onJointsLink" href="./joints.html">Joints ↗</a><a class="on-linkbtn" id="onPlanLink" href="./wellplan.html" title="Well planning (key P)">Well plan ↗</a></nav>
 </header>
 <p id="onMsg" class="on-msg" role="status" hidden></p>
 <section id="onSignin" class="on-card on-signin" hidden>
@@ -296,7 +297,7 @@ const MARKUP = `
     <button id="onGo" type="submit">Connect</button>
   </form>
 </section>
-<main id="onMain">
+<main id="onMain"><section id="onLandingDock" aria-label="Landing and drilling guidance"></section>
   <p id="onTilesNote" class="on-muted on-tilesnote"></p>
   <section class="on-tiles" id="onTiles"></section>
   <section class="on-grid">
@@ -390,6 +391,7 @@ function build() {
   if (PAGE === 'wellplan') { buildCommon(); WP.init(ctx, $('wpHost'), {xlsxRows: VW.xlsxRows}); $('onConnBtn').onclick = () => { S.showSignin = !S.showSignin; render(); }; document.title = 'Well plan · live WITSML'; return; }
   addEventListener('keydown', e => { if (e.key !== 'p' && e.key !== 'P') return; if (e.ctrlKey || e.metaKey || e.altKey || e.repeat || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName || '') || document.activeElement?.isContentEditable) return; location.href = './wellplan.html' + qs; });
   if (PAGE === 'joints') { buildCommon(); S.wantTl = true; VW.initJointsPage(ctx, $('jtHost')); $('onScanBtn').onclick = () => VW.togglePop(true); document.title = 'Joints · live WITSML'; return; }
+  landingDock=initLandingDock({host:$('onLandingDock'),getContext:ctx,planner:landingPlanner});
   pumpGraphic = createPumpGraphic({host: document.querySelector('.on-depths')});
   $('onTiles').innerHTML = TILES.map(([k, n]) => `<div class="on-tile" data-k="${k}"><small>${n}</small><b id="onV_${k}">—</b><i id="onU_${k}"></i></div>`).join('');
   $('onTrends').innerHTML = TILES.map(([k, n]) => `<div class="on-trend" data-k="${k}"><span><b>${n}</b> <em id="onT_${k}"></em></span><canvas id="onC_${k}"></canvas></div>`).join('');
@@ -397,7 +399,7 @@ function build() {
   const tr = $('onTrends').parentElement;
   const hov = e => { const cv = tr.querySelector('canvas'); if (!cv || !S.trendX) return; const r = cv.getBoundingClientRect(); const f = (e.clientX - r.left) / r.width; S.hoverMd = f >= 0 && f <= 1 ? S.trendX[0] + f * (S.trendX[1] - S.trendX[0]) : null; render(); };
   tr.addEventListener('pointermove', hov); tr.addEventListener('pointerdown', hov); tr.addEventListener('pointerleave', () => { S.hoverMd = null; render(); });
-  document.querySelectorAll('.on-views button').forEach(b => b.onclick = () => VW.open(b.dataset.v));
+  document.querySelectorAll('.on-views button[data-v]').forEach(b => b.onclick = () => VW.open(b.dataset.v));
   VW.init(ctx);
   if ($('onSvFile')) $('onSvFile').onchange = async e => { const f = e.target.files?.[0]; if (f) { try { await VW.importSurvey(f, ctx()); render(); } catch (err) { setMsg(err.message); } } e.target.value = ''; };
   if ($('onSvExport')) $('onSvExport').onclick = () => VW.downloadSurvey(ctx());
@@ -405,7 +407,7 @@ function build() {
 // What the pop-up views need, computed from the same state as the main screen.
 function ctx() {
   const holeMd = S.log && !S.log.time ? S.data.rows.at(-1)?.[0] : null;
-  return {...referenceContext(),operationReport:S.operationReport,historicalRun:!!S.operationReport,data: S.data, fe: S.fe, image: S.imageRows, imageRange: S.imageRange, conns: S.conns, jointNo: S.jointNo, bitMd: S.bitMd ?? null, holeMd: S.holeMd ?? holeMd, bitKind: S.bitKind, depthCheck:S.depthCheck, pipeChecks:S.pipeChecks||[],
+  return {landingFeed:{signed:W.hasCred()&&!W.state.dead,advancedAt:S.advancedAt},...referenceContext(),operationReport:S.operationReport,historicalRun:!!S.operationReport,data: S.data, fe: S.fe, image: S.imageRows, imageRange: S.imageRange, conns: S.conns, jointNo: S.jointNo, bitMd: S.bitMd ?? null, holeMd: S.holeMd ?? holeMd, bitKind: S.bitKind, depthCheck:S.depthCheck, pipeChecks:S.pipeChecks||[],
     branches: S.branches, branchMsg: S.branchMsg, active: S.wb?.name, bitPos: S.bitPos, ac: S.ac, backfilling: S.backfill === 'reading' || S.backfill === 'todo',
     tally: S.tally, tallyName: S.tallyName, tallyError: S.tallyError, tallyCmp: S.tally ? C.compareTally(S.tally, S.conns || [], S.bitMd) : null,
     refresh: () => render(), map: S.map, tl: S.tl, timeLogName: S.timeLog?.name || '',
@@ -485,7 +487,7 @@ function render() {
     $('onBit').title = 'No bit depth channel is reported. Bit MD is shown as derived from hole MD only while drilling on bottom.';
   }
   S.bitMd = S.depthCheck.bitMd; S.holeMd = S.depthCheck.holeMd; S.bitKind = bit.clamped?'invalid':bit.kind;
-  landingPlanner?.refresh();
+  landingPlanner?.refresh();landingDock?.refresh();
   const conns = L && !L.time ? blockConnections(rows,S.map) : [];S.conns=conns;
   const cache=S.pipeCache,lastRow=rows.at(-1)?.join(',');
   if(!cache||cache.rows!==rows||cache.count!==rows.length||cache.tail!==lastRow||cache.map!==S.map||cache.tally!==S.tally){

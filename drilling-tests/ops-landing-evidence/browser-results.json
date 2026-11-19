@@ -1,0 +1,40 @@
+{
+  "results": [
+    {
+      "width": 1920,
+      "passed": true,
+      "checks": [
+        "main Ops entry",
+        "clean default with settings separate",
+        "survey guidance and exact next joint",
+        "rotatable evaluated 3D path",
+        "new survey recalculates while settings closed",
+        "dashboard monitoring when workspace closed",
+        "embedded isolated simulation lazy load and disposal",
+        "delayed feed and off-bottom pause",
+        "hard landing suppression",
+        "next-well scope isolation",
+        "phone fit and Escape",
+        "no external requests or transport writes"
+      ]
+    },
+    {
+      "width": 390,
+      "passed": true,
+      "checks": [
+        "main Ops entry",
+        "clean default with settings separate",
+        "survey guidance and exact next joint",
+        "rotatable evaluated 3D path",
+        "new survey recalculates while settings closed",
+        "dashboard monitoring when workspace closed",
+        "embedded isolated simulation lazy load and disposal",
+        "delayed feed and off-bottom pause",
+        "hard landing suppression",
+        "next-well scope isolation",
+        "phone fit and Escape",
+        "no external requests or transport writes"
+      ]
+    }
+  ]
+}

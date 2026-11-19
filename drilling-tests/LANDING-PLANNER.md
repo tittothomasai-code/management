@@ -285,3 +285,52 @@ Relief and N/E feature scales change the real mesh and the shared analytic bed
 gradient. XYZ picks geometry in local metres (X East, Y North, Z TVD down); choose
 roof or floor at the same East/North and focus the reservoir for easier phone
 picking. Empty sky has no invented coordinates. The old simulation URL redirects.
+
+
+## Main Ops workspace
+
+Open **Landing & drilling** in the main Ops navigation or **Open workspace** on
+its compact card. Guidance shows the last complete survey, target Inc/Azi,
+calculated next-joint dogleg and DLS, ending Inc/Azi, and a rotatable 3D projection
+of the actual evaluated path. Open the collapsed joint-by-joint plan for all rows.
+For a position target, the rectangle represents entered position tolerance; for an
+MD target it marks the calculated landing pose. It never represents formation data.
+No synthetic roof/floor is presented as measured geology.
+
+**Settings** opens the existing full planner for target, tie-on, joint lengths,
+BHA identity/response, DLS limits and search review. Search once, then close
+Settings to return to the clean workspace. The existing planner worker and audit
+ledger are reused. Q still opens the detailed planner as a shortcut. After the
+workspace has been opened, new surveys/depth changes continue to invalidate and
+recalculate its report with Settings and the workspace closed. Changed inputs,
+calculation errors and unfinished searches suppress obsolete next-joint guidance.
+
+The card is advisory. Active survey guidance additionally requires a signed-in
+advancing feed under 120 seconds old and reported bit depth within 0.5 m of hole
+depth. Stale, missing, invalid, derived or off-bottom readings pause next-joint
+instructions; the evaluated plan can still be inspected. A manual tie-on stays a
+labelled draft. Infeasible/hard paths suppress instructions and pulse red, with
+reduced motion respected. Identity, well and bore changes clear the prior scope;
+the reported completed bore cannot supply next-well guidance.
+
+**Simulation** embeds the existing Directional Drilling Simulation on demand.
+Its contours, target dragging and XYZ tool remain synthetic practice. It receives
+no live data or planner settings. Leaving the tab removes the iframe and releases
+its rendering work; returning to Guidance preserves the active plan.
+
+To prepare the next well:
+
+1. Choose its wellbore in Ops Settings and confirm the feed/survey scope.
+2. Open Landing & drilling, then Settings.
+3. Enter the landing target and reviewed limits; choose 6 m, 9 m, nominal or
+   measured tally lengths and the correct BHA run.
+4. Search landing solutions, review the full result, and close Settings.
+5. Follow the advisory joint requirements and review recalculations with each
+   survey. No rig command, live well-plan update or automatic steering is issued.
+
+Verification adds nine status-gating unit tests and desktop/phone browser checks
+for the main entry, Settings return, exact next joint, 3D rotation, recalculation
+with closed dialogs, isolated lazy simulation, delayed/off-bottom/hard suppression,
+scope changes, responsive fit and zero transport calls. Screenshots are in
+`drilling-tests/ops-landing-evidence/`; actual-host release acceptance also opens
+this workspace and simulation on desktop and phone before publication.
