@@ -7,7 +7,7 @@
     },
     {
       "path": "opsnow.js",
-      "sha256": "1d248ccfebffb60807bec7e356e3a08a9899637787f8b7790c8d616b357fb2ae"
+      "sha256": "9083a261481465fbf82ed9cabb85208333b781e62d0be3218195a11803970ed4"
     },
     {
       "path": "opsnow_tallyview.js",
@@ -43,7 +43,7 @@
     },
     {
       "path": "opsnow_landing.mjs",
-      "sha256": "f59f56d90f56f67a3d822bb1db1e84cbe3e13b65792d2e40f81d8baf9cff2dbf"
+      "sha256": "a2968f91bdf79c5edd8f9a129f5efc1d3a36280a13ae280740b9eb266a5e2267"
     },
     {
       "path": "opsnow_landing_core.mjs",
@@ -55,7 +55,7 @@
     },
     {
       "path": "opsnow_landing_demo.mjs",
-      "sha256": "359217c3e5c8c4bab658ab70c6b8102a3fe3d7d0065b4820065297e07c69a2ab"
+      "sha256": "8779f97d9e7a1031cb8c7baa9c8031c7121fd85104f2762435793e5ac8def908"
     },
     {
       "path": "opsnow_landing_joints.mjs",
@@ -80,8 +80,48 @@
     {
       "path": "opsnow_landing_space.mjs",
       "sha256": "5211a31f97ce7a84906a98ef178cf5c100de4dd38de48f364183a9d95852edf6"
+    },
+    {
+      "path": "landing-game/index.html",
+      "sha256": "f529e6932ff04438566ee5221cfd7ba74a00552ab5f9cc42d0160fb570b87866"
+    },
+    {
+      "path": "landing-game/style.css",
+      "sha256": "0e0a3887ab6dafc07631b5478edcb1172ccc0f5afb34e2e1e421229ee1e5ca69"
+    },
+    {
+      "path": "landing-game/app.mjs",
+      "sha256": "f79968574705d30cd434c770e785de8ecfbdeffadcf89dc21f27a67611f4316b"
+    },
+    {
+      "path": "landing-game/core.mjs",
+      "sha256": "b2613d5fde03a27c262b2f8e02952053dc7f58d7d55b4c014f70eb714b869ab2"
+    },
+    {
+      "path": "landing-game/scene.mjs",
+      "sha256": "14004f9fb5d0e600ce455c739fc48097c046bae2619a5bdedc38c90841ac39aa"
+    },
+    {
+      "path": "landing-game/fallback.mjs",
+      "sha256": "60da0a48759f15197ac67ba085445c7b92bb2082142f4943e9bf2390115b49bc"
+    },
+    {
+      "path": "landing-game/reservoir.mjs",
+      "sha256": "ea4ae018e09c046afd409310fd264a3ddf2dd8a0a7062b6801d566552b5a14bc"
+    },
+    {
+      "path": "landing-game/reservoir-view.mjs",
+      "sha256": "d277670072e9e28acb87f15e11b98af3c78777bb84b80efe3c7e5f05fa8c6ac5"
+    },
+    {
+      "path": "landing-game/landing.mjs",
+      "sha256": "8ca5e379e1d748208331596dc4b5ec0a25b30117375b23f56d760c7daef7de1b"
+    },
+    {
+      "path": "landing-game/landing-view.mjs",
+      "sha256": "0135eaf1d967afc0221ea989198d8631fd5a4ec97702129333f19372652774dd"
     }
   ],
-  "verifiedDeployId": "6afeae219bde381fbbfb6c77",
+  "verifiedDeployId": "6afed111e9720ca5174624f4",
   "verifiedAt": "2026-11-19"
 }

@@ -400,3 +400,53 @@ A separate animated desktop/phone pass captured the bit just after the first
 rectangle at MD 130 m. The actual unpublished deploy passed desktop/phone target-window and protected
 Ops/Tally/BHA/DD/EDM/menu checks before promotion. All nine runtime modules
 independently matched live SHA-256 hashes after publication.
+
+## Sky Run — separate 3D landing game and deformable reservoir
+
+Deploy `6afed111e9720ca5174624f4`; immediate rollback `6afeae219bde381fbbfb6c77`.
+Game https://drilling.robotyx.systems/landing-game/index.html
+Runtime head `1a5efe33559b43a738e0f25fed13981961bab397`.
+Workflow https://github.com/tittothomasai-code/management/actions/runs/44507104603
+
+`/landing-game/index.html` opens a dedicated WebGL game with an animated ring
+corridor, moving chevrons, holographic target frames, reused detailed PDC geometry,
+orbit/chase cameras and a labelled fallback. Q and its how-to link to the new page;
+the existing joint-by-joint planner/tutorial and protected workspaces stay available.
+No live feed, account, billing or plan is read or changed by the game.
+
+Guide rings use 10 m, 30 m or uploaded measured tally spacing from a configurable
+kickoff. Pinned targets are additional to this guide grid. Dragging a future ring
+promotes it to a fixed target and realigns the corridor. N/E/TVD arrows, coordinates
+and mouse/touch dragging operate in true 3D. Mid-flight replanning keeps the flown
+prefix and current bit position/tangent. Cleared targets remain fixed. Tally mode
+uses run-order lengths and optional first remaining length, adds no BHA offset,
+and pauses at coverage. Switching to shorter coverage cannot rewind the bit.
+
+The reservoir has curved roof/floor meshes, contours and faint absolute-TVD levels.
+Two-finger surface mode changes depth, thickness and dip; numeric controls are also
+available. Future landing targets track edits while flown history stays fixed.
+The landing rectangle can be resized with white 3D corner handles or metre inputs.
+Heading maps the entry gates; inclination follows the local bed gradient or a
+manual value. The final tangent, all four rectangle corners, the approach within
+the bed and a 60 m game runout are checked. The renderer and handles use the same
+rectangle basis, verified at 15 orientations. Conflicts cannot count as successful
+landings; flight stops before the first applicable floor/approach constraint.
+
+112 unit tests passed locally, including 17 game tests for spacing, pinned targets,
+fixed history, measured/partial pipes and coverage, roof/floor deformation, floor
+entry between outside endpoints, corner fitting, heading/tangent mapping, manual
+runout rejection and rollback. Desktop/phone WebGL tests passed mouse/touch target
+and corner dragging, actual two-finger surface changes, tally upload/coverage,
+full landing and floor stopping. The forced fallback and existing landing browser
+regression passed. Source details/controls: `drilling/landing-game/README.md`.
+
+This is a sampled cubic-Hermite game spline, separate from engineering landing
+instructions or calibrated BHA response. Floor checks concern the game bit centre,
+not full body clearance or survey uncertainty; the display bit is enlarged.
+Course edits remain in the current tab. No external art, fonts or CDN assets are
+used; existing local MIT notices and original bit geometry are retained.
+
+The actual unpublished deploy passed the protected workspaces and the complete
+new desktop/phone game checks, including real pointer/touch corner resizing and
+two-finger surface deformation, before promotion. All 13 changed/new runtime
+files independently matched live SHA-256 hashes after publication.
