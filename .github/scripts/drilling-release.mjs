@@ -48,8 +48,10 @@ if(mode==='preview'){
  for(const sha of created.required||[]){const item=[...overlay].find(([,body])=>digest(body)===sha);if(!item)throw Error('Netlify requested an unchanged file that should already exist; production not touched.');await api('/deploys/'+created.id+'/files/'+item[0].slice(1).split('/').map(encodeURIComponent).join('/'),{method:'PUT',headers:{'Content-Type':'application/octet-stream'},body:item[1]});}
  const ready=await waitReady(created.id),preview=ready.deploy_ssl_url||ready.deploy_url;
  if(!preview||new URL(preview).hostname!==ready.id+'--'+site.name+'.netlify.app')throw Error('Unexpected deploy preview origin.');
+ // Public deploy metadata helps diagnose a static response without exposing auth or page data.
+ console.log(JSON.stringify({phase:'preview-created',previewUrl:preview,deployId:ready.id}));
  // Verify every added/changed payload on the preview before any browser test or publish.
- for(const [path,body]of overlay){const served=await staticFile(preview,path);if(digest(served)!==digest(body))throw Error('Preview payload verification failed for '+path);}
+ for(const [path,body]of overlay){const served=await staticFile(preview,path);if(digest(served)!==digest(body))throw Error('Preview payload verification failed for '+path+'; expected '+digest(body)+' received '+digest(served)+'; previousPayload='+(digest(served)===manifest[path])+' canonicalPayload='+(digest(served)===candidate['/directional-drilling/index.html']));}
  const plan={siteId:site.id,rollbackDeploy:deploy.id,previewDeploy:ready.id,previewUrl:preview,sourceHead:process.env.GITHUB_SHA,oldFileCount:oldKeys.length,newFileCount:Object.keys(candidate).length,changedFiles:[...overlay.keys()].filter(p=>manifest[p]&&manifest[p]!==candidate[p]),addedFiles:[...overlay.keys()].filter(p=>!manifest[p]),preservedFileCount:oldKeys.filter(p=>!overlay.has(p)).length,expectedHashes:Object.fromEntries([...overlay].map(([p,b])=>[p,digest(b)]))};
  await save('release-plan.json',plan);await save('candidate-inventory.json',candidate);
  console.log(JSON.stringify({phase:'preview-ready',site:report.site,rollbackDeploy:deploy.id,previewUrl:preview,oldFileCount:plan.oldFileCount,newFileCount:plan.newFileCount,preservedFileCount:plan.preservedFileCount,changedFiles:plan.changedFiles}));
