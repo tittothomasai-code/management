@@ -6,7 +6,7 @@ import {renderJointSchedule} from './opsnow_landing_schedule.mjs?v=landing-windo
 import {createLandingSimulation,landingSimulationInput,acceptLandingSimulationPlan,advanceLandingSimulation} from './opsnow_landing_sim.mjs?v=landing-windows1';
 import {atMD} from './bha-builder/shared/wp-autotrack-core.js';
 let audit=null,historyView=null,animationReview=0,windowsInitialized=false,windowsDirty=false;
-const spaceView={yaw:35,pitch:25};
+const spaceView={yaw:240,pitch:35};
 let dialog=null,worker=null,generation=0,request=0,animation=0,timer=null,plot=null,previousFocus=null,sim=null,selected=null,running=false,busy=false;
 const f=(n,d=3)=>Number.isFinite(n)?n.toFixed(d):'—';
 function style(){if(document.getElementById('landing-demo-style'))return;const s=document.createElement('style');s.id='landing-demo-style';s.textContent=`
