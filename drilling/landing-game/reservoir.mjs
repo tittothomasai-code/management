@@ -1,0 +1,13 @@
+// A deformable SIM reservoir in the same local north/east/TVD frame as the game.
+export function createReservoir(kop){return {n:kop.n+420,e:kop.e+38,centerTvd:kop.tvd+300,thickness:24,tiltN:.025,tiltE:-.01,warp:5,widthN:200,widthE:220};}
+export function validateReservoir(r){for(const k of ['n','e','centerTvd','thickness','tiltN','tiltE','warp','widthN','widthE'])if(!Number.isFinite(r[k]))throw Error('Reservoir settings must be finite.');if(Math.abs(r.centerTvd)>5000||r.thickness<2||r.thickness>100||Math.abs(r.tiltN)>.35||Math.abs(r.tiltE)>.35||r.warp<0||r.warp>20||r.widthN<50||r.widthE<50)throw Error('Use 2–100 m thickness, dip slopes ±0.35 and contour warp 0–20 m.');return r;}
+export function surfaceAt(r,n,e,{outside=false}={}){const dn=n-r.n,de=e-r.e;if(!outside&&(Math.abs(dn)>r.widthN/2+1e-7||Math.abs(de)>r.widthE/2+1e-7))return null;const mid=r.centerTvd+r.tiltN*dn+r.tiltE*de+r.warp*Math.sin(dn/55)*Math.cos(de/70);return {mid,roof:mid-r.thickness/2,floor:mid+r.thickness/2,gradientN:r.tiltN+r.warp/55*Math.cos(dn/55)*Math.cos(de/70),gradientE:r.tiltE-r.warp/70*Math.sin(dn/55)*Math.sin(de/70)};}
+export function alignReservoirTargets(g){const r=validateReservoir(g.reservoir),landing=g.targets.at(-1);g.landing.heightM=Math.min(g.landing.heightM,Math.max(.5,r.thickness*.8));r.n=landing.n;r.e=landing.e;
+ for(const t of g.targets){if(t.passed)continue;if(t.role==='entry'){t.n=landing.n-g.landing.entryDistance*Math.cos(g.landing.azi*Math.PI/180);t.e=landing.e-g.landing.entryDistance*Math.sin(g.landing.azi*Math.PI/180);}const surface=surfaceAt(r,t.n,t.e);if(t.role==='landing'||t.role==='entry')t.tvd=surfaceAt(r,t.n,t.e,{outside:true}).mid;else if(surface)t.tvd=Math.min(t.tvd,surface.floor-Math.min(2,r.thickness*.2));}
+}
+export function floorConflict(path,r,fromMd){
+ const lerp=(a,b,t)=>Object.fromEntries(['n','e','tvd','md'].map(k=>[k,a[k]+(b[k]-a[k])*t])),depth=p=>{const s=surfaceAt(r,p.n,p.e);return s?s.floor-p.tvd:null;};
+ for(let i=1;i<path.length;i++){const a=path[i-1],b=path[i];if(b.md<fromMd-1e-7)continue;const cuts=[Math.max(0,(fromMd-a.md)/(b.md-a.md)),1];for(const [axis,half]of [['n',r.widthN/2],['e',r.widthE/2]])for(const bound of [r[axis]-half,r[axis]+half]){const t=(bound-a[axis])/(b[axis]-a[axis]);if(t>cuts[0]&&t<1)cuts.push(t);}cuts.sort((x,y)=>x-y);
+  for(let j=1;j<cuts.length;j++){const lo=cuts[j-1],hi=cuts[j];for(let k=0;k<=2;k++){const t=lo+(hi-lo)*k/2,p=lerp(a,b,t),d=depth(p);if(d!==null&&d<-.00001){let left=Math.max(lo,t-(hi-lo)/2),right=t;for(let z=0;z<30;z++){const mid=(left+right)/2,clear=depth(lerp(a,b,mid));if(clear===null||clear>=0)left=mid;else right=mid;}return {md:Math.max(fromMd,lerp(a,b,left).md-.001),point:p,clearanceM:d,reason:'Planned line crosses the reservoir floor.'};}}}
+ }return null;
+}

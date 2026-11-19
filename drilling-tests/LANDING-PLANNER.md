@@ -260,3 +260,22 @@ window. Desktop/phone browser checks verify all three green crossings at MD 500,
 3D rotation, add/remove/edit and validation, an unreachable target blocking play,
 and unchanged live settings. Unpublished-host acceptance checks the real 3D files
 and window outcomes before release.
+
+
+## Separate 3D Sky Run game
+
+Use **Sky Run · 3D game** in Q (or **3D game** in How to) to open
+`/landing-game/index.html`. This is a separate game page; the joint-by-joint planner
+and existing tutorial remain available. It has animated ring guides at 10 m,
+30 m or uploaded tally intervals, pinned 3D targets, orbit/chase cameras, faint
+absolute-TVD grids and a contoured reservoir roof/floor. Mouse/touch dragging,
+N/E/TVD arrows and coordinates reshape future targets while preserving flown
+history. Two-finger shaping changes reservoir depth, thickness and dip.
+
+Landing has a resizable sweet-zone rectangle and explicit entry heading. The
+surface-following inclination comes from local bed dip; a manual inclination can
+also be entered. Corner fitting, entry/approach containment and a 60 m game runout
+are checked. Conflicting paths cannot count as a good landing and stop before
+floor penetration. These are game centreline checks, not full BHA clearance,
+calibrated response, or live well-plan changes. See `drilling/landing-game/README.md`
+for controls, measurement semantics, limits and resources.
