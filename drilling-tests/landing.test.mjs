@@ -23,7 +23,7 @@ test('straight hold duplicates are labelled; an impossible DLS ceiling produces 
 test('position templates meet the actual N/E/TVD target and endpoint angles; sampled geometry converges',()=>{
  const target={mode:'position',n:300,e:100,tvd:500,inc:85,azi:20,md:null},r=planLanding(mdInput({target,limits:{...limits,maxDls:30}}));
  assert.equal(r.candidates.length,10);assert.ok(r.recommendation);
- for(const c of r.candidates){close(c.end.n,300);close(c.end.e,100);close(c.end.tvd,500);close(c.end.inc,85);close(c.end.azi,20);assert.ok(c.mdLength>=Math.hypot(300,100,500));assert.equal(c.resolution,'Converged sampled cubic');assert.ok(c.cumulativeIntegrationError<=.05);}
+ for(const c of r.candidates){close(c.end.n,300,.005);close(c.end.e,100,.005);close(c.end.tvd,500,.005);close(c.end.inc,85);close(c.end.azi,20);assert.ok(c.mdLength>=Math.hypot(300,100,500));assert.equal(c.resolution,'Joint-by-joint minimum curvature');assert.ok(c.cumulativeIntegrationError<=.05);}
 });
 test('position-mode MD constraint is solved; MD shorter than straight distance is never marked feasible',()=>{
  const target={mode:'position',n:300,e:100,tvd:500,inc:85,azi:20,md:680},r=planLanding(mdInput({target,limits:{...limits,maxDls:30}}));

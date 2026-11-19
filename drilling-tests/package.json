@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test install-bha.test.mjs survey-alert.test.mjs pumps.test.mjs joint-metrics.test.mjs tally-compare.test.mjs hardpoints.test.mjs edm-field-check.test.mjs operation-report.test.mjs landing.test.mjs",
+    "test": "node --test install-bha.test.mjs survey-alert.test.mjs pumps.test.mjs joint-metrics.test.mjs tally-compare.test.mjs hardpoints.test.mjs edm-field-check.test.mjs operation-report.test.mjs landing.test.mjs landing-joints.test.mjs",
     "test:host": "node bha-builder-host-acceptance.mjs",
     "test:contexts": "node bha-builder-context-acceptance.mjs",
     "test:survey": "node survey-alert-browser.mjs",

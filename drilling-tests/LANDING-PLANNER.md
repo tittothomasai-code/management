@@ -7,9 +7,9 @@ Escape closes the popup and returns focus. Q in an input does not toggle it.
 
 ## Operator flow
 
-1. **How to · simulation** opens a separate tutorial. It animates the ten-template
-   search against one fixed position and landing tangent, then offers a late-start
-   example. Both use the same 4°/30 m ceiling. The tutorial reads no live context,
+1. **How to · simulation** opens a separate tutorial. It animates a 500 m program, executes one joint at a time and searches the
+   remaining trajectory after every SIM survey. Expected, shallower and deeper
+   reservoir cases use a fixed illustrative 12°/30 m ceiling. The tutorial reads no live context,
    makes no storage writes and cannot change the underlying live form. Its SIM
    label remains visible. Reduced-motion mode presents static evaluated results.
 2. Use the latest complete active survey, or explicitly name a manual planning
@@ -29,7 +29,17 @@ Escape closes the popup and returns focus. Q in an input does not toggle it.
    input, not a measured BHA capability. Optional BHA design selection reuses the
    existing saved BHA library, revision and minimum declared component DLS limit.
    These remain unverified design values and do not identify the actual run.
-6. Compare ten scenarios, inspect the two plots and select a row. Required peak
+6. Choose 6 m, 9 m, nominal pipe length or measured lengths. The visible joint
+   schedule gives start/end MD, actual planned advance, dogleg over the row,
+   required DLS, start/end Inc/Azi and build/drop/turn changes. A stable anchor MD
+   keeps the pipe grid aligned on later surveys. First remaining length applies
+   only at the anchor. Final part-joint landing preserves the physical full length.
+   Measured CSV is `joint,lengthM`; the explicit active-tally button reuses that
+   bore's measured order and cumulative MD without adding BHA twice. Manual drafts
+   cannot silently borrow an active bore's tally. Missing lengths are never filled
+   with nominal values. Export the joint-instruction CSV for the selected path.
+
+   Compare ten scenarios, inspect the two plots and select a row. Required peak
    DLS, build/turn curvature, landing MD/angles, position miss and DLS margin are
    displayed. Duplicate geometries and unsuccessful templates are identified.
    Only a feasible, distinct evaluated candidate can be suggested.
@@ -68,14 +78,25 @@ MD/angle mode evaluates ten timing/curvature shapes using short-arc tangent
 interpolation (plus a build-before-turn profile). The constant-rate case is
 checked against the analytical circular arc and minimum orientation DLS bound.
 
-Position mode evaluates ten cubic endpoint-tangent templates. Gaussian quadrature
-calculates arc MD; a bounded bracket/bisection search fits optional target MD.
-Curvature is computed from the cubic derivatives. Sampling refines through
-240/480/960/1920 stations until the peak changes by at most max(0.002°/30 m, 0.5%),
-individual minimum-curvature integration error is below 0.01 m and cumulative
-integration error is at most min(0.05 m, 10% of position tolerance). Unresolved
-geometry is not feasible. The supported target distance/MD increment is 20 km.
-Duplicate geometry is compared at equal MD fractions, not parameter speed.
+Position mode uses cubic endpoint-tangent templates only as initial guesses.
+Gaussian quadrature/bracket searches seed the design; the final product is a
+piecewise minimum-curvature path on the chosen joint boundaries. A damped,
+finite-difference, minimum-norm correction of smooth interior tangent bases fits
+the target N/E/TVD while preserving every boundary MD and the terminal tangent.
+The numerical goal is 1 micrometre; acceptance is at most min(5 mm, 10% of the
+entered position tolerance). This is computational precision, not a claim about
+field measurement or achievable steering accuracy. Total MD is exactly the entered
+landing MD when supplied. Dogleg and DLS are computed from each actual joint arc,
+not averaged from a high-level curve. Row MD/inc/azi reconstruct the landing.
+
+A same-scope prior continuation can replace the tenth seed. It is re-aligned and
+revalidated against the latest actual tie-on and revised target, never assumed
+safe. This prevents a perfect execution losing its own valid remaining path at
+the final joints. A different scope cannot supply this continuation. All consumed
+pipe lengths remain in the anchor grid; a new partial first row has the correct
+remaining length. Target-distance support remains 20 km and at most 4,000 control
+intervals. Missing measured coverage is a data limitation, not a red geometric
+impossibility claim.
 
 The candidate score is peak DLS + 0.05×total dogleg + 0.0005×MD length, plus
 0.1×absolute difference from observed median DLS when at least three intervals
@@ -97,7 +118,7 @@ a cancellable worker; stale results are discarded across edits and scope changes
 
 ## Verification
 
-`npm test --prefix drilling-tests`: 77 passing tests, including 13 landing tests
+`npm test --prefix drilling-tests`: 85 passing tests, including 21 landing tests
 for analytic geometry, wrap-around, duplicate holds, target/MD constraints,
 infeasible DLS, sensitivity, scoped BHA intervals, recorded steering fits and
 warning thresholds. Browser evidence is under `landing-evidence/`.
@@ -113,3 +134,38 @@ The existing survey/pumps/tally browser regression suite also passes. Release
 acceptance exercises Q, manual SIM-input geometry, the isolated tutorial and red
 warnings on the actual unpublished static deploy, alongside Ops/Tally/BHA/DD,
 Plan-before-Drill and EDM checks, before any production promotion.
+
+## Progressive 500 m reservoir simulation
+
+The default SIM program lands at MD 500 m, local N 318.756 m / E 85.410 m,
+TVD 300 m, Inc 90° / Azi 15°, with a fixed illustrative 12°/30 m ceiling.
+Choose 6 m, 9 m, nominal 13 m or varied SIM measured lengths. Play or execute
+one joint; pause takes effect after the current joint. Each executed arc creates
+the next SIM survey, then all remaining candidate paths are recalculated.
+The white drilled prefix is immutable. The next-joint table and moving marker
+use the same row endpoints, not a separate illustration.
+
+At the first joint boundary at/after MD 260 m the shallower case updates its
+reservoir interpretation to TVD 280 m. The original 500 m program can still be
+landed but requires a harder remaining trajectory. The deeper case updates to
+TVD 320 m. Its red sign says **TARGET TVD IS NOW LOWER**, with the explicit
+clarification that lower reservoir elevation means a larger numeric TVD. Old and
+new target markers and a reservoir-depth line show the change. The update is a
+training interpretation change, not a claim that a physical reservoir was
+encountered at that MD.
+
+The deeper case cannot satisfy the fixed 500 m target and ceiling from that
+already-drilled prefix. It stops, remains red and executes no rejected joint.
+An explicit **Try 510 m landing · SIM program change** action changes only the
+SIM MD program; it retains the target and DLS ceiling. No automatic extension or
+limit relaxation occurs. The updated model can then land at TVD 320 m. Target
+changes can be acknowledged to stop their pulse without erasing the event.
+Reduced-motion mode uses discrete updates instead of moving-joint animation.
+
+Unit tests execute every row through 500 m for all four length modes, and verify
+both reservoir changes, a blocked 500 m deeper program and an explicitly changed
+510 m program. They reconstruct N/E/TVD/Inc/Azi from instructions and assert prefix
+immutability. Desktop/phone browser checks execute the full normal and shallower
+wells, the deeper preview, its red sign and its explicit 510 m continuation. They
+also exercise measured CSV, active-tally/BHA alignment, partial rows, markers and
+joint CSV exports. Tutorial execution still leaves the live form/storage unchanged.

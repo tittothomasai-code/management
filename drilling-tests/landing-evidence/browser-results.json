@@ -22,7 +22,13 @@
         "red pulse and reduced-motion static warning",
         "explicit unsurveyed projection",
         "depth update never becomes a measured response station",
-        "no transport calls or external requests"
+        "no transport calls or external requests",
+        "6 m / nominal / measured joint schedules",
+        "partial first and final joints preserve full lengths",
+        "joint CSV and plot markers",
+        "active measured tally includes BHA once",
+        "full 500 m normal and shallower wells",
+        "deeper target red sign and explicit 510 m program change"
       ],
       "errors": []
     },
@@ -47,7 +53,13 @@
         "red pulse and reduced-motion static warning",
         "explicit unsurveyed projection",
         "depth update never becomes a measured response station",
-        "no transport calls or external requests"
+        "no transport calls or external requests",
+        "6 m / nominal / measured joint schedules",
+        "partial first and final joints preserve full lengths",
+        "joint CSV and plot markers",
+        "active measured tally includes BHA once",
+        "full 500 m normal and shallower wells",
+        "deeper target red sign and explicit 510 m program change"
       ],
       "errors": []
     }

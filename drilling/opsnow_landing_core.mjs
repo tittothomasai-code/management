@@ -1,12 +1,13 @@
 // Landing geometry only. Reuses the game's minimum-curvature implementation.
 import {minCurve,validatePoint,atMD} from './bha-builder/shared/wp-autotrack-core.js';
+import {buildJointPlan,validateJointConfig,jointDogleg} from './opsnow_landing_joints.mjs?v=landing-joints1';
 const R=Math.PI/180,D=1/R,finite=Number.isFinite,clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 export const wrap=a=>(a%360+360)%360;
 export const signedAngle=a=>((a+540)%360+360)%360-180;
 const dot=(a,b)=>a.reduce((s,v,i)=>s+v*b[i],0),mag=v=>Math.hypot(...v),sub=(a,b)=>a.map((v,i)=>v-b[i]);
 const direction=p=>[Math.sin(p.inc*R)*Math.cos(p.azi*R),Math.sin(p.inc*R)*Math.sin(p.azi*R),Math.cos(p.inc*R)];
 const angles=v=>({inc:Math.acos(clamp(v[2]/mag(v),-1,1))*D,azi:wrap(Math.atan2(v[1],v[0])*D)});
-const dogleg=(a,b)=>Math.acos(clamp(dot(direction(a),direction(b)),-1,1))*D;
+const dogleg=jointDogleg;
 const smooth=t=>t*t*(3-2*t),smoother=t=>t*t*t*(t*(6*t-15)+10);
 const PROFILES=[
  ['Uniform',0,1,'linear'],['Early landing',0,.8,'linear'],['Delayed build',.2,1,'linear'],
@@ -16,6 +17,7 @@ const PROFILES=[
 ];
 export function validateInput(input){
  const {tie,target,limits}=input||{};validatePoint(tie);
+ const joints=validateJointConfig(input.joints||{mode:'6'});if(finite(joints.anchorMd)&&joints.anchorMd>tie.md+.000001)throw Error('Joint-length anchor MD must not be after the tie-on.');
  if(!target||!['md','position'].includes(target.mode)||!finite(target.inc)||target.inc<0||target.inc>180||!finite(target.azi)||target.azi<0||target.azi>=360)throw Error('Enter landing inclination 0–180° and azimuth 0–<360°.');
  if(!limits||!finite(limits.maxDls)||limits.maxDls<=0||limits.maxDls>30||!finite(limits.positionTol)||limits.positionTol<=0||!finite(limits.angleTol)||limits.angleTol<=0||limits.angleTol>10)throw Error('Enter a positive DLS ceiling (up to 30°/30 m), position tolerance and angle tolerance.');
  if(target.mode==='md'||target.md!==null&&target.md!==undefined){if(!finite(target.md)||target.md<=tie.md+.1||target.md-tie.md>20000)throw Error('Landing MD must be ahead of the tie-on by 0.1–20,000 m.');}
@@ -87,7 +89,7 @@ function summarize(path,input,extra={}){
  if(orientationMiss>limits.angleTol)issues.push('Landing angle tolerance missed');
  if(mdMiss!==null&&Math.abs(mdMiss)>.1)issues.push('Landing MD not met');
  if(extra.converged===false||extra.integrationError>.01)issues.push('Geometry resolution did not converge');
- return {end:last,peakDls:peak,buildPeak,turnPeak,totalDogleg,positionMiss,mdMiss,orientationMiss,dlsMargin:limit-peak,limit,issues,feasible:!issues.length,mdLength:last.md-path[0].md,cumulativeIntegrationError:extra.cumulativeIntegrationError??0,resolution:extra.converged===undefined?'Minimum-curvature stations':extra.converged?'Converged sampled cubic':'Unresolved sampled cubic'};
+ return {end:last,peakDls:peak,buildPeak,turnPeak,totalDogleg,positionMiss,mdMiss,orientationMiss,dlsMargin:limit-peak,limit,issues,feasible:!issues.length,mdLength:last.md-path[0].md,cumulativeIntegrationError:extra.cumulativeIntegrationError??0,resolution:extra.jointSchedule?'Joint-by-joint minimum curvature':extra.converged===undefined?'Minimum-curvature stations':extra.converged?'Converged sampled cubic':'Unresolved sampled cubic'};
 }
 export function surveyResponse(surveys,{bhaId='',runStartMd=null,runEndMd=null,maxIntervals=12}={}){
  const valid=(surveys||[]).filter(p=>p&&['md','inc','azi'].every(k=>finite(p[k]))&&p.inc>=0&&p.inc<=180&&p.azi>=0&&p.azi<360);
@@ -149,22 +151,33 @@ export function projectResponseTrend(tie,landingMd,response){
   const sin=Math.sin((p.inc+inc)/2*R);p=minCurve(p,{md:p.md+dm,inc,azi:wrap(p.azi+response.medianTurn*dm/(30*sin))});
  }return {end:p,method:'Extrapolation of recent surveyed build/turn trend, without assuming unchanged steering or proving BHA causality.'};
 }
+function continuation(input){
+ const previous=input.previous;if(!input.scope||!previous?.scope||JSON.stringify(previous.scope)!==JSON.stringify(input.scope)||!Array.isArray(previous.path)||previous.path.length<2||previous.path.length>5000)return null;
+ try{previous.path.forEach((p,i)=>{validatePoint(p);if(i&&p.md<=previous.path[i-1].md)throw Error('Non-monotonic continuation');});}catch{return null;}
+ const last=previous.path.at(-1);if(last.md<=input.tie.md+.1||input.tie.md<previous.path[0].md-.001||finite(input.target.md)&&Math.abs(last.md-input.target.md)>.01)return null;
+ return [{...input.tie},...previous.path.filter(p=>p.md>input.tie.md+1e-7)];
+}
 export function planLanding(input){
- validateInput(input);const response=surveyResponse(input.surveys||[],input.response||{}),steering=fitSteeringResponse(response.intervals,input.exposures||[],input.response?.bhaId),candidates=[];
+ validateInput(input);const response=surveyResponse(input.surveys||[],input.response||{}),steering=fitSteeringResponse(response.intervals,input.exposures||[],input.response?.bhaId),candidates=[],carried=continuation(input);
  for(let i=0;i<10;i++){
-  try{const extra=input.target.mode==='position'?positionPath(input.tie,input.target,i,input.limits.positionTol):{},path=extra.path||anglePath(input.tie,input.target,PROFILES[i]),summary=summarize(path,input,extra),observed=response.count>=3&&finite(response.medianDls)?response.medianDls:null;
+  try{if(input.target.mode==='position'&&finite(input.target.md)&&mag([input.target.n-input.tie.n,input.target.e-input.tie.e,input.target.tvd-input.tie.tvd])>input.target.md-input.tie.md+input.limits.positionTol)throw Error('Landing MD is shorter than the straight-line distance to the target, including position tolerance.');
+   const carry=i===9&&carried,original=!carry&&input.target.mode==='position'?positionPath(input.tie,input.target,i,input.limits.positionTol):{};let designPath=carry||original.path||anglePath(input.tie,input.target,PROFILES[i]);
+   if(finite(input.target.md)){const ratio=(input.target.md-input.tie.md)/(designPath.at(-1).md-input.tie.md);designPath=designPath.map(p=>({...p,md:input.tie.md+(p.md-input.tie.md)*ratio}));designPath.at(-1).md=input.target.md;}
+   const joint=buildJointPlan(designPath,input.target,input.joints||{mode:'6'},{positionTol:input.limits.positionTol}),path=joint.path,extra={jointSchedule:joint.schedule,converged:joint.schedule.converged,integrationError:0,cumulativeIntegrationError:0},summary=summarize(path,input,extra),observed=response.count>=3&&finite(response.medianDls)?response.medianDls:null;
+   if(!joint.schedule.converged){summary.issues.push('Joint-end angles could not fit the target at the selected joint lengths.');summary.feasible=false;}
    const sensitivity=[input.limits.responseLow??.8,input.limits.responseHigh??1.2].map(g=>responseSensitivity(path,g,input.target));
    const score=summary.peakDls+.05*summary.totalDogleg+.0005*summary.mdLength+(observed===null?0:.1*Math.abs(summary.peakDls-observed));
-   candidates.push({id:'landing-'+(i+1),name:input.target.mode==='position'?'Position template '+(i+1):PROFILES[i][0],path,...summary,score,sensitivity,aboveObserved:observed===null?null:summary.peakDls>observed,duplicateOf:null});
-  }catch(e){candidates.push({id:'landing-'+(i+1),name:'Template '+(i+1),path:[],feasible:false,issues:[e.message],score:null,peakDls:null,duplicateOf:null});}
+   candidates.push({id:'landing-'+(i+1),name:carry?'Previous plan re-aligned':input.target.mode==='position'?'Position template '+(i+1):PROFILES[i][0],path,jointSchedule:joint.schedule,carryForward:!!carry,...summary,score,sensitivity,aboveObserved:observed===null?null:summary.peakDls>observed,duplicateOf:null});
+  }catch(e){candidates.push({id:'landing-'+(i+1),name:'Template '+(i+1),path:[],feasible:false,issues:[e.message],errorCode:e.code||null,score:null,peakDls:null,duplicateOf:null});}
  }
  // Degenerate holds are explicitly identified rather than inventing ten unique paths.
  const signatures=new Map();for(const c of candidates){if(!c.path.length)continue;const p=c.path,signature=[.25,.5,.75,1].flatMap(t=>{const x=atMD(p,p[0].md+(p.at(-1).md-p[0].md)*t);return [x.n,x.e,x.tvd,x.md].map(v=>v.toFixed(2));}).join('|');if(signatures.has(signature))c.duplicateOf=signatures.get(signature);else signatures.set(signature,c.id);}
- const ranked=candidates.filter(c=>c.feasible&&!c.duplicateOf).sort((a,b)=>a.score-b.score),recommendation=ranked[0]||null;
+ const ranked=candidates.filter(c=>c.feasible&&!c.duplicateOf).sort((a,b)=>a.score-b.score),recommendation=ranked[0]||null,coverageMissing=candidates.some(c=>c.errorCode==='JOINT_COVERAGE');
  return {schema:'robotyx.landing-plan.v1',generatedAt:input.generatedAt||new Date().toISOString(),scope:input.scope||null,tie:input.tie,tieSource:input.tieSource||'User entered',target:input.target,limits:input.limits,componentLimit:input.componentLimit||null,componentSource:input.componentSource||null,
   response,steering,bhaComparisons:compareBhaRuns(input.surveys||[],input.exposures||[]),recordedSteering:input.exposures||[],surveySnapshot:(input.surveys||[]).slice(-50),trend:projectResponseTrend(input.tie,finite(input.target.md)?input.target.md:recommendation?.end.md,response),candidates,uniqueCount:signatures.size,recommendation:recommendation?.id||null,
-  difficulty:{hard:!recommendation||recommendation.peakDls/recommendation.limit>=.9,thresholdFraction:.9,reason:!recommendation?'No evaluated candidate meets all entered limits.':recommendation.peakDls/recommendation.limit>=.9?'Best candidate requires at least 90% of the effective DLS ceiling; little curvature margin remains.':'Best candidate retains more than 10% DLS margin.'},
+  jointConfig:{...input.joints||{mode:'6'},anchorMd:input.joints?.anchorMd??input.tie.md},coverageMissing,
+  difficulty:{hard:!recommendation?!coverageMissing:recommendation.peakDls/recommendation.limit>=.9,thresholdFraction:.9,reason:!recommendation?(coverageMissing?'Measured lengths do not cover landing; supply remaining joints before evaluating difficulty.':'No evaluated candidate meets all entered limits.'):recommendation.peakDls/recommendation.limit>=.9?'Best candidate requires at least 90% of the effective DLS ceiling; little curvature margin remains.':'Best candidate retains more than 10% DLS margin.'},
   rationale:recommendation?'Lowest score among generated feasible, distinct candidates: peak DLS + 0.05 × total dogleg + 0.0005 × drilled length + 0.1 × difference from observed median DLS when available. This is not a global optimum.':'No generated candidate meets all entered geometry/DLS constraints. No path is recommended.',
   minimumAverageDls:input.target.mode==='md'?dogleg(input.tie,input.target)*30/(input.target.md-input.tie.md):null,
-  notes:['Planning geometry, not live equipment control. No collision clearance is included.','Landing MD/angle mode does not constrain terminal N/E/TVD. Position mode uses the stated survey coordinate frame.','Peak DLS is sampled; position templates refine peak-change and both segment/cumulative minimum-curvature integration checks.','Observed survey response is not a proven BHA capability envelope or motor yield.',...(Math.min(input.target.inc,180-input.target.inc)<5?['Near vertical, azimuth is poorly constrained; angular miss is the 3-D tangent difference.']:[])]};
+  notes:['Planning geometry, not live equipment control. No collision clearance is included.','Landing MD/angle mode does not constrain terminal N/E/TVD. Position mode uses the stated survey coordinate frame.','Each instruction is a constant-curvature joint arc. Its MD/inc/azi endpoints reconstruct the fitted landing position; original smooth curves are design templates only.','Observed survey response is not a proven BHA capability envelope or motor yield.',...(Math.min(input.target.inc,180-input.target.inc)<5?['Near vertical, azimuth is poorly constrained; angular miss is the 3-D tangent difference.']:[])]};
 }
