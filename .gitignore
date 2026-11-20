@@ -1,3 +1,6 @@
 
 # Generated synthetic engineering browser runs; selected captures live in docs.
 drilling-tests/engineering-evidence/
+
+# Local browser dependencies
+drilling-tests/node_modules
