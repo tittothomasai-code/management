@@ -11,6 +11,11 @@ export function surveyInterval(a,b){
  return {fromMd:a.md,toMd:b.md,length,fromTime:a.t||null,toTime:b.t||null,fromInc:a.inc,toInc:b.inc,fromAzi:wrap(a.azi),toAzi:wrap(b.azi),dogleg,dls:dogleg*30/length,build:(b.inc-a.inc)*30/length,turn:Math.min(a.inc,b.inc)>=5?angle(b.azi-a.azi)*Math.sin((a.inc+b.inc)*R/2)*30/length:null};
 }
 const mode=v=>/^(slide|sliding|s)$/i.test(String(v||''))?'slide':/^(rotate|rotating|rotary|r)$/i.test(String(v||''))?'rotate':null;
+export function workbookMatches(doc,well,wellbore){
+ const norm=v=>String(v||'').toUpperCase().replace(/[\s_-]/g,'').replace(/^DR0+(\d)/,'DR$1');
+ const w=norm(well),b=norm(wellbore),dw=norm(doc?.well),db=norm(doc?.wellbore);
+ return !!w&&!!b&&!!dw&&!!db&&w===dw&&(b===db||b===dw+db);
+}
 export function workbookEvidence(doc){
  const records=[],issues=[];const runId=doc?.runSummary?.title&&doc?.sha256?'workbook:'+doc.sha256.slice(0,16):null;
  for(const row of doc?.joints||[]){

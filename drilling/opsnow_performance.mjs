@@ -1,4 +1,4 @@
-import {analyzePerformance,workbookEvidence,telemetryEvidence,parseModeCsv} from './opsnow_performance_core.mjs?v=performance1';
+import {analyzePerformance,workbookEvidence,workbookMatches,telemetryEvidence,parseModeCsv} from './opsnow_performance_core.mjs?v=performance1';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const f=(n,d=2)=>Number.isFinite(n)?n.toFixed(d):'—';
 const num=v=>String(v??'').trim()===''?null:Number(v);
@@ -10,7 +10,7 @@ export function initPerformance({button,getContext,onOpen=()=>{}}){
  document.body.append(dialog);const $=s=>dialog.querySelector(s),form=$('form');let scope=null,configs=new Map(),config={},page=0,ed=null,loading=false,loadError='',result=null,cache=null,openedFrom;
  function syncScope(x){const next=JSON.stringify([x.scope||'',x.well,x.active]);if(next===scope)return;scope=next;config=configs.get(scope)||{};page=0;cache=null;form.reset();for(const [k,v] of Object.entries(config))if(form.elements[k])form.elements[k].value=v??'';$('[data-error]').textContent='';}
  function evidence(x){
-  const doc=ed?.refFor(x.well,x.active)?.doc,wb=workbookEvidence(doc),records=[...wb.records.map(r=>config.run&&r.fromMd>=config.run.startMd&&(config.run.endMd==null||r.toMd<=config.run.endMd)?{...r,bhaId:config.run.id}:r),...(config.records||[])];
+  const candidate=ed?.refFor(x.well,x.active)?.doc,doc=workbookMatches(candidate,x.well,x.active)?candidate:null,wb=workbookEvidence(doc),records=[...wb.records.map(r=>config.run&&r.fromMd>=config.run.startMd&&(config.run.endMd==null||r.toMd<=config.run.endMd)?{...r,bhaId:config.run.id}:r),...(config.records||[])];
   const td=telemetryEvidence(x.data,x.primaryLog||{},config),tt=telemetryEvidence(x.tl,x.timeLog||{time:true},config);records.push(...td.records,...tt.records);
   const surveys=x.surveys?.length?x.surveys:wb.surveys,run=config.run||wb.run,baseline=config.baseline||null;
   return {result:analyzePerformance({surveys,records,run,baseline}),notes:[...wb.issues,...td.issues,...tt.issues],source:x.surveys?.length?x.surveySource:'Recorded workbook surveys',historical:!x.surveys?.length||x.historicalRun,doc};

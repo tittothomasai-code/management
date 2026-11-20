@@ -64,7 +64,7 @@ historical workbooks and disconnected/paused data are labelled separately.
 
 ## Verification
 
-- 146 unit/regression tests passed locally, including 16 new performance tests.
+- 147 unit/regression tests passed locally, including 17 new performance tests.
 - Desktop 1920×1080 and phone 390×844 browser checks passed recorded/inferred
   distinctions, spatial matching, mixed baseline, CSV, survey refresh, wellbore
   scope, keyboard return and phone fit. Synthetic fixtures made zero transport or
