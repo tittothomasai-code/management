@@ -11,6 +11,7 @@ import {reportedOperation,reportDepthIssue,drillingReferenceMd,renderOperationRe
 import {wellWorkspaceUrl} from './opsnow_landing_status.mjs?v=ops-landing1';
 import {initLandingDock} from './opsnow_landing_dock.mjs?v=ops-landing1';
 import {initLandingPlanner} from './opsnow_landing.mjs?v=ops-landing1';
+import {mountWellWorkspaceLink} from './opsnow_well_workspace.mjs?v=well-workspace1';
 import {initPerformance} from './opsnow_performance.mjs?v=performance1';
 import * as W from './opsnow_wire.js?v=re1115';
 import * as VW from './opsnow_views.js?v=re1115';
@@ -20,7 +21,7 @@ import * as JS from './opsnow_jsurvey.js?v=re1115';
 import {createSurveyAlerts, reportSurveyStations} from './opsnow_survey_alert.mjs?v=survey1117';
 import {createPumpGraphic, pumpSample, driveChannel, driveSample, refreshDepthTail} from './opsnow_pumps.mjs?v=spp100';
 const $ = id => document.getElementById(id);
-let landingPlanner=null,landingDock=null,performanceView=null;
+let landingPlanner=null,landingDock=null,performanceView=null,wellWorkspaceLink=null;
 const PAGE = ['joints', 'wellplan'].includes(document.documentElement.dataset.page) ? document.documentElement.dataset.page : 'ops'; // joints.html / wellplan.html: same data layer, one surface each
 const DEF_WELL = new URLSearchParams(location.search).get('well') || 'DR101L';
 const NOMINAL_JOINT_M = 13; // fallback only; complete BHE strokes supply labelled derived lengths.
@@ -286,7 +287,7 @@ const MARKUP = `
   <section id="onOperationReport" hidden aria-label="Reported well operation"></section>
   <div class="on-depths"><div><small>Hole MD</small><b id="onHole">—</b></div><div><small id="onBitLbl">Bit MD</small><b id="onBit">—</b></div><div><small>Last survey</small><b id="onLastSv">—</b></div></div>
   <button id="onGear" class="on-gear" type="button" aria-label="Settings" aria-expanded="false">⚙</button>
-  <nav class="on-views" aria-label="Views"><button type="button" id="onLandingWorkspace">Landing & drilling</button><button type="button" data-v="log">Live log</button><button type="button" id="onPerformance">Performance</button><button type="button" data-v="3d">3D wells</button><button type="button" data-v="ac" id="onAcBtn">Anti-collision</button><button type="button" data-v="tally">Tally</button><button type="button" data-v="geo">Geosteer</button><a class="on-linkbtn" id="onJointsLink" href="./joints.html">Joints ↗</a><a class="on-linkbtn" id="onPlanLink" href="./wellplan.html" title="Well planning (key P)">Well plan ↗</a></nav>
+  <nav class="on-views" aria-label="Views"><button type="button" id="onLandingWorkspace">Landing & drilling</button><button type="button" data-v="log">Live log</button><button type="button" id="onPerformance">Performance</button><a class="on-linkbtn" id="onWellWorkspaceLink" aria-disabled="true">Well Folder ↗</a><button type="button" data-v="3d">3D wells</button><button type="button" data-v="ac" id="onAcBtn">Anti-collision</button><button type="button" data-v="tally">Tally</button><button type="button" data-v="geo">Geosteer</button><a class="on-linkbtn" id="onJointsLink" href="./joints.html">Joints ↗</a><a class="on-linkbtn" id="onPlanLink" href="./wellplan.html" title="Well planning (key P)">Well plan ↗</a></nav>
 </header>
 <p id="onMsg" class="on-msg" role="status" hidden></p>
 <section id="onSignin" class="on-card on-signin" hidden>
@@ -397,6 +398,7 @@ function build() {
   addEventListener('keydown', e => { if (e.key !== 'p' && e.key !== 'P') return; if (e.ctrlKey || e.metaKey || e.altKey || e.repeat || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName || '') || document.activeElement?.isContentEditable) return; location.href = './wellplan.html' + qs; });
   if (PAGE === 'joints') { buildCommon(); S.wantTl = true; VW.initJointsPage(ctx, $('jtHost')); $('onScanBtn').onclick = () => VW.togglePop(true); document.title = 'Joints · live WITSML'; return; }
   landingDock=initLandingDock({host:$('onLandingDock'),getContext:ctx,planner:landingPlanner});
+  wellWorkspaceLink=mountWellWorkspaceLink($('onWellWorkspaceLink'),()=>({wellUid:S.well?.uid,wellboreUid:S.wb?.uid}));
   performanceView=initPerformance({button:$('onPerformance'),getContext:()=>({...ctx(),scope:surveyContext().scope,primaryLog:S.log,timeLog:S.timeLog,tl:S.tl?.scope===surveyContext().scope?S.tl:null}),onOpen:()=>{S.wantTl=true;if(!S.tl)S.due.tl=0;}});
   pumpGraphic = createPumpGraphic({host: document.querySelector('.on-depths')});
   $('onTiles').innerHTML = TILES.map(([k, n]) => `<div class="on-tile" data-k="${k}"><small>${n}</small><b id="onV_${k}">—</b><i id="onU_${k}"></i></div>`).join('');
@@ -579,7 +581,7 @@ function render() {
   const missing = TILES.filter(([k]) => !S.map[k]).map(([, n]) => n);
   $('onFoot').textContent = L ? 'Read-only WITSML · ' + (S.well?.name || '') + ' / ' + (S.wb?.name || '') + ' / ' + L.name + ' · ' + rows.length.toLocaleString('en-AU') + ' rows in view' +
     (missing.length ? ' · not reported by source: ' + missing.join(', ') : '') + (S.timeLog && S.timeLog !== L ? ' · time log "' + S.timeLog.name + '" ' + (S.timeLog.growing ? 'growing' : 'stopped at ' + C.aestDay(Date.parse(S.timeLog.end))) : '') : '';
-  performanceView?.refresh();VW.draw(); renderSettings();
+  wellWorkspaceLink?.refresh();performanceView?.refresh();VW.draw(); renderSettings();
 }
 function renderSettings() {
   if (!$('onSettings').hidden) {
