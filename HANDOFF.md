@@ -20,3 +20,9 @@ Preserve the accepted intro, Plan-before-Drill menu, rig, physics, assets, RTOC,
 WITSML is read-only. Keep credentials and raw upstream XML out of logs and commits. Use existing parsers and proxy. Use synthetic fixtures for offline tests. Show live status only for advancing source timestamps under 120 seconds old. Keep joint, hole, bit, survey, gamma and LWD depth references distinct.
 
 Use the verified current deploy as the base for a focused patch. Verify the complete file inventory, test desktop and mobile, and compare an unpublished deploy before switching production. Record the previously published deploy ID as the immediate rollback target.
+
+Ops Performance: see OPS-PERFORMANCE.md. Keep mode attribution spatial (survey MD
+matched to drilled slide spans), distinguish inferred mode from recorded sliding,
+and never introduce the simulated game motor into live Ops. Mixed response needs
+a reviewed rotary baseline. Missing evidence remains unconfirmed. Settings are
+scoped to exact well/bore identity and the open tab, not written upstream.
