@@ -1,5 +1,8 @@
 name: Sign auth host inspection
 on:
+  push:
+    branches: [ops/RBX-2518-sign-auth-host]
+    paths: [.github/scripts/sign-auth-host.mjs, .github/workflows/sign-auth-host.yml]
   workflow_dispatch:
 permissions:
   contents: read
