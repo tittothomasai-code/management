@@ -7,7 +7,7 @@
     },
     {
       "path": "opsnow.js",
-      "sha256": "cff176b317b28c171efbf8c3fff158e954dd0dc488c81cd650ebcb74dcd1d34a"
+      "sha256": "f21cf759f04e05698f60d1d98b224625dfd2f7c716f4a8de38042c60e8db1b00"
     },
     {
       "path": "opsnow_tallyview.js",
@@ -192,8 +192,21 @@
     {
       "path": "opsnow_performance.css",
       "sha256": "fc8b48b9ba700880111e40dbefdf798525dec240dc5e866d2e100aceb1fdd7be"
+    },
+    {
+      "path": "opsnow_well_workspace.mjs",
+      "sha256": "a48177ce5eedb0d03a90ba7457415ab752e34fe0aaf0221d9422e0cf5e8bbd15"
+    },
+    {
+      "path": "wpg_core.js",
+      "sha256": "7630bfff053e2273bc6b434e65ddf8ed311421cf4a2e5c9393abe553e85d54f4"
+    },
+    {
+      "path": "fluids.js",
+      "sha256": "e549112ee0b5a2aca738fb83a12f0015f8484b6bcfaa4668aafa2429733302e3"
     }
   ],
   "verifiedDeployId": "6b002ae2f09121ea2e3abff7",
-  "verifiedAt": "2026-11-20"
+  "verifiedAt": "2026-11-20",
+  "reviewedDeploy": "6b00774f9801b71a2b02a2ab"
 }

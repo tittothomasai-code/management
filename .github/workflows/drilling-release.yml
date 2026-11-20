@@ -2,7 +2,7 @@ name: Drilling release
 on:
   push:
     branches: [release/drilling-live]
-    paths: ['drilling/directional-drilling/**', 'drilling/landing-game/**', 'drilling/bha-builder/**', 'drilling/ops.html', 'drilling/opsnow.js', 'drilling/opsnow_performance*', 'drilling/opsnow_well_workspace.mjs', 'drilling/edmmap.js', 'drilling/edmui.js', 'drilling/edm_field_check.mjs', 'drilling/edm_field_check_core.mjs', 'drilling/edm_field_check_worker.mjs', 'drilling/opsnow_hardpoints.mjs', 'drilling/opsnow_operation_report.mjs', 'drilling/opsnow_landing*.mjs', 'drilling/opsnow_landing*.css', 'drilling/opsnow_measured_upload.mjs', 'drilling/opsnow_joint_metrics.mjs', 'drilling/opsnow_tallyview.js', 'drilling/opsnow_tally_compare.mjs', 'drilling/data/dr101l-wb04-measured-tally.json', 'drilling/opsnow_pumps.mjs', 'drilling/opsnow_pumps.css', 'drilling/opsnow_survey_alert.mjs', 'drilling/opsnow_survey_alert.css']
+    paths: ['drilling/directional-drilling/**', 'drilling/landing-game/**', 'drilling/bha-builder/**', 'drilling/ops.html', 'drilling/opsnow.js', 'drilling/opsnow_performance*', 'drilling/opsnow_well_workspace.mjs', 'drilling/opsnow_engineering*', 'drilling/engineering/**', 'drilling/wpg_core.js', 'drilling/edmmap.js', 'drilling/edmui.js', 'drilling/edm_field_check.mjs', 'drilling/edm_field_check_core.mjs', 'drilling/edm_field_check_worker.mjs', 'drilling/opsnow_hardpoints.mjs', 'drilling/opsnow_operation_report.mjs', 'drilling/opsnow_landing*.mjs', 'drilling/opsnow_landing*.css', 'drilling/opsnow_measured_upload.mjs', 'drilling/opsnow_joint_metrics.mjs', 'drilling/opsnow_tallyview.js', 'drilling/opsnow_tally_compare.mjs', 'drilling/data/dr101l-wb04-measured-tally.json', 'drilling/opsnow_pumps.mjs', 'drilling/opsnow_pumps.css', 'drilling/opsnow_survey_alert.mjs', 'drilling/opsnow_survey_alert.css']
   pull_request:
     branches: [release/drilling-live]
     paths: ['drilling/**', 'drilling-tests/**', '.github/workflows/drilling-release.yml', '.github/scripts/drilling-*.mjs']
@@ -36,15 +36,18 @@ jobs:
           ROBOTYX_CHROMIUM_PATH=$(command -v google-chrome || command -v chromium) node drilling-tests/edm-field-browser.mjs
           ROBOTYX_CHROMIUM_PATH=$(command -v google-chrome || command -v chromium) node drilling-tests/ops-landing-browser.mjs
           ROBOTYX_CHROMIUM_PATH=$(command -v google-chrome || command -v chromium) node drilling-tests/performance-browser.mjs
+          ROBOTYX_CHROMIUM_PATH=$(command -v google-chrome || command -v chromium) node drilling-tests/engineering-browser.mjs
           ROBOTYX_CHROMIUM_PATH=$(command -v google-chrome || command -v chromium) node drilling-tests/landing-browser.mjs
           ROBOTYX_CHROMIUM_PATH=$(command -v google-chrome || command -v chromium) node drilling-tests/directional-simulation-browser.mjs
       - name: Test actual unpublished deploy
         run: |
           ROBOTYX_CHROMIUM_PATH=$(command -v google-chrome || command -v chromium) node .github/scripts/drilling-acceptance.mjs
+          ENGINEERING_PREVIEW_URL=$(node -e "console.log(require('./release-evidence/release-plan.json').previewUrl)") ROBOTYX_CHROMIUM_PATH=$(command -v google-chrome || command -v chromium) node drilling-tests/engineering-browser.mjs
           DIRECTIONAL_PREVIEW_URL=$(node -e "console.log(require('./release-evidence/release-plan.json').previewUrl)") ROBOTYX_CHROMIUM_PATH=$(command -v google-chrome || command -v chromium) node drilling-tests/directional-simulation-browser.mjs
           cp -r drilling-tests/directional-evidence release-evidence/directional-simulation
           cp -r drilling-tests/ops-landing-evidence release-evidence/ops-landing
           cp -r drilling-tests/performance-evidence release-evidence/performance
+          cp -r drilling-tests/engineering-evidence release-evidence/engineering
       - name: Publish verified preview and check production
         if: github.event_name != 'pull_request'
         env:
@@ -70,4 +73,6 @@ jobs:
       - run: npm ci --prefix drilling-tests
       - run: npm test --prefix drilling-tests
       - name: Local Ops regression only
-        run: ROBOTYX_CHROMIUM_PATH=$(command -v google-chrome || command -v chromium) node drilling-tests/ops-landing-browser.mjs
+        run: |
+          ROBOTYX_CHROMIUM_PATH=$(command -v google-chrome || command -v chromium) node drilling-tests/ops-landing-browser.mjs
+          ROBOTYX_CHROMIUM_PATH=$(command -v google-chrome || command -v chromium) node drilling-tests/engineering-browser.mjs
