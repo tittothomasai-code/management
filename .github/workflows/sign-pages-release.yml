@@ -1,0 +1,23 @@
+name: Sign PDF pages release
+on:
+  push:
+    branches: [ops/RBX-2518-sign-pages-release]
+    paths:
+      - .github/scripts/sign-pages-release.mjs
+      - .github/sign-pages-release.json.gz
+      - .github/workflows/sign-pages-release.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Publish reviewed signing app and retain the existing proxy
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        run: node .github/scripts/sign-pages-release.mjs
