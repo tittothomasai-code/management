@@ -13,7 +13,7 @@ export function initPerformance({button,getContext,onOpen=()=>{}}){
   const candidate=ed?.refFor(x.well,x.active)?.doc,doc=workbookMatches(candidate,x.well,x.active)?candidate:null,wb=workbookEvidence(doc),records=[...wb.records.map(r=>config.run&&r.fromMd>=config.run.startMd&&(config.run.endMd==null||r.toMd<=config.run.endMd)?{...r,bhaId:config.run.id}:r),...(config.records||[])];
   const td=telemetryEvidence(x.data,x.primaryLog||{},config),tt=telemetryEvidence(x.tl,x.timeLog||{time:true},config);records.push(...td.records,...tt.records);
   const surveys=x.surveys?.length?x.surveys:wb.surveys,run=config.run||wb.run,baseline=config.baseline||null;
-  return {result:analyzePerformance({surveys,records,run,baseline}),notes:[...wb.issues,...td.issues,...tt.issues],source:x.surveys?.length?x.surveySource:'Recorded workbook surveys',historical:!x.surveys?.length||x.historicalRun,doc};
+  return {result:analyzePerformance({surveys,records,run,baseline}),notes:[...wb.issues,...td.issues,...tt.issues],source:x.surveys?.length?x.surveySource:wb.surveys.length?'Recorded workbook surveys':'Waiting for surveys',historical:!!x.historicalRun||(!x.surveys?.length&&wb.surveys.length>0),doc};
  }
  function paint(){if(!dialog.open)return;const x=getContext();syncScope(x);
   // Existing buffers are append-only in place. Include their tail values as well as scope/source identities.
