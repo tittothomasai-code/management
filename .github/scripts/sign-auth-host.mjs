@@ -1,8 +1,19 @@
 // Read deployment metadata only. Authentication values never leave this process.
 const token=process.env.NETLIFY_AUTH_TOKEN;if(!token)throw Error('Hosting connection is unavailable.');
-async function api(path){const r=await fetch('https://api.netlify.com/api/v1'+path,{headers:{Authorization:'Bearer '+token,Accept:'application/json'}});if(!r.ok)throw Error('Hosting metadata returned HTTP '+r.status+' for '+path.split('?')[0]);return r.json();}
+async function api(path,options={}){const r=await fetch('https://api.netlify.com/api/v1'+path,{...options,headers:{Authorization:'Bearer '+token,Accept:'application/json',...(options.headers||{})}});if(!r.ok)throw Error('Hosting metadata returned HTTP '+r.status+' for '+path.split('?')[0]);return r.json();}
 const domains=['robotyx.systems','sign.robotyx.systems'];const sites=[];
 for(let page=1;page<=20;page++){const a=await api('/sites?per_page=100&page='+page);sites.push(...a);if(a.length<100)break;}
 for(const domain of domains){const matches=sites.filter(s=>s.custom_domain===domain||(s.domain_aliases||[]).includes(domain));if(matches.length!==1)throw Error('Expected one site for '+domain);const site=await api('/sites/'+matches[0].id);let env=[];let envStatus='available';try{env=await api('/accounts/'+site.account_id+'/env?site_id='+site.id);}catch{envStatus='unavailable';}
 const safeEnv=env.filter(x=>['VITE_SUPABASE_URL','VITE_SUPABASE_ANON_KEY','VITE_AUTH_MODE','ESIGN_PROXY_SHARED_SECRET'].includes(x.key)).map(x=>({key:x.key,scopes:x.scopes,contexts:(x.values||[]).map(v=>({context:v.context,configured:!!v.value}))}));
 console.log(JSON.stringify({phase:'site-inspection',domain,id:site.id,name:site.name,accountId:site.account_id,publishedDeploy:site.published_deploy?.id,publishedCommit:site.published_deploy?.commit_ref,publishedAt:site.published_deploy?.published_at,build:{cmd:site.build_settings?.cmd,dir:site.build_settings?.dir,base:site.build_settings?.base,repo_url:site.build_settings?.repo_url,repo_branch:site.build_settings?.repo_branch,provider:site.build_settings?.provider,legacyAuthKeys:['VITE_SUPABASE_URL','VITE_SUPABASE_ANON_KEY'].map(key=>({key,configured:!!site.build_settings?.env?.[key]}))},envStatus,environment:safeEnv}));}
+
+if(process.argv[2]==='configure'){
+ const root=sites.find(s=>s.custom_domain==='robotyx.systems'),sign=sites.find(s=>s.custom_domain==='sign.robotyx.systems');if(!root||!sign||root.account_id!==sign.account_id)throw Error('Unexpected hosting ownership.');
+ const source=await api('/accounts/'+root.account_id+'/env?site_id='+root.id),pick=key=>{const row=source.find(r=>r.key===key);return row?.values?.find(v=>v.context==='production')?.value||row?.values?.find(v=>v.context==='all')?.value;};
+ const url=pick('VITE_SUPABASE_URL'),key=pick('VITE_SUPABASE_ANON_KEY');if(url!=='https://kxwuaasuaskfyecjmuwa.supabase.co'||!key)throw Error('The production public authentication configuration is not the expected project.');
+ let publicKey=key.startsWith('sb_publishable_');if(!publicKey){try{publicKey=JSON.parse(Buffer.from(key.split('.')[1],'base64url').toString()).role==='anon';}catch{}}
+ if(!publicKey)throw Error('Refusing to expose a privileged authentication key.');
+ await api('/accounts/'+root.account_id+'/env?site_id='+sign.id,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify([{key:'VITE_SUPABASE_URL',scopes:['builds'],values:[{context:'all',value:url}]},{key:'VITE_SUPABASE_ANON_KEY',scopes:['builds'],values:[{context:'all',value:key}]},{key:'VITE_AUTH_MODE',scopes:['builds'],values:[{context:'all',value:'sso'}]}])});
+ const funcs=await api('/sites/'+sign.id+'/functions'),deploy=await api('/deploys/'+sign.published_deploy.id);
+ console.log(JSON.stringify({phase:'sign-configured',siteId:sign.id,keysConfigured:['VITE_SUPABASE_URL','VITE_SUPABASE_ANON_KEY','VITE_AUTH_MODE'],privateRuntimeConfigurationUnchanged:true,functions:funcs.map(f=>({name:f.name,id:f.id,sha:f.sha,runtime:f.runtime})),deployFunctionFields:Object.keys(deploy).filter(k=>k.includes('function')),functionManifest:deploy.functions,functionsConfig:deploy.functions_config}));
+}

@@ -17,4 +17,4 @@ jobs:
       - name: Inspect hosting configuration without displaying values
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-        run: node .github/scripts/sign-auth-host.mjs
+        run: node .github/scripts/sign-auth-host.mjs configure
