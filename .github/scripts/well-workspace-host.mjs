@@ -14,7 +14,7 @@ await mkdir('release-evidence/well-host',{recursive:true});
 await writeFile('release-evidence/well-host/preflight.json',JSON.stringify(report,null,2));
 console.log(JSON.stringify(report));
 if(plan.phase==='build'){
- if(!/^[0-9a-f]{40}$/.test(plan.sourceHead)||plan.version!=='2.25.18')throw Error('The reviewed release source is missing.');
+ if(!/^[0-9a-f]{40}$/.test(plan.sourceHead)||plan.version!=='2.25.19')throw Error('The reviewed release source is missing.');
  const deployments=await api('/sites/'+site.id+'/deploys?per_page=15');
  const existing=deployments.find(d=>d.commit_ref===plan.sourceHead&&d.context==='production'&&!['error','failed','canceled','skipped'].includes(d.state));
  let target=existing?.id,buildId=existing?.build_id;
