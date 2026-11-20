@@ -15,9 +15,27 @@ await writeFile('release-evidence/well-host/preflight.json',JSON.stringify(repor
 console.log(JSON.stringify(report));
 if(plan.phase==='build'){
  if(!/^[0-9a-f]{40}$/.test(plan.sourceHead)||plan.version!=='2.25.18')throw Error('The reviewed release source is missing.');
- const builds=await api('/sites/'+site.id+'/builds?per_page=10');
- const existing=builds.find(b=>b.deploy?.commit_ref===plan.sourceHead&&!b.done)||null;
- const build=existing||await api('/sites/'+site.id+'/builds',{method:'POST',body:JSON.stringify({clear_cache:false})});
- await writeFile('release-evidence/well-host/build.json',JSON.stringify({buildId:build.id,deployId:build.deploy_id||build.deploy?.id,sourceHead:plan.sourceHead,rollbackDeploy:deploy.id},null,2));
- console.log(JSON.stringify({phase:'build-requested',buildId:build.id,deployId:build.deploy_id||build.deploy?.id}));
+ const deployments=await api('/sites/'+site.id+'/deploys?per_page=15');
+ const existing=deployments.find(d=>d.commit_ref===plan.sourceHead&&d.context==='production'&&!['error','failed','canceled','skipped'].includes(d.state));
+ let target=existing?.id,buildId=existing?.build_id;
+ if(!target){const build=await api('/sites/'+site.id+'/builds',{method:'POST',body:JSON.stringify({clear_cache:false})});buildId=build.id;target=build.deploy_id||build.deploy?.id;}
+ if(!target&&buildId){const build=await api('/builds/'+buildId);target=build.deploy_id||build.deploy?.id;}
+ if(!target)throw Error('The hosting build did not return a deployment.');
+ const receipt={buildId,deployId:target,sourceHead:plan.sourceHead,rollbackDeploy:plan.rollbackDeploy||deploy.id};
+ await writeFile('release-evidence/well-host/build.json',JSON.stringify(receipt,null,2));
+ console.log(JSON.stringify({phase:'build-requested',...receipt}));
+ for(let i=0;i<200;i++){
+  const candidate=await api('/deploys/'+target);
+  if(['error','failed','canceled','skipped'].includes(candidate.state))throw Error('The reviewed production build entered '+candidate.state+'.');
+  if(candidate.state==='ready'){
+   if(candidate.commit_ref!==plan.sourceHead)throw Error('The build source differs from the reviewed release.');
+   const current=await api('/sites/'+site.id);
+   if(current.published_deploy?.id!==target)throw Error('The reviewed build is ready but is not published. The existing published deploy was preserved.');
+   const response=await fetch('https://robotyx.systems/well-folder',{cache:'no-store'});if(!response.ok)throw Error('The published folder route did not answer.');
+   await writeFile('release-evidence/well-host/published.json',JSON.stringify({...receipt,published:true,version:plan.version,url:'https://robotyx.systems/well-folder'},null,2));
+   console.log(JSON.stringify({phase:'published',...receipt,version:plan.version}));break;
+  }
+  if(i===199)throw Error('The reviewed production build did not become ready in time.');
+  await new Promise(r=>setTimeout(r,3000));
+ }
 }else if(plan.phase!=='inspect')throw Error('Unsupported release phase.');
