@@ -141,15 +141,16 @@ export function stringAt(str,bitMd){const out=[];let top=bitMd;for(const c of st
 export function survAt(S,md){if(md<=S[0].md)return S[0];for(let i=1;i<S.length;i++)if(S[i].md>=md){const a=S[i-1],b=S[i],f=(md-a.md)/((b.md-a.md)||1);return {md,inc:a.inc+f*(b.inc-a.inc),azi:a.azi+f*(((b.azi-a.azi+540)%360)-180),tvd:a.tvd+f*(b.tvd-a.tvd)}}return S.at(-1)}
 // ops: 'pooh','rih','rob' (rotate off bottom), 'drill' (rotate on bottom), 'slide'
 // returns elements top-down with T (N, + tension), M (N.m), Fn (N/m), and surface hookload (N), surface torque
-export function tnd(S,{bitMd,str=STRING,mw=1.20,ffCH=0.2,ffOH=0.3,shoeMd=0,op='pooh',wob=0,tob=0,rpm=120,vTrip=0.5,dx=10,holeIn=8.5}){
+export function tnd(S,{bitMd,str=STRING,mw=1.20,ffCH=0.2,ffOH=0.3,shoeMd=0,op='pooh',wob=0,tob=0,rpm=120,vTrip=0.5,dx=10,holeIn=8.5,coupled=false,frictionAt=null,breakpoints=[],surveyAtPoint=null}){
+ const cuts=breakpoints.filter(Number.isFinite).slice().sort((a,b)=>a-b);const priorCut=b=>{let lo=0,hi=cuts.length;while(lo<hi){const mid=(lo+hi)>>1;if(cuts[mid]<b-1e-7)lo=mid+1;else hi=mid;}return lo?cuts[lo-1]:-Infinity;};
  const BF=1-mw*1000/STEEL.rho,els=stringAt(str,bitMd),seg=[];let T=(op=='drill'||op=='slide')?-wob:0,M=op=='drill'?tob:0;
- for(const e of els){for(let b=e.mdBot;b>e.mdTop+1e-6;){const a=Math.max(e.mdTop,b-dx),L=b-a,s1=survAt(S,a),s2=survAt(S,b),I1=s1.inc*D2R,I2=s2.inc*D2R,dI=I2-I1,dA=(((s2.azi-s1.azi+540)%360)-180)*D2R,Ib=(I1+I2)/2;
-  const w=e.kgm*G0*BF*L,mu=b<=shoeMd?ffCH:ffOH,r=(e.tj||e.od)*IN/2;
+ for(const e of els){for(let b=e.mdBot;b>e.mdTop+1e-6;){const a=Math.max(e.mdTop,b-dx,priorCut(b)),L=b-a,s1=surveyAtPoint?surveyAtPoint(a):survAt(S,a),s2=surveyAtPoint?surveyAtPoint(b):survAt(S,b),I1=s1.inc*D2R,I2=s2.inc*D2R,dI=I2-I1,dA=(((s2.azi-s1.azi+540)%360)-180)*D2R,Ib=(I1+I2)/2;
+  const buoyancy=e.buoyancyFactor??BF,w=e.kgm*G0*buoyancy*L,mu=frictionAt?frictionAt((a+b)/2):(b<=shoeMd?ffCH:ffOH),r=(e.tj||e.od)*IN/2;
   const Fn=Math.sqrt((T*dA*Math.sin(Ib))**2+(T*dI+w*Math.sin(Ib))**2);
   // rotating: friction goes into torque; trip: axial. Combined (rotating + moving): split by velocity ratio (Aadnoy)
-  let fa=0,ft=0;if(op=='pooh'||op=='rih'){fa=mu*Fn}else if(op=='slide'){fa=mu*Fn}else{const vr=Math.PI*2*r*rpm/60,ang=Math.atan2(vTrip*0,vr);fa=mu*Fn*Math.sin(ang);ft=mu*Fn*Math.cos(ang)}
-  const sgn=op=='pooh'?1:(op=='rih'||op=='slide')?-1:0;T=T+w*Math.cos(Ib)+sgn*fa;M=M+ft*r;
-  seg.push({md:a,mdB:b,T,M,Fn:Fn/L,e:e.name,type:e.type,od:e.od,id:e.id,tj:e.tj,kgm:e.kgm,inc:Ib*R2D,yieldK:e.yieldK,mtq:e.mtq,wb:e.kgm*G0*BF});b=a}}
+  let fa=0,ft=0;if((op=='pooh'||op=='rih')&&(!coupled||rpm===0)){fa=mu*Fn}else if(op=='slide'){fa=mu*Fn}else{const vr=Math.PI*2*r*rpm/60,ang=coupled?Math.atan2(Math.abs(vTrip),Math.abs(vr)):Math.atan2(vTrip*0,vr);fa=mu*Fn*Math.sin(ang);ft=mu*Fn*Math.cos(ang);if(coupled&&vr===0&&vTrip===0)fa=ft=0}
+  const sgn=op=='pooh'?1:(op=='rih'||op=='slide')?-1:coupled?Math.sign(vTrip):0;T=T+w*Math.cos(Ib)+sgn*fa;M=M+ft*r;
+  seg.push({md:a,mdB:b,T,M,Fn:Fn/L,e:e.name,type:e.type,od:e.od,id:e.id,tj:e.tj,kgm:e.kgm,inc:Ib*R2D,yieldK:e.yieldK,mtq:e.mtq,wb:e.kgm*G0*buoyancy,...(coupled||e.buoyancyFactor!=null?{buoyancyFactor:buoyancy}:{})});b=a}}
  seg.reverse();return {seg,hook:seg[0]?.T??0,torque:seg[0]?.M??0,BF}}
 // fix: after reverse seg[0] is top. Expose helper
 // Back-calculate the open-hole friction factor that matches a measured hookload (N, string only) by bisection
@@ -157,8 +158,8 @@ export function ffCalib(S,o,hookN,{lo=0.02,hi=0.8,it=30}={}){const f=ff=>tnd(S,{
  for(let i=0;i<it;i++){const m=(a+b)/2,v=f(m);if((v<hookN)==up)a=m;else b=m}return {ff:(a+b)/2,tag:'SIM'}}
 export function surface(R){return {T:R.seg[0]?.T??0,M:R.seg[0]?.M??0}}
 // buckling limits per element (N). Dawson-Paslay (inclined), Wu/Juvkam-Wold vertical, Chen helical = 2*sqrt(2)*Fsin
-export function bucklingLimits(e,holeIn,mw){const BF=1-mw*1000/STEEL.rho,I=Ipipe(e),w=e.kgm*G0*BF,r=Math.max(0.005,(holeIn-(e.tj||e.od))*IN/2),th=e.inc*D2R;
- const vert=2.55*Math.cbrt(STEEL.E*I*w*w),incl=2*Math.sqrt(STEEL.E*I*w*Math.sin(th)/r);const sin=th<5*D2R?Math.max(vert,Math.min(incl,vert*4)):incl,hel=th<5*D2R?5.55*Math.cbrt(STEEL.E*I*w*w):2*Math.SQRT2*sin;return {sin,hel}}
+export function bucklingLimits(e,holeIn,mw,material=STEEL){const BF=e.buoyancyFactor??(1-mw*1000/material.rho),I=Ipipe(e),w=e.kgm*G0*BF,r=Math.max(0.005,(holeIn-(e.tj||e.od))*IN/2),th=e.inc*D2R;
+ const vert=2.55*Math.cbrt(material.E*I*w*w),incl=2*Math.sqrt(material.E*I*w*Math.sin(th)/r);const sin=th<5*D2R?Math.max(vert,Math.min(incl,vert*4)):incl,hel=th<5*D2R?5.55*Math.cbrt(material.E*I*w*w):2*Math.SQRT2*sin;return {sin,hel}}
 export function buckCheck(R,holeIn,mw){return R.seg.map(s=>{const L=bucklingLimits(s,holeIn,mw),c=-s.T;return {md:s.md,comp:c,sin:L.sin,hel:L.hel,state:c>L.hel?'helical':c>L.sin?'sinusoidal':'none'}})}
 // broomstick: surface hookload vs bit depth for a set of friction factors
 export function broomstick(S,{td,str=STRING,mw=1.2,shoeMd=0,ffs=[0.1,0.2,0.3,0.4],step=60,block=35e3}){const out={depth:[],rotate:[],pooh:{},rih:{}};for(const f of ffs){out.pooh[f]=[];out.rih[f]=[]}

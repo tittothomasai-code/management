@@ -11,6 +11,7 @@ import {reportedOperation,reportDepthIssue,drillingReferenceMd,renderOperationRe
 import {wellWorkspaceUrl} from './opsnow_landing_status.mjs?v=ops-landing1';
 import {initLandingDock} from './opsnow_landing_dock.mjs?v=ops-landing1';
 import {initLandingPlanner} from './opsnow_landing.mjs?v=ops-landing1';
+import {initEngineering} from './opsnow_engineering.mjs?v=engineering1';
 import {mountWellWorkspaceLink} from './opsnow_well_workspace.mjs?v=well-workspace1';
 import {initPerformance} from './opsnow_performance.mjs?v=performance1';
 import * as W from './opsnow_wire.js?v=re1115';
@@ -287,7 +288,7 @@ const MARKUP = `
   <section id="onOperationReport" hidden aria-label="Reported well operation"></section>
   <div class="on-depths"><div><small>Hole MD</small><b id="onHole">—</b></div><div><small id="onBitLbl">Bit MD</small><b id="onBit">—</b></div><div><small>Last survey</small><b id="onLastSv">—</b></div></div>
   <button id="onGear" class="on-gear" type="button" aria-label="Settings" aria-expanded="false">⚙</button>
-  <nav class="on-views" aria-label="Views"><button type="button" id="onLandingWorkspace">Landing & drilling</button><button type="button" data-v="log">Live log</button><button type="button" id="onPerformance">Performance</button><a class="on-linkbtn" id="onWellWorkspaceLink" aria-disabled="true">Well Folder ↗</a><button type="button" data-v="3d">3D wells</button><button type="button" data-v="ac" id="onAcBtn">Anti-collision</button><button type="button" data-v="tally">Tally</button><button type="button" data-v="geo">Geosteer</button><a class="on-linkbtn" id="onJointsLink" href="./joints.html">Joints ↗</a><a class="on-linkbtn" id="onPlanLink" href="./wellplan.html" title="Well planning (key P)">Well plan ↗</a></nav>
+  <nav class="on-views" aria-label="Views"><button type="button" id="onLandingWorkspace">Landing & drilling</button><button type="button" data-v="log">Live log</button><button type="button" id="onPerformance">Performance</button><button type="button" id="onEngineering">Engineering</button><a class="on-linkbtn" id="onWellWorkspaceLink" aria-disabled="true">Well Folder ↗</a><button type="button" data-v="3d">3D wells</button><button type="button" data-v="ac" id="onAcBtn">Anti-collision</button><button type="button" data-v="tally">Tally</button><button type="button" data-v="geo">Geosteer</button><a class="on-linkbtn" id="onJointsLink" href="./joints.html">Joints ↗</a><a class="on-linkbtn" id="onPlanLink" href="./wellplan.html" title="Well planning (key P)">Well plan ↗</a></nav>
 </header>
 <p id="onMsg" class="on-msg" role="status" hidden></p>
 <section id="onSignin" class="on-card on-signin" hidden>
@@ -374,13 +375,14 @@ function survPlot(cv, pts, mode, plan) {
   if (mode === 'plan') g.fillText('span ' + fmt(x1 - x0, 0) + ' m', w - 70, h - 4);
   else { g.fillText('TVD ' + fmt(-y1, 1) + '–' + fmt(-y0, 1) + ' m', 6, h - 4); g.fillText('MD ' + fmt(x0, 0) + '–' + fmt(x1, 0), w - 90, h - 4); }
 }
+let engineeringView=null,engineeringSourceScope=globalThis.crypto?.randomUUID?.()||('session-'+Date.now()+'-'+Math.random());
 let built = false, pumpGraphic = null;
 function buildCommon() {
   $('onUser').value = W.rememberedUser();
   $('onWellTarget').value=DEF_WELL;
   $('onOpenWell').onclick=()=>{try{location.assign(wellWorkspaceUrl(location.href,$('onWellTarget').value));}catch(error){setMsg(error.message);$('onWellTarget').focus();}};
   $('onWellTarget').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();$('onOpenWell').click();}};
-  $('onGo').onclick = () => { const u = $('onUser').value.trim(), p = $('onPass').value; if (!u || !p) return setMsg('Enter username and password'); W.signIn(u, p, $('onRem').checked); $('onPass').value = ''; setMsg('Connecting…'); render(); loop(); };
+  $('onGo').onclick = () => { const u = $('onUser').value.trim(), p = $('onPass').value; if (!u || !p) return setMsg('Enter username and password'); engineeringSourceScope=globalThis.crypto?.randomUUID?.()||('session-'+Date.now()+'-'+Math.random());W.signIn(u, p, $('onRem').checked); $('onPass').value = ''; setMsg('Connecting…'); render(); loop(); };
   $('onGear').onclick = () => { const s = $('onSettings'); s.hidden = !s.hidden; $('onGear').setAttribute('aria-expanded', String(!s.hidden)); render(); };
   $('onClose').onclick = () => { $('onSettings').hidden = true; $('onGear').setAttribute('aria-expanded', 'false'); };
   $('onOut').onclick = () => { surveyAlerts?.clear(); W.signOut(); location.reload(); };
@@ -400,6 +402,7 @@ function build() {
   landingDock=initLandingDock({host:$('onLandingDock'),getContext:ctx,planner:landingPlanner});
   wellWorkspaceLink=mountWellWorkspaceLink($('onWellWorkspaceLink'),()=>({wellUid:S.well?.uid,wellboreUid:S.wb?.uid}));
   performanceView=initPerformance({button:$('onPerformance'),getContext:()=>({...ctx(),scope:surveyContext().scope,primaryLog:S.log,timeLog:S.timeLog,tl:S.tl?.scope===surveyContext().scope?S.tl:null}),onOpen:()=>{S.wantTl=true;if(!S.tl)S.due.tl=0;}});
+  engineeringView=initEngineering({button:$('onEngineering'),getContext:()=>({...ctx(),wellUid:S.well?.uid,wellboreUid:S.wb?.uid,sourceScope:engineeringSourceScope,primaryLog:S.log,timeLog:S.timeLog,tl:S.tl?.scope===surveyContext().scope?S.tl:null}),onOpen:()=>{S.wantTl=true;if(!S.tl)S.due.tl=0;}});
   pumpGraphic = createPumpGraphic({host: document.querySelector('.on-depths')});
   $('onTiles').innerHTML = TILES.map(([k, n]) => `<div class="on-tile" data-k="${k}"><small>${n}</small><b id="onV_${k}">—</b><i id="onU_${k}"></i></div>`).join('');
   $('onTrends').innerHTML = TILES.map(([k, n]) => `<div class="on-trend" data-k="${k}"><span><b>${n}</b> <em id="onT_${k}"></em></span><canvas id="onC_${k}"></canvas></div>`).join('');
@@ -581,7 +584,7 @@ function render() {
   const missing = TILES.filter(([k]) => !S.map[k]).map(([, n]) => n);
   $('onFoot').textContent = L ? 'Read-only WITSML · ' + (S.well?.name || '') + ' / ' + (S.wb?.name || '') + ' / ' + L.name + ' · ' + rows.length.toLocaleString('en-AU') + ' rows in view' +
     (missing.length ? ' · not reported by source: ' + missing.join(', ') : '') + (S.timeLog && S.timeLog !== L ? ' · time log "' + S.timeLog.name + '" ' + (S.timeLog.growing ? 'growing' : 'stopped at ' + C.aestDay(Date.parse(S.timeLog.end))) : '') : '';
-  wellWorkspaceLink?.refresh();performanceView?.refresh();VW.draw(); renderSettings();
+  wellWorkspaceLink?.refresh();performanceView?.refresh();if($('onEngineering'))$('onEngineering').disabled=!S.well?.uid||!S.wb?.uid;engineeringView?.refresh();VW.draw(); renderSettings();
 }
 function renderSettings() {
   if (!$('onSettings').hidden) {
