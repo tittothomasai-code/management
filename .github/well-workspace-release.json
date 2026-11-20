@@ -1,1 +1,1 @@
-{"phase":"inspect","version":"2.25.18","sourceHead":null}
+{"phase": "build", "version": "2.25.18", "sourceHead": "f6882c9085a3310b683f1fc79d5f7338fd596544", "rollbackDeploy": "6affead7a9afc8ffdcdf1995"}
