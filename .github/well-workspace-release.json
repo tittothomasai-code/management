@@ -1,1 +1,6 @@
-{"phase": "build", "version": "2.25.18", "sourceHead": "f6882c9085a3310b683f1fc79d5f7338fd596544", "rollbackDeploy": "6affead7a9afc8ffdcdf1995"}
+{
+  "phase": "build",
+  "version": "2.25.19",
+  "sourceHead": "6ed3d9d4a90a50e1a23f7b02db0cdd85fcdfff22",
+  "rollbackDeploy": "6b0076765802593815157451"
+}
