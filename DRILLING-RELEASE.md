@@ -540,3 +540,29 @@ The actual unpublished host passed the protected workspaces, the new Ops workspa
 Settings, embedded practice and Open well flow on desktop and phone before
 promotion. All six changed/new runtime files independently matched live SHA-256
 hashes after publication. Original site inventory was preserved.
+
+## 20 November 2026: slide-correlated Ops Performance
+
+Published source `112b6a470fc2b3970e2530ae4d5abc8178a539d7`, PR #29 plus the
+empty-state source-label correction. Deploy `6b002ae2f09121ea2e3abff7`; immediate
+rollback `6aff8149ef3a1cd4e10fc01f`. Restore that prior deploy in the existing site
+Deploys screen if rollback is required.
+
+Ops now has a separate Performance view. Actual survey intervals match recorded
+slide and rotary phases at the same drilled MD. Inferred mode cannot establish
+motor response, and mixed intervals need a reviewed signed rotary baseline.
+Source, BHA run scope, interval counts and attributed slide metres stay visible.
+The existing workbook and WITSML buffers are reused. No upstream writes, equipment
+controls, auth, billing or permission changes. See OPS-PERFORMANCE.md.
+
+147 unit tests passed. Desktop and phone synthetic checks passed depth matching,
+rotary baseline, missing/inferred/conflicting evidence, scope changes, delayed
+time-log replies, CSV and keyboard/mobile behaviour. The existing full survey,
+tally, landing, EDM, BHA and 3D checks passed. Actual unpublished-host acceptance
+passed before publication. All four public Ops/Performance runtime files then
+independently matched the tested source SHA-256. Historical workbook correlation
+was checked; no authenticated private live-feed session was available.
+
+Workflow evidence: management/actions/runs/44725505030, artifact
+`drilling-release-evidence`, including screenshots. The prior 624-file inventory
+was preserved; candidate inventory has 632 files, with 523 paths reused untouched.

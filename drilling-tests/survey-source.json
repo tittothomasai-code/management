@@ -7,7 +7,7 @@
     },
     {
       "path": "opsnow.js",
-      "sha256": "6663722b026dd92818189609a2e2b7b91a6489c129746e38310ceb240be08a61"
+      "sha256": "cff176b317b28c171efbf8c3fff158e954dd0dc488c81cd650ebcb74dcd1d34a"
     },
     {
       "path": "opsnow_tallyview.js",
@@ -180,8 +180,20 @@
     {
       "path": "opsnow_landing_dock.css",
       "sha256": "6bd4fa5d4c2bd7decdd0bda4d7a594f7c8c9c4c1b878774468c21cb005f98f7f"
+    },
+    {
+      "path": "opsnow_performance.mjs",
+      "sha256": "ea3d20378f33a23fb09080f3b7533c5ca14651ff8e6d8eb06d4e7300d10f71a6"
+    },
+    {
+      "path": "opsnow_performance_core.mjs",
+      "sha256": "ba6c86388082a9124cdaa46908b7637b9959a49e44374e9b5f80293e7e1795e2"
+    },
+    {
+      "path": "opsnow_performance.css",
+      "sha256": "fc8b48b9ba700880111e40dbefdf798525dec240dc5e866d2e100aceb1fdd7be"
     }
   ],
-  "verifiedDeployId": "6aff8149ef3a1cd4e10fc01f",
-  "verifiedAt": "2026-11-19"
+  "verifiedDeployId": "6b002ae2f09121ea2e3abff7",
+  "verifiedAt": "2026-11-20"
 }
