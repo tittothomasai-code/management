@@ -1,0 +1,30 @@
+name: Well Folder host release
+on:
+  push:
+    branches: [build/well-workspace]
+    paths: [.github/scripts/well-workspace-host.mjs, .github/well-workspace-release.json, .github/workflows/well-workspace-host.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: well-folder-root-release
+  cancel-in-progress: false
+jobs:
+  host:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Use the existing Robotyx hosting workflow
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        run: node .github/scripts/well-workspace-host.mjs
+      - name: Save release and rollback identifiers
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: well-folder-host-release
+          path: release-evidence/well-host/
+          retention-days: 14
