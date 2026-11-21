@@ -10,6 +10,8 @@ are flagged for identity review rather than merged into the reference. Device-lo
 EDM imports are not a server-side background monitor, and target markers do not
 substitute for surveyed paths. The simplified uncertainty screen is not an approved
 separation-factor assessment or operational clearance.
+`Plan → Import EDM → Export saved EDM` downloads the saved imports from that device
+for review. It does not upload them, read authentication storage or change saved sites.
 
 ## Production baseline
 

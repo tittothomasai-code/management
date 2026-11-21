@@ -19,6 +19,12 @@ try{for(const width of [1920,390]){
  page.on('console',m=>{if(m.type()==='error')console.log('Console error:',m.text());});page.on('response',r=>{if(r.status()>=400)console.log('Asset error',new URL(r.url()).pathname,r.status());});
  await page.goto(origin);await page.locator('#edmdrb').waitFor({state:'visible'});
  const before=await page.evaluate(async()=>{const S=await import('./edmstore.js?v=5941');const W={name:'SIM saved-import preservation sentinel',sites:[],wells:[],wbs:[],bounds:{e0:0,e1:1,n0:0,n1:1,maxDepth:0}};await S.save(W,{id:'preservation-sentinel'});return JSON.stringify(W);});
+ await page.evaluate(()=>localStorage.setItem('SIM-auth-sentinel','SIM-credential-must-not-export'));
+ await page.evaluate(()=>GX.edm.render());await page.getByRole('button',{name:'Export saved EDM',exact:true}).waitFor();
+ const savedDownload=page.waitForEvent('download');await page.getByRole('button',{name:'Export saved EDM',exact:true}).click();
+ const savedFile=await savedDownload,exportText=await readFile(await savedFile.path(),'utf8'),savedPayload=JSON.parse(exportText);
+ assert.equal(savedPayload.kind,'dw-sites');assert.equal(savedPayload.sites.length,1);
+ assert.equal(JSON.stringify(savedPayload.sites[0].W),before);assert.ok(!exportText.includes('SIM-credential-must-not-export'));
  await page.locator('#edmdrb').click();await page.waitForFunction(()=>window.GX?.edmmap?.fieldCheck?.report());
  const r=await page.evaluate(()=>GX.edmmap.fieldCheck.report());assert.equal(r.status,'INCOMPLETE');assert.equal(r.assessedPairs,0);assert.equal(r.referenceTrajectories.length,4);assert.ok(r.referenceTrajectories.every(p=>p.kind==='PLANNED'));assert.ok(Math.abs(r.center.E-805279.555996779)<1e-6);assert.ok(Math.abs(r.center.N-7255911.811970977)<1e-6);
  assert.match(await page.locator('#edmmap').innerText(),/No offset comparison was possible/);
@@ -44,6 +50,6 @@ try{for(const width of [1920,390]){
  assert.equal(selected.report.referenceTrajectories.length,1);assert.equal(selected.report.referenceTrajectories[0].name,'SIM branch 1');
  assert.deepEqual(selected.report.referenceScope,{sourceId:'active',wellId:'sim-reference'});
  await page.screenshot({path:evidence+'/sim-selected-reference-'+width+'.png'});assert.deepEqual(errors,[]);
- results.push({width,placedE:r.center.E,placedN:r.center.N,datum:r.center.crs,status:r.status,pairs:r.assessedPairs,savedImportsPreserved:true,selectedReferenceVerified:true,hiddenOffsetsAssessed:2,errors});await context.close();
+ results.push({width,placedE:r.center.E,placedN:r.center.N,datum:r.center.crs,status:r.status,pairs:r.assessedPairs,savedImportsPreserved:true,savedEdmExportVerified:true,selectedReferenceVerified:true,hiddenOffsetsAssessed:2,errors});await context.close();
 }assert.deepEqual(external,[]);await writeFile(evidence+'/browser-results.json',JSON.stringify({mode:'Actual EDM UI/source with read-only production baseline assets; known DR101L import only; no real offset data invented.',results},null,2)+'\n');console.log('PASS EDM field placement and incomplete 10 km report on desktop and phone');
 }finally{await browser.close();await new Promise(r=>server.close(r));}
