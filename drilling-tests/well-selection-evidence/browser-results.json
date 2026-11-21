@@ -1,0 +1,32 @@
+{
+  "results": [
+    {
+      "width": 1920,
+      "passed": true,
+      "checks": [
+        "bare URL selects newest source UID",
+        "actual section selected",
+        "historical explicit choice retained",
+        "Open well clears old UID",
+        "links preserve exact source well",
+        "Well Folder visible",
+        "old tally excluded",
+        "phone fit"
+      ]
+    },
+    {
+      "width": 390,
+      "passed": true,
+      "checks": [
+        "bare URL selects newest source UID",
+        "actual section selected",
+        "historical explicit choice retained",
+        "Open well clears old UID",
+        "links preserve exact source well",
+        "Well Folder visible",
+        "old tally excluded",
+        "phone fit"
+      ]
+    }
+  ]
+}
