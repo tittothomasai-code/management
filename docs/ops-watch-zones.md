@@ -1,0 +1,57 @@
+# Operations report watch zones and BHA source preview
+
+The dashboard has a small, collapsed report-watch strip. Open it for source controls. An active interval needs fresh reported bit depth and verified datum alignment. Missing alignment shows position unverified. MD and TVD are distinct; there is no inferred TVD and no green all-clear.
+
+Open 3D wells to see sourced risk bands on the reference plan. Where actual alignment is unverified, the view is explicitly REPORT PLAN ONLY. Colours are overlay ribbons, not physical clearance radii. Only supplied hazard types have layer controls; no geology is invented.
+
+Open BHA builder, then Well designs, to inspect private source assemblies when the signed-in Robotyx source context supplies them. Use the design and component selectors, True-scale assembly, Separate tools and Cutaway. Source dimensions are kept in metres and inches as labelled. Unknown bore/diameter cells remain unknown; an unknown OD uses a length marker. Combined pipe rows stay combined. The preview does not alter the editable builder or saved assemblies. Detailed interiors are schematic, not tool-specific CAD or proof of actual tools run.
+
+All metadata uses an authenticated Robotyx-origin bridge with exact source identities. No access token is passed into this static application. Switching source or losing context clears the private designs and risk policy. The existing rig, start menu, landing, engineering, performance and survey views retain their existing behaviour.
+
+## Evidence
+
+- Unit suite: 191 checks passed, including source BHA checks.
+- Watch browser checks: desktop 1920×1080 and phone 390×844, source controls, stale/scope clearing, MD/TVD bands, layers, orbit and viewport fit.
+- BHA source browser checks: desktop and phone, detailed bit, motor cutaway, true-scale assembly, separation, missing dimensions, read-only source and unchanged draft.
+- Existing Ops landing, performance, engineering and survey-alert browser checks passed at both widths.
+- Synthetic screenshots: drilling-tests/watch-zone-evidence/ and drilling-tests/bha-source-evidence/.
+
+The release workflow builds a draft from the current complete production inventory, runs browser acceptance and verifies every overlaid payload before publishing. Unrelated files are preserved. A production change during preparation aborts release. The workflow records the previous deploy for rollback and restores it if production payload checks fail. No credentials, real well metadata, source reports or live test sends are included.
+
+Known limits: this is source guidance and a design viewer. It is not an uncertainty-qualified collision solver, a certified actual BHA record, an operational steering solver or rig control. The companion service documents connection-mail timing and unavailable guidance.
+
+## Current release status
+
+Companion service PR: tittothomasai-code/the-dome#840. Drilling PR: #36. The first drilling CI run passed. The service CI jobs did not start because GitHub reports failed account payments or a spending limit. The dependent release stays unmerged and unpublished until those checks pass. No production or billing change was made.
+
+## MWD battery option
+
+Select an MWD tool in BHA builder. Open Details on a phone, then MWD batteries. Add each battery separately. Each has a 100-hour rating. Enter its serial, capacity already used at the baseline, and recorded powered hours since that baseline. Blank fields stay unknown. Mark unused at baseline only for a battery known to be fresh. Save a version to keep the entries; JSON, CSV and the printable report retain them. Earlier saved versions remain unchanged.
+
+Remaining hours are an estimate: 100 × (1 − baseline capacity used / 100) − recorded powered hours. The display clamps exhausted batteries to zero and records overrun separately. Each pack is shown separately; multiple batteries do not imply additive runtime. No browser clock, drilling elapsed time or motor RPM is used as battery usage. Hours are not converted to kWh.
+
+Well designs → MWD batteries shows available private pre-run records and an illustrative 3D pack/cutaway. The setup percentage means capacity **used**. Pre-run equivalent remaining hours are distinct from current remaining hours. Current usage and actual installation remain unknown until supported. Manufacturing date is not batch identity. A source lifetime active-time counter is not used as the powered runtime on this well. Source imagery and real battery details stay out of Git.
+
+The battery update passed 196 unit tests locally. Desktop/phone checks cover setup battery selection, schematic cutaway, current-usage unknowns, editable serial/usage fields, a saved assembly and the authenticated Operations-context bridge. The new source metadata is additive; no database migration, mail, billing or permission change is required.
+
+## Operations battery bar
+
+Operations shows a small MWD battery bar below the well shortcuts. It shows the selected pack's estimated budget and changes to amber for a low or exhausted budget. Open it to choose another pack, see the tracking start and read the assumption. Current measured battery life remains unknown.
+
+This is an explicit, user-enabled assumed-powered budget. Its start is recorded once on the server and frozen to each source baseline/hash. Each elapsed hour uses one budget hour, assuming that pack stays powered. Closing or refreshing the page does not reset the start. The budgets are separate, not additive. Actual installation, powered usage before tracking and duty cycle are not inferred. This estimate must not enter the measured telemetry, steering inputs or scorecard as an observed battery outcome.
+
+The bar uses a fresh server budget plus a bounded monotonic display timer. An expired private context freezes/removes the display; a new authenticated read recalculates from the saved start. Historical views, sign-out, different wells/bores/tenants, changed baselines and invalid clocks cannot show the previous budget. A stopped tracking policy freezes the estimate. Source tracking is read-only from this page; selecting a pack does not confirm installation or reset its budget.
+
+Synthetic tests cover drawdown, separate packs, low/exhausted states, persisted starts, paused tracking, baseline changes, stale/future clocks and scope denial. Desktop/phone screenshots include the compact bar and the expanded battery details. No extra connector, live control, email, billing change or schema migration was added.
+
+## Inferred reservoir and target layers
+
+3D wells can show a private, versioned PWMR/EDM interpretation. Surfaces, Targets and Plan guide rings start on. Select a target to use that planned branch's reference path. Focus target frames the approach; Overview shows the available extent. Drag to orbit and pinch to zoom. The target/source details show grid coordinates, TVD RKB, provenance, assumptions and the reference path's closest target distance.
+
+Distinct target horizons stay separate. Coincident EDM target records keep all labels. A sourced offset TVT analogue can provide display roof/floor bands, with the target-centre assumption stated. The report's average, range and source landing thickness remain distinct from current-well measured thickness. Missing map coverage stays empty. No seam continuity, thinning gradient, fault geometry, target tolerance or actual datum alignment is invented.
+
+Choose two or three rings. They follow the selected reference plan at 30 m MD spacing; their screen size is symbolic. These are visual guides, not an independent plan, motor-response claim or steering instruction. Risk bands are suppressed if their reference source belongs to another branch. Switching away from the exact source clears the private model.
+
+Validation: 203 unit tests pass. The actual existing 3D renderer passes desktop 1920×1080 and phone 390×844 checks for default visibility, four target identities, layer changes, two/three rings, selected-branch separation, XYZ/TVD and analogue details, orbit, overview and scope clearing. Synthetic screenshots are in `drilling-tests/reservoir-evidence/`. The existing watch-zone desktop/phone browser checks also pass. No real source documents or geometry are committed.
+
+The release inventory includes `opsnow_reservoir.mjs`. The normal workflow retains unrelated production files and verifies the module hash. Rollback uses the previous static deploy; private model versions and audit records are retained. The companion service release remains required.

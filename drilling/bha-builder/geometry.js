@@ -16,6 +16,9 @@ export function createToolLibrary(T){
   function helix(rad,length,y,turns,tube,m=steel,phase=0){const path=new class extends T.Curve{getPoint(t,target=new T.Vector3()){const a=t*Math.PI*2*turns+phase;return target.set(Math.sin(a)*rad,y+t*length,Math.cos(a)*rad);}};return mesh(new T.TubeGeometry(path,tier===0?Math.min(256,Math.max(48,Math.ceil(turns*20))):tier===1?48:12,tube,tier===0?6:4,false),m);}
   function blade(angle,y0,y1,inner,outer,twist=.5,m=gold){const steps=tier===0?20:tier===1?8:2,positions=[];for(let i=0;i<steps;i++){const a=angle+twist*i/steps,b=angle+twist*(i+1)/steps,ya=y0+(y1-y0)*i/steps,yb=y0+(y1-y0)*(i+1)/steps,half=.12;const corners=[];for(const [y,theta]of [[ya,a],[yb,b]])for(const rad of [inner,outer])for(const shift of [-half,half])corners.push([Math.sin(theta+shift)*rad,y,Math.cos(theta+shift)*rad]);for(const idx of [0,2,1,1,2,3,4,5,6,5,7,6,0,1,4,1,5,4,2,6,3,3,6,7,0,4,2,2,4,6,1,3,5,3,7,5])positions.push(...corners[idx]);}const geo=new T.BufferGeometry();geo.setAttribute('position',new T.Float32BufferAttribute(positions,3));geo.computeVertexNormals();return mesh(geo,m);}
   function connection(y,upper){part(upper?'uphole-connection':'downhole-connection');body(neck,bore,end,y+(upper?-end/2:end/2),steel);if(tier<2){const y0=upper?L-end:.004;helix(neck*.997,end*.85,y0,7,r*.012,dark);ring(neck*.98,r*.018,upper?L-end:L>2?end:end*.9,dark);}}
+  if(c.kind==='mwd-battery'){
+   root.userData.units='illustrative';part('battery-casing');body(r*.96,0,L*.83,L*.5,steel);part('insulated-end-caps');for(const y of [L*.07,L*.93])cyl(r*.94,L*.055,y,rubber);part('terminal-contacts');for(const y of [L*.03,L*.97])cyl(r*.47,L*.04,y,gold);part('casing-seams');for(const y of [.15,.5,.85])ring(r*.97,r*.018,L*y,dark);part('retaining-sleeve');body(r*.99,r*.97,L*.1,L*.5,blue);part('illustrative-cell-stack',true);for(let i=0;i<3;i++){const y=L*(.23+i*.27);cyl(r*.8,L*.24,y,gold);for(const off of [-.12,.12])cyl(r*.83,L*.015,y+L*off,rubber);}return root;
+  }
   const bit=c.type==='Bit',stabilized=c.type==='Stabilizer',pipe=['hwdp','drill-pipe'].includes(c.kind);
   const outer=stabilized?Math.max(bore*1.05,r*.6):pipe?Math.max(bore*1.04,r*.7):r*.965;
   if(!bit){part('tool-housing');const profile=[[bore,0],[neck,0],[neck,end],[outer,end*1.2],[outer,L-end*1.2],[neck,L-end],[neck,L],[bore,L],[bore,0]].map(p=>new T.Vector2(...p));mesh(new T.LatheGeometry(profile,n),c.type==='MWD'?blue:steel);connection(0,false);connection(L,true);}
@@ -37,6 +40,7 @@ export function createToolLibrary(T){
   if(c.type==='MWD'){
    part('sensor-bands');const bands=c.kind==='resistivity'?8:c.kind==='sonic'?10:4;for(let i=0;i<bands;i++)body(r*.99,bore,Math.min(.035,L*.015),L*(.25+.5*i/bands),i%2?gold:dark);
    part('sensor-windows');for(let j=0;j<4;j++){const a=j*Math.PI/2;const o=mesh(new T.BoxGeometry(r*.16,Math.min(.16,L*.1),r*.06),dark,[Math.sin(a)*r*.96,L*.52,Math.cos(a)*r*.96]);o.rotation.y=a;}
+   if(Array.isArray(c.mwdBatteries)&&c.mwdBatteries.length){part('mwd-battery-pack',true);const count=Math.min(8,c.mwdBatteries.length),h=L*.28/count;for(let i=0;i<count;i++){const y=L*.08+h*(i+.5),rad=Math.max(r*.15,Math.min(r*.7,bore*.8));cyl(rad,h*.85,y,steel);for(const off of [-.43,.43])cyl(rad*.45,h*.04,y+off*h,gold);}}
    part('electronics',true);for(let i=0;i<6;i++)cyl(r*.5,L*.04,L*(.25+i*.08),i%2?dark:gold);
   }
   if(stabilized){part(c.kind==='reamer'?'roller-cutters':'stabilizer-blades');const count=c.kind==='hole-opener'?4:3;for(let j=0;j<count;j++)blade(j*Math.PI*2/count,L*.22,L*.78,outer,r*.99,c.kind==='straight-stabilizer'?0:.8,gold);if(c.kind==='reamer'&&tier<2)for(let j=0;j<3;j++)for(let i=0;i<6;i++){const a=j*Math.PI*2/3,y=L*(.3+i*.07);cyl(r*.065,r*.06,y,cutter,Math.sin(a)*r*.9,Math.cos(a)*r*.9);}}
@@ -51,5 +55,5 @@ export function createToolLibrary(T){
   if(c.kind==='core-barrel'){part('inner-barrel',true);body(bore*.95,bore*.8,L*.9,L*.5,steel);part('core-catcher');body(r*.97,bore,end,end,gold);}
   return root;
  }
- return {model,dispose(){geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());},release(root){root.traverse(o=>{if(o.geometry){o.geometry.dispose();geometries.delete(o.geometry);}});},setCutaway(root,value){root.traverse(o=>{if(o.userData.internal)o.visible=value;if(o.name==='tool-housing')o.visible=!value;});}};
+ return {model,dispose(){geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());},release(root){root.traverse(o=>{if(o.geometry){o.geometry.dispose();geometries.delete(o.geometry);}});},setCutaway(root,value){root.traverse(o=>{if(o.userData.internal)o.visible=value;if(o.name==='tool-housing'||o.name==='battery-casing')o.visible=!value;});}};
 }

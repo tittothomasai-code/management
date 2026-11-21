@@ -1,3 +1,4 @@
+import {initWatchZones,watchSnapshot} from './opsnow_watch_zones.mjs?v=watch1';
 // opsnow.js: one clean, read-only operator screen for the live WITSML well.
 // Signs in once per tab, then finds the active wellbore and its drilling log by itself and keeps
 // reading with bounded calls (one at a time). Settings and diagnostics stay behind the gear button.
@@ -22,6 +23,7 @@ import * as JS from './opsnow_jsurvey.js?v=re1115';
 import {createSurveyAlerts, reportSurveyStations} from './opsnow_survey_alert.mjs?v=survey1117';
 import {createPumpGraphic, pumpSample, driveChannel, driveSample, refreshDepthTail} from './opsnow_pumps.mjs?v=spp100';
 const $ = id => document.getElementById(id);
+let watchZones=null;
 let landingPlanner=null,landingDock=null,performanceView=null,wellWorkspaceLink=null;
 const PAGE = ['joints', 'wellplan'].includes(document.documentElement.dataset.page) ? document.documentElement.dataset.page : 'ops'; // joints.html / wellplan.html: same data layer, one surface each
 const DEF_WELL = new URLSearchParams(location.search).get('well') || 'DR101L';
@@ -404,6 +406,7 @@ function build() {
   performanceView=initPerformance({button:$('onPerformance'),getContext:()=>({...ctx(),scope:surveyContext().scope,primaryLog:S.log,timeLog:S.timeLog,tl:S.tl?.scope===surveyContext().scope?S.tl:null}),onOpen:()=>{S.wantTl=true;if(!S.tl)S.due.tl=0;}});
   engineeringView=initEngineering({button:$('onEngineering'),getContext:()=>({...ctx(),wellUid:S.well?.uid,wellboreUid:S.wb?.uid,sourceScope:engineeringSourceScope,primaryLog:S.log,timeLog:S.timeLog,tl:S.tl?.scope===surveyContext().scope?S.tl:null}),onOpen:()=>{S.wantTl=true;if(!S.tl)S.due.tl=0;}});
   pumpGraphic = createPumpGraphic({host: document.querySelector('.on-depths')});
+  if(PAGE==='ops')watchZones=initWatchZones({host:document.querySelector('.on-top'),refresh:()=>VW.draw?.()});
   $('onTiles').innerHTML = TILES.map(([k, n]) => `<div class="on-tile" data-k="${k}"><small>${n}</small><b id="onV_${k}">—</b><i id="onU_${k}"></i></div>`).join('');
   $('onTrends').innerHTML = TILES.map(([k, n]) => `<div class="on-trend" data-k="${k}"><span><b>${n}</b> <em id="onT_${k}"></em></span><canvas id="onC_${k}"></canvas></div>`).join('');
   buildCommon();
@@ -418,7 +421,7 @@ function build() {
 // What the pop-up views need, computed from the same state as the main screen.
 function ctx() {
   const holeMd = S.log && !S.log.time ? S.data.rows.at(-1)?.[0] : null;
-  return {landingFeed:{signed:W.hasCred()&&!W.state.dead,advancedAt:S.advancedAt},...referenceContext(),operationReport:S.operationReport,historicalRun:!!S.operationReport,data: S.data, fe: S.fe, image: S.imageRows, imageRange: S.imageRange, conns: S.conns, jointNo: S.jointNo, bitMd: S.bitMd ?? null, holeMd: S.holeMd ?? holeMd, bitKind: S.bitKind, depthCheck:S.depthCheck, pipeChecks:S.pipeChecks||[],
+  return {reportWatch:watchSnapshot(),landingFeed:{signed:W.hasCred()&&!W.state.dead,advancedAt:S.advancedAt},...referenceContext(),operationReport:S.operationReport,historicalRun:!!S.operationReport,data: S.data, fe: S.fe, image: S.imageRows, imageRange: S.imageRange, conns: S.conns, jointNo: S.jointNo, bitMd: S.bitMd ?? null, holeMd: S.holeMd ?? holeMd, bitKind: S.bitKind, depthCheck:S.depthCheck, pipeChecks:S.pipeChecks||[],
     branches: S.branches, branchMsg: S.branchMsg, active: S.wb?.name, bitPos: S.bitPos, ac: S.ac, backfilling: S.backfill === 'reading' || S.backfill === 'todo',
     tally: S.tally, tallyName: S.tallyName, tallyError: S.tallyError, tallyCmp: S.tally ? C.compareTally(S.tally, S.conns || [], S.bitMd) : null,
     refresh: () => render(), map: S.map, tl: S.tl, timeLogName: S.timeLog?.name || '',
@@ -482,6 +485,7 @@ function render() {
   const rowBit = !L?.time&&S.map.bd ? depthMetres(C.value(rows.at(-1)?.[S.map.bd.col],S.map.bd),S.map.bd) : null;
   const bit = Number.isFinite(rowBit) ? {...C.clampBit(rowBit,holeMd),kind:'reported',source:L.name,depthIndexed:true} : C.resolveBit({reported, holeMd, state, now});
   S.depthCheck=reconcileDepths({holeMd,bit});
+  watchZones?.update({signed,wellUid:S.well?.uid,wellboreUid:S.wb?.uid,serverId:new URLSearchParams(location.search).get('connectionUid')||null,bit,historical:!!S.operationReport});
   $('onBitLbl').textContent = bit.kind === 'derived' ? 'Bit MD · derived' : 'Bit MD';
   $('onBit').dataset.kind = bit.kind; $('onBit').dataset.stale = String(bit.kind === 'stale' || bit.kind === 'missing');
   if (bit.kind === 'reported') {
