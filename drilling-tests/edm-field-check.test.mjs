@@ -1,5 +1,5 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';
-import {closestSegments,pathIntersectsRadius,normalizeModel,assessField} from '../drilling/edm_field_check_core.mjs';
+import {closestSegments,pathIntersectsRadius,normalizeModel,assessField,fieldReference} from '../drilling/edm_field_check_core.mjs';
 const p=(E,N,Z=0,md=0)=>({E,N,Z,md}),close=(a,b)=>assert.ok(Math.abs(a-b)<1e-7,`${a} vs ${b}`);
 function model(offsets=1){
  const W={name:'SIM field',crs:{zone:'UTM-55S',datum:'GDA2020',sys:'Mean Sea Level'},sites:[],wells:[{id:'ref',name:'DR101L',mapE:805279.56,mapN:7255911.81,E:0,N:0}],wbs:[{id:'r1',well:'ref',name:'SIM reference',status:'Planned',path:[p(0,0,0,0),p(0,0,100,100)],traj:[{stations:2}]}]};
@@ -30,4 +30,26 @@ test('zero or absent coordinates do not silently place a well at the origin',()=
 });
 test('grid wellhead placement preserves explicit coordinates and native trajectory offsets',()=>{
  const n=normalizeModel(model(1));close(n.paths[0].points[0].E,805279.56);close(n.paths[1].points[0].E,805289.56);close(n.paths[0].points[1].Z,100);
+});
+test('the selected well is the reference even when the legacy default well is present',()=>{
+ const W=model(2);W.savedId='sim-field';
+ const reference=fieldReference(W,'o0');assert.equal(reference.wellName,'SIM OFFSET 0');
+ const report=assessField([{id:W.savedId,W}],reference);
+ assert.equal(report.well,'SIM OFFSET 0');assert.equal(report.referenceTrajectories.length,1);
+ assert.equal(report.referenceTrajectories[0].name,'SIM offset 0');
+ assert.equal(report.assessedOffsetTrajectories,2);assert.ok(report.results.some(r=>r.offsetWell==='DR101L'));
+ assert.deepEqual(report.referenceScope,{sourceId:'sim-field',wellId:'o0'});
+});
+test('multiple wells require an explicit selection; one-well imports still open automatically',()=>{
+ assert.throws(()=>fieldReference(model(1)),/Select the reference/);
+ assert.throws(()=>fieldReference(model(1),'missing-id'),/Select the reference/);
+ assert.equal(fieldReference(model(0)).wellName,'DR101L');
+});
+test('source identity prevents same-named imports from being joined into the reference',()=>{
+ const W=model(1);W.savedId='sim-a';const other=model(0);other.wells[0].id='other-id';other.wbs[0].well='other-id';
+ const report=assessField([{id:'sim-a',W},{id:'sim-b',W:other}],fieldReference(W,'ref'));
+ assert.equal(report.referenceTrajectories.length,1);assert.equal(report.assessedPairs,1);
+ assert.match(report.skipped.map(s=>s.reason).join(' '),/identity association is unverified/);
+ assert.equal(assessField([{id:'sim-b',W:other}],fieldReference(W,'ref')).status,'INCOMPLETE');
+ assert.throws(()=>assessField([W],{referenceSourceId:'sim-a'}),/Both source and well identity/);
 });

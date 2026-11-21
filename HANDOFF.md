@@ -2,6 +2,15 @@
 
 The publish root is `drilling/`. The corporate website keeps its root `index.html`.
 
+Field screening uses the selected well and saved-source identity. A multi-well
+import requires a reference selection; a single-well import opens as before.
+All loaded, compatible offset trajectories within the search radius are assessed,
+including paths hidden by map display filters. Same-named wells in another import
+are flagged for identity review rather than merged into the reference. Device-local
+EDM imports are not a server-side background monitor, and target markers do not
+substitute for surveyed paths. The simplified uncertainty screen is not an approved
+separation-factor assessment or operational clearance.
+
 ## Production baseline
 
 - Site: drilling.robotyx.systems
