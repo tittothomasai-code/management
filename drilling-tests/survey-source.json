@@ -7,7 +7,10 @@
     },
     {
       "path": "opsnow.js",
-      "sha256": "6e0dd8f2cd9aa1cd0bfbcafc87c21787deb08e5677e4276ba561beb5d48716f4"
+      "sha256": "5ec0510ab6adf073b0586235e6e88074e0e7b9fc262225c54527960cd3223c02",
+      "previous_sha256": "6e0dd8f2cd9aa1cd0bfbcafc87c21787deb08e5677e4276ba561beb5d48716f4",
+      "verified_against_commit": "8cd7833f3e74e13ea3dff96a7e80251005a58e44",
+      "verified_at": "2026-11-21T21:15:16.590340+00:00"
     },
     {
       "path": "opsnow_tallyview.js",
