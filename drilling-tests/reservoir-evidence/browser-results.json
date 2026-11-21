@@ -1,0 +1,35 @@
+{
+  "fixture": "SIM only",
+  "results": [
+    {
+      "width": 1920,
+      "passed": true,
+      "checks": [
+        "four individually identified targets",
+        "surfaces and targets on by default",
+        "independent layer switches alter actual canvas",
+        "two or three rings",
+        "selected branch path and risk separation",
+        "XYZ/TVD and analogue thickness details",
+        "orbit and overview",
+        "phone fit",
+        "scope clears geometry"
+      ]
+    },
+    {
+      "width": 390,
+      "passed": true,
+      "checks": [
+        "four individually identified targets",
+        "surfaces and targets on by default",
+        "independent layer switches alter actual canvas",
+        "two or three rings",
+        "selected branch path and risk separation",
+        "XYZ/TVD and analogue thickness details",
+        "orbit and overview",
+        "phone fit",
+        "scope clears geometry"
+      ]
+    }
+  ]
+}

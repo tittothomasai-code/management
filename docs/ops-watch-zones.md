@@ -43,3 +43,15 @@ This is an explicit, user-enabled assumed-powered budget. Its start is recorded 
 The bar uses a fresh server budget plus a bounded monotonic display timer. An expired private context freezes/removes the display; a new authenticated read recalculates from the saved start. Historical views, sign-out, different wells/bores/tenants, changed baselines and invalid clocks cannot show the previous budget. A stopped tracking policy freezes the estimate. Source tracking is read-only from this page; selecting a pack does not confirm installation or reset its budget.
 
 Synthetic tests cover drawdown, separate packs, low/exhausted states, persisted starts, paused tracking, baseline changes, stale/future clocks and scope denial. Desktop/phone screenshots include the compact bar and the expanded battery details. No extra connector, live control, email, billing change or schema migration was added.
+
+## Inferred reservoir and target layers
+
+3D wells can show a private, versioned PWMR/EDM interpretation. Surfaces, Targets and Plan guide rings start on. Select a target to use that planned branch's reference path. Focus target frames the approach; Overview shows the available extent. Drag to orbit and pinch to zoom. The target/source details show grid coordinates, TVD RKB, provenance, assumptions and the reference path's closest target distance.
+
+Distinct target horizons stay separate. Coincident EDM target records keep all labels. A sourced offset TVT analogue can provide display roof/floor bands, with the target-centre assumption stated. The report's average, range and source landing thickness remain distinct from current-well measured thickness. Missing map coverage stays empty. No seam continuity, thinning gradient, fault geometry, target tolerance or actual datum alignment is invented.
+
+Choose two or three rings. They follow the selected reference plan at 30 m MD spacing; their screen size is symbolic. These are visual guides, not an independent plan, motor-response claim or steering instruction. Risk bands are suppressed if their reference source belongs to another branch. Switching away from the exact source clears the private model.
+
+Validation: 203 unit tests pass. The actual existing 3D renderer passes desktop 1920×1080 and phone 390×844 checks for default visibility, four target identities, layer changes, two/three rings, selected-branch separation, XYZ/TVD and analogue details, orbit, overview and scope clearing. Synthetic screenshots are in `drilling-tests/reservoir-evidence/`. The existing watch-zone desktop/phone browser checks also pass. No real source documents or geometry are committed.
+
+The release inventory includes `opsnow_reservoir.mjs`. The normal workflow retains unrelated production files and verifies the module hash. Rollback uses the previous static deploy; private model versions and audit records are retained. The companion service release remains required.

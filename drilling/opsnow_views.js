@@ -1,3 +1,4 @@
+import {drawInferredSurfaces,drawReservoirTargets,drawPlanGuides,reservoirBounds} from './opsnow_reservoir.mjs?v=1';
 import {drawRiskBands} from './opsnow_watch_3d.mjs?v=watch1';
 // opsnow_views.js: the operator screen's pop-up views: Live log (depth tracks + gamma image), 3D wells,
 // Anti-collision radar and Tally check. Pure canvas, no libraries, nothing leaves the browser.
@@ -223,26 +224,50 @@ function logInput(cv) {
 // ---------- 3D wells ----------
 export const BRANCH_COLORS = ['#5cc8ff', '#7ee08a', '#d59cff', '#ffb547', '#4fd1c5', '#ff7b7b', '#f6e05e', '#a0aec0'];
 function colorOf(name, list) { const i = list.findIndex(b => b.name === name); return BRANCH_COLORS[i % BRANCH_COLORS.length]; }
-let reportPlanOnly=false,riskScope='',riskKinds=new Set(),riskTools=null;
+let reportPlanOnly=false,riskScope='',riskKinds=new Set(),riskTools=null,reservoirTools=null,reservoirKey='',reservoirLayers={targets:true,surfaces:true,rings:true,count:3,targetId:null,focus:true};
 function draw3d() {
   const x=X(),watch=x.reportWatch,policy=watch?.policy,cv=$('vw3d'),box=cv.parentElement;
   const nextScope=JSON.stringify(policy?.scope||null);if(nextScope!==riskScope){riskScope=nextScope;reportPlanOnly=false;riskKinds=new Set((policy?.zones||[]).map(z=>z.kind||'anti-collision'));}
-  const actual=(x.branches||[]).filter(b=>!b.duplicateOf),ref=policy?.reference_path,planOnly=!!ref&&(reportPlanOnly||!actual.length);
+  const model=policy?.reservoir_model?.status==='inferred'&&policy.reservoir_model.operational_use===false?policy.reservoir_model:null;
+  const nextModel=JSON.stringify([policy?.scope,model?.store_id||null,model?.version||null]);if(nextModel!==reservoirKey){reservoirKey=nextModel;reservoirLayers={targets:true,surfaces:true,rings:true,count:3,targetId:model?.targets?.[0]?.id||null,focus:true};if(model)reportPlanOnly=true;}
+  const target=model?.targets.find(t=>t.id===reservoirLayers.targetId)||model?.targets[0],modelRef=model?.reference_paths.find(p=>p.wellbore_uid===target?.planned_bore_uid);
+  const actual=(x.branches||[]).filter(b=>!b.duplicateOf),ref=modelRef||policy?.reference_path,planOnly=!!ref&&(reportPlanOnly||!actual.length);
+  const riskMatches=!model||!!(ref?.source?.sha256&&ref.source.sha256===policy?.reference_path?.source?.sha256);
+  if(!reservoirTools){reservoirTools=document.createElement('div');reservoirTools.className='on-reservoir-tools';box.before(reservoirTools);}
+  reservoirTools.hidden=!model;
+  if(model){
+   const key=JSON.stringify([reservoirKey,model.targets.map(t=>[t.id,t.name])]);if(reservoirTools.dataset.model!==key){reservoirTools.dataset.model=key;reservoirTools.innerHTML='<b>Inferred reservoir</b><label><input type="checkbox" data-res-layer="surfaces" checked>Surfaces</label><label><input type="checkbox" data-res-layer="targets" checked>Targets</label><label><input type="checkbox" data-res-layer="rings" checked>Plan guide rings</label><select data-res-count aria-label="Number of guide rings"><option value="3">3 rings</option><option value="2">2 rings</option></select><label>Target<select data-res-target aria-label="Selected EDM target"></select></label><button type="button" data-res-focus>Focus target</button><button type="button" data-res-overview>Overview</button><details><summary>Target and source details</summary><p data-res-position></p><p data-res-thickness></p><p data-res-guide></p><p>INFERRED, unreviewed interpretation. Target tolerances are not confirmed. Guide ring sizes are visual cues; they are not steering instructions.</p><div data-res-sources></div></details>';
+    const select=reservoirTools.querySelector('[data-res-target]');for(const t of model.targets){const o=document.createElement('option');o.value=t.id;o.textContent=t.name;select.append(o);}select.onchange=()=>{reservoirLayers.targetId=select.value;reservoirLayers.focus=true;V.cam.pan=[0,0];V.cam.dist=1;draw3d();};
+    reservoirTools.querySelectorAll('[data-res-layer]').forEach(c=>c.onchange=()=>{reservoirLayers[c.dataset.resLayer]=c.checked;draw3d();});reservoirTools.querySelector('[data-res-count]').onchange=e=>{reservoirLayers.count=+e.target.value;draw3d();};
+    reservoirTools.querySelector('[data-res-focus]').onclick=()=>{reservoirLayers.focus=true;V.cam.pan=[0,0];V.cam.dist=1;draw3d();};reservoirTools.querySelector('[data-res-overview]').onclick=()=>{reservoirLayers.focus=false;V.cam.pan=[0,0];V.cam.dist=1;draw3d();};
+   }
+   reservoirTools.querySelector('[data-res-target]').value=target.id;reservoirTools.querySelectorAll('[data-res-layer]').forEach(c=>c.checked=reservoirLayers[c.dataset.resLayer]);reservoirTools.querySelector('[data-res-count]').value=reservoirLayers.count;
+   reservoirTools.querySelector('[data-res-position]').textContent=target.name+' · E '+(target.e+model.frame.origin.easting_m).toFixed(2)+' m · N '+(target.n+model.frame.origin.northing_m).toFixed(2)+' m · TVD '+target.tvd.toFixed(2)+' m RKB.';
+   const thick=model.thickness_analogue;reservoirTools.querySelector('[data-res-thickness]').textContent=thick?'Offset analogue: '+thick.average_m.toFixed(2)+' m TVT average · range '+thick.min_m.toFixed(2)+'–'+thick.max_m.toFixed(2)+' m · source landing '+thick.landing_m.toFixed(2)+' m. Roof/floor bands assume the targets are at seam centre. Current-well thickness is unverified.':'Reservoir thickness is unknown; no roof/floor separation is inferred.';
+   const notes=reservoirTools.querySelector('[data-res-sources]'),noteKey=JSON.stringify([model.sources,model.assumptions]);if(notes.dataset.content!==noteKey){notes.dataset.content=noteKey;notes.replaceChildren(...[...model.sources.map(s=>'Source: '+s.name),...model.assumptions].map(t=>{const p=document.createElement('p');p.textContent=t;return p;}));}
+  }else{reservoirTools.replaceChildren();reservoirTools.dataset.model='';}
+
   const B=planOnly?[{name:ref.name,path:ref.points,isReportPlan:true}]:actual,shownPlan=planOnly?null:x.plan;
   if(!riskTools){riskTools=document.createElement('div');riskTools.className='on-risk-tools';box.before(riskTools);}
   const markup=policy?'<button type="button" data-risk-basis>'+(planOnly?'Report plan shown':'Show report plan watches')+'</button><span data-risk-mode></span>'+[...new Set(policy.zones.map(z=>z.kind||'anti-collision'))].map(k=>'<label><input type="checkbox" data-risk-kind="'+k+'" '+(riskKinds.has(k)?'checked':'')+'>'+k.replaceAll('-',' ')+'</label>').join(''):'<span>Report risk layers are unavailable. No all-clear is implied.</span>';
   if(riskTools.dataset.markup!==markup){riskTools.dataset.markup=markup;riskTools.innerHTML=markup;riskTools.querySelector('[data-risk-basis]')?.addEventListener('click',()=>{reportPlanOnly=!planOnly;draw3d();});riskTools.querySelectorAll('[data-risk-kind]').forEach(el=>el.onchange=()=>{el.checked?riskKinds.add(el.dataset.riskKind):riskKinds.delete(el.dataset.riskKind);draw3d();});}
-  const mode=riskTools.querySelector('[data-risk-mode]');if(mode)mode.textContent=planOnly?'Planned MD/TVD · report basis':'Actual overlay requires a verified branch and datum. Use the report plan to review risk bands.';
+  const mode=riskTools.querySelector('[data-risk-mode]');if(mode)mode.textContent=planOnly?(riskMatches?'Planned MD/TVD · report basis':'Risk bands belong to another branch; not drawn on this path'):'Actual overlay requires a verified branch and datum. Use the report plan to review risk bands.';
 
   box.style.height = Math.max(240, innerHeight - box.getBoundingClientRect().top - (innerWidth < 600 ? 125 : 80)) + 'px'; const {g, w, h} = canvasFit(cv);
   $('vw3Chips').innerHTML = B.map(b => `<button type="button" data-b="${esc(b.name)}" aria-pressed="${!V.hidden.has(b.name)}" style="--c:${b.name === x.active ? '#ff5d5d' : colorOf(b.name, B)}"><i></i>${esc(b.name)}</button>`).join('') + (B.length ? `<button type="button" data-all="1">All</button>` : '');
   $('vw3Chips').querySelectorAll('button').forEach(bt => bt.onclick = () => { if (bt.dataset.all) V.hidden.clear(); else V.hidden.has(bt.dataset.b) ? V.hidden.delete(bt.dataset.b) : V.hidden.add(bt.dataset.b); draw3d(); });
-  if (!B.length) { g.fillStyle = '#8aa0b2'; g.font = '13px system-ui'; g.fillText(x.branchMsg || 'Reading the surveys of every wellbore…', 16, 30); return; }
+  cv.dataset.reservoirSurfaceCells='0';cv.dataset.reservoirTargetIds='';cv.dataset.reservoirGuideCount='0';cv.dataset.reservoirModel='';
+  if (!B.length) { $('vw3Note').textContent='No verified source geometry is available for this scope.';g.fillStyle = '#8aa0b2'; g.font = '13px system-ui'; g.fillText(x.branchMsg || 'Reading the surveys of every wellbore…', 16, 30); return; }
   let n0 = 0, n1 = 0, e0 = 0, e1 = 0, t1 = 0; for (const b of [...B, ...(shownPlan?.length ? [{path: shownPlan}] : [])]) for (const p of b.path) { n0 = Math.min(n0, p.n); n1 = Math.max(n1, p.n); e0 = Math.min(e0, p.e); e1 = Math.max(e1, p.e); t1 = Math.max(t1, p.tvd); }
-  const cx = (e0 + e1) / 2, cy = (n0 + n1) / 2, cz = t1 / 2, ext = Math.max(n1 - n0, e1 - e0, t1 * V.cam.vx, 10);
+  if(model&&planOnly){for(const p of reservoirBounds(model)){n0=Math.min(n0,p.n);n1=Math.max(n1,p.n);e0=Math.min(e0,p.e);e1=Math.max(e1,p.e);t1=Math.max(t1,p.tvd);}}
+  let cx=(e0+e1)/2,cy=(n0+n1)/2,cz=t1/2,ext=Math.max(n1-n0,e1-e0,t1*V.cam.vx,10);
+  if(model&&planOnly&&reservoirLayers.focus){n0=target.n-250;n1=target.n+250;e0=target.e-250;e1=target.e+250;cx=target.e;cy=target.n;cz=target.tvd;ext=Math.max(500,120*V.cam.vx);}
+
   const {yaw, pitch, dist, pan, vx} = V.cam, s = Math.min(w * 0.9, h * 1.4) / ext / dist;
   const P = p => { const X0 = p.e - cx, Y0 = p.n - cy, Z0 = -(p.tvd - cz) * vx; const x1 = X0 * Math.cos(yaw) - Y0 * Math.sin(yaw), y1 = X0 * Math.sin(yaw) + Y0 * Math.cos(yaw);
     const y2 = y1 * Math.sin(pitch) - Z0 * Math.cos(pitch); return [w / 2 + pan[0] + x1 * s, h / 2 + pan[1] + y2 * s]; };
+  P.depth=p=>{const xx=p.e-cx,yy=p.n-cy,zz=-(p.tvd-cz)*vx;return (xx*Math.sin(yaw)+yy*Math.cos(yaw))*Math.cos(pitch)+zz*Math.sin(pitch);};
+  cv.dataset.reservoirSurfaceCells=String(model&&planOnly&&reservoirLayers.surfaces?drawInferredSurfaces({g,project:P,model}):0);cv.dataset.reservoirTargetIds='';cv.dataset.reservoirGuideCount='0';cv.dataset.reservoirModel=model&&planOnly?model.version:'';
   // surface datum: a light grid at TVD 0 around the wellhead, north arrow
   const raw = Math.max(n1 - n0, e1 - e0, 10) / 6, mag = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / mag, gs = (f > 5 ? 10 : f > 2 ? 5 : f > 1 ? 2 : 1) * mag;
   const ge0 = Math.floor(e0 / gs) * gs, ge1 = Math.ceil(e1 / gs) * gs, gn0 = Math.floor(n0 / gs) * gs, gn1 = Math.ceil(n1 / gs) * gs;
@@ -268,7 +293,8 @@ function draw3d() {
     if (b.parent) { const k = P(start); g.fillStyle = '#cfd9e2'; g.fillRect(k[0] - 2, k[1] - 2, 4, 4); }
   }
   if (shownPlan?.length > 1) { g.strokeStyle = '#e6edf3'; g.globalAlpha = 0.8; g.setLineDash([6, 4]); g.lineWidth = 1.6; g.beginPath(); shownPlan.forEach((p, i) => i ? g.lineTo(...P(p)) : g.moveTo(...P(p))); g.stroke(); g.setLineDash([]); g.globalAlpha = 1; const pe = P(shownPlan.at(-1)); label('plan ' + (shownPlanName || '') + ' · TD ' + fmt(shownPlan.at(-1).md, 1) + ' m MD', pe[0] + 5, pe[1] + 4, '11px system-ui', '#e6edf3'); }
-  if(planOnly)drawRiskBands({g,project:P,path:ref.points,zones:policy.zones.filter(z=>riskKinds.has(z.kind||'anti-collision')),width:w,height:h});
+  if(planOnly&&riskMatches)drawRiskBands({g,project:P,path:ref.points,zones:policy.zones.filter(z=>riskKinds.has(z.kind||'anti-collision')),width:w,height:h});
+  if(model&&planOnly){reservoirTools.querySelector('[data-res-guide]').textContent='Plan guide rings are hidden.';if(reservoirLayers.rings){const guide=drawPlanGuides({g,project:P,path:ref.points,target,count:reservoirLayers.count});cv.dataset.reservoirGuideCount=String(guide.rings.length);reservoirTools.querySelector('[data-res-guide]').textContent=guide.rings.length?'Reference-path approach · '+guide.rings.length+' rings at 30 m MD spacing · closest path-to-target distance '+guide.target_gap_m.toFixed(2)+' m. Ring radius is a visual cue.':guide.reason;}cv.dataset.reservoirTargetIds=drawReservoirTargets({g,project:P,model,width:w,height:h,visible:reservoirLayers.targets}).join(',');}
   const act = B.find(b => b.name === x.active);
   if (act && x.bitPos && !V.hidden.has(act.name)) { const last = P(act.path.at(-1)), bp = P(x.bitPos); g.strokeStyle = '#ff5d5d'; g.setLineDash([3, 3]); g.lineWidth = 2; g.beginPath(); g.moveTo(...last); g.lineTo(...bp); g.stroke(); g.setLineDash([]);
     g.fillStyle = V.blink ? '#ffffff' : '#ff5d5d'; g.beginPath(); g.arc(bp[0], bp[1], 5, 0, 7); g.fill(); g.fillStyle = '#ffd0d0'; g.font = 'bold 11px system-ui'; const kind = x.bitKind === 'derived' ? 'derived from hole MD' : x.bitKind === 'reported' ? 'reported' : 'not reported';
@@ -277,6 +303,7 @@ function draw3d() {
     g.strokeStyle = '#ff5d5d88'; g.beginPath(); g.moveTo(bp[0], bp[1]); g.lineTo(bx, by + L3.length * 14 + 6); g.stroke(); g.fillStyle = '#0b1117dd'; g.fillRect(bx, by, bw, L3.length * 14 + 8);
     L3.forEach((r, i) => { g.font = r[1]; g.fillStyle = r[2]; g.fillText(r[0], bx + 6, by + 15 + i * 14); }); placed.push([bx, by + 10, bw], [bx, by + 24, bw], [bx, by + 38, bw]); }
   $('vw3Note').textContent = planOnly ? 'REPORT PLAN ONLY. The coloured bands mark sourced MD/TVD intervals; their screen width is not a clearance radius. Actual position and branch/depth alignment are unverified. Drag to orbit, pinch to zoom.' : 'Trajectories by minimum curvature from each wellbore\'s survey, tied on at its kick-off (■). Red line = surveyed hole, dashed = projected from the last survey to the bit.' + (X().plan?.length ? ' White dashed = well plan (' + (X().planName || 'plan') + ').' : '') + ' The bit is never placed deeper than hole MD (latest depth-log row). Other wellbores are labelled with their last survey station. Drag to orbit, wheel or pinch to zoom, two-finger or right-drag to pan.' + (V.cam.vx !== 1 ? ' Vertical exaggerated ×' + V.cam.vx + '.' : '');
+  if(model&&planOnly)$('vw3Note').textContent='INFERRED target-aligned surfaces · reference plan only. Rings are visual plan guides, not a verified steering solution. Missing map coverage stays empty. '+$('vw3Note').textContent;
   $('vwNote').textContent = planOnly ? 'Report plan · actual position unverified' : B.length + ' branches · ' + (x.active || '') + ' highlighted';
 }
 function orbitInput(cv) {
