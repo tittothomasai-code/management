@@ -23,7 +23,7 @@ const server = createServer(async (req, res) => {
     if (!path.startsWith(root + '/')) return res.writeHead(403).end();
     let body = await readFile(path);
     // Test-only access to the actual Ops read/render functions. Production has no test hooks.
-    if (name === 'opsnow.js') body = Buffer.from(body.toString() + '\nexport {S as testState, readSurvey as testReadSurvey, readBit as testReadBit, readData as testReadData, render as testRender};');
+    if (name === 'opsnow.js') body = Buffer.from(body.toString() + '\nglobalThis.__opsTestEntry??=import.meta.url;\nexport {S as testState, readSurvey as testReadSurvey, readBit as testReadBit, readData as testReadData, render as testRender};');
     res.writeHead(200, {'Content-Type': {'.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css'}[extname(path)] || 'application/octet-stream'}).end(body);
   } catch { res.writeHead(404).end(); }
 });
@@ -44,7 +44,7 @@ try {
     await context.route('https://robotyx.systems/ops-watch.html',r=>r.fulfill({status:200,contentType:'text/html',body:'<!doctype html><title>SIM private-context fixture</title>'}));await page.goto(origin + '/ops');
     if((await readFile(resolve(root,'drilling/ops.html'),'utf8')).includes('bha-builder/context-launcher')){await page.locator('[data-bha-context]').waitFor();assert.equal(await page.locator('[data-bha-context]').count(),1);}
     await page.evaluate(async () => {
-      const m = await import('./opsnow.js?v=opsref1118');window.__testOps = m;window.__simSigned = true;
+      const m = await import(window.__opsTestEntry);window.__testOps = m;window.__simSigned = true;
       Object.assign(m.testState, {well: {uid: 'sim-well', name: 'SIM FIELD'}, wb: {uid: 'sim-bore', name: 'SIM WB1'}, trajUid: 'sim-survey',
         log: {name: 'SIM depth log', time: false, changed: new Date().toISOString()}, data: {ml: [], ul: [], rows: [[100], [113]]}});
       window.__simStations = [{uid: 'sim-100', md: 100, t: '2026-11-17T01:50:00Z'}];
@@ -158,7 +158,7 @@ try {
     // Actual Joints-page render + tally board, with only transport/navigation stubbed.
     await page.goto(origin+'/joints.html');
     await page.evaluate(async()=>{
-      const m=await import('./opsnow.js?v=dr1115');window.__testOps=m;window.__simSigned=true;
+      const m=await import(window.__opsTestEntry);window.__testOps=m;window.__simSigned=true;
       const C=await import('./opsnow_core.js?v=re1115'),S=m.testState,rows=[[99.9,0],[100,13],[104,9],[108,5],[112.9,0],[113,13],[117,9]];
       S.well={uid:'sim-well',name:'SIM FIELD'};S.wb={uid:'sim-bore',name:'SIM WB1'};S.log={uid:'sim-tally',name:'SIM depth log',time:false,changed:new Date().toISOString()};
       S.data={ml:['MD','BHE'],ul:['m','m'],rows};S.map=C.mapChannels(S.data.ml,S.data.ul,S.log);S.bit=null;S.timeLog=null;S.advancedAt=null;S.watchFrom=Date.now()-180000;m.testRender();
@@ -203,7 +203,7 @@ try {
     // Ops itself loads the reference without first opening the Tally tab.
     await page.goto(origin+'/ops');
     await page.evaluate(async()=>{
-      const m=await import('./opsnow.js?v=opsref1118'),C=await import('./opsnow_core.js?v=re1115');window.__testOps=m;window.__simSigned=true;const S=m.testState;
+      const m=await import(window.__opsTestEntry),C=await import('./opsnow_core.js?v=re1115');window.__testOps=m;window.__simSigned=true;const S=m.testState;
       S.well={uid:'fixture-dr101',name:'DR101L'};S.wb={uid:'fixture-wb04',name:'WB04B01'};S.log={uid:'fixture-depth',name:'SIM depth log',time:false,changed:new Date().toISOString()};S.bit=null;S.tally=null;S.tallyName='';S.advancedAt=null;S.watchFrom=Date.now()-180000;
       S.data={ml:['MD','BHE'],ul:['m','m'],rows:[[2599.3,0],[2599.4,9.8],[2604.4,4.8],[2609.1,0],[2609.2,9.7],[2614.2,4.7],[2618.9,0]]};S.map=C.mapChannels(S.data.ml,S.data.ul,S.log);m.testRender();
     });
@@ -216,7 +216,7 @@ try {
     await page.evaluate(()=>{__testOps.testState.well={uid:'fixture-other',name:'OTHER WELL'};__testOps.testRender();});assert.equal(await page.evaluate(()=>__testOps.testState.measuredReference),null);
     // Measured midnight hardpoint, reload, portable history and reference-only XLSX upload.
     const setupHardpoints=()=>page.evaluate(async()=>{
-      const m=await import('./opsnow.js?v=dr1115'),C=await import('./opsnow_core.js?v=re1115');window.__testOps=m;window.__simSigned=true;const S=m.testState;
+      const m=await import(window.__opsTestEntry),C=await import('./opsnow_core.js?v=re1115');window.__testOps=m;window.__simSigned=true;const S=m.testState;
       S.well={uid:'fixture-dr101',name:'DR101L'};S.wb={uid:'fixture-wb04',name:'WB04B01'};S.log={uid:'fixture-hardpoints',name:'SIM depth log',time:false,changed:new Date().toISOString()};S.bit=null;S.tally=null;S.tallyName='';S.advancedAt=null;S.watchFrom=Date.now()-180000;
       S.data={ml:['MD','BHE'],ul:['m','m'],rows:[[834.79,0],[834.89,12.46],[839.89,7.46],[843.89,3.46],[847.25,0],[847.35,12.46],[851.35,8.46]]};S.map=C.mapChannels(S.data.ml,S.data.ul,S.log);m.testRender();
     });
@@ -241,7 +241,7 @@ try {
     // End-of-well human report stays separate from depth-log rates and live tool positions.
     await page.clock.setSystemTime(new Date('2026-11-18T02:00:00Z'));
     const setupReportedTd=()=>page.evaluate(async()=>{
-      const m=await import('./opsnow.js?v=opsref1118'),C=await import('./opsnow_core.js?v=re1115');window.__testOps=m;window.__simSigned=true;const S=m.testState;
+      const m=await import(window.__opsTestEntry),C=await import('./opsnow_core.js?v=re1115');window.__testOps=m;window.__simSigned=true;const S=m.testState;
       S.well={uid:'fixture-eow-well',name:'DR101L'};S.wb={uid:'fixture-eow-bore',name:'WB04B01'};S.log={uid:'fixture-eow-depth',name:'SIM end-of-well depth log',time:false,changed:new Date().toISOString()};S.bit=null;S.timeLog=null;S.tally=null;S.tallyName='';S.advancedAt=Date.now();S.watchFrom=Date.now()-180000;
       S.data={ml:['MD','BHE','RPM','ROP'],ul:['m','m','rpm','m/h'],rows:[[2599.3,0,60,80],[2599.4,9.8,60,80],[2604.4,4.8,60,80],[2609.1,0,60,80],[2609.2,9.7,60,80],[2614.2,4.7,60,80],[2618.9,0,60,80]]};S.map=C.mapChannels(S.data.ml,S.data.ul,S.log);m.testRender();
     });
