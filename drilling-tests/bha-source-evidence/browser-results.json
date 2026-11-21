@@ -12,7 +12,13 @@
         "unknown ID preserved",
         "read-only design",
         "editor draft unchanged",
-        "scope clear"
+        "scope clear",
+        "source battery inspection",
+        "100 hours per battery",
+        "capacity used versus remaining",
+        "unknown live usage",
+        "editable MWD battery option",
+        "saved battery usage and cutaway"
       ]
     },
     {
@@ -27,7 +33,13 @@
         "unknown ID preserved",
         "read-only design",
         "editor draft unchanged",
-        "scope clear"
+        "scope clear",
+        "source battery inspection",
+        "100 hours per battery",
+        "capacity used versus remaining",
+        "unknown live usage",
+        "editable MWD battery option",
+        "saved battery usage and cutaway"
       ]
     }
   ],

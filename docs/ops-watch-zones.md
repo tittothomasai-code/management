@@ -23,3 +23,13 @@ Known limits: this is source guidance and a design viewer. It is not an uncertai
 ## Current release status
 
 Companion service PR: tittothomasai-code/the-dome#840. Drilling PR: #36. The first drilling CI run passed. The service CI jobs did not start because GitHub reports failed account payments or a spending limit. The dependent release stays unmerged and unpublished until those checks pass. No production or billing change was made.
+
+## MWD battery option
+
+Select an MWD tool in BHA builder. Open Details on a phone, then MWD batteries. Add each battery separately. Each has a 100-hour rating. Enter its serial, capacity already used at the baseline, and recorded powered hours since that baseline. Blank fields stay unknown. Mark unused at baseline only for a battery known to be fresh. Save a version to keep the entries; JSON, CSV and the printable report retain them. Earlier saved versions remain unchanged.
+
+Remaining hours are an estimate: 100 × (1 − baseline capacity used / 100) − recorded powered hours. The display clamps exhausted batteries to zero and records overrun separately. Each pack is shown separately; multiple batteries do not imply additive runtime. No browser clock, drilling elapsed time or motor RPM is used as battery usage. Hours are not converted to kWh.
+
+Well designs → MWD batteries shows available private pre-run records and an illustrative 3D pack/cutaway. The setup percentage means capacity **used**. Pre-run equivalent remaining hours are distinct from current remaining hours. Current usage and actual installation remain unknown until supported. Manufacturing date is not batch identity. A source lifetime active-time counter is not used as the powered runtime on this well. Source imagery and real battery details stay out of Git.
+
+The battery update passed 196 unit tests locally. Desktop/phone checks cover setup battery selection, schematic cutaway, current-usage unknowns, editable serial/usage fields, a saved assembly and the authenticated Operations-context bridge. The new source metadata is additive; no database migration, mail, billing or permission change is required.

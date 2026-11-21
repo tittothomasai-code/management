@@ -2,7 +2,7 @@
 import {watchSnapshot} from '../opsnow_watch_zones.mjs?v=watch1';
 let panel=null,frame=null,opener=null;
 let lastSource='';
-function sourceContext(){if(!frame)return;const s=watchSnapshot(),designs=s?.policy?.bha_designs||[],key=JSON.stringify([s?.policy?.scope,designs]);if(key===lastSource)return;lastSource=key;frame.contentWindow?.postMessage({type:'robotyx-bha-source-designs',designs},location.origin);}
+function sourceContext(){if(!frame)return;const s=watchSnapshot(),designs=s?.policy?.bha_designs||[],batteries=s?.policy?.mwd_batteries||[],key=JSON.stringify([s?.policy?.scope,designs,batteries]);if(key===lastSource)return;lastSource=key;frame.contentWindow?.postMessage({type:'robotyx-bha-source-designs',designs,batteries},location.origin);}
 export function openBhaBuilder(button=document.activeElement){
  if(window.G?.bhaBuilder){window.G.bhaBuilder.enter();if(button?.dataset?.bhaContext)window.G.bhaBuilder.view.ui.querySelector('[data-action="exit"]').textContent='Back to '+button.dataset.bhaContext;return;}
  opener=button;
