@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test agent-team.test.mjs well-selection.test.mjs reservoir.test.mjs ops-battery.test.mjs mwd-battery.test.mjs bha-source.test.mjs watch-zones.test.mjs install-bha.test.mjs survey-alert.test.mjs pumps.test.mjs joint-metrics.test.mjs tally-compare.test.mjs hardpoints.test.mjs edm-field-check.test.mjs operation-report.test.mjs landing.test.mjs landing-status.test.mjs landing-joints.test.mjs landing-search.test.mjs landing-windows.test.mjs directional-simulation.test.mjs directional-reservoir.test.mjs directional-landing.test.mjs directional-surface-probe.test.mjs performance.test.mjs well-workspace-link.test.mjs engineering.test.mjs",
+    "test": "node --test dd-world.test.mjs agent-team.test.mjs well-selection.test.mjs reservoir.test.mjs ops-battery.test.mjs mwd-battery.test.mjs bha-source.test.mjs watch-zones.test.mjs install-bha.test.mjs survey-alert.test.mjs pumps.test.mjs joint-metrics.test.mjs tally-compare.test.mjs hardpoints.test.mjs edm-field-check.test.mjs operation-report.test.mjs landing.test.mjs landing-status.test.mjs landing-joints.test.mjs landing-search.test.mjs landing-windows.test.mjs directional-simulation.test.mjs directional-reservoir.test.mjs directional-landing.test.mjs directional-surface-probe.test.mjs performance.test.mjs well-workspace-link.test.mjs engineering.test.mjs",
     "test:host": "node bha-builder-host-acceptance.mjs",
     "test:contexts": "node bha-builder-context-acceptance.mjs",
     "test:survey": "node survey-alert-browser.mjs",
