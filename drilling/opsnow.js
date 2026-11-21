@@ -1,3 +1,4 @@
+import {wellCandidates,chooseWell,bindWellUrl,tallyStorageKey} from './opsnow_well_selection.mjs?v=current-well1';
 import {initWatchZones,watchSnapshot} from './opsnow_watch_zones.mjs?v=watch1';
 // opsnow.js: one clean, read-only operator screen for the live WITSML well.
 // Signs in once per tab, then finds the active wellbore and its drilling log by itself and keeps
@@ -26,7 +27,7 @@ const $ = id => document.getElementById(id);
 let watchZones=null;
 let landingPlanner=null,landingDock=null,performanceView=null,wellWorkspaceLink=null;
 const PAGE = ['joints', 'wellplan'].includes(document.documentElement.dataset.page) ? document.documentElement.dataset.page : 'ops'; // joints.html / wellplan.html: same data layer, one surface each
-const DEF_WELL = new URLSearchParams(location.search).get('well') || 'DR101L';
+const WELL_PARAMS=new URLSearchParams(location.search),DEF_WELL=WELL_PARAMS.get('wellUid')||WELL_PARAMS.get('well')||'';
 const NOMINAL_JOINT_M = 13; // fallback only; complete BHE strokes supply labelled derived lengths.
 const WINDOW_M = 150, WINDOW_MS = 3 * 3600e3, TREND_M = 60, TREND_MS = 2 * 3600e3;
 const S = {well: null, wellbores: [], headers: {}, wb: null, log: null, map: {}, data: {ml: [], ul: [], rows: []},
@@ -35,8 +36,9 @@ const S = {well: null, wellbores: [], headers: {}, wb: null, log: null, map: {},
   // whole-log extras: older depth rows, MWD gamma + image logs, every wellbore's survey (read once, then kept fresh)
   backfill: 'todo', fe: null, image: null, imageRange: null, branchTrajs: null, branchMsg: '', branches: null, ac: null, tally: null, tallyName: '', tallyError: '',
   storePlanId: null, storePlanName: '', storePlan: null, importedPlan: null, importedPlanName: '', offsets: null, extraOffsets: [], surveyOverride: null, surveyHeader: null, rigName: null};
-const TKEY = 'opsnow-tally'; // the loaded tally is kept on this device so ops.html and joints.html number joints the same way
-try { const T = JSON.parse(localStorage.getItem(TKEY) || 'null'); if (T?.t?.joints?.length) { S.tally = T.t; S.tallyName = T.name || 'tally'; } } catch {}
+// Older unscoped tallies remain on the device, but cannot bind themselves to a new well.
+const currentTallyKey=()=>tallyStorageKey(W.cfg.url,S.well?.uid,S.wb?.uid);
+function loadScopedTally(){S.tally=null;S.tallyName='';S.tallyError='';try{const key=currentTallyKey(),v=key&&JSON.parse(localStorage.getItem(key)||'null');if(v?.t?.joints?.length){S.tally=v.t;S.tallyName=v.name||'tally';}}catch{S.tallyError='The saved tally for this section could not be read.';}}
 const OKEY = w => 'opsnow-offsets:' + (w || '');
 try { const O = JSON.parse(localStorage.getItem(OKEY(DEF_WELL)) || 'null'); if (O) S.offsets = O; } catch {}
 try { const P = JSON.parse(localStorage.getItem('opsnow-plan:' + DEF_WELL) || 'null'); if (P?.p?.path) { S.importedPlan = P.p; S.importedPlanName = P.name || 'plan'; } } catch {}
@@ -47,15 +49,20 @@ const surveyContext = () => ({scope: S.well && S.wb ? JSON.stringify([S.well.uid
 
 // ---------- reads (bounded, sequential) ----------
 async function discover() {
-  setMsg('Finding well ' + DEF_WELL + '…');
-  let r = await W.get('well', `<wells ${C.NS}><well uid=""><name>${C.xa(DEF_WELL)}</name></well></wells>`, 'returnElements=id-only');
-  let wells = C.parseWells(r.xml);
-  if (!wells.length) { r = await W.get('well', `<wells ${C.NS}><well uid="${C.xa(DEF_WELL)}"><name/></well></wells>`, 'returnElements=id-only'); wells = C.parseWells(r.xml); }
-  if (!wells.length) throw new Error('Well ' + DEF_WELL + ' was not found on the WITSML store');
-  S.well = wells[0];
+  setMsg(DEF_WELL?'Finding the selected well…':'Finding the newest source well…');
+  const sourceTarget=S.well?.uid||DEF_WELL,byUid=WELL_PARAMS.has('wellUid')||!!S.well;
+  const query=byUid?`<well uid="${C.xa(sourceTarget)}"><name/></well>`:DEF_WELL?`<well uid=""><name>${C.xa(DEF_WELL)}</name></well>`:'<well uid=""><name/><commonData><dTimCreation/><dTimLastChange/></commonData></well>';
+  let r=await W.get('well',`<wells ${C.NS}>${query}</wells>`,'returnElements=all');
+  let wells=wellCandidates(r.xml,C.parseWells);
+  if(!wells.length&&DEF_WELL&&!WELL_PARAMS.has('wellUid')){r=await W.get('well',`<wells ${C.NS}><well uid="${C.xa(DEF_WELL)}"><name/></well></wells>`,'returnElements=all');wells=wellCandidates(r.xml,C.parseWells);}
+  S.well=chooseWell(wells,sourceTarget);
+  const selectedUrl=bindWellUrl(location.href,S.well);history.replaceState(history.state,'',selectedUrl);
+  for(const [id,path]of [['onJointsLink','./joints.html'],['onOpsLink','./ops.html'],['onPlanLink','./wellplan.html']]){const link=$(id);if(link)link.href=new URL(path,selectedUrl).href+new URL(selectedUrl).search;}
+  const target=$('onWellTarget');if(target&&document.activeElement!==target)target.value=S.well.name;
   setMsg('Reading wellbores of ' + S.well.name + '…');
   r = await W.get('wellbore', `<wellbores ${C.NS}><wellbore uidWell="${C.xa(S.well.uid)}" uid=""><name/><commonData><dTimCreation/><dTimLastChange/></commonData></wellbore></wellbores>`, 'returnElements=requested');
-  S.wellbores = C.parseWellbores(r.xml).sort((a, b) => (Date.parse(b.created) || 0) - (Date.parse(a.created) || 0));
+  const sourceBores=C.parseWellbores(r.xml);if(sourceBores.some(b=>b.uidWell!==S.well.uid))throw Error('The source returned a wellbore from another well.');
+  S.wellbores = sourceBores.sort((a, b) => (Date.parse(b.created) || 0) - (Date.parse(a.created) || 0));
   // Check the three newest wellbores (or the chosen one) for the log that is changing now.
   const check = S.override.wb ? S.wellbores.filter(b => b.uid === S.override.wb) : S.wellbores.slice(0, 3);
   for (const b of check) { setMsg('Reading logs of wellbore ' + b.name + '…'); await readHeaders(b.uid); }
@@ -65,11 +72,12 @@ async function discover() {
 }
 async function readHeaders(uidWb) {
   const r = await W.get('log', `<logs ${C.NS}><log uidWell="${C.xa(S.well.uid)}" uidWellbore="${C.xa(uidWb)}" uid=""/></logs>`, 'returnElements=header-only');
-  S.headers[uidWb] = C.parseLogHeaders(r.xml);
+  const headers=C.parseLogHeaders(r.xml);if(headers.some(h=>h.uidWell!==S.well.uid||h.uidWellbore!==uidWb))throw Error('The source returned a log from another well or section.');
+  S.headers[uidWb]=headers;
   return S.headers[uidWb];
 }
 async function selectWellbore(b) {
-  const changed = S.wb?.uid !== b.uid; if (changed) {surveyAlerts?.clear();S.tl=null;S.surveyOverride=null;S.traj=null;S.trajUid=null;S.log=null;S.data={ml:[],ul:[],rows:[]};S.advancedAt=null;} S.wb = b;
+  const changed = S.wb?.uid !== b.uid; if (changed) {surveyAlerts?.clear();S.tl=null;S.surveyOverride=null;S.traj=null;S.trajUid=null;S.log=null;S.data={ml:[],ul:[],rows:[]};S.advancedAt=null;} S.wb = b;if(changed)loadScopedTally();
   const logs = S.headers[b.uid] || await readHeaders(b.uid);
   const log = (S.override.log && logs.find(l => l.uid === S.override.log)) || C.pickPrimary(logs);
   if (!log) throw new Error('No drilling log with parameters in wellbore ' + b.name);
@@ -323,7 +331,7 @@ const MARKUP = `
 </main>
 <aside id="onSettings" class="on-settings" hidden>
   <div class="on-h"><h2>Settings</h2><button id="onClose" type="button" aria-label="Close settings">✕</button></div>
-  <label>Well name or UID <input id="onWellTarget" type="text" maxlength="256" autocapitalize="off" spellcheck="false"></label><button id="onOpenWell" type="button">Open well</button><p class="on-muted">Opening another well refreshes Ops. Reconnect if prompted.</p><label>Wellbore <select id="onSelWb"></select></label>
+  <label>Well name or UID <input id="onWellTarget" placeholder="Automatic: newest source well" type="text" maxlength="256" autocapitalize="off" spellcheck="false"></label><button id="onOpenWell" type="button">Open well</button><p class="on-muted">Opening another well refreshes Ops. Reconnect if prompted.</p><label>Wellbore <select id="onSelWb"></select></label>
   <label>Drilling log <select id="onSelLog"></select></label>
   <div id="onDiag" class="on-diag"></div>
   <p><button id="onReload" type="button">Re-read now</button> <button id="onOut" type="button">Sign out</button></p>
@@ -399,7 +407,7 @@ function build() {
   const qs = location.search; for (const a of document.querySelectorAll('#onJointsLink,#onOpsLink,#onPlanLink')) a.href += qs;
   landingPlanner=initLandingPlanner(ctx);
   if (PAGE === 'wellplan') { buildCommon(); WP.init(ctx, $('wpHost'), {xlsxRows: VW.xlsxRows}); $('onConnBtn').onclick = () => { S.showSignin = !S.showSignin; render(); }; document.title = 'Well plan · live WITSML'; return; }
-  addEventListener('keydown', e => { if (e.key !== 'p' && e.key !== 'P') return; if (e.ctrlKey || e.metaKey || e.altKey || e.repeat || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName || '') || document.activeElement?.isContentEditable) return; location.href = './wellplan.html' + qs; });
+  addEventListener('keydown', e => { if (e.key !== 'p' && e.key !== 'P') return; if (e.ctrlKey || e.metaKey || e.altKey || e.repeat || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName || '') || document.activeElement?.isContentEditable) return; location.href = './wellplan.html' + location.search; });
   if (PAGE === 'joints') { buildCommon(); S.wantTl = true; VW.initJointsPage(ctx, $('jtHost')); $('onScanBtn').onclick = () => VW.togglePop(true); document.title = 'Joints · live WITSML'; return; }
   landingDock=initLandingDock({host:$('onLandingDock'),getContext:ctx,planner:landingPlanner});
   wellWorkspaceLink=mountWellWorkspaceLink($('onWellWorkspaceLink'),()=>({wellUid:S.well?.uid,wellboreUid:S.wb?.uid}));
@@ -430,7 +438,7 @@ function ctx() {
     plan: currentPlan()?.path || null, planName: currentPlan()?.name || '', planSource: currentPlan()?.source || 'no plan in store',
     offsets: S.offsets, surveyHeader: S.surveyHeader, reportSurveys: JS.state(),surveySource:S.surveyOverride?'Uploaded survey override':S.traj?.name||'Active WITSML survey',
     surveys: (S.surveyOverride ? S.surveyOverride.map(s => ({...s, tvd: s.tvd ?? s.tvdc})) : (S.traj?.calc || [])),
-    setTally: (t, name, err) => { S.tally = t; S.tallyName = name; S.tallyError = err || ''; try { t ? localStorage.setItem(TKEY, JSON.stringify({t, name})) : localStorage.removeItem(TKEY); } catch {} render(); },
+    setTally: (t, name, err) => { S.tally = t; S.tallyName = name; S.tallyError = err || ''; try { const key=currentTallyKey();if(!key)throw Error('Select a source well and section before saving a tally.');t ? localStorage.setItem(key, JSON.stringify({t, name})) : localStorage.removeItem(key); } catch {} render(); },
     setOffsets: (o, src) => { S.offsets = {...(o || {}), source: src || o?.source || 'uploaded'}; try { localStorage.setItem(OKEY(S.well?.name || DEF_WELL), JSON.stringify(S.offsets)); } catch {} render(); },
     setPlan: (p, name) => { S.importedPlan = p; S.importedPlanName = name || p?.name || 'plan'; try { localStorage.setItem('opsnow-plan:' + (S.well?.name || DEF_WELL), JSON.stringify({p, name: S.importedPlanName})); } catch {} VW.setPlan?.(p, S.importedPlanName); render(); },
     addOffset: o => { S.extraOffsets = [...(S.extraOffsets || []).filter(x => x.name !== o.name), o]; buildBranches(); render(); },
