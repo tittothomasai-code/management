@@ -1,0 +1,35 @@
+{
+  "results": [
+    {
+      "width": 1920,
+      "passed": true,
+      "checks": [
+        "source-only private input",
+        "true-scale dimensions",
+        "detailed bit",
+        "motor cutaway",
+        "assembly separation",
+        "unknown ID preserved",
+        "read-only design",
+        "editor draft unchanged",
+        "scope clear"
+      ]
+    },
+    {
+      "width": 390,
+      "passed": true,
+      "checks": [
+        "source-only private input",
+        "true-scale dimensions",
+        "detailed bit",
+        "motor cutaway",
+        "assembly separation",
+        "unknown ID preserved",
+        "read-only design",
+        "editor draft unchanged",
+        "scope clear"
+      ]
+    }
+  ],
+  "limitations": "SIM fixtures and software WebGL. No real data, live requests or writes."
+}

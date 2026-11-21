@@ -1,0 +1,38 @@
+{
+  "results": [
+    {
+      "width": 1920,
+      "passed": true,
+      "checks": [
+        "private policy frame",
+        "collapsed subtle indicator",
+        "source controls on tap",
+        "stale suppression",
+        "wellbore switch clears policy",
+        "actual existing 3D renderer",
+        "planned basis",
+        "MD/TVD ribbons",
+        "hazard layer toggles",
+        "orbit controls",
+        "phone fit"
+      ]
+    },
+    {
+      "width": 390,
+      "passed": true,
+      "checks": [
+        "private policy frame",
+        "collapsed subtle indicator",
+        "source controls on tap",
+        "stale suppression",
+        "wellbore switch clears policy",
+        "actual existing 3D renderer",
+        "planned basis",
+        "MD/TVD ribbons",
+        "hazard layer toggles",
+        "orbit controls",
+        "phone fit"
+      ]
+    }
+  ]
+}

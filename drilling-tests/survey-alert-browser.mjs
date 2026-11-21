@@ -41,7 +41,7 @@ try {
     page.on('pageerror', e => errors.push(e.message));
     await context.route('**/*', route => { if (!route.request().url().startsWith(origin)) { external.push(route.request().url()); return route.abort(); } return route.continue(); });
     await page.clock.install({time: new Date('2026-11-17T02:00:00Z')});
-    await page.goto(origin + '/ops');
+    await context.route('https://robotyx.systems/ops-watch.html',r=>r.fulfill({status:200,contentType:'text/html',body:'<!doctype html><title>SIM private-context fixture</title>'}));await page.goto(origin + '/ops');
     if((await readFile(resolve(root,'drilling/ops.html'),'utf8')).includes('bha-builder/context-launcher')){await page.locator('[data-bha-context]').waitFor();assert.equal(await page.locator('[data-bha-context]').count(),1);}
     await page.evaluate(async () => {
       const m = await import('./opsnow.js?v=opsref1118');window.__testOps = m;window.__simSigned = true;
