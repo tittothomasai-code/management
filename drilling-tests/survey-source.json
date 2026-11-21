@@ -7,7 +7,7 @@
     },
     {
       "path": "opsnow.js",
-      "sha256": "ba834c96ae104ac0d8c10b01693b187ee7f2b59640b007686082970949b7a5e6"
+      "sha256": "58ca2da03eb2e9cfa54e84adcea0f4bb1261b4129ce01fcc14c5d410ff07560c"
     },
     {
       "path": "opsnow_tallyview.js",
@@ -252,9 +252,27 @@
     {
       "path": "engineering/torque-drag.mjs",
       "sha256": "589e4ee15b582e0a8329bb97dcd4f0f73db63c3ca678eeca63bf8a7e07d20488"
+    },
+    {
+      "path": "opsnow_views.js",
+      "sha256": "998271dd633d4bbd24ee4d2e3dcc73f0bf2214da4aa9a91b4fac1cda208ac905"
     }
   ],
   "verifiedDeployId": "6b008c9a4924395802d921d1",
   "verifiedAt": "2026-11-21",
-  "reviewedDeploy": "6b00774f9801b71a2b02a2ab"
+  "reviewedDeploy": "6b00774f9801b71a2b02a2ab",
+  "opsBaselineReview": {
+    "checked_at": "2026-11-21",
+    "basis": "Live payload review against the accepted pre-watch Operations code; opsnow.js also matches ec81c6c exactly",
+    "files": [
+      {
+        "path": "opsnow.js",
+        "sha256": "58ca2da03eb2e9cfa54e84adcea0f4bb1261b4129ce01fcc14c5d410ff07560c"
+      },
+      {
+        "path": "opsnow_views.js",
+        "sha256": "998271dd633d4bbd24ee4d2e3dcc73f0bf2214da4aa9a91b4fac1cda208ac905"
+      }
+    ]
+  }
 }
