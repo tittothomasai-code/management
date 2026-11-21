@@ -18,4 +18,4 @@ export function landingStatus(x,s={},now=Date.now()){
  return {...withPlan,state:'guidance',title:'Survey guidance',message:'Calculated joint requirements · advisory. Recalculates as new surveys arrive.',next,active:true};
 }
 
-export function wellWorkspaceUrl(href,name){const value=String(name??'').trim();if(!value||value.length>256||/[\x00-\x1f\x7f]/.test(value))throw Error('Enter a well name or UID (1–256 characters).');const url=new URL(href);url.searchParams.set('well',value);url.hash='';return url.href;}
+export function wellWorkspaceUrl(href,name){const value=String(name??'').trim();if(!value||value.length>256||/[\x00-\x1f\x7f]/.test(value))throw Error('Enter a well name or UID (1–256 characters).');const url=new URL(href);url.searchParams.set('well',value);url.searchParams.delete('wellUid');url.searchParams.delete('wellboreUid');url.hash='';return url.href;}

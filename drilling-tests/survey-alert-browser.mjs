@@ -178,7 +178,7 @@ try {
     // Edits remain local and replace only the edited physical measurement.
     await completed.locator('[data-f="len"]').fill('13.20');await completed.locator('[data-f="len"]').dispatchEvent('change');
     assert.equal(await completed.locator('[data-f="len"]').inputValue(),'13.20');assert.match(await completed.innerText(),/edited/);
-    assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('opsnow-tally')).t.joints[0].len),13.2);
+    assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('opsnow-tally-scope:'+JSON.stringify(['SIM fixture',__testOps.testState.well.uid,__testOps.testState.wb.uid]))).t.joints[0].len),13.2);
     // Reported off-bottom bit remains separate; impossible bit below hole is rejected.
     await page.evaluate(()=>{const S=__testOps.testState;S.bit={v:110,at:Date.now(),log:{name:'SIM time'}};__testOps.testRender();});assert.match(await page.locator('#tbHead').innerText(),/110.0 m/);
     await page.evaluate(()=>{const S=__testOps.testState;S.bit={v:125,at:Date.now(),log:{name:'SIM time'}};__testOps.testRender();});assert.equal(await page.locator('#onBit').innerText(),'check source');assert.equal(await page.evaluate(()=>__testOps.testState.bitMd),null);
