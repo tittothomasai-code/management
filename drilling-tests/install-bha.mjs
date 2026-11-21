@@ -11,9 +11,9 @@ export function patchGameHtml(html){
  return html.slice(0,at)+'\n<script src="'+guard+'?v=1.0.2"></script>\n<script type="module" src="'+boot+'?v=1.0.2"></script>'+html.slice(at);
 }
 export function patchWorkspaceHtml(html){
- if(html.includes('./bha-builder/context-launcher.js'))return html.replace(/\.\/bha-builder\/context-launcher\.js(?:\?[^"']*)?/g,'./bha-builder/context-launcher.js?v=1.0.3');
+ if(html.includes('./bha-builder/context-launcher.js'))return html.replace(/\.\/bha-builder\/context-launcher\.js(?:\?[^"']*)?/g,'./bha-builder/context-launcher.js?v=schematic1');
  if(!/<\/body>/i.test(html))throw Error('Workspace has no closing body tag.');
- return html.replace(/<\/body>/i,'<script type="module" src="./bha-builder/context-launcher.js?v=1.0.3"></script></body>');
+ return html.replace(/<\/body>/i,'<script type="module" src="./bha-builder/context-launcher.js?v=schematic1"></script></body>');
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
  const root=resolve(process.argv[2]||new URL('../drilling/',import.meta.url).pathname);

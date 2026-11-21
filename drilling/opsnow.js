@@ -1,6 +1,6 @@
 import {wellCandidates,chooseWell,bindWellUrl,tallyStorageKey} from './opsnow_well_selection.mjs?v=current-well1';
 import {initDDWorld} from './opsnow_dd_world.mjs?v=1';
-import {initWatchZones,watchSnapshot} from './opsnow_watch_zones.mjs?v=team1';
+import {initWatchZones,watchSnapshot} from './opsnow_watch_zones.mjs?v=schematic1';
 // opsnow.js: one clean, read-only operator screen for the live WITSML well.
 // Signs in once per tab, then finds the active wellbore and its drilling log by itself and keeps
 // reading with bounded calls (one at a time). Settings and diagnostics stay behind the gear button.
@@ -416,7 +416,7 @@ function build() {
   performanceView=initPerformance({button:$('onPerformance'),getContext:()=>({...ctx(),scope:surveyContext().scope,primaryLog:S.log,timeLog:S.timeLog,tl:S.tl?.scope===surveyContext().scope?S.tl:null}),onOpen:()=>{S.wantTl=true;if(!S.tl)S.due.tl=0;}});
   engineeringView=initEngineering({button:$('onEngineering'),getContext:()=>({...ctx(),wellUid:S.well?.uid,wellboreUid:S.wb?.uid,sourceScope:engineeringSourceScope,primaryLog:S.log,timeLog:S.timeLog,tl:S.tl?.scope===surveyContext().scope?S.tl:null}),onOpen:()=>{S.wantTl=true;if(!S.tl)S.due.tl=0;}});
   pumpGraphic = createPumpGraphic({host: document.querySelector('.on-depths')});
-  if(PAGE==='ops')watchZones=initWatchZones({host:document.querySelector('.on-top'),refresh:()=>VW.draw?.()});
+  if(PAGE==='ops')watchZones=initWatchZones({host:document.querySelector('.on-top'),refresh:()=>VW.draw?.(),schematic:true});
   $('onTiles').innerHTML = TILES.map(([k, n]) => `<div class="on-tile" data-k="${k}"><small>${n}</small><b id="onV_${k}">—</b><i id="onU_${k}"></i></div>`).join('');
   $('onTrends').innerHTML = TILES.map(([k, n]) => `<div class="on-trend" data-k="${k}"><span><b>${n}</b> <em id="onT_${k}"></em></span><canvas id="onC_${k}"></canvas></div>`).join('');
   buildCommon();

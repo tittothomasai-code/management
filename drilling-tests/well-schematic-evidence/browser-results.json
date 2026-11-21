@@ -1,0 +1,48 @@
+{
+  "origin": "http://127.0.0.1:42421",
+  "synthetic": true,
+  "results": [
+    {
+      "width": 1920,
+      "passed": true,
+      "checks": [
+        "actual Ops mount",
+        "exact private source bridge",
+        "section/cement/BHA references",
+        "separate current bit and depth-log extent",
+        "no unverified overlay",
+        "MD/TVD separate",
+        "surface/whole/laterals",
+        "source conflicts visible",
+        "untrusted strings escaped",
+        "stale bit suppressed",
+        "foreign account rejected",
+        "bore switch clears private details",
+        "signout hides and wipes",
+        "no model/rig network requests",
+        "phone fit"
+      ]
+    },
+    {
+      "width": 390,
+      "passed": true,
+      "checks": [
+        "actual Ops mount",
+        "exact private source bridge",
+        "section/cement/BHA references",
+        "separate current bit and depth-log extent",
+        "no unverified overlay",
+        "MD/TVD separate",
+        "surface/whole/laterals",
+        "source conflicts visible",
+        "untrusted strings escaped",
+        "stale bit suppressed",
+        "foreign account rejected",
+        "bore switch clears private details",
+        "signout hides and wipes",
+        "no model/rig network requests",
+        "phone fit"
+      ]
+    }
+  ]
+}
