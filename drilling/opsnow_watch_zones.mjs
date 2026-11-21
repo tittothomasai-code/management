@@ -1,3 +1,4 @@
+import {initBatteryBar} from './opsnow_mwd_battery.mjs?v=1';
 // Report guidance is private and bound to exact source IDs. It is never clearance.
 const ORIGIN='https://robotyx.systems',MAX_AGE=120000;
 const finite=Number.isFinite,key=c=>JSON.stringify([c?.wellUid,c?.wellboreUid,c?.serverId||null]);
@@ -18,10 +19,11 @@ export function watchState(policy,context,now=Date.now()){
  return {state:'monitoring',title:'Report watch zones loaded',note:'No current report band is selected. This is not an anti-collision all-clear.'};
 }
 export function initWatchZones({host,refresh=()=>{}}){
+ const batteryBar=initBatteryBar({host});
  const box=document.createElement('details');box.id='onWatchZones';box.className='on-watch-zones';box.hidden=true;
  box.innerHTML='<summary><span aria-hidden="true" class="on-watch-dot"></span><span data-watch-title>Report watch zones</span><span data-watch-band></span></summary><div data-watch-detail></div>';
  host.append(box);const title=box.querySelector('[data-watch-title]'),band=box.querySelector('[data-watch-band]'),detail=box.querySelector('[data-watch-detail]');
- let context={},policy=null,frame=null,requestId='',scope='',requestedAt=0,receivedAt=0,status='loading',serial=0;
+ let context={},policy=null,frame=null,requestId='',scope='',requestedAt=0,receivedAt=0,status='loading',serial=0,receivedMono=NaN;
  const text=(tag,value)=>{const el=document.createElement(tag);el.textContent=value;return el;};
  function paint(){
   const usable=policy&&Date.now()-receivedAt<180000,s=usable?watchState(policy,context):{state:'unavailable',title:status==='sign-in-required'?'Report watch zones · sign in to Robotyx':status==='loading'?'Loading report watch zones…':'Report watch zones unavailable'};
@@ -34,6 +36,7 @@ export function initWatchZones({host,refresh=()=>{}}){
    const list=document.createElement('details');list.append(text('summary','Watch points and sources'));const ul=document.createElement('ul');for(const z of policy.zones){const range=z.axis==='tvd'?`${z.from_tvd_m}–${z.to_tvd_m} m TVD`:`${z.from_md_m}–${z.to_md_m} m MD`;const li=text('li',`${z.label}: ${range} · ${z.source.name}`);ul.append(li);}list.append(ul);detail.append(list);
   }
   snapshot=usable?{policy,context,state:s}:null;
+  batteryBar.update({policy:usable?policy:null,context,receivedMono});
  }
  function request(){
   if(!context.signed||!context.wellUid||!context.wellboreUid)return;
@@ -44,7 +47,7 @@ export function initWatchZones({host,refresh=()=>{}}){
   if(e.origin!==ORIGIN||e.source!==frame?.contentWindow)return;
   if(e.data?.type==='robotyx-watch-zones:clear'){policy=null;snapshot=null;status='sign-in-required';paint();refresh();return;}
   if(e.data?.type!=='robotyx-watch-zones:result'||e.data.id!==requestId)return;
-  policy=e.data.status==='ok'&&same(e.data.policy,context)?e.data.policy:null;status=e.data.status;receivedAt=Date.now();paint();refresh();
+  policy=e.data.status==='ok'&&same(e.data.policy,context)?e.data.policy:null;status=e.data.status;receivedAt=Date.now();receivedMono=performance.now();paint();refresh();
  };addEventListener('message',message);
- return {update(c){const next=key(c);context=c;box.hidden=!c.signed||!c.wellUid||!c.wellboreUid;if(next!==scope){scope=next;policy=null;snapshot=null;receivedAt=0;requestedAt=0;status='loading';}if(box.hidden){policy=null;snapshot=null;requestId='';}else if(Date.now()-requestedAt>60000)request();paint();},dispose(){removeEventListener('message',message);frame?.remove();box.remove();snapshot=null;}};
+ return {update(c){const next=key(c);context=c;box.hidden=!c.signed||!c.wellUid||!c.wellboreUid;if(next!==scope){scope=next;policy=null;snapshot=null;receivedAt=0;requestedAt=0;status='loading';}if(box.hidden){policy=null;snapshot=null;requestId='';}else if(Date.now()-requestedAt>60000)request();paint();},dispose(){removeEventListener('message',message);frame?.remove();batteryBar.dispose();box.remove();snapshot=null;}};
 }

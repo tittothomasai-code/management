@@ -33,3 +33,13 @@ Remaining hours are an estimate: 100 × (1 − baseline capacity used / 100) −
 Well designs → MWD batteries shows available private pre-run records and an illustrative 3D pack/cutaway. The setup percentage means capacity **used**. Pre-run equivalent remaining hours are distinct from current remaining hours. Current usage and actual installation remain unknown until supported. Manufacturing date is not batch identity. A source lifetime active-time counter is not used as the powered runtime on this well. Source imagery and real battery details stay out of Git.
 
 The battery update passed 196 unit tests locally. Desktop/phone checks cover setup battery selection, schematic cutaway, current-usage unknowns, editable serial/usage fields, a saved assembly and the authenticated Operations-context bridge. The new source metadata is additive; no database migration, mail, billing or permission change is required.
+
+## Operations battery bar
+
+Operations shows a small MWD battery bar below the well shortcuts. It shows the selected pack's estimated budget and changes to amber for a low or exhausted budget. Open it to choose another pack, see the tracking start and read the assumption. Current measured battery life remains unknown.
+
+This is an explicit, user-enabled assumed-powered budget. Its start is recorded once on the server and frozen to each source baseline/hash. Each elapsed hour uses one budget hour, assuming that pack stays powered. Closing or refreshing the page does not reset the start. The budgets are separate, not additive. Actual installation, powered usage before tracking and duty cycle are not inferred. This estimate must not enter the measured telemetry, steering inputs or scorecard as an observed battery outcome.
+
+The bar uses a fresh server budget plus a bounded monotonic display timer. An expired private context freezes/removes the display; a new authenticated read recalculates from the saved start. Historical views, sign-out, different wells/bores/tenants, changed baselines and invalid clocks cannot show the previous budget. A stopped tracking policy freezes the estimate. Source tracking is read-only from this page; selecting a pack does not confirm installation or reset its budget.
+
+Synthetic tests cover drawdown, separate packs, low/exhausted states, persisted starts, paused tracking, baseline changes, stale/future clocks and scope denial. Desktop/phone screenshots include the compact bar and the expanded battery details. No extra connector, live control, email, billing change or schema migration was added.
