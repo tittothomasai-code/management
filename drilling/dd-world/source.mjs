@@ -1,0 +1,9 @@
+import {fieldFor} from './core.mjs';
+const ROOT='https://robotyx.systems',key=c=>JSON.stringify([c?.wellUid,c?.wellboreUid,c?.serverId||null]);
+export function privateField({host,onData,onClear,onStatus}){
+ let frame=null,context={},scope='',sequence=0,id='',branchKey=null;
+ function send(){if(!frame||!context.signed||!context.wellUid||!context.wellboreUid)return;id='dd-'+(++sequence)+'-'+Date.now();frame.contentWindow?.postMessage({type:'robotyx-dd-world:request',id,context:{well_uid:context.wellUid,wellbore_uid:context.wellboreUid,...context.serverId?{server_id:context.serverId}:{}},...branchKey?{branch_key:branchKey}:{}},ROOT);onStatus('loading');}
+ const message=e=>{if(e.origin!==ROOT||e.source!==frame?.contentWindow)return;if(e.data?.type==='robotyx-dd-world:clear'){id='';onClear();onStatus('sign-in-required');return;}if(e.data?.type!=='robotyx-dd-world:result'||e.data.id!==id)return;if(e.data.status!=='ok'){onStatus(e.data.status||'unavailable');return;}try{const p=fieldFor(e.data.field_context,context);if(branchKey&&p.detail?.key!==branchKey)throw Error('Branch changed.');onData(p,branchKey);onStatus('ready');}catch{onClear();onStatus('unavailable');}};
+ addEventListener('message',message);
+ return {update(c){const next=key(c);context=c;if(!c.signed){scope='';id='';onClear();onStatus('sign-in-required');return;}if(next!==scope){scope=next;branchKey=null;id='';onClear();if(frame)send();}},load(branch=null){branchKey=branch;if(!context.signed||!context.wellUid||!context.wellboreUid){onStatus('sign-in-required');return;}if(!frame){frame=document.createElement('iframe');frame.hidden=true;frame.title='Private directional drilling field';frame.referrerPolicy='no-referrer';frame.src=ROOT+'/ops-watch.html';frame.onload=send;host.append(frame);}else send();},dispose(){removeEventListener('message',message);frame?.remove();frame=null;id='';onClear();}};
+}

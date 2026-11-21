@@ -2,7 +2,7 @@ name: Drilling release
 on:
   push:
     branches: [release/drilling-live]
-    paths: ['drilling/well-folder/**', 'drilling/directional-drilling/**', 'drilling/landing-game/**', 'drilling/bha-builder/**', 'drilling/ops.html', 'drilling/opsnow.js', 'drilling/opsnow_well_selection.mjs', 'drilling/opsnow_reservoir.mjs', 'drilling/opsnow_mwd_battery.mjs', 'drilling/opsnow_agent_team.mjs', 'drilling/opsnow_watch*', 'drilling/opsnow_views.js', 'drilling/opsnow_performance*', 'drilling/opsnow_well_workspace.mjs', 'drilling/opsnow_engineering*', 'drilling/engineering/**', 'drilling-tests/survey-source.json', 'drilling/wpg_core.js', 'drilling/edmmap.js', 'drilling/edmui.js', 'drilling/edm_field_check.mjs', 'drilling/edm_field_check_core.mjs', 'drilling/edm_field_check_worker.mjs', 'drilling/opsnow_hardpoints.mjs', 'drilling/opsnow_operation_report.mjs', 'drilling/opsnow_landing*.mjs', 'drilling/opsnow_landing*.css', 'drilling/opsnow_measured_upload.mjs', 'drilling/opsnow_joint_metrics.mjs', 'drilling/opsnow_tallyview.js', 'drilling/opsnow_tally_compare.mjs', 'drilling/data/dr101l-wb04-measured-tally.json', 'drilling/opsnow_pumps.mjs', 'drilling/opsnow_pumps.css', 'drilling/opsnow_survey_alert.mjs', 'drilling/opsnow_survey_alert.css']
+    paths: ['drilling/dd-world/**', 'drilling/opsnow_dd_world.mjs', 'drilling/well-folder/**', 'drilling/directional-drilling/**', 'drilling/landing-game/**', 'drilling/bha-builder/**', 'drilling/ops.html', 'drilling/opsnow.js', 'drilling/opsnow_well_selection.mjs', 'drilling/opsnow_reservoir.mjs', 'drilling/opsnow_mwd_battery.mjs', 'drilling/opsnow_agent_team.mjs', 'drilling/opsnow_watch*', 'drilling/opsnow_views.js', 'drilling/opsnow_performance*', 'drilling/opsnow_well_workspace.mjs', 'drilling/opsnow_engineering*', 'drilling/engineering/**', 'drilling-tests/survey-source.json', 'drilling/wpg_core.js', 'drilling/edmmap.js', 'drilling/edmui.js', 'drilling/edm_field_check.mjs', 'drilling/edm_field_check_core.mjs', 'drilling/edm_field_check_worker.mjs', 'drilling/opsnow_hardpoints.mjs', 'drilling/opsnow_operation_report.mjs', 'drilling/opsnow_landing*.mjs', 'drilling/opsnow_landing*.css', 'drilling/opsnow_measured_upload.mjs', 'drilling/opsnow_joint_metrics.mjs', 'drilling/opsnow_tallyview.js', 'drilling/opsnow_tally_compare.mjs', 'drilling/data/dr101l-wb04-measured-tally.json', 'drilling/opsnow_pumps.mjs', 'drilling/opsnow_pumps.css', 'drilling/opsnow_survey_alert.mjs', 'drilling/opsnow_survey_alert.css']
   pull_request:
     branches: [release/drilling-live]
     paths: ['drilling/**', 'drilling-tests/**', '.github/workflows/drilling-release.yml', '.github/scripts/drilling-*.mjs']
@@ -32,6 +32,7 @@ jobs:
           PLAYWRIGHT_MODULE: playwright
         run: |
           npm test --prefix drilling-tests
+          ROBOTYX_CHROMIUM_PATH=$(command -v google-chrome || command -v chromium) node drilling-tests/dd-world-browser.mjs
           ROBOTYX_CHROMIUM_PATH=$(command -v google-chrome || command -v chromium) node drilling-tests/survey-alert-browser.mjs
           ROBOTYX_CHROMIUM_PATH=$(command -v google-chrome || command -v chromium) node drilling-tests/well-selection-browser.mjs
           ROBOTYX_CHROMIUM_PATH=$(command -v google-chrome || command -v chromium) node drilling-tests/reservoir-browser.mjs
@@ -50,6 +51,8 @@ jobs:
           ENGINEERING_PREVIEW_URL=$(node -e "console.log(require('./release-evidence/release-plan.json').previewUrl)") ROBOTYX_CHROMIUM_PATH=$(command -v google-chrome || command -v chromium) node drilling-tests/engineering-browser.mjs
           DIRECTIONAL_PREVIEW_URL=$(node -e "console.log(require('./release-evidence/release-plan.json').previewUrl)") ROBOTYX_CHROMIUM_PATH=$(command -v google-chrome || command -v chromium) node drilling-tests/directional-simulation-browser.mjs
           AGENT_TEAM_PREVIEW_URL=$(node -e "console.log(require('./release-evidence/release-plan.json').previewUrl)") ROBOTYX_CHROMIUM_PATH=$(command -v google-chrome || command -v chromium) node drilling-tests/agent-team-browser.mjs
+          DD_WORLD_PREVIEW_URL=$(node -e "console.log(require('./release-evidence/release-plan.json').previewUrl)") ROBOTYX_CHROMIUM_PATH=$(command -v google-chrome || command -v chromium) node drilling-tests/dd-world-browser.mjs
+          cp -r drilling-tests/dd-world-evidence release-evidence/dd-world
           cp -r drilling-tests/agent-team-evidence release-evidence/agent-team
           cp -r drilling-tests/directional-evidence release-evidence/directional-simulation
           cp -r drilling-tests/ops-landing-evidence release-evidence/ops-landing

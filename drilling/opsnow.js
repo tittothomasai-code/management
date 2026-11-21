@@ -1,4 +1,5 @@
 import {wellCandidates,chooseWell,bindWellUrl,tallyStorageKey} from './opsnow_well_selection.mjs?v=current-well1';
+import {initDDWorld} from './opsnow_dd_world.mjs?v=1';
 import {initWatchZones,watchSnapshot} from './opsnow_watch_zones.mjs?v=team1';
 // opsnow.js: one clean, read-only operator screen for the live WITSML well.
 // Signs in once per tab, then finds the active wellbore and its drilling log by itself and keeps
@@ -298,7 +299,7 @@ const MARKUP = `
   <section id="onOperationReport" hidden aria-label="Reported well operation"></section>
   <div class="on-depths"><div><small>Hole MD</small><b id="onHole">—</b></div><div><small id="onBitLbl">Bit MD</small><b id="onBit">—</b></div><div><small>Last survey</small><b id="onLastSv">—</b></div></div>
   <button id="onGear" class="on-gear" type="button" aria-label="Settings" aria-expanded="false">⚙</button>
-  <nav class="on-views" aria-label="Views"><button type="button" id="onLandingWorkspace">Landing & drilling</button><button type="button" data-v="log">Live log</button><button type="button" id="onPerformance">Performance</button><button type="button" id="onEngineering">Engineering</button><a class="on-linkbtn" id="onWellWorkspaceLink" aria-disabled="true">Well Folder ↗</a><button type="button" data-v="3d">3D wells</button><button type="button" data-v="ac" id="onAcBtn">Anti-collision</button><button type="button" data-v="tally">Tally</button><button type="button" data-v="geo">Geosteer</button><a class="on-linkbtn" id="onJointsLink" href="./joints.html">Joints ↗</a><a class="on-linkbtn" id="onPlanLink" href="./wellplan.html" title="Well planning (key P)">Well plan ↗</a></nav>
+  <nav class="on-views" aria-label="Views"><button type="button" id="onDDWorld">DD · World view</button><button type="button" id="onLandingWorkspace">Landing & drilling</button><button type="button" data-v="log">Live log</button><button type="button" id="onPerformance">Performance</button><button type="button" id="onEngineering">Engineering</button><a class="on-linkbtn" id="onWellWorkspaceLink" aria-disabled="true">Well Folder ↗</a><button type="button" data-v="3d">3D wells</button><button type="button" data-v="ac" id="onAcBtn">Anti-collision</button><button type="button" data-v="tally">Tally</button><button type="button" data-v="geo">Geosteer</button><a class="on-linkbtn" id="onJointsLink" href="./joints.html">Joints ↗</a><a class="on-linkbtn" id="onPlanLink" href="./wellplan.html" title="Well planning (key P)">Well plan ↗</a></nav>
 </header>
 <p id="onMsg" class="on-msg" role="status" hidden></p>
 <section id="onSignin" class="on-card on-signin" hidden>
@@ -409,6 +410,7 @@ function build() {
   if (PAGE === 'wellplan') { buildCommon(); WP.init(ctx, $('wpHost'), {xlsxRows: VW.xlsxRows}); $('onConnBtn').onclick = () => { S.showSignin = !S.showSignin; render(); }; document.title = 'Well plan · live WITSML'; return; }
   addEventListener('keydown', e => { if (e.key !== 'p' && e.key !== 'P') return; if (e.ctrlKey || e.metaKey || e.altKey || e.repeat || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName || '') || document.activeElement?.isContentEditable) return; location.href = './wellplan.html' + location.search; });
   if (PAGE === 'joints') { buildCommon(); S.wantTl = true; VW.initJointsPage(ctx, $('jtHost')); $('onScanBtn').onclick = () => VW.togglePop(true); document.title = 'Joints · live WITSML'; return; }
+  ddWorldView=initDDWorld({button:$('onDDWorld'),getContext:()=>({...ctx(),signed:W.hasCred()&&!W.state.dead,wellUid:S.well?.uid,wellboreUid:S.wb?.uid,serverId:new URLSearchParams(location.search).get('connectionUid')||null})});
   landingDock=initLandingDock({host:$('onLandingDock'),getContext:ctx,planner:landingPlanner});
   wellWorkspaceLink=mountWellWorkspaceLink($('onWellWorkspaceLink'),()=>({wellUid:S.well?.uid,wellboreUid:S.wb?.uid}));
   performanceView=initPerformance({button:$('onPerformance'),getContext:()=>({...ctx(),scope:surveyContext().scope,primaryLog:S.log,timeLog:S.timeLog,tl:S.tl?.scope===surveyContext().scope?S.tl:null}),onOpen:()=>{S.wantTl=true;if(!S.tl)S.due.tl=0;}});
@@ -453,7 +455,9 @@ function currentPlan() {
   const f = WPL.planFor(S.well?.name || DEF_WELL, S.wb?.name); if (f) return f; // dr101l-plan-1115: well-folder plan, last fallback
   return null;
 }
+let ddWorldView=null;
 function render() {
+  ddWorldView?.update();
   build();
   S.operationReport=reportedOperation(S.well?.name,S.wb?.name);
   ensureMeasuredReference();
