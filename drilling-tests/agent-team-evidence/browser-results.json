@@ -1,0 +1,46 @@
+{
+  "origin": "http://127.0.0.1:39163",
+  "synthetic": true,
+  "results": [
+    {
+      "width": 1920,
+      "passed": true,
+      "checks": [
+        "actual Operations mount",
+        "private bridge only",
+        "three distinct roles",
+        "collapsed minimal summary",
+        "source and model time separated",
+        "missing inputs visible",
+        "no control authority",
+        "future source/check suppression",
+        "untrusted prose text-only",
+        "cross-tenant policy rejected",
+        "bore switch clears role facts",
+        "signout hides and clears team",
+        "no extra model/rig network requests",
+        "phone fit"
+      ]
+    },
+    {
+      "width": 390,
+      "passed": true,
+      "checks": [
+        "actual Operations mount",
+        "private bridge only",
+        "three distinct roles",
+        "collapsed minimal summary",
+        "source and model time separated",
+        "missing inputs visible",
+        "no control authority",
+        "future source/check suppression",
+        "untrusted prose text-only",
+        "cross-tenant policy rejected",
+        "bore switch clears role facts",
+        "signout hides and clears team",
+        "no extra model/rig network requests",
+        "phone fit"
+      ]
+    }
+  ]
+}

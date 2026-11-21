@@ -1,5 +1,5 @@
 import {wellCandidates,chooseWell,bindWellUrl,tallyStorageKey} from './opsnow_well_selection.mjs?v=current-well1';
-import {initWatchZones,watchSnapshot} from './opsnow_watch_zones.mjs?v=watch1';
+import {initWatchZones,watchSnapshot} from './opsnow_watch_zones.mjs?v=team1';
 // opsnow.js: one clean, read-only operator screen for the live WITSML well.
 // Signs in once per tab, then finds the active wellbore and its drilling log by itself and keeps
 // reading with bounded calls (one at a time). Settings and diagnostics stay behind the gear button.
