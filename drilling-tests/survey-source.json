@@ -204,9 +204,57 @@
     {
       "path": "fluids.js",
       "sha256": "e549112ee0b5a2aca738fb83a12f0015f8484b6bcfaa4668aafa2429733302e3"
+    },
+    {
+      "path": "opsnow_engineering.mjs",
+      "sha256": "480dcad3873d4e7a0638158e110f1a9e33d00fc54238953463748ca283ee02f4"
+    },
+    {
+      "path": "opsnow_engineering_worker.mjs",
+      "sha256": "5e26147bd632dea418cf7d09b3183d880bfd601104e61c1a90a9f72ce3f293e5"
+    },
+    {
+      "path": "opsnow_engineering.css",
+      "sha256": "d17a3c6dd4c06a74218c53fd71759869f0ca7b2dc40e8c564160c7a493a6a36e"
+    },
+    {
+      "path": "engineering/analyze.mjs",
+      "sha256": "880fec3e43b357a43a6aba653b4a9686f56c1c9606c0fb29a42e47b8e781fb5f"
+    },
+    {
+      "path": "engineering/hydraulics.mjs",
+      "sha256": "0f5bedd25d62958ca251ff09e6bc1e03b77784b7d2c5c357a91c87e1b780a4dd"
+    },
+    {
+      "path": "engineering/telemetry.mjs",
+      "sha256": "f714e3ad8185b373a97e2d9462cd1c3b2daa6f22707f93c9a3d8709e4fa26f68"
+    },
+    {
+      "path": "engineering/validation.mjs",
+      "sha256": "ee1d513d8b27bbb03af287cc3cbaba3c7d926306168865b9b05e3d566c601d21"
+    },
+    {
+      "path": "engineering/energy.mjs",
+      "sha256": "f3bfe95b3f014319e30b7ca88ca5fb3339457563ae228921a9b6f26a168888f3"
+    },
+    {
+      "path": "engineering/input-format.mjs",
+      "sha256": "ce638ce6b09227d2e37e316abf5df84faa4960041ac7bd1cc4c131f4560554c7"
+    },
+    {
+      "path": "engineering/tripping.mjs",
+      "sha256": "a1ee457b1648354fd57d1f212c866ee2dde1f97ee87319d41e93d5e2e4d95c2b"
+    },
+    {
+      "path": "engineering/inventory-form.mjs",
+      "sha256": "3acb48ddd292c63890ae1588a4565ad1a1d9f91a1a35265199cb4b481215bdee"
+    },
+    {
+      "path": "engineering/torque-drag.mjs",
+      "sha256": "589e4ee15b582e0a8329bb97dcd4f0f73db63c3ca678eeca63bf8a7e07d20488"
     }
   ],
   "verifiedDeployId": "6b008c9a4924395802d921d1",
-  "verifiedAt": "2026-11-20",
+  "verifiedAt": "2026-11-21",
   "reviewedDeploy": "6b00774f9801b71a2b02a2ab"
 }
