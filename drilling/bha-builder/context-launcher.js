@@ -1,5 +1,5 @@
 // One editor and one origin-local library across game, Ops and DD workspaces.
-import {watchSnapshot} from '../opsnow_watch_zones.mjs';
+import {watchSnapshot} from '../opsnow_watch_zones.mjs?v=watch1';
 let panel=null,frame=null,opener=null;
 let lastSource='';
 function sourceContext(){if(!frame)return;const s=watchSnapshot(),designs=s?.policy?.bha_designs||[],key=JSON.stringify([s?.policy?.scope,designs]);if(key===lastSource)return;lastSource=key;frame.contentWindow?.postMessage({type:'robotyx-bha-source-designs',designs},location.origin);}
