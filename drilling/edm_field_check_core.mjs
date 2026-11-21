@@ -52,11 +52,20 @@ export function trajectoryPair(A,B){
  }
  return {closestApproachM:closest.distance,closestAt:closest,sfLowerBound:sfMin,sfAt:sfCase,flag:sfMin<1?'STOP':sfMin<1.5?'REVIEW':'NO PROXIMITY FLAG'};
 }
-export function assessField(models,{wellName='DR101L',radiusM=10000,now=new Date().toISOString()}={}){
+export function fieldReference(W,selectedWellId){
+ const wells=W?.wells||[],well=selectedWellId!=null?wells.find(w=>w.id===selectedWellId):wells.length===1?wells[0]:null;
+ if(!well)throw Error('Select the reference well in this EDM field first.');
+ return {wellName:well.name,referenceSourceId:W.savedId||'active',referenceWellId:well.id};
+}
+export function assessField(models,{wellName='DR101L',referenceSourceId,referenceWellId,radiusM=10000,now=new Date().toISOString()}={}){
  if(!finite(radiusM)||radiusM<=0)throw Error('A positive search radius is required.');
- const normalized=models.map((m,i)=>normalizeModel(m.W||m,m.id||'source-'+i)),target=canonical(wellName),references=normalized.flatMap(m=>m.paths).filter(p=>canonical(p.well)===target),center=references[0]?.head;
+ const scoped=referenceSourceId!=null||referenceWellId!=null;
+ if(scoped&&(typeof referenceSourceId!=='string'||typeof referenceWellId!=='string'))throw Error('Both source and well identity are required.');
+ const isReference=p=>scoped?p.sourceId===referenceSourceId&&p.wellId===referenceWellId:canonical(p.well)===canonical(wellName);
+ const normalized=models.map((m,i)=>normalizeModel(m.W||m,m.id||'source-'+i)),target=canonical(wellName),references=normalized.flatMap(m=>m.paths).filter(isReference),center=references[0]?.head;
  const report={schema:'robotyx-field-screen/1',well:wellName,radiusM,generatedAt:now,status:'INCOMPLETE',center:center?{E:center.E,N:center.N,crs:references[0].frame}:null,
   sourceDatasets:normalized.map(m=>({id:m.sourceId,name:m.name,wells:m.wells.length,trajectories:m.paths.length})),referenceTrajectories:references.map(p=>({name:p.name,source:p.sourceName,kind:p.kind,loadedStations:p.loadedStations,sourceStations:p.sourceStations})),
+  referenceScope:scoped?{sourceId:referenceSourceId,wellId:referenceWellId}:null,
   results:[],skipped:normalized.flatMap(m=>m.warnings),outsideRadius:0,sameWellExcluded:0,duplicatesExcluded:0,
   limitations:['Only loaded EDM datasets were searched; regional well-inventory completeness is not established.','Simplified cone uncertainty: radius = 1 m + 1% MD; SF is a conservative segment bound, not an approved survey error model.']};
  if(!references.length){report.limitations.unshift('No valid reference trajectory or wellhead was available.');return report;}
@@ -64,7 +73,8 @@ export function assessField(models,{wellName='DR101L',radiusM=10000,now=new Date
  if(references.some(p=>sameFrame(p.frame,references[0].frame)&&Math.hypot(p.head.E-center.E,p.head.N-center.N)>1))report.limitations.push('Reference-well sources disagree on wellhead position by more than 1 m; review source placement before relying on the comparisons.');
  const offsets=[],seen=new Set();
  for(const m of normalized)for(const p of m.paths){
-  if(canonical(p.well)===target){report.sameWellExcluded++;continue;}
+  if(isReference(p)){report.sameWellExcluded++;continue;}
+  if(scoped&&canonical(p.well)===target){report.skipped.push({source:p.sourceName,well:p.well,wellbore:p.name,reason:'Same well name in another source; identity association is unverified'});continue;}
   if(!sameFrame(p.frame,references[0].frame)){report.skipped.push({source:p.sourceName,well:p.well,wellbore:p.name,reason:'Horizontal or vertical datum differs or is unknown; no transformation was assumed'});continue;}
   if(!pathIntersectsRadius(p.points,center,radiusM)){report.outsideRadius++;continue;}
   const signature=JSON.stringify([canonical(p.well),p.name,p.points]);if(seen.has(signature)){report.duplicatesExcluded++;continue;}seen.add(signature);offsets.push(p);

@@ -14,6 +14,9 @@
       "status": "INCOMPLETE",
       "pairs": 0,
       "savedImportsPreserved": true,
+      "savedEdmExportVerified": true,
+      "selectedReferenceVerified": true,
+      "hiddenOffsetsAssessed": 2,
       "errors": []
     },
     {
@@ -29,6 +32,9 @@
       "status": "INCOMPLETE",
       "pairs": 0,
       "savedImportsPreserved": true,
+      "savedEdmExportVerified": true,
+      "selectedReferenceVerified": true,
+      "hiddenOffsetsAssessed": 2,
       "errors": []
     }
   ]
