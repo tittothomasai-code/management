@@ -1,3 +1,4 @@
+import {WITSML_ENABLED, DISCONNECTED, requireWitsml} from './witsml-policy.mjs';
 // wdash.js v5.12.20 (discovery + views moved to shared wwell.js) / v5.12.19 (whole-well discovery, depth/time mapping) / v5.12.12: WITSML dashboard. Vertical depth (or time) logs, tracks side by side, auto-scroll, curve picker, scales,
 // borehole image tracks (unwrapped 0-360°, colour map, sinusoids). Data: WITSML 1.4.1.1 store (via proxy or direct) or SIM.
 // Credentials: held ONLY in this module's memory while the panel is connected. Never written to browser storage (local or session),
@@ -54,10 +55,14 @@ async function savedCred(user) {
  const pass=await loadPw();
  return pass && sameStore(route,D.conn) ? {user:o.user,pass} : null;
 }
-async function autoReconnect(){const o=loadCfg(),c=await savedCred();if(!o||!c||!o.url||!o.well)return;CRED=c;const C=D.conn;
+async function autoReconnect(){
+ if (!WITSML_ENABLED) return;
+ const o=loadCfg(),c=await savedCred();if(!o||!c||!o.url||!o.well)return;CRED=c;const C=D.conn;
  try{await call('WMLS_GetVersion');Object.assign(C,{connected:true,sim:/\/sim\b|simulated/i.test(C.url),well:o.well,okAt:0,hdr:null});await loadWell(o.well)}
  catch(e){C.connected=false;C.err='Auto-reconnect failed: '+e.message;render()}}
-async function call(op,wmlType,query,options){try{return await call1(op,wmlType,query,options)}catch(e){if(TYPED||!(e.auth||e.timeout))throw e;const c=await savedCred(CRED?.user);if(!c)throw e;CRED=c;return await call1(op,wmlType,query,options)}}
+async function call(op,wmlType,query,options){
+ requireWitsml();
+ try{return await call1(op,wmlType,query,options)}catch(e){if(TYPED||!(e.auth||e.timeout))throw e;const c=await savedCred(CRED?.user);if(!c)throw e;CRED=c;return await call1(op,wmlType,query,options)}}
 async function call1(op,wmlType,query,options){const C=D.conn,u=CRED||{user:'',pass:''};let body,h;const ac=new AbortController(),to=setTimeout(()=>ac.abort(),45000);
  try{if(C.via=='direct'){const r=await fetch(C.url,{method:'POST',signal:ac.signal,headers:{'Content-Type':'text/xml; charset=utf-8',SOAPAction:'"http://www.witsml.org/action/120/Store.'+op+'"',...(u.user?{Authorization:'Basic '+btoa(unescape(encodeURIComponent(u.user+':'+u.pass)))}:{})},body:K.soapEnvelope(op,{wmlType,query,options})});
    if(r.status==401||r.status==403)throw Object.assign(new Error('login refused by the store (HTTP '+r.status+')'),{auth:1});const s=K.soapResult(await r.text());if(s.fault)throw new Error('store fault: '+s.fault);if(s.result!=null&&s.result<0)throw new Error('store result '+s.result+' '+s.supp);return s}
@@ -122,7 +127,7 @@ function installOperationsBridge(){window.GX=window.GX||{};if(!window.GX.witsml|
 function setMode(m){D.mode=m;D.top=null;D.auto=true;D.tracks=defaultTracks(cur().ml||[]);head();render()}
 function zoom(f){D.span[D.mode]=Math.min(D.mode=='depth'?2000:86400,Math.max(D.mode=='depth'?2:30,D.span[D.mode]*f));render()}
 function head(){syncGlobalStatus();if(!D.el)return;const t=$('wdTag');t.textContent=badge();t.className='tag '+badge();$('wdModeD').classList.toggle('on',D.mode=='depth');$('wdModeT').classList.toggle('on',D.mode=='time');
- $('wdAuto').classList.toggle('on',D.auto);$('wdSines').classList.toggle('on',D.sines);$('wdConnB').textContent=D.conn.connected?'Store ✓':'Connect…';const S=$('wdSet');if(S){const L=D.sets.filter(s=>s.rows?.length);S.style.display=L.length?'':'none';const k=L.map(s=>s.wb+'|'+s.uid).join();if(S.dataset.k!=k){S.dataset.k=k;S.innerHTML=L.map(s=>`<option value="${s.wb}|${s.uid}">${(s.kind=='realtime'?'● LIVE branch · ':'')+s.wbName+' · '+(s.name||s.uid)+' · '+s.kind+' · '+(s.time?'time':'depth')}</option>`).join('')}if(D.P)S.value=D.P.wb+'|'+D.P.uid}}
+ $('wdAuto').classList.toggle('on',D.auto);$('wdSines').classList.toggle('on',D.sines);$('wdConnB').disabled=!WITSML_ENABLED;$('wdConnB').textContent=!WITSML_ENABLED?DISCONNECTED:D.conn.connected?'Store ✓':'Connect…';const S=$('wdSet');if(S){const L=D.sets.filter(s=>s.rows?.length);S.style.display=L.length?'':'none';const k=L.map(s=>s.wb+'|'+s.uid).join();if(S.dataset.k!=k){S.dataset.k=k;S.innerHTML=L.map(s=>`<option value="${s.wb}|${s.uid}">${(s.kind=='realtime'?'● LIVE branch · ':'')+s.wbName+' · '+(s.name||s.uid)+' · '+s.kind+' · '+(s.time?'time':'depth')}</option>`).join('')}if(D.P)S.value=D.P.wb+'|'+D.P.uid}}
 // ---------- drawing ----------
 const HEAD=58,AXW=46;let LAY=[];
 const pxPer=()=>{const h=($('wdCv')?.clientHeight||600)-HEAD;return h/D.span[D.mode]/(D.mode=='time'?1000:1)};
@@ -195,7 +200,9 @@ function picker(focus){$('wdConn')?.remove();if($('wdPick')){$('wdPick').remove(
  $('wdAddT').onclick=()=>{D.tracks.push({name:'Track '+(D.tracks.length+1),curves:[]});re()};$('wdAddI').onclick=()=>{D.tracks.push({name:'Image '+(D.imgs[0]?.name||''),image:D.imgs[0]?.name||null});re()};
  $('wdReset').onclick=()=>{D.tracks=defaultTracks(s.ml||[]);re()};$('wdPickX').onclick=()=>P.remove()}
 // ---------- connection panel (credentials: memory only) ----------
-function connPanel(){$('wdPick')?.remove();if($('wdConn')){$('wdConn').remove();return}if(!D.conn.connected)loadCfg();D.conn.proxy=String(D.conn.proxy).replace(/"/g,'');D.conn.url=String(D.conn.url).replace(/"/g,'');const C=D.conn,P=document.createElement('div');P.id='wdConn';
+function connPanel(){
+ if (!WITSML_ENABLED) return;
+ $('wdPick')?.remove();if($('wdConn')){$('wdConn').remove();return}if(!D.conn.connected)loadCfg();D.conn.proxy=String(D.conn.proxy).replace(/"/g,'');D.conn.url=String(D.conn.url).replace(/"/g,'');const C=D.conn,P=document.createElement('div');P.id='wdConn';
  P.innerHTML=`<b>WITSML store</b><label>Standard<select id=wdProto><option value=soap>WITSML 1.4.1.1 (SOAP)</option><option value=etp>WITSML 2.0 (ETP 1.2)</option></select></label>
  <label>Route<select id=wdVia><option value=proxy ${C.via=='proxy'?'selected':''}>Through a proxy</option><option value=direct ${C.via=='direct'?'selected':''}>Direct from browser (store must allow CORS)</option></select></label>
  <label id=wdProxyL>Proxy URL<input id=wdProxy value="${C.proxy}" list=wdProxyList autocomplete=off><datalist id=wdProxyList><option value="${HOSTED}"><option value="${LOCAL}"></datalist></label>

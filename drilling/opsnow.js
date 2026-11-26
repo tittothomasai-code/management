@@ -389,7 +389,15 @@ function survPlot(cv, pts, mode, plan) {
 let engineeringView=null,engineeringSourceScope=globalThis.crypto?.randomUUID?.()||('session-'+Date.now()+'-'+Math.random());
 let built = false, pumpGraphic = null;
 function buildCommon() {
-  $('onUser').value = W.rememberedUser();
+  if (W.disconnected) {
+    $('onSignin').querySelector('h2').textContent = 'WITSML disconnected';
+    $('onSignin').querySelector('p').textContent = 'Live well data is disabled on this site.';
+    $('onForm').style.display = 'none';
+    for (const control of $('onForm').elements) control.disabled = true;
+    $('onReload').disabled = true;
+  } else {
+    $('onUser').value = W.rememberedUser();
+  }
   $('onWellTarget').value=DEF_WELL;
   $('onOpenWell').onclick=()=>{try{location.assign(wellWorkspaceUrl(location.href,$('onWellTarget').value));}catch(error){setMsg(error.message);$('onWellTarget').focus();}};
   $('onWellTarget').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();$('onOpenWell').click();}};
@@ -481,7 +489,7 @@ function render() {
   pumpGraphic?.update({signed, now, pressureSample:L?.time ? primaryPressure : primaryPressure || secondaryPressure, sample: L?.time ? primaryFlow : primaryFlow || secondaryFlow, driveSample: L?.time ? primaryDrive : primaryDrive || secondaryDrive});
   const sourceHoleMd=L&&!L.time?rows.at(-1)?.[0]:depthMetres(lv.hd?.v,S.map.hd),report=S.operationReport;
   renderOperationReport($('onOperationReport'),report,sourceHoleMd);
-  const state = !signed ? (W.state.dead ? 'Stopped' : 'Not signed in') : report ? (reportDepthIssue(report,sourceHoleMd)?'Reported TD · depth conflict':'Liner running · reported 18 Nov') : !L ? 'Connecting' : C.rigState({fresh, advancedAt: S.advancedAt, watchFrom: S.watchFrom, now, rpm: lv.rpm?.v, rop: lv.rop?.v, flow: lv.flowIn?.v, timeLog: L?.time});
+  const state = W.disconnected ? 'WITSML disconnected' : !signed ? (W.state.dead ? 'Stopped' : 'Not signed in') : report ? (reportDepthIssue(report,sourceHoleMd)?'Reported TD · depth conflict':'Liner running · reported 18 Nov') : !L ? 'Connecting' : C.rigState({fresh, advancedAt: S.advancedAt, watchFrom: S.watchFrom, now, rpm: lv.rpm?.v, rop: lv.rop?.v, flow: lv.flowIn?.v, timeLog: L?.time});
   const chip = $('onState'); chip.textContent = state; chip.dataset.s = /^Drilling/.test(state) ? 'drill' : /No new|Stopped|Not signed/.test(state) ? 'bad' : 'idle';
   // The store re-stamps dTimLastChange about once a minute even when no row is added, so it proves the
   // feed is connected, not that data is new. New data = rows added between our own reads.

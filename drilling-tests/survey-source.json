@@ -7,7 +7,7 @@
     },
     {
       "path": "opsnow.js",
-      "sha256": "5ec0510ab6adf073b0586235e6e88074e0e7b9fc262225c54527960cd3223c02",
+      "sha256": "f644448fd8d800f25ec1846257ad82d8f6456bf96d6daba3a4ebe6e104828679",
       "previous_sha256": "6e0dd8f2cd9aa1cd0bfbcafc87c21787deb08e5677e4276ba561beb5d48716f4",
       "verified_against_commit": "8cd7833f3e74e13ea3dff96a7e80251005a58e44",
       "verified_at": "2026-11-21T21:15:16.590340+00:00"
@@ -259,6 +259,22 @@
     {
       "path": "opsnow_views.js",
       "sha256": "998271dd633d4bbd24ee4d2e3dcc73f0bf2214da4aa9a91b4fac1cda208ac905"
+    },
+    {
+      "path": "ext4.js",
+      "sha256": "3aad13e7247bc439141076a9f8c8e9900bc1d73c235d9e9ab6b7691cdedf787f"
+    },
+    {
+      "path": "wdash.js",
+      "sha256": "aa6c154a83ded4ca04cd66a04dfde8d124be9bb6864a8d1879eee477c9ef6dc2"
+    },
+    {
+      "path": "rtoc.js",
+      "sha256": "84883df904c14bca35ede09f2c0c8eeab929cdeeef4132e58ebc63a798914364"
+    },
+    {
+      "path": "opsnow_wire.js",
+      "sha256": "1ffd8e8d24d8a18ecdec7c68b17b12d4752e39736a6d8bb8743547b01c447953"
     }
   ],
   "verifiedDeployId": "6b008c9a4924395802d921d1",
