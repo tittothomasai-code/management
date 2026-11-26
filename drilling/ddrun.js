@@ -4,6 +4,8 @@
 // MWD survey noise, BHA sag. Signals: MWD survey per 30 m stand, gravity/magnetic TF, offsets from plan, DLS needed, dP/WOB/ROP, motor curve point.
 // Motor through GX.ddcab.motor.step (ddmotor.js) so the motor-performance pop-up dot moves; driller wording through GX.dddrv.readback.
 // Gamepad: Start/Menu (button 9) toggles run/pause, hold 1 s resets (button 8 stays Home). EVERYTHING HERE IS SIM. Never LIVE. No network.
+import {TrainingGammaLog} from './dd_gamma_log.mjs';
+import {renderGamma, gammaPanel} from './dd_gamma_view.mjs';
 import * as C from './ddcab_core.js?v=b11';
 const R=Math.PI/180,D=180/Math.PI,cl=(x,a,b)=>Math.max(a,Math.min(b,x)),n360=a=>((a%360)+360)%360,f1=v=>(+v).toFixed(1),f2=v=>(+v).toFixed(2),$=id=>document.getElementById(id);
 export const DIFF={off:0,easy:0.4,normal:1,hard:2};
@@ -25,6 +27,7 @@ export function newRun(o={}){const scen=o.scen||'build',sc=SCN[scen],diff=o.diff
  const p0=planAt(plan,sc.startMd),bit={md:p0.md,inc:Math.max(0.5,p0.inc),azi:p0.azi,E:p0.E,N:p0.N,tvd:p0.tvd};
  const R0={scen,diff,seed,plan,planSrc:src,td:plan.at(-1).md,E:errors(diff,seed),rng:C.mulberry(seed*7+1),bit,truth:[{...bit}],surveys:[{md:+bit.md.toFixed(1),inc:+bit.inc.toFixed(2),azi:+bit.azi.toFixed(2),tvd:+bit.tvd.toFixed(1),dls:0,dev:0,src:'SIM'}],
   set:{mode:sc.mode,tf:sc.tf,len:sc.len,wob:sc.wob,flow:sc.flow,rpm:40},standMd:0,slid:0,yieldF:1,tfDrift:0,stalls:0,stalled:false,ms:null,rop:0,hours:0,devs:[],running:false,done:false,ticks:0,instr:'',log:[]};
+ R0.gammaLog=new TrainingGammaLog(bit.md,seed);
  R0.yieldF=1+R0.E.yieldSd*gauss(R0.rng);instruct(R0);return R0}
 function motor(r,rot,dt){const s=r.set,M=globalThis.GX?.ddcab?.motor;let o=null;
  if(M?.step)try{o=M.step({flow:s.flow,wob:s.wob,rpm:rot?s.rpm:0,rotating:rot,tf:Math.round(n360(s.tf)/5)*5%360,inc:+r.bit.inc.toFixed(1),tvd:Math.round(r.bit.tvd),hours:dt})}catch(e){o=null}
@@ -42,11 +45,12 @@ function survey(r){const b=r.bit,E=r.E,g=()=>gauss(r.rng),pv=r.surveys.at(-1);co
  r.yieldF=1+E.yieldSd*gauss(r.rng);r.tfDrift+=E.tfDriftSd*g();r.standMd=0;r.slid=0;instruct(r);r.log.push(`MWD survey ${s.md} m: Inc ${s.inc}° Azi ${s.azi}° TVD ${s.tvd} m (SIM)`);return s}
 // drill `len` metres with the current settings (sub-steps of <=1 m). Returns metres made.
 export function drill(r,len,dt=0.05){let made=0;while(made<len-1e-9&&!r.done){const s=r.set,rot=s.mode=='rotate'||r.slid>=s.len;const ms=motor(r,rot,dt);r.ms=ms;
-  if(ms.stall){if(!r.stalled){r.stalls++;r.log.push('⚠ MOTOR STALL at WOB '+s.wob+' t: pick up off bottom, then reduce WOB.')}r.stalled=true;r.rop=0;break}r.stalled=false;
-  const rop=C.ropOf(ms,{wob:s.wob,rotating:rot});r.rop=rop;if(rop<=0)break;const dl=Math.min(1,len-made,STAND-r.standMd),E=r.E,b=r.bit;let inc=b.inc,azi=b.azi;
+  if(ms.stall){if(!r.stalled){r.stalls++;r.log.push('⚠ MOTOR STALL at WOB '+s.wob+' t: pick up off bottom, then reduce WOB.')}r.stalled=true;r.rop=0;r.gammaLog.hold('Stall · last station held');break}r.stalled=false;
+  const rop=C.ropOf(ms,{wob:s.wob,rotating:rot});r.rop=rop;if(rop<=0){r.gammaLog.hold('No penetration · last station held');break}const dl=Math.min(1,len-made,STAND-r.standMd),E=r.E,b=r.bit;let inc=b.inc,azi=b.azi;
   if(!rot){const tfA=n360(s.tf+r.tfDrift-E.rtPerBar*(ms.dP||0));r.tfAct=tfA;const n=C.steer(inc,azi,(ms.yield||C.yieldDLS(C.MOTOR))*r.yieldF,tfA,dl);inc=n.inc;azi=n.azi;r.slid+=dl}
   else{azi+=E.bitWalk*dl/30;r.tfAct=null}
   inc=cl(inc+E.walkInc*dl/30,0,120);azi=n360(azi+E.walkAzi*dl/30);const nb=C.minCurve(b,b.md+dl,inc,azi);r.bit={md:nb.md,inc:nb.inc,azi:nb.azi,E:nb.E,N:nb.N,tvd:nb.tvd};r.truth.push({...r.bit});
+  r.gammaLog.advance(b,r.bit,r.hours,{mode:rot?'rotate':'slide',wob:s.wob,flow:s.flow,bitRpm:ms.bitRpm,rop},globalThis.GX?.strat);
   r.hours+=dl/Math.max(rop,0.1);made+=dl;r.standMd+=dl;if(r.standMd>=STAND-1e-6)survey(r);if(r.bit.md>=r.td-0.01){r.done=true;r.running=false;r.log.push('Run complete at TD (SIM).');fin(r)}}
  return made}
 export function score(r){const d=r.devs,avg=d.length?d.reduce((a,b)=>a+b,0)/d.length:offsets(r).dist,ls=r.surveys.slice(1).map(s=>s.dls),m=ls.length?ls.reduce((a,b)=>a+b,0)/ls.length:0,sd=ls.length>1?Math.sqrt(ls.reduce((a,b)=>a+(b-m)**2,0)/(ls.length-1)):0;
@@ -72,18 +76,20 @@ function build(){el=document.createElement('div');el.id='ddRun';const o=(m,v)=>O
  <label>TF° <input id="drTF" type="number" min="0" max="355" step="5"></label><label>Slide m <input id="drLen" type="number" min="0" max="30" step="1"></label>
  <label>WOB <input id="drWob" type="range" min="0" max="40" step="0.5"><b id="drWobV"></b>t</label><label>Flow <input id="drFlow" type="range" min="900" max="2600" step="50"><b id="drFlowV"></b>L/min</label>
  <button id="drApply">Use instruction</button><button id="drPU">Pick up off bottom</button></div>
+ ${gammaPanel}
  <div id="drInstr"></div><div id="drStall" hidden></div><div id="drEnd" hidden></div>
  <div class="main"><div><div class="rg" id="drG"></div><table id="drSurv"></table></div><div class="cv"><canvas id="drVS" width="420" height="220"></canvas><canvas id="dr3D" width="420" height="220"></canvas></div></div>`;
  const q=el.querySelector.bind(el),bind=(id,k,f=Number)=>q('#'+id).oninput=e=>{RUN.set[k]=f(e.target.value);RUN.ramp=false;ui()};
  q('#drGo').onclick=toggle;q('#drReset').onclick=()=>reset();q('#drScen').onchange=e=>reset({scen:e.target.value});q('#drDiff').onchange=e=>reset({diff:e.target.value});q('#drSpd').onchange=e=>spd=+e.target.value;
  q('#drMode').onchange=e=>{RUN.set.mode=e.target.value;RUN.slid=e.target.value=='slide'?RUN.slid:RUN.slid;ui()};bind('drTF','tf');bind('drLen','len');bind('drWob','wob');bind('drFlow','flow');
- q('#drApply').onclick=()=>{applyRec(RUN);ui()};q('#drPU').onclick=()=>{RUN.set.wob=Math.max(0,Math.round(RUN.set.wob/2));RUN.ramp=false;RUN.stalled=false;RUN.log.push('Picked up off bottom. WOB set to '+RUN.set.wob+' t.');ui()};
+ q('#drApply').onclick=()=>{applyRec(RUN);ui()};q('#drPU').onclick=()=>{RUN.set.wob=Math.max(0,Math.round(RUN.set.wob/2));RUN.ramp=false;RUN.stalled=false;RUN.gammaLog.hold('Off bottom · last station held');RUN.log.push('Picked up off bottom. WOB set to '+RUN.set.wob+' t.');ui()};
  q('#drPerf').onclick=perf}
 async function perf(){const P=globalThis.GX?.ddcab?.motorPerf;try{const m=P||(await import('./ddmotorperf.js?v=r1')).default||globalThis.GX?.ddcab?.motorPerf;if($('ddmp'))m.close();else{m.open();motor(RUN,RUN.set.mode=='rotate',0)}}catch(e){console.error('ddrun perf',e)}}
 function gv(n,v,u='',c=''){return `<div><small>${n}</small><b class="${c}">${v}</b> <small>${u}</small></div>`}
 export function ui(){if(!el||!RUN)return;const r=RUN,s=r.set,o=offsets(r),ms=r.ms||motor(r,s.mode=='rotate',0),sc=score(r),b=r.bit,last=r.surveys.at(-1),tfMode=b.inc<5?'MTF':'GTF',tfShow=r.tfAct==null?s.tf:r.tfAct,tfRead=b.inc<5?C.mtf(tfShow,b.azi):tfShow;r.ms=ms;
  const set=(id,v)=>{const e=$(id);if(e&&document.activeElement!==e)e.value=v};set('drMode',s.mode);set('drTF',s.tf);set('drLen',s.len);set('drWob',s.wob);set('drFlow',s.flow);$('drWobV').textContent=f1(s.wob);$('drFlowV').textContent=s.flow;
  const g=$('drGo');g.textContent=r.running?'⏸ Pause':'▶ Start';g.classList.toggle('on',r.running);g.setAttribute('aria-pressed',r.running);$('drPlan').textContent='Plan: '+r.planSrc+' · TD '+f1(r.td)+' m';
+ renderGamma(el, r);
  const ab=o.up>=0?'Above':'Below',lr=o.right>=0?'Right':'Left',ah=o.along>=0?'Behind':'Ahead';
  $('drG').innerHTML=gv('Bit MD',f1(b.md),'m')+gv('Stand',f1(r.standMd)+'/30','m')+gv('MWD Inc',f2(last.inc),'°')+gv('MWD Azi',f2(last.azi),'°')+gv('MWD TVD',f1(last.tvd),'m')+gv('Toolface '+tfMode,f1(tfRead),'°'+(s.mode=='rotate'?' rot':''))
   +gv('Dist to plan',f1(o.dist),'m',o.dist>10?'bad':o.dist>4?'warn':'ok')+gv(ab+' plan',f1(Math.abs(o.up)),'m')+gv(lr+' of plan',f1(Math.abs(o.right)),'m')+gv(ah+' (MD)',f1(Math.abs(o.along)),'m')
