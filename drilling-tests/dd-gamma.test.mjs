@@ -149,3 +149,31 @@ test('a detector failure is confined to the log and drilling completes', t => {
     assert.deepEqual(run.surveys,reference.surveys);
   } finally {delete globalThis.GX;}
 });
+
+test('drilling contrast helps the filter follow the unmodified SIM earth model through interbeds', t => {
+  const run = dd.newRun({seed:42});
+  run.set.mode = 'rotate';
+  const earth = strat.SIM_STRAT();
+  const gammaOnly = new GammaFilter({...SETTINGS, contrastVariance:0});
+  const errors = {raw:0, fused:0, gammaOnly:0};
+  let samples = 0;
+  globalThis.GX = {strat};
+  try {
+    for (let i=0; i<400; i++) {
+      dd.drill(run,1);
+      const sample = run.gammaLog.latest;
+      if (!sample) continue;
+      const p = sample.packet, {tvd,E,N} = p.mechanics.point;
+      const truth = strat.gammaAt(earth,tvd,E,N);
+      errors.raw += (p.gamma-truth)**2;
+      errors.fused += (sample.mean-truth)**2;
+      errors.gammaOnly += (gammaOnly.observe(p,p.atSec).mean-truth)**2;
+      samples++;
+    }
+  } finally { delete globalThis.GX; }
+  assert.equal(samples,394);
+  const rmse = key => Math.sqrt(errors[key]/samples).toFixed(2);
+  t.diagnostic(`394 stations · raw ${rmse('raw')}, fused ${rmse('fused')}, mechanical contrast disabled ${rmse('gammaOnly')} gAPI RMSE`);
+  assert.ok(errors.fused < errors.raw);
+  assert.ok(errors.fused < errors.gammaOnly);
+});
