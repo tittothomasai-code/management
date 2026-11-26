@@ -392,7 +392,7 @@ function buildCommon() {
   if (W.disconnected) {
     $('onSignin').querySelector('h2').textContent = 'WITSML disconnected';
     $('onSignin').querySelector('p').textContent = 'Live well data is disabled on this site.';
-    $('onForm').hidden = true;
+    $('onForm').style.display = 'none';
     for (const control of $('onForm').elements) control.disabled = true;
     $('onReload').disabled = true;
   } else {
