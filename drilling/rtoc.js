@@ -1,3 +1,4 @@
+import {requireWitsml} from './witsml-policy.mjs';
 // rtoc.js: Steve's RTOC, per-joint real-time operations dashboard inside Drilling World (SIM build).
 // Opened from the start screen (Drill > Steve's RTOC), the HUD button, ?rtoc, or GX.rtoc.open(). Esc closes.
 // DATA HONESTY: every value comes from the running simulator (window.S, tagged SIM) or, when a WITSML well is loaded,
@@ -170,7 +171,9 @@ async function tickOnce(){const s=source();if(!s.D||!s.D._ctx)return {status:'no
  if(gen!==ST.gen)return {status:'aborted'};const D=WML.toRtoc(c.R,{...c,timeLog:c.tl,logStatus:ls,source:s.D.source,current:s.D.current,fresh:HI.freshness(c.tl.rows.at(-1)?.[0],{now:WL.now(),current:true}),wellName:s.D.wellName});
  D._ctx={...c,logStatus:ls};WL.cache.set(D.key,D);render(true);return st}
 // transport injection: any function with the existing ext4 contract call(op,wmlType,query,options)->{xml,result}. Does not read config or credentials.
-export async function useTransport(call0,{fixture=false,current=null,currentWb=null,caps=null,now=null,version=null}={}){await import('./wwell.js?v=fp-ops-r2-20261108');WL.neg=version?{version,maxReturnNodes:version==='1.4.1.1',offered:[version]}:await HI.negotiate(call0);if(!WL.neg.version)throw new Error(WL.neg.err);const call=HI.versionAdapter(call0,WL.neg);WL.call=(op,t,q,o,ctx)=>HI.deadlineCall(call,[op,t,q,o],{ms:caps?.callMs??HI.CAPS.callMs,signal:ctx?.signal});WL.io=window.GX.wellmodel.makeIO(WL.call);WL.fixture=fixture;WL.current=current;WL.currentWb=currentWb;
+export async function useTransport(call0,{fixture=false,current=null,currentWb=null,caps=null,now=null,version=null}={}){
+ if (!fixture) requireWitsml();
+ await import('./wwell.js?v=fp-ops-r2-20261108');WL.neg=version?{version,maxReturnNodes:version==='1.4.1.1',offered:[version]}:await HI.negotiate(call0);if(!WL.neg.version)throw new Error(WL.neg.err);const call=HI.versionAdapter(call0,WL.neg);WL.call=(op,t,q,o,ctx)=>HI.deadlineCall(call,[op,t,q,o],{ms:caps?.callMs??HI.CAPS.callMs,signal:ctx?.signal});WL.io=window.GX.wellmodel.makeIO(WL.call);WL.fixture=fixture;WL.current=current;WL.currentWb=currentWb;
  stopLive('transport changed');WL.caps=caps||undefined;WL.now=now||(()=>Date.now());WL.list=[];WL.cache.clear();WL.disc.clear();ST.gen=(ST.gen||0)+1;await wells();render(true);return WL.list}
 // binds the game's existing authenticated WITSML caller (GX.witsml.callRetry) if the user already connected it. Never called automatically.
 export async function useExistingTransport(current){const X=window.GX?.witsml;if(!X||typeof X.callRetry!='function')throw new Error('No existing WITSML connection in this session');return useTransport((op,t,q,o)=>X.callRetry(op,t,q,o),{current})}

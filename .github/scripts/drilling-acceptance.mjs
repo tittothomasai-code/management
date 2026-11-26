@@ -7,8 +7,29 @@ const results=[];
 try{for(const width of [390,1920]){
  const context=await browser.newContext({viewport:{width,height:width===390?844:1080},isMobile:width===390,hasTouch:width===390,ignoreHTTPSErrors:true});
  await context.route('**/*',route=>{const r=route.request(),url=new URL(r.url());if(r.method()!=='GET'||/\/.netlify\/functions\/|\/rest\/v1\//.test(url.pathname))return route.abort();return route.continue();});
+ const attemptedFeedRequests = [];
+ context.on('request', request => {
+   if (request.method() === 'POST' && (/witsml|WMLS|\/soap(?:$|[?#])/i.test(request.url()) ||
+       'soapaction' in request.headers() || 'x-witsml-authorization' in request.headers())) {
+     attemptedFeedRequests.push(true);
+   }
+ });
+ await context.addInitScript(() => {
+   sessionStorage.setItem('dw-witsml-cred', JSON.stringify({user:'fixture',pass:'offline-fixture'}));
+   localStorage.setItem('dw-witsml-remember', JSON.stringify({auto:true, user:'fixture'}));
+ });
  const page=await context.newPage();page.setDefaultTimeout(120000);const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto(preview+'/ops',{waitUntil:'domcontentloaded'});await page.locator('.on-top #onPumps').waitFor();await page.waitForFunction(()=>[...document.styleSheets].some(s=>s.href?.includes('opsnow_pumps.css')));
+ assert.equal(await page.locator('#onState').innerText(), 'WITSML disconnected');
+ assert.equal(await page.locator('#onGo').isVisible(), false);
+ const opsDisconnected = await page.evaluate(async () => {
+   const wire = await import('./opsnow_wire.js');
+   try { await wire.get('well', '', ''); } catch (err) {
+     return err.closed && !wire.hasCred() && wire.state.calls === 0 && !sessionStorage.getItem('dw-witsml-cred');
+   }
+   return false;
+ });
+ assert.ok(opsDisconnected);
  assert.equal(await page.locator('.on-pump-picture').count(),0);assert.equal(await page.locator('[data-drive-value]').innerText(),'—');assert.equal(await page.locator('#onPumps').getAttribute('data-state'),'unknown');
  assert.ok((await page.locator('#onPumps').boundingBox()).height<=80);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
  await page.locator('[data-bha-context]').click();const frame=page.frameLocator('#bha-context-panel iframe');await frame.locator('[data-action="example"]').click();assert.equal(await frame.locator('tbody tr').count(),12);await frame.locator('[data-action="exit"]').click();await page.waitForFunction(()=>document.querySelector('#bha-context-panel').hidden);
@@ -26,6 +47,26 @@ try{for(const width of [390,1920]){
  const operational=await page.evaluate(async()=>{const m=await import('./opsnow_operation_report.mjs?v=eow1118'),r=m.reportedOperation('DR101L','WB04B01');return {r,wrongScope:m.reportedOperation('DR101L','WB03'),referenceMd:m.drillingReferenceMd(r,900,2618.9),conflict:m.reportDepthIssue(r,2700)};});assert.equal(operational.r.tdMd,2618.9);assert.equal(operational.r.linerDepth,null);assert.equal(operational.r.tdAt,null);assert.equal(operational.referenceMd,2618.9);assert.equal(operational.wrongScope,null);assert.match(operational.conflict,/exceeds reported TD/);results.push({width,check:'Actual preview serves the dated, scoped end-of-well report; no fabricated TD time or liner depth; off-bottom position cannot renumber TD reference'});
  const empty=await page.evaluate(async reference=>{const m=await import('./opsnow_tally_compare.mjs?v=bha1118');return m.compareDerivedTally([],reference);},ref);assert.equal(empty.rows.length,0);assert.equal(empty.inventory.length,189);assert.ok(Math.abs(empty.carriedReference-774)<1e-8);results.push({width,check:'Published reference contains all 189 inventory entries; BHA baseline counted once; no BHE match manufactured without readings'});
  await page.goto(preview+'/?nosplash=1',{waitUntil:'domcontentloaded'});assert.equal(await page.locator('#wellFolderEntry').getAttribute('href'),'./well-folder/');assert.equal(await page.locator('#wellFolderEntry').getAttribute('target'),'_blank');await page.waitForFunction(()=>window.G?.bhaBuilder&&window.GX_READY);
+ const blocked = await page.evaluate(async () => {
+   const game = GX.witsml;
+   const rtoc = await import('./rtoc.js');
+   const dashboard = await import('./wdash.js');
+   let injectedCalls = 0;
+   const outcomes = [];
+   for (const attempt of [
+     () => game.call('WMLS_GetVersion'),
+     () => rtoc.useTransport(() => { injectedCalls++; }),
+     () => { dashboard.open(); return GX.witsml.callRetry('WMLS_GetVersion'); }
+   ]) {
+     try { await attempt(); outcomes.push(false); }
+     catch (err) { outcomes.push(err.closed === true); }
+   }
+   dashboard.close();
+   return outcomes.every(Boolean) && injectedCalls === 0;
+ });
+ assert.ok(blocked);
+ assert.deepEqual(attemptedFeedRequests, []);
+ results.push({width,check:'All drilling WITSML transports refuse locally with stored credentials; zero WITSML requests'});
  const position=await page.evaluate(()=>G.cam.position.toArray());await page.evaluate(()=>G.bhaBuilder.enter());await page.waitForFunction(()=>G.bhaBuilder.active);await page.locator('[data-action="example"]').click();assert.equal(await page.locator('#bha-builder-ui tbody tr').count(),12);await page.keyboard.press('Escape');await page.waitForFunction(()=>!G.bhaBuilder.active);
  const restored=await page.evaluate(()=>G.cam.position.toArray());position.forEach((v,i)=>assert.ok(Math.abs(v-restored[i])<1e-6));
  await page.evaluate(async()=>{const dd=window.DDCAB||await import('./ddcab.js?v=r2');dd.open();});await page.locator('#ddc [data-bha-context]').click();await page.waitForFunction(()=>G.bhaBuilder.active);await page.keyboard.press('Escape');await page.waitForFunction(()=>!G.bhaBuilder.active);assert.equal(await page.locator('#ddc').isVisible(),true);

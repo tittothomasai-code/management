@@ -1,3 +1,4 @@
+import {WITSML_ENABLED, DISCONNECTED, requireWitsml} from './witsml-policy.mjs';
 // ext4.js: WITSML 1.4.1.1 live-data connection (via witsml_proxy.mjs). Credentials are session-only: held in memory, never stored or logged.
 let C,S,el,PANEL,BTN;const $=id=>document.getElementById(id);
 const NS='xmlns="http://www.witsml.org/schemas/1series" version="1.4.1.1"';
@@ -26,7 +27,7 @@ const isHosted=u=>/\/functions\/v1\/witsml-proxy\b|^https:\/\/tryfecta-witsml-pr
 // v3.9 survey feed: trajectory (+formationMarker) polling, incremental via mdMn, min 60 s, independent of the 10 s log poll
 CFG.svWell=CFG.svWell||'DR101L';CFG.svWellbore=CFG.svWellbore||'WB01B02';CFG.svInterval=Math.min(300000,Math.max(60000,+CFG.svInterval||60000));CFG.svStaleM=+CFG.svStaleM||100;CFG.svDeepM=+CFG.svDeepM||100;CFG.svStaleH=+CFG.svStaleH||24;CFG.svDlsMax=+CFG.svDlsMax||15;
 // memory only
-const WML={status:'not connected',channels:{},log:null,last:null,timer:null,rows:0,polls:0,errors:0,simulated:false,fresh:0,
+const WML={status:WITSML_ENABLED?'not connected':DISCONNECTED,channels:{},log:null,last:null,timer:null,rows:0,polls:0,errors:0,simulated:false,fresh:0,
  mode:'off',liveMode:false,rp:null,okAt:0,miss:0,inflight:false,lastRowMs:0,stale:true,
  healthy(){return !!this.log&&this.okAt>0&&this.miss<3&&Date.now()-this.okAt<120000&&Object.keys(this.channels).length>0},
  tag(){if(this.mode=='replay')return 'replay';return this.healthy()?(this.simulated?'live-sim':'live'):'sim'},
@@ -49,7 +50,9 @@ function transportFail(category,http){
  const b=$('sim');if(b){b.textContent='SIMULATED - transport refused, polling stopped';b.style.background='#b71c1c';b.style.color='#fff'}
  return mkErr(message,{http,transportRefusal:true,guardRefusal:true,category});
 }
-async function call(op,wmlType,query,options){if(WML.transportDead)throw mkErr('Transport refused — polling stopped',{transportRefusal:true,guardRefusal:true,category:WML.transportDead});if(WML.authDead)throw mkErr('Auth failed — polling stopped',{auth:1});const hosted=isHosted(CFG.proxy),h={'Content-Type':'application/json'};if(hosted&&(CRED.user||CRED.pass))h['X-Witsml-Authorization']='Basic '+btoa(unescape(encodeURIComponent(CRED.user+':'+CRED.pass)));
+async function call(op,wmlType,query,options){
+ requireWitsml();
+ if(WML.transportDead)throw mkErr('Transport refused — polling stopped',{transportRefusal:true,guardRefusal:true,category:WML.transportDead});if(WML.authDead)throw mkErr('Auth failed — polling stopped',{auth:1});const hosted=isHosted(CFG.proxy),h={'Content-Type':'application/json'};if(hosted&&(CRED.user||CRED.pass))h['X-Witsml-Authorization']='Basic '+btoa(unescape(encodeURIComponent(CRED.user+':'+CRED.pass)));
  const tms=+CFG.callTimeoutMs||28000,ac=new AbortController(),to=setTimeout(()=>ac.abort(),tms);let r;
  try{r=await fetch(CFG.proxy,{method:'POST',headers:h,signal:ac.signal,body:JSON.stringify(hosted?{url:CFG.url,op,wmlType,query,options}:{url:CFG.url,user:CRED.user,pass:CRED.pass,op,wmlType,query,options})})}catch(e){clearTimeout(to);throw mkErr(ac.signal.aborted?'no answer from proxy within '+Math.round(tms/1000)+' s (response too big or upstream slow)':'cannot reach the WITSML proxy (no internet or proxy down)',{http:0})}
  if(r.status===502){clearTimeout(to);throw transportFail('http-502',502)}
@@ -69,7 +72,7 @@ const xml=s=>new DOMParser().parseFromString(s||'<x/>','application/xml');const 
 const setSt=(s,err)=>{WML.status=s;try{wChipTxt()}catch{};const e=$('wst');if(e){e.textContent=s;e.style.color=err?'#f88':'#fd8'}if(err)toast(s,true)};
 // v4.0: never fail silently — every error/empty/not-connected message is also shown as a toast visible over the scene (phones included).
 function toast(msg,err){let t=document.getElementById('wtoast');if(!t){t=document.createElement('div');t.id='wtoast';t.setAttribute('role','alert');t.style.cssText='position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 34px);z-index:99999;max-width:min(92vw,560px);padding:10px 14px;border-radius:10px;font:600 14px/1.35 system-ui,sans-serif;box-shadow:0 4px 18px #0008;pointer-events:auto';t.onclick=()=>t.style.display='none';document.body.appendChild(t)}t.textContent=msg;{const w=document.getElementById('witsml');t.style.top=(w&&w.style.display!='none'&&w.getBoundingClientRect().height)?Math.min(innerHeight-60,w.getBoundingClientRect().bottom+8)+'px':'calc(env(safe-area-inset-top,0px) + 34px)'}t.style.background=err?'#b71c1c':'#1b5e20';t.style.color='#fff';t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',err?9000:5000)}
-const NOT_CONN='Not connected — enter Adaga login in WITSML panel and press Connect';
+const NOT_CONN=!WITSML_ENABLED?DISCONNECTED:'Not connected — enter Adaga login in WITSML panel and press Connect';
 function needConn(){if(WML.connected)return false;setSt(NOT_CONN,true);try{wChip()}catch{};const u=$('wuser');if(u&&!u.value&&wVis())setTimeout(()=>u.focus(),300);return true}// v5.11.2.1: never auto-open the panel; status chip instead
 async function listWells(){const j=await call('WMLS_GetFromStore','well',`<wells ${NS}><well uid=""><name/></well></wells>`,'returnElements=id-only');return kids(xml(j.xml),'well').map(w=>({uid:w.getAttribute('uid'),name:txt(w,'name')||w.getAttribute('uid')}))}
 async function listWellbores(w){const j=await call('WMLS_GetFromStore','wellbore',`<wellbores ${NS}><wellbore uidWell="${w}" uid=""><name/></wellbore></wellbores>`,'returnElements=id-only');return kids(xml(j.xml),'wellbore').map(b=>({uid:b.getAttribute('uid'),name:txt(b,'name')||b.getAttribute('uid')}))}
@@ -122,7 +125,9 @@ function drive(){S=window.G?.S||S;if(WML.mode=='replay'){rigFromData();return}if
  if(!WML.healthy())return;for(const [mn,s] of Object.entries(CFG.map)){const ch=WML.channels[mn];const v=ch?.v;if(v==null||!s)continue;
   if(s=='rop'){S.rop=conv('rop',v,ch.unit);continue}if(s=='bitdepth'){S.bitDepthLive_ft=conv('bitdepth',v,ch.unit);continue}if(s=='tq'){const t=conv('tq',v,ch.unit);S.td.torque=t;S.td.tq=t;continue}
   const m=s.match(/^p(\d)\.spm$/);if(m){const p=S.pumps.find(p=>p.id==+m[1]);if(p){p.on=v>0;p.cmd=v;p.spm=v}}}}
-async function start(L){if(WML.authDead||WML.transportDead)return;stop(true);WML.log=L;WML.last=null;WML.rows=0;WML.polls=0;WML.channels={};WML.hist=[];WML.maxBd=0;WML.okAt=0;WML.miss=0;WML.lastRowMs=0;WML.stale=true;WML.inflight=false;L.uom=L.uom||(/time/i.test(L.indexType)?'':'m');WML.simulated=/SIMULATED|SIM-TEST/i.test(L.nameWell+' '+L.name)||/\/sim\/witsml/.test(CFG.url)||/\/\/(127\.0\.0\.1|localhost)[:/]/.test(CFG.url);autoMap(L.curves);saveCfg();
+async function start(L){
+ requireWitsml();
+ if(WML.authDead||WML.transportDead)return;stop(true);WML.log=L;WML.last=null;WML.rows=0;WML.polls=0;WML.channels={};WML.hist=[];WML.maxBd=0;WML.okAt=0;WML.miss=0;WML.lastRowMs=0;WML.stale=true;WML.inflight=false;L.uom=L.uom||(/time/i.test(L.indexType)?'':'m');WML.simulated=/SIMULATED|SIM-TEST/i.test(L.nameWell+' '+L.name)||/\/sim\/witsml/.test(CFG.url)||/\/\/(127\.0\.0\.1|localhost)[:/]/.test(CFG.url);autoMap(L.curves);saveCfg();
  S.events.push([S.t,'WITSML connected: '+L.name+(WML.simulated?' (SIMULATED test store)':'')]);await poll();if(WML.authDead||WML.transportDead||!WML.log)return;WML.timer=setInterval(poll,Math.max(10000,CFG.interval));WML.chk=setInterval(check,5000)}
 function stop(quiet){if(WML.timer)clearInterval(WML.timer);if(WML.chk)clearInterval(WML.chk);WML.timer=WML.chk=null;WML.fresh=0;WML.okAt=0;if(!quiet){WML.log=null;setSt('not connected');GX.feedStatus&&GX.feedStatus('not connected');const b=$('sim');if(b){b.textContent='SIMULATED - not real rig data';b.style.background='#b8860b'}for(const k of FEEDSIG)if(C.SRC[k]=='live')C.SRC[k]='sim';C.sigRender()}}
 // ---- REPLAY · real data (read-only GetFromStore with a time range; never labelled LIVE) ----
@@ -143,7 +148,9 @@ async function startReplay(L,hours,speed){if(!REPLAY_ENABLED)return setSt('Repla
 function stopReplay(){clearInterval(WML.rpt);WML.rpt=null;WML.rp=null;if(WML.mode=='replay'){WML.mode='off';WML.channels={};WML.log=null;GX.feedStatus&&GX.feedStatus('not connected');const b=$('sim');if(b){b.textContent='SIMULATED - not real rig data';b.style.background='#b8860b'}setSt('replay stopped')}}
 export const feedLive=()=>WML.mode=='live'&&!WML.simulated&&WML.healthy()&&!!WML.hist?.length;
 function wlmLabel(){const b=$('wlm');if(!b)return;const v=WML.liveMode,L=v&&feedLive();const t=!v?'Follow feed: OFF':L?'LIVE MODE: ON':'Follow feed: ON · SIM (no live feed)';if(b.textContent!=t){b.textContent=t;b.style.background=!v?'#444':L?'#1db954':'#8a6a10'}}setInterval(wlmLabel,1000);
-function setLiveMode(v){WML.liveMode=!!v;wlmLabel();const c=$('wlmc');if(c)c.checked=!!v;S.events.push([S.t,'LIVE MODE '+(v?'ON: rig follows WITSML data':'OFF')]);check()}
+function setLiveMode(v){
+ if (v && !WITSML_ENABLED) return;
+ WML.liveMode=!!v;wlmLabel();const c=$('wlmc');if(c)c.checked=!!v;S.events.push([S.t,'LIVE MODE '+(v?'ON: rig follows WITSML data':'OFF')]);check()}
 // ---- UI ----
 const svSimTest=()=>WML.simulated||/\/\/(127\.0\.0\.1|localhost)[:/]/.test(CFG.url)||/\/sim\/witsml/.test(CFG.url);
 // v4.7: robust XMLout normalisation: CDATA-wrapped, single/double-escaped, BOM, prefixed namespaces (getElementsByTagNameNS('*')).
@@ -248,7 +255,9 @@ async function svPoll(){const V=WML.sv;if(WML.authDead){svStop('STOPPED · auth 
   if(V.fm=='unknown'||V.fm=='ok'||V.fm=='none')if((V.polls==1||V.polls%5==0)){try{const j=await call('WMLS_GetFromStore','formationMarker',`<formationMarkers ${NS}><formationMarker uidWell="${xa(CFG.svWell)}" uidWellbore="${xa(CFG.svWellbore)}" uid=""/></formationMarkers>`,'returnElements=all');V.fm=/formationMarker\b[^s]/.test(j.xml)?'ok':'none';const h=j.xml.length+':'+j.xml.slice(-200);if(h!=V.fmHash&&/formationMarker\b[^s]/.test(j.xml)){V.fmHash=h;GEO.importLayers&&GEO.importLayers(j.xml,sim?'WITSML SIM-TEST':'WITSML');GEO.layerSrc=sim?'SIM-TEST':'LIVE';GEO.save&&0}}catch(e){if(WML.authDead)throw e;V.fm='not served (SIM layers used)'}}
   V.state=(WML.authDead?'STOPPED':'polling every '+CFG.svInterval/1000+' s')+(sim?' · SIM-TEST (mock upstream, not LIVE)':' · LIVE')}
  catch(e){V.err=e.message;V.why=e.svStop?'Surveys could not be loaded — '+svWhy()+' · '+e.message:(V.found?'step "poll new stations": ':'')+e.message+(e.http!=null?' · HTTP '+(e.http||'none'):'');setSt('Survey feed error: '+V.why,true);if(WML.authDead)svStop('STOPPED · auth failure (no retry)')}finally{V.busy=false;svRender()}}
-function svStart(){const V=WML.sv;if(WML.authDead){V.state='refused · auth failed earlier — reload page/restart proxy';svRender();return}svStop();Object.assign(V,{found:false,cur:null,mismatch:'',dropped:0,logWb:'',trajTime:'',lastMd:null,uom:null,polls:0,added:0,dups:0,fm:'unknown',fmHash:'',err:''});CFG.svInterval=Math.min(300000,Math.max(60000,+CFG.svInterval||60000));V.state='starting';const pr=svPoll();V.timer=setInterval(svPoll,CFG.svInterval);return pr}
+function svStart(){
+ if (!WITSML_ENABLED) return;
+ const V=WML.sv;if(WML.authDead){V.state='refused · auth failed earlier — reload page/restart proxy';svRender();return}svStop();Object.assign(V,{found:false,cur:null,mismatch:'',dropped:0,logWb:'',trajTime:'',lastMd:null,uom:null,polls:0,added:0,dups:0,fm:'unknown',fmHash:'',err:''});CFG.svInterval=Math.min(300000,Math.max(60000,+CFG.svInterval||60000));V.state='starting';const pr=svPoll();V.timer=setInterval(svPoll,CFG.svInterval);return pr}
 function svStop(why){clearInterval(WML.sv.timer);WML.sv.timer=null;WML.sv.state=why||'stopped';svRender()}
 function svStatus(){const V=WML.sv,c=V.cur,n=window.GEO?.surv?.stations?.length||0,t=x=>x?new Date(x).toLocaleTimeString('en-AU',{timeZone:'Australia/Brisbane',hour:'2-digit',minute:'2-digit',second:'2-digit'})+' AEST':'–';
  if(c)return `Survey: wellbore ${c.wbName&&c.wbName!=c.wb?c.wbName+' ('+c.wb+')':c.wb} · trajectory ${c.name||c.uid} · ${n} stations · last MD ${n?(GEO.surv.stations.at(-1).md*0.3048).toFixed(1)+' m':'–'} · updated ${t(V.lastUpd||V.fetchedAt)} · ${V.state}${V.mismatch?' · ⚠ '+V.mismatch:''}${V.fullFallback?' · full re-fetch '+V.fullFallback+'×':''} · markers: ${V.fm}${V.err?' · '+V.err:''}${svProf()}`;
@@ -311,12 +320,16 @@ function covRender(){covCompute();let p=$('wcov');if(!WML.covWell)return;if(!p){
  const col={LIVE:'#1a7f37','SIM-TEST':'#e08a00',SIM:'#8a6d1a',missing:'#7a2b2b'};
  p.innerHTML=`<b style="color:#8fd">Data coverage · ${es0(WML.covWell)}</b> ${WML.covSim?'<span style="background:#e08a00;padding:1px 5px;border-radius:3px">SIM-TEST mock upstream — not LIVE</span>':''} <button id=wcovx style="${BTN}">✕</button><table style="width:100%;font-size:12px;margin-top:4px">${Object.entries(WML.cov).map(([k,v])=>`<tr><td>${k}</td><td><span style="background:${col[v.st]||'#555'};padding:1px 6px;border-radius:3px;color:#fff">${v.st}</span></td><td style="color:#bcd">${es0(v.n)}</td></tr>`).join('')}</table>`;$('wcovx').onclick=()=>p.remove()}
 let P,logs=[],SELC=null;function ui(){const b=el('button','background:#2c5d9e;color:#fff;font-weight:700','🛰 WITSML');b.id='wbtn';b.onclick=()=>{if(wVis())wClose();else wUserOpen()};$('hud').appendChild(b);
- const m=el('button','background:#444;color:#fff;font-weight:700','Follow feed: OFF');m.id='wlm';m.title='When ON (and the WITSML feed is healthy) the 3D rig and equipment follow the real data, overriding the physics sim';m.onclick=()=>setLiveMode(!WML.liveMode);$('hud').appendChild(m)}
+ const m=el('button','background:#444;color:#fff;font-weight:700','Follow feed: OFF');m.id='wlm';m.title='When ON (and the WITSML feed is healthy) the 3D rig and equipment follow the real data, overriding the physics sim';m.onclick=()=>setLiveMode(!WML.liveMode);$('hud').appendChild(m);
+ if (!WITSML_ENABLED) { b.textContent=DISCONNECTED; b.disabled=true; m.hidden=true; }
+}
 // v5.11.2.1: a panel hidden by Esc/closeAll (display:none) or detached counts as closed, so the 🛰 button reopens it; auto-connect builds it hidden (o.hidden)
 // v5.11.2.1: dismissal persists (reloads / view changes never reopen); only a user click (🛰 button or status chip) opens it
 const WDK='dw_wml_dismissed';const panelHost=()=>document.getElementById('opsWitsmlDock')||document.body;
 function notifyPanel(){window.dispatchEvent(new Event('witsml:panel'))}
-function wUserOpen(){try{localStorage.removeItem(WDK)}catch{}toggle(true)}
+function wUserOpen(){
+ if (!WITSML_ENABLED) { setSt(DISCONNECTED, true); return; }
+ try{localStorage.removeItem(WDK)}catch{}toggle(true)}
 function wChipTxt(){const c=$('wchip');if(c){const s=String(WML.status||'').slice(0,60);c.textContent='🛰 WITSML'+(s?' · '+s:'');c.style.borderColor=/fail|STALE|Enter|Not connected|Keychain/i.test(s)?'#e57373':'#5a7'}}
 function wChip(){let c=$('wchip');if(!c){c=document.createElement('button');c.id='wchip';c.type='button';c.title='Open the WITSML panel';c.style.cssText='position:fixed;left:calc(var(--wchipL,8px));top:calc(env(safe-area-inset-top,0px) + 44px);z-index:9500;max-width:min(60vw,360px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:#101820e6;color:#dfe;border:1px solid #5a7;border-radius:14px;padding:4px 10px;font:12px system-ui;cursor:pointer';c.onclick=e=>{e.stopPropagation();wUserOpen()};document.body.appendChild(c);if(document.body.classList.contains('desk'))c.style.setProperty('--wchipL','112px')}wChipTxt();return c}
 function wClose(){try{localStorage.setItem(WDK,'1')}catch{}if(!P)return;try{SELC=['wwell','wwb','wlog'].map(id=>[$(id)?.innerHTML||'',$(id)?.value||''])}catch(e){}P.remove();P=null;notifyPanel()}
@@ -370,10 +383,11 @@ function renderMap(){const m=$('wmap');if(!m)return;const L=WML.log||WML.preview
  m.querySelectorAll('[data-tr]').forEach(b=>b.onclick=()=>GX.traces.addTrack('wml:'+b.dataset.tr))}
 export function init(ctx){C=ctx;S=C.S;el=C.el;PANEL=C.PANEL;BTN=C.BTN||'';ui();
  const E=window.EXT,o=E.afterStep.bind(E);E.afterStep=()=>{drive();o();drive()};
- Object.assign(window.GX,{witsml:{wwRender,wwMod,call,callRetry,retryable,xml,kids,txt,NS,xa,authFail,WML,CFG,loadWell,resetAll,covCompute,covRender,svStart,svStop,svPoll,svWhy,svParse,svDiscover,svQ,svSimTest,svSanity,svCurrency,svHud,normXml,svApply,open:()=>wUserOpen(),close:()=>wClose(),isOpen:()=>wVis(),start,stop,poll,listWells,listWellbores,listLogs,setLiveMode,startReplay,stopReplay,replaySet,setCred:(u,p)=>{CRED={user:u,pass:p};saveCred()},HOSTED_PROXY,SUPABASE_PROXY,data:()=>WML.mode=='replay'&&WML.rp?{src:'replay',ml:WML.rp.ml,ul:WML.rp.ul,ix:WML.rp.ix,rows:WML.rp.rows,name:WML.log?.name}:WML.hist&&WML.hist.length?{src:WML.simulated?'live-sim':'live',ml:WML.histMl,ul:WML.histUl,ix:WML.histIx,rows:WML.hist,name:WML.log?.name}:null}})}
+ Object.assign(window.GX,{witsml:{wwRender,wwMod,call,callRetry,retryable,xml,kids,txt,NS,xa,authFail,WML,CFG,loadWell,resetAll,covCompute,covRender,svStart,svStop,svPoll,svWhy,svParse,svDiscover,svQ,svSimTest,svSanity,svCurrency,svHud,normXml,svApply,open:()=>wUserOpen(),close:()=>wClose(),isOpen:()=>wVis(),start,stop,poll,listWells,listWellbores,listLogs,setLiveMode,startReplay,stopReplay,replaySet,setCred:(u,p)=>{requireWitsml();CRED={user:u,pass:p};saveCred()},HOSTED_PROXY,SUPABASE_PROXY,data:()=>WML.mode=='replay'&&WML.rp?{src:'replay',ml:WML.rp.ml,ul:WML.rp.ul,ix:WML.rp.ix,rows:WML.rp.rows,name:WML.log?.name}:WML.hist&&WML.hist.length?{src:WML.simulated?'live-sim':'live',ml:WML.histMl,ul:WML.histUl,ix:WML.histIx,rows:WML.hist,name:WML.log?.name}:null}})}
 
 // v5.1 auto-connect from the saved connection (password must come from Keychain autofill or this tab's session; never from localStorage). Never after a 401.
-;(()=>{const r=remGet();if(!r)return;Object.assign(CFG,{url:r.url||CFG.url,proxy:r.proxy||CFG.proxy,interval:r.interval||CFG.interval,svInterval:r.svInterval||CFG.svInterval,defWell:r.well||CFG.defWell,defWb:r.wb||CFG.defWb,defLog:r.log||CFG.defLog});if(!CRED.user)CRED.user=r.user||'';
+;(()=>{if (!WITSML_ENABLED) return;
+ const r=remGet();if(!r)return;Object.assign(CFG,{url:r.url||CFG.url,proxy:r.proxy||CFG.proxy,interval:r.interval||CFG.interval,svInterval:r.svInterval||CFG.svInterval,defWell:r.well||CFG.defWell,defWb:r.wb||CFG.defWb,defLog:r.log||CFG.defLog});if(!CRED.user)CRED.user=r.user||'';
  setTimeout(async()=>{const r=remGet();if(!r||!r.auto||WML.authDead||WML.connected||WML.log)return;if(!P)toggle(true,{hidden:true});wChip();const u=$('wuser'),pw=$('wpass');if(!u)return;u.value=u.value||r.user||'';await new Promise(z=>setTimeout(z,1500));const p=pw.value||CRED.pass;
   if(!p){const m='Saved connection ('+(r.user||'?')+'): tap Password and pick the Keychain suggestion, then Connect';$('wremst').textContent=m;setSt(m,true);return}
   pw.value=p;setSt('Auto-connecting with saved settings…');await $('wcon').onclick();if(!WML.connected||WML.authDead)return;if($('wlog').value)$('wgo').click()},+CFG.autoDelayMs||2500)})();
