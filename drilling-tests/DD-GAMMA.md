@@ -19,3 +19,27 @@ The raw sample always remains visible, including a flagged spike. An innovation 
 Model assumptions are in `drilling/dd_gamma_filter.mjs` and the virtual instrument in `drilling/dd_gamma_log.mjs`. Setback must be a whole number of logging intervals. Run `node --test drilling-tests/dd-gamma.test.mjs` and `node drilling-tests/dd-gamma-browser.mjs` from the repository root. The browser check uses the local game entry and blocks external requests.
 
 Set `ROBOTYX_GAME_ENTRY_HTML` to a downloaded public game index to run the same offline browser check with that entry markup. The 390 px check uses touch events.
+
+## Robotyx survey path in 3D
+
+In **Drill → DD Training** or **Drill → DD Tracks**, start the steering run and expand **Robotyx survey path · 3D**. The first point is the kickoff tie-in. Completing a stand normally adds the next survey and closes the first interval. Drag to orbit on either device, use the arrow keys with the canvas focused, or use the zoom and fit buttons. Tap a point or curve, or use **Inspect** to select a historical station or interval. Scrub the interval MD or choose **Next gamma sample** to read the original and fused detector values at an exact MD.
+
+| Layer | Source and interpretation |
+| --- | --- |
+| White survey anchors | The DD run emits MD, inclination, azimuth and rounded TVD. The game fills survey TVD by rounding the simulated bit TVD at acquisition. Those fields are copied unchanged. The run has no station E/N measurements. The kickoff E/N come from the same selected plan station as the game. Subsequent E/N coordinates are calculated from the measured directions and MD. |
+| Dashed minimum curvature | The existing DD `minCurve` routine integrates the survey directions from the kickoff E/N and initial reported TVD. Its computed TVD can differ from the reported TVD at later stations. |
+| Green Robotyx path | Interpolation between two accepted anchors. Each endpoint uses survey-derived E/N and reported TVD. The inspector gives the offset from the pure minimum-curvature reference in metres. |
+| Gamma | Sensor MD determines placement along a closed Robotyx interval. Blue through gold denotes fitted gamma from 0 to 150+ gAPI. A gray ring identifies a held or unavailable update. Inspecting the depth shows the available raw reading and quality. The gamma interval describes formation response only. |
+| Track plan | The selected run's plan polyline, clipped to the surveyed MD range. The existing cabin section and truth preview remain available for game comparison. |
+
+The frame is East, North, TVD in metres. TVD increases downward, inclination is from vertical, and azimuth is clockwise from north. The view uses an orthographic 3D camera with the same scale on all axes, a horizontal E/N grid, and a scale bar. All layers share this frame.
+
+For each advancing substep, the run logs its start/end MD, actual slide or rotate mode, effective simulated toolface and nominal motor yield (degrees per 30 m). Slide uses the game's `steer` and `minCurve` routines. Rotate holds the local direction in this reconstruction. The toolface follows the game engine's high-side convention, including its synthetic convention at low inclination. The model does not read hidden bit coordinates, simulated walk, yield errors, steering recommendations, gamma, or a subsequent interval to estimate its shape. A station's E/N tie comes exclusively from the kickoff and minimum curvature.
+
+For a closed interval of length L and fractional MD t, the Robotyx model adds a cubic correction to its integrated base path. It adds (3t² − 2t³) times the endpoint position residual and L(t³ − t²) times the final unit-tangent residual. The correction is zero with zero slope at the start. At the end it enforces the hard anchor position and measured tangent. The display parameter is measured depth. The resulting curve is an inference and its geometric arc length can differ from the recorded MD increment. There is no calibrated positional confidence band.
+
+Complete, contiguous steering coverage at the station MDs enables the drilling-informed shape. A fractional kickoff can leave the substep bounds outside the survey’s 0.1 m rounded MD grid. The original sensor MD remains exact. Missing, misaligned or invalid substeps use a survey-only minimum-curvature shape with the same endpoint constraints. An exact duplicate survey is ignored. Conflicting repeated MD, reversed MD, an invalid direction, a missing stand, implausible vertical travel or a near-antipodal direction stops the path at the last accepted anchor. The native survey spacing is 30 m and the source rounds MD/TVD to 0.1 m. The model allows 0.101 m for that rounding in the stand and travel checks. No additional horizontal tie is available after a break. The overlay draws no curve beyond the latest accepted survey. Source rows remain in the game's survey table.
+
+Each new well, scenario or track owns a new path and gamma history. Pickup, pause, and stall add no drilled substeps. Inspecting a prior interval changes only the view. The deterministic training run can be replayed from its seed. Live WITSML and its separate replay mode are outside this view.
+
+Run `node --test drilling-tests/dd-survey-path.test.mjs` for station integrity, anchor and tangent checks, wraparound/degenerate directions, gap handling, method fallback, track alignment, gamma placement and game isolation. The existing browser test also exercises the 3D layers and device input. Set `ROBOTYX_SURVEY_EVIDENCE_DIR` to a directory to capture its canvases.

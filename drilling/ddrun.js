@@ -4,6 +4,8 @@
 // MWD survey noise, BHA sag. Signals: MWD survey per 30 m stand, gravity/magnetic TF, offsets from plan, DLS needed, dP/WOB/ROP, motor curve point.
 // Motor through GX.ddcab.motor.step (ddmotor.js) so the motor-performance pop-up dot moves; driller wording through GX.dddrv.readback.
 // Gamepad: Start/Menu (button 9) toggles run/pause, hold 1 s resets (button 8 stays Home). EVERYTHING HERE IS SIM. Never LIVE. No network.
+import {SurveyPath} from './dd_survey_path.mjs';
+import {surveyPanel, surveyCss, mountSurveyView} from './dd_survey_view.mjs';
 import {TrainingGammaLog} from './dd_gamma_log.mjs';
 import {renderGamma, gammaPanel} from './dd_gamma_view.mjs';
 import * as C from './ddcab_core.js?v=b11';
@@ -27,6 +29,7 @@ export function newRun(o={}){const scen=o.scen||'build',sc=SCN[scen],diff=o.diff
  const p0=planAt(plan,sc.startMd),bit={md:p0.md,inc:Math.max(0.5,p0.inc),azi:p0.azi,E:p0.E,N:p0.N,tvd:p0.tvd};
  const R0={scen,diff,seed,plan,planSrc:src,td:plan.at(-1).md,E:errors(diff,seed),rng:C.mulberry(seed*7+1),bit,truth:[{...bit}],surveys:[{md:+bit.md.toFixed(1),inc:+bit.inc.toFixed(2),azi:+bit.azi.toFixed(2),tvd:+bit.tvd.toFixed(1),dls:0,dev:0,src:'SIM'}],
   set:{mode:sc.mode,tf:sc.tf,len:sc.len,wob:sc.wob,flow:sc.flow,rpm:40},standMd:0,slid:0,yieldF:1,tfDrift:0,stalls:0,stalled:false,ms:null,rop:0,hours:0,devs:[],running:false,done:false,ticks:0,instr:'',log:[]};
+ R0.surveyPath=new SurveyPath(p0,R0.surveys[0],STAND);
  R0.gammaLog=new TrainingGammaLog(bit.md,seed);
  R0.yieldF=1+R0.E.yieldSd*gauss(R0.rng);instruct(R0);return R0}
 function motor(r,rot,dt){const s=r.set,M=globalThis.GX?.ddcab?.motor;let o=null;
@@ -41,7 +44,7 @@ function instruct(r){const o=offsets(r),y=(r.ms?.yield||C.yieldDLS(C.MOTOR)),len
  const c=len<2?{cmd:'rotate',len:STAND}:{cmd:'slide',len,tf},rb=globalThis.GX?.dddrv?.readback;let t;try{t=rb?rb(c):null}catch(e){t=null}
  r.rec=c;r.instr=(c.cmd=='rotate'?'Rotate the stand (on plan, DLS needed '+f2(o.dlsNeed)+'°/30m)':`Slide ${len} m at TF ${tf}°, then rotate ${STAND-len} m`)+(t?' · Driller: '+t:'');return r.instr}
 function survey(r){const b=r.bit,E=r.E,g=()=>gauss(r.rng),pv=r.surveys.at(-1);const s={md:+b.md.toFixed(1),inc:+Math.max(0,b.inc-E.sag+E.svInc*g()).toFixed(2),azi:+n360(b.azi+E.svAzi*g()).toFixed(2),tvd:+b.tvd.toFixed(1),src:'SIM'};
- s.dls=s.md>pv.md?+(C.dogleg(pv.inc,pv.azi,s.inc,s.azi)*30/(s.md-pv.md)).toFixed(2):0;s.dev=+offsets(r).dist.toFixed(2);r.surveys.push(s);r.devs.push(s.dev);
+ s.dls=s.md>pv.md?+(C.dogleg(pv.inc,pv.azi,s.inc,s.azi)*30/(s.md-pv.md)).toFixed(2):0;s.dev=+offsets(r).dist.toFixed(2);r.surveys.push(s);r.surveyPath.addSurvey(s);r.devs.push(s.dev);
  r.yieldF=1+E.yieldSd*gauss(r.rng);r.tfDrift+=E.tfDriftSd*g();r.standMd=0;r.slid=0;instruct(r);r.log.push(`MWD survey ${s.md} m: Inc ${s.inc}° Azi ${s.azi}° TVD ${s.tvd} m (SIM)`);return s}
 // drill `len` metres with the current settings (sub-steps of <=1 m). Returns metres made.
 export function drill(r,len,dt=0.05){let made=0;while(made<len-1e-9&&!r.done){const s=r.set,rot=s.mode=='rotate'||r.slid>=s.len;const ms=motor(r,rot,dt);r.ms=ms;
@@ -50,7 +53,9 @@ export function drill(r,len,dt=0.05){let made=0;while(made<len-1e-9&&!r.done){co
   if(!rot){const tfA=n360(s.tf+r.tfDrift-E.rtPerBar*(ms.dP||0));r.tfAct=tfA;const n=C.steer(inc,azi,(ms.yield||C.yieldDLS(C.MOTOR))*r.yieldF,tfA,dl);inc=n.inc;azi=n.azi;r.slid+=dl}
   else{azi+=E.bitWalk*dl/30;r.tfAct=null}
   inc=cl(inc+E.walkInc*dl/30,0,120);azi=n360(azi+E.walkAzi*dl/30);const nb=C.minCurve(b,b.md+dl,inc,azi);r.bit={md:nb.md,inc:nb.inc,azi:nb.azi,E:nb.E,N:nb.N,tvd:nb.tvd};r.truth.push({...r.bit});
+  r.surveyPath.record(b.md,r.bit.md,rot?'rotate':'slide',r.tfAct,ms.yield||C.yieldDLS(C.MOTOR));
   r.gammaLog.advance(b,r.bit,r.hours,{mode:rot?'rotate':'slide',wob:s.wob,flow:s.flow,bitRpm:ms.bitRpm,rop},globalThis.GX?.strat);
+  r.surveyPath.addGamma(r.gammaLog.latest);
   r.hours+=dl/Math.max(rop,0.1);made+=dl;r.standMd+=dl;if(r.standMd>=STAND-1e-6)survey(r);if(r.bit.md>=r.td-0.01){r.done=true;r.running=false;r.log.push('Run complete at TD (SIM).');fin(r)}}
  return made}
 export function score(r){const d=r.devs,avg=d.length?d.reduce((a,b)=>a+b,0)/d.length:offsets(r).dist,ls=r.surveys.slice(1).map(s=>s.dls),m=ls.length?ls.reduce((a,b)=>a+b,0)/ls.length:0,sd=ls.length>1?Math.sqrt(ls.reduce((a,b)=>a+(b-m)**2,0)/(ls.length-1)):0;
@@ -58,6 +63,7 @@ export function score(r){const d=r.devs,avg=d.length?d.reduce((a,b)=>a+b,0)/d.le
 // apply the recommended instruction to the controls (what a good DD would order)
 export function applyRec(r){const c=r.rec;if(!c)return;if(c.cmd=='rotate'){r.set.mode='rotate'}else{r.set.mode='slide';r.set.tf=c.tf;r.set.len=c.len}}
 // ---------------- UI ----------------
+let renderSurvey;
 let RUN=null,el=null,timer=null,cab=null,spd=1,ang=0.6,pad={t:0,down:false,fired:false};
 const CSS=`#ddRun{background:#101a24;border-bottom:1px solid #2c3d50;padding:6px 8px;display:flex;flex-direction:column;gap:6px;max-height:46vh;overflow:auto;flex:none}
 #ddRun .rw{display:flex;gap:6px;flex-wrap:wrap;align-items:center}#ddRun label{display:flex;gap:4px;align-items:center;font-size:12px;color:#bcd}
@@ -67,7 +73,7 @@ const CSS=`#ddRun{background:#101a24;border-bottom:1px solid #2c3d50;padding:6px
 #ddRun canvas{background:#081018;border-radius:6px;width:100%;max-width:420px;height:auto}#ddRun .cv{display:grid;grid-template-columns:1fr 1fr;gap:6px}#ddRun table{font:11px ui-monospace,monospace;border-collapse:collapse}#ddRun td,#ddRun th{padding:1px 5px;text-align:right}
 @media(max-width:1023px){#ddRun{max-height:58vh}#ddRun .cv{grid-template-columns:1fr}#ddRun input[type=range]{width:90px}}
 @media(min-width:1024px){#ddRun .main{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:8px}}`;
-function css(){if($('ddRunCss'))return;const s=document.createElement('style');s.id='ddRunCss';s.textContent=CSS;document.head.appendChild(s)}
+function css(){if($('ddRunCss'))return;const s=document.createElement('style');s.id='ddRunCss';s.textContent=CSS+surveyCss;document.head.appendChild(s)}
 function build(){el=document.createElement('div');el.id='ddRun';const o=(m,v)=>Object.entries(m).map(([k,x])=>`<option value="${k}"${k==v?' selected':''}>${x.name||x}</option>`).join('');
  el.innerHTML=`<div class="rw"><button id="drGo" class="go">▶ Start</button><button id="drReset">⟲ Reset</button>
  <label>Scenario <select id="drScen">${o(SCN,RUN.scen)}</select></label><label>Difficulty <select id="drDiff">${o({easy:'Easy',normal:'Normal',hard:'Hard'},RUN.diff)}</select></label>
@@ -77,8 +83,10 @@ function build(){el=document.createElement('div');el.id='ddRun';const o=(m,v)=>O
  <label>WOB <input id="drWob" type="range" min="0" max="40" step="0.5"><b id="drWobV"></b>t</label><label>Flow <input id="drFlow" type="range" min="900" max="2600" step="50"><b id="drFlowV"></b>L/min</label>
  <button id="drApply">Use instruction</button><button id="drPU">Pick up off bottom</button></div>
  ${gammaPanel}
+ ${surveyPanel}
  <div id="drInstr"></div><div id="drStall" hidden></div><div id="drEnd" hidden></div>
  <div class="main"><div><div class="rg" id="drG"></div><table id="drSurv"></table></div><div class="cv"><canvas id="drVS" width="420" height="220"></canvas><canvas id="dr3D" width="420" height="220"></canvas></div></div>`;
+ renderSurvey=mountSurveyView(el.querySelector('.drPath'));
  const q=el.querySelector.bind(el),bind=(id,k,f=Number)=>q('#'+id).oninput=e=>{RUN.set[k]=f(e.target.value);RUN.ramp=false;ui()};
  q('#drGo').onclick=toggle;q('#drReset').onclick=()=>reset();q('#drScen').onchange=e=>reset({scen:e.target.value});q('#drDiff').onchange=e=>reset({diff:e.target.value});q('#drSpd').onchange=e=>spd=+e.target.value;
  q('#drMode').onchange=e=>{RUN.set.mode=e.target.value;RUN.slid=e.target.value=='slide'?RUN.slid:RUN.slid;ui()};bind('drTF','tf');bind('drLen','len');bind('drWob','wob');bind('drFlow','flow');
@@ -89,7 +97,7 @@ function gv(n,v,u='',c=''){return `<div><small>${n}</small><b class="${c}">${v}<
 export function ui(){if(!el||!RUN)return;const r=RUN,s=r.set,o=offsets(r),ms=r.ms||motor(r,s.mode=='rotate',0),sc=score(r),b=r.bit,last=r.surveys.at(-1),tfMode=b.inc<5?'MTF':'GTF',tfShow=r.tfAct==null?s.tf:r.tfAct,tfRead=b.inc<5?C.mtf(tfShow,b.azi):tfShow;r.ms=ms;
  const set=(id,v)=>{const e=$(id);if(e&&document.activeElement!==e)e.value=v};set('drMode',s.mode);set('drTF',s.tf);set('drLen',s.len);set('drWob',s.wob);set('drFlow',s.flow);$('drWobV').textContent=f1(s.wob);$('drFlowV').textContent=s.flow;
  const g=$('drGo');g.textContent=r.running?'⏸ Pause':'▶ Start';g.classList.toggle('on',r.running);g.setAttribute('aria-pressed',r.running);$('drPlan').textContent='Plan: '+r.planSrc+' · TD '+f1(r.td)+' m';
- renderGamma(el, r);
+ renderGamma(el, r);renderSurvey(r);
  const ab=o.up>=0?'Above':'Below',lr=o.right>=0?'Right':'Left',ah=o.along>=0?'Behind':'Ahead';
  $('drG').innerHTML=gv('Bit MD',f1(b.md),'m')+gv('Stand',f1(r.standMd)+'/30','m')+gv('MWD Inc',f2(last.inc),'°')+gv('MWD Azi',f2(last.azi),'°')+gv('MWD TVD',f1(last.tvd),'m')+gv('Toolface '+tfMode,f1(tfRead),'°'+(s.mode=='rotate'?' rot':''))
   +gv('Dist to plan',f1(o.dist),'m',o.dist>10?'bad':o.dist>4?'warn':'ok')+gv(ab+' plan',f1(Math.abs(o.up)),'m')+gv(lr+' of plan',f1(Math.abs(o.right)),'m')+gv(ah+' (MD)',f1(Math.abs(o.along)),'m')
@@ -101,7 +109,7 @@ export function ui(){if(!el||!RUN)return;const r=RUN,s=r.set,o=offsets(r),ms=r.m
 function draw(){const r=RUN;{const c=$('drVS');if(!c)return;const x=c.getContext('2d'),W=c.width,H=c.height,az=(r.plan.at(-1).azi||0)*R,vs=p=>p.E*Math.sin(az)+p.N*Math.cos(az);x.clearRect(0,0,W,H);
   const md0=Math.max(0,r.bit.md-260),md1=r.bit.md+160,pl=r.plan.filter(p=>p.md>=md0&&p.md<=md1),tr=r.truth.filter(p=>p.md>=md0),all=[...pl,...tr];const v0=Math.min(...all.map(vs))-10,v1=Math.max(...all.map(vs))+10,t0=Math.min(...all.map(p=>p.tvd))-10,t1=Math.max(...all.map(p=>p.tvd))+10,k=Math.min((W-20)/(v1-v0),(H-24)/(t1-t0));
   const X=p=>10+(vs(p)-v0)*k,Y=p=>10+(p.tvd-t0)*k;x.lineWidth=2;x.strokeStyle='#6aa9ff';x.beginPath();pl.forEach(p=>x.lineTo(X(p),Y(p)));x.stroke();x.strokeStyle='#ffb347';x.beginPath();tr.forEach(p=>x.lineTo(X(p),Y(p)));x.stroke();
-  x.fillStyle='#fff';x.beginPath();x.arc(X(r.bit),Y(r.bit),4,0,7);x.fill();x.fillStyle='#7ee08a';r.surveys.filter(p=>p.md>=md0).forEach(s=>{const p=planAt(r.truth,s.md);x.fillRect(X(p)-2,Y(p)-2,4,4)});x.fillStyle='#9ab';x.font='11px system-ui';x.fillText('Section near bit: target plan (blue) · actual (orange) · surveys (green) · SIM',8,H-6)}
+  x.fillStyle='#fff';x.beginPath();x.arc(X(r.bit),Y(r.bit),4,0,7);x.fill();x.fillStyle='#7ee08a';r.surveyPath.anchors.filter(p=>p.md>=md0).forEach(p=>{x.fillRect(X(p)-2,Y(p)-2,4,4)});x.fillStyle='#9ab';x.font='11px system-ui';x.fillText('Section near bit: target plan (blue) · actual (orange) · survey anchors (green) · SIM',8,H-6)}
  {const c=$('dr3D'),x=c.getContext('2d'),W=c.width,H=c.height;x.clearRect(0,0,W,H);const ca=Math.cos(ang),sa=Math.sin(ang),pr=p=>{const u=p.E*ca-p.N*sa,w=p.E*sa+p.N*ca;return [u,p.tvd*0.9-w*0.35]},all=[...r.plan,...r.truth].map(pr);
   const u0=Math.min(...all.map(a=>a[0])),u1=Math.max(...all.map(a=>a[0])),y0=Math.min(...all.map(a=>a[1])),y1=Math.max(...all.map(a=>a[1])),k=Math.min((W-20)/(u1-u0||1),(H-24)/(y1-y0||1)),P=p=>{const a=pr(p);return [10+(a[0]-u0)*k,10+(a[1]-y0)*k]};
   x.lineWidth=2;x.strokeStyle='#6aa9ff';x.beginPath();r.plan.forEach(p=>x.lineTo(...P(p)));x.stroke();x.strokeStyle='#ffb347';x.beginPath();r.truth.forEach(p=>x.lineTo(...P(p)));x.stroke();const bp=P(r.bit);x.fillStyle='#fff';x.beginPath();x.arc(bp[0],bp[1],4,0,7);x.fill();

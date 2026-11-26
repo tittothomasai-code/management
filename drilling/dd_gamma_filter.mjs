@@ -29,8 +29,8 @@ export class GammaFilter {
   observe(packet, nowSec) {
     const {sensorMd, bitMd, atSec, gamma, mechanics, mode, rop} = packet;
     const cfg = this.cfg;
-    const result = status => ({
-      packet, status, md: this.md, mean: this.mean,
+    const result = (status, updated = false) => ({
+      packet, status, updated, md: this.md, mean: this.mean,
       half95: this.variance === null ? null : 1.96 * Math.sqrt(this.variance)
     });
     if (![sensorMd, bitMd, atSec, nowSec].every(finite) || sensorMd < 0 ||
@@ -66,7 +66,7 @@ export class GammaFilter {
     if (this.mean === null) {
       this.mean = gamma;
       this.variance = noise;
-      return result('First gamma');
+      return result('First gamma', true);
     }
     const residual = gamma - this.mean;
     if (Math.abs(residual) > cfg.spikeSigma * Math.sqrt(this.variance + noise)) {
@@ -81,12 +81,12 @@ export class GammaFilter {
       this.mean = gamma;
       this.variance = noise;
       this.suspect = null;
-      return result('Gamma step confirmed');
+      return result('Gamma step confirmed', true);
     }
     this.suspect = null;
     const gain = this.variance / (this.variance + noise);
     this.mean += gain * residual;
     this.variance *= 1 - gain;
-    return result(comparable ? 'Gamma + drilling response' : 'Gamma · mechanical comparison unavailable');
+    return result(comparable ? 'Gamma + drilling response' : 'Gamma · mechanical comparison unavailable', true);
   }
 }
