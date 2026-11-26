@@ -1,7 +1,7 @@
 // witsml-proxy (Netlify) — read-only HTTPS proxy for the Drilling World game -> one WITSML 1.4.1.1 SOAP server.
 // * Stores NO credentials: user's own Basic creds per request in X-Witsml-Authorization only.
 // * Exactly one upstream URL (allowlist); read SOAP ops only (GetVersion/GetCap/GetFromStore); envelope built here.
-// * CORS: the existing Pages origin and the drilling dashboard only; other/missing Origin -> 403.
+// * CORS: the existing Pages origin only; other/missing Origin -> 403.
 // * Upstream 401/403 passed straight back. No logging at all.
 // * TLS: verified everywhere, EXCEPT a per-request https.Agent({rejectUnauthorized:false}) used ONLY when the
 //   upstream hostname === cfg.skipHost (australia.adagasolutions.com, whose cert is expired). Never global.
@@ -17,7 +17,7 @@
 import https from "node:https";
 import { GAME_REDACTION_MARK, attachRedactionMeta, credentialParts, credentialSecrets, echoRefusal, guardFields, guardReason } from "./witsml-echo-guard.mjs";
 export const ORIGIN = "https://tittothomasai-code.github.io";
-export const ORIGINS = new Set([ORIGIN, "https://drilling.robotyx.systems"]);
+export const ORIGINS = new Set([ORIGIN]);
 const OPS = new Set(["WMLS_GetVersion", "WMLS_GetCap", "WMLS_GetFromStore"]);
 const MAX_BODY = 64 * 1024, MAX_RESP = 16 * 1024 * 1024;
 const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");

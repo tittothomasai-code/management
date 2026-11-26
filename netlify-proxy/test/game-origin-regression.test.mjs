@@ -16,9 +16,8 @@ import handler, { DEPLOY_REVISION_EQUIVALENCE } from "../netlify/functions/witsm
 // revision, and a green test is not an Adaga connection.
 
 const CANONICAL = {
-  // core.mjs changed on purpose: credential echo guard (PR #22 review B1). The running
-  // tryfecta-witsml-proxy deploy is still 74c687f0...eb7825 until this is released.
-  "../netlify/lib/core.mjs": "0d036a9d836988a4d90e6b24928556751c41332bc5c188d3251f79f26b04e0e5",
+  // The site-specific WITSML disconnect changes only the browser origin allowlist.
+  "../netlify/lib/core.mjs": "483020c4fb6c6a6c2094749f9ae6c25f097bdd04f93ef3f1fce062971a60a21f",
   "../netlify/functions/witsml-proxy.mjs": "d8c4e95580c2544567fe658d6ae41d1b5cce4b02c47da6a7c0d93eb205736b34",
   "../netlify.toml": "ecf28bdecdd81726a880eab4ddf070d74f2d1f011a7c6d2d0c1c247d2484bb39",
 };
@@ -178,6 +177,7 @@ describe("game origin regression", { concurrency: 1 }, () => {
       { origin: ORIGIN + "/" },
       { origin: "https://Tittothomasai-code.github.io" },
       { origin: "" },
+      { origin: DRILLING_ORIGIN },
       { origin: DRILLING_ORIGIN + ".evil.example" },
       { origin: DRILLING_ORIGIN + "/" },
       { origin: "http://drilling.robotyx.systems" },
@@ -200,8 +200,8 @@ describe("game origin regression", { concurrency: 1 }, () => {
   });
 
   test("approved origins pass preflight and other origins stay closed", async () => {
-    assert.deepEqual([...ORIGINS], [ORIGIN, DRILLING_ORIGIN]);
-    for (const origin of [ORIGIN, DRILLING_ORIGIN]) {
+    assert.deepEqual([...ORIGINS], [ORIGIN]);
+    for (const origin of [ORIGIN]) {
       const allowed = await proxy(gameReq({ method: "OPTIONS", origin }));
       assert.equal(allowed.status, 204, origin);
       assert.equal(await allowed.text(), "");
@@ -217,7 +217,7 @@ describe("game origin regression", { concurrency: 1 }, () => {
       assert.deepEqual(body.ops, ["WMLS_GetVersion", "WMLS_GetCap", "WMLS_GetFromStore"]);
       assert.equal(info.headers.get("access-control-allow-origin"), origin);
     }
-    for (const origin of ["https://evil.example", DRILLING_ORIGIN + ".evil.example", "null"]) {
+    for (const origin of [DRILLING_ORIGIN, "https://evil.example", DRILLING_ORIGIN + ".evil.example", "null"]) {
       const denied = await proxy(gameReq({ method: "OPTIONS", origin }));
       assert.equal(denied.status, 403, origin);
       assert.equal(denied.headers.get("access-control-allow-origin"), null);
